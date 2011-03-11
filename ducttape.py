@@ -59,13 +59,12 @@ class Tool(object):
             try:
                 # get absolute path to software
                 where = workflow.softwarePaths[who]
+                scriptVar = 'T_{0}'.format(who)
+                self.env[scriptVar] = where
                 if not os.path.exists(where):
                     self._error('Software package {0} not found at {1}'.format(who, where))
             except KeyError:
                 self._error('No path specified for required software package {0}'.format(who))
-
-            scriptVar = 'T_{0}'.format(name)
-            self.env[scriptVar] = where
         
         # Do some PATH trickery to make sure libducttape.bash can be found
         externalPath = os.environ.get("PATH")
@@ -141,10 +140,10 @@ class Tool(object):
         if not show:
             return
 
-        print '=== {0} ==='.format(self.full_name())
-        print >>sys.stderr, 'Started at', startTime
+        yield '=== {0} ===\n'.format(self.full_name())
+        yield 'Started at {0}\n'.format(startTime)
         if finishTime:
-            print >>sys.stderr, 'Completed at', finishTime
+            yield 'Completed at {0}\n'.format(finishTime)
 
         if os.path.exists(self.statusScript):
             try:
@@ -152,11 +151,13 @@ class Tool(object):
                     vFlag = ' -v'
                 else:
                     vFlag = ''
-                subprocess.check_call(self.statusScript+vFlag, shell=True, stdout=None, stderr=subprocess.STDOUT, cwd=self.workDir)
+                (stdout, stderr) = check_output(self.statusScript+vFlag, shell=True, cwd=self.workDir)
+                for line in stdout.split('\n'):
+                    yield line
             except:
-                pass
+                raise
 
-        print >>sys.stderr
+        yield '\n'
 
     def _run(self):
 
@@ -297,7 +298,8 @@ class Workflow(object):
             runningOnly = ('-r' in args)
             try:
                 for tool in self.graph:
-                    tool._status(verbose=v, runningOnly=runningOnly)
+                    for line in tool._status(sys.stderr, verbose=v, runningOnly=runningOnly):
+                        print line
             except Exception as e:
                 raise
 
@@ -310,6 +312,28 @@ class Workflow(object):
                 print >>sys.stderr, '=== {0} ==='.format(vertex.full_name())
                 for fields in data:
                     print >>sys.stderr, '\t'.join(fields)
+
+        elif action == 'webui':
+            import cgi
+            from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+
+            workflow = self
+            class MyHandler(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    if True or self.path.endswith(".htm"):
+                        self.send_response(200)
+                        self.send_header('Content-type','text/html')
+                        self.end_headers()
+                        self.wfile.write('<h1>DuctTape V1.0 alpha</h1>\n')
+                        for tool in workflow.graph:
+                            for line in tool._status(verbose=True, runningOnly=False):
+                                self.wfile.write(line + '<br>\n')
+                    else:
+                        self.send_response(404)
+
+            server = HTTPServer(('localhost', 4242), MyHandler)
+            print 'started httpserver...'
+            server.serve_forever()
 
         else:
             print >>sys.stderr, 'Unrecognized action: {0}'.format(action)
