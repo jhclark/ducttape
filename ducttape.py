@@ -39,6 +39,7 @@ class Tool(object):
         self.script = script
         self.statusScript = getStatusScript(script)
         self.reports = dict()
+        self.env = dict()
         self.name = name 
         self.realization = realization
         self.submitter = submitter
@@ -51,7 +52,20 @@ class Tool(object):
         self.startFile = '{0}/ducttape.START'.format(self.workDir)
         self.endFile = '{0}/ducttape.COMPLETED'.format(self.workDir)
 
-        self.env = dict()
+        # Find paths to required software
+        # TODO: Read required tools from script
+        requiredSoftware = ['cdec']
+        for who in requiredSoftware:
+            try:
+                # get absolute path to software
+                where = workflow.softwarePaths[who]
+                if not os.path.exists(where):
+                    self._error('Software package {0} not found at {1}'.format(who, where))
+            except KeyError:
+                self._error('No path specified for required software package {0}'.format(who))
+
+            scriptVar = 'T_{0}'.format(name)
+            self.env[scriptVar] = where
         
         # Do some PATH trickery to make sure libducttape.bash can be found
         externalPath = os.environ.get("PATH")
@@ -91,11 +105,6 @@ class Tool(object):
                        .format(self.full_name(), group, absScript))
         self.reports[group] = absScript
 
-    # TODO: Rework this to automatically read from some central location
-    def set_path(self, name, path):
-        scriptVar = 'T_{0}'.format(name)
-        self.env[scriptVar] = path
-
     def full_name(self):
         return '{0}-{1}'.format(self.name, '-'.join(self.realization))
 
@@ -115,16 +124,27 @@ class Tool(object):
                 raise
 
     # Usage: use kwargs
-    def _status(self, verbose):
-        print '=== {0} ==='.format(self.full_name())
+    def _status(self, verbose, runningOnly):
 
+        show = False
         if os.path.exists(self.startFile):
-            started = True
-            print >>sys.stderr, 'Started at', open(self.startFile).readline(),
+            show = True
+            startTime = open(self.startFile).readline().strip()
+            
+        finishTime = ''
         if os.path.exists(self.endFile):
-            print >>sys.stderr, 'Finished at', open(self.endFile).readline(),
-        if not started:
-            return # nothing to show
+            if runningOnly:
+                show = False
+            else:
+                finishTime = open(self.endFile).readline().strip()
+
+        if not show:
+            return
+
+        print '=== {0} ==='.format(self.full_name())
+        print >>sys.stderr, 'Started at', startTime
+        if finishTime:
+            print >>sys.stderr, 'Completed at', finishTime
 
         if os.path.exists(self.statusScript):
             try:
@@ -184,7 +204,7 @@ class Tool(object):
 class Workflow(object):
 
     # Recommended usage: Workflow(baseDir='/my/base/directory'...)
-    def __init__(self, baseDir, toolsDir):
+    def __init__(self, baseDir, toolsDir, paths):
         self.errors = []
         self.graph = []
         self.baseDir = os.path.abspath(baseDir)
@@ -192,6 +212,10 @@ class Workflow(object):
         if not os.path.exists(self.baseDir):
             os.makedirs(self.baseDir)
             #raise Exception('Workflow base directory not found: {0}'.format(self.baseDir))
+        self.softwarePaths = dict()
+        for line in open(paths):
+            (key, value) = line.strip().split('=')
+            self.softwarePaths[key.strip()] = value.strip()
 
     def _error(self, msg):
         # Get line number and source file name of workflow
@@ -217,8 +241,7 @@ class Workflow(object):
         # TODO: Errors for unrecognized kwargs
 
     # Recommended usage: tool('script/path', name='MyName')
-    def tool(self, script, name, submitter=submitters.Local()):
-        # TODO: Use environ vars to determine tools dir
+    def tool(self, script, name, submitter=submitters.Local()):                
         realization = ['btecZhEn', 'btecGlc1']
         script = os.path.abspath(self.toolsDir+'/'+script)
         if not os.path.exists(script):
@@ -240,7 +263,6 @@ class Workflow(object):
             self._showErrors()
             sys.exit(1)
 
-        # TODO: Topological sort
         from optparse import OptionParser
         parser = OptionParser()
         parser.add_option("-f", "--file", dest="filename",
@@ -261,6 +283,7 @@ class Workflow(object):
         action = args[0]
 
         if action == 'run':
+            # TODO: Topological sort or agenda-based executor with serial (yield) and async impl
             try:
                 for tool in self.graph:
                     tool._run()
@@ -270,10 +293,11 @@ class Workflow(object):
         elif action == 'status':
             # TODO: running only/all
             # verbose or not
-            v = (len(args) >= 2 and args[1] == '-v')
+            v = ('-v' in args)
+            runningOnly = ('-r' in args)
             try:
                 for tool in self.graph:
-                    tool._status(verbose=v)
+                    tool._status(verbose=v, runningOnly=runningOnly)
             except Exception as e:
                 raise
 
