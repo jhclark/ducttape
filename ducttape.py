@@ -38,9 +38,11 @@ class Tool(object):
     def __init__(self, workflow, script, name, realization, submitter):
         self.script = script
         self.statusScript = getStatusScript(script)
+        self.reports = dict()
         self.name = name 
         self.realization = realization
         self.submitter = submitter
+        self.workflow = workflow
 
         # baseDir is already guaranteed to be an absolute path
         self.workDir = '{0}/{1}/{2}'.format(workflow.baseDir, name, '-'.join(realization))
@@ -82,6 +84,13 @@ class Tool(object):
             paths.append(FuturePath(value))
         return paths
 
+    def report(self, group, script):
+        absScript = os.path.abspath(self.workflow.toolsDir+'/'+script)
+        if not os.path.exists(absScript):
+            self.workflow._error('Report script not found at {0} for report group {1}: {2}'
+                       .format(self.full_name(), group, absScript))
+        self.reports[group] = absScript
+
     # TODO: Rework this to automatically read from some central location
     def set_path(self, name, path):
         scriptVar = 'T_{0}'.format(name)
@@ -91,7 +100,22 @@ class Tool(object):
         return '{0}-{1}'.format(self.name, '-'.join(self.realization))
 
     # Usage: use kwargs
-    def status(self, verbose):
+    def _report(self, group):
+        # Only report after things have finished running
+        if group in self.reports and os.path.exists(self.endFile):
+            reportScript = self.reports[group]
+            try:
+                # TODO: Cache reports?
+                # TODO: Make tools like METEOR X-Ray trivial to include in reports?
+                (stdout, stderr) = check_output(reportScript, shell=True, cwd=self.workDir)
+                for line in stdout.split('\n'):
+                    fields = line.split('\t')
+                    yield fields
+            except:
+                raise
+
+    # Usage: use kwargs
+    def _status(self, verbose):
         print '=== {0} ==='.format(self.full_name())
 
         if os.path.exists(self.startFile):
@@ -108,11 +132,13 @@ class Tool(object):
                     vFlag = ' -v'
                 else:
                     vFlag = ''
-                subprocess.check_call('bash '+self.statusScript+vFlag, shell=True, stdout=None, stderr=subprocess.STDOUT, cwd=self.workDir)
+                subprocess.check_call(self.statusScript+vFlag, shell=True, stdout=None, stderr=subprocess.STDOUT, cwd=self.workDir)
             except:
                 pass
 
-    def run(self):
+        print >>sys.stderr
+
+    def _run(self):
 
         pid = os.getpid()
         host = socket.gethostname()
@@ -167,7 +193,7 @@ class Workflow(object):
             os.makedirs(self.baseDir)
             #raise Exception('Workflow base directory not found: {0}'.format(self.baseDir))
 
-    def error(self, msg):
+    def _error(self, msg):
         # Get line number and source file name of workflow
         f = inspect.stack()[2][0]
         callStr = ' (%s:%d)'%(f.f_code.co_filename, f.f_lineno)
@@ -175,10 +201,10 @@ class Workflow(object):
         MAX_ERRORS = 50
         self.errors.append(msg + callStr)
         if len(self.errors) > MAX_ERRORS:
-            self.showErrors()
+            self._showErrors()
             sys.exit(1)
 
-    def showErrors(self):
+    def _showErrors(self):
         for error in self.errors:
             print 'ERROR:', error
 
@@ -186,7 +212,7 @@ class Workflow(object):
     def file(self, filename, **kwargs):
         absPath = os.path.abspath(filename)
         if not os.path.exists(absPath):
-            self.error('File not found: {0}'.format(absPath))
+            self._error('File not found: {0}'.format(absPath))
         return Path(absPath)
         # TODO: Errors for unrecognized kwargs
 
@@ -196,15 +222,22 @@ class Workflow(object):
         realization = ['btecZhEn', 'btecGlc1']
         script = os.path.abspath(self.toolsDir+'/'+script)
         if not os.path.exists(script):
-            self.error('Tool script not found: {0}'.format(script))
+            self._error('Tool script not found: {0}'.format(script))
         t = Tool(self, script, name, realization, submitter)
         self.graph.append(t)
         return t
- 
+
+    def report(self, group):
+        """An alternate mode to run in which reported values are given directly to user code. """
+        for tool in self.graph:
+            if group in tool.reports:
+                # NOTE: 3rd item of tuple is itself a generator
+                yield (tool, tool._report(group))
+
     def run(self):
 
         if len(self.errors) > 0:
-            self.showErrors()
+            self._showErrors()
             sys.exit(1)
 
         # TODO: Topological sort
@@ -230,7 +263,7 @@ class Workflow(object):
         if action == 'run':
             try:
                 for tool in self.graph:
-                    tool.run()
+                    tool._run()
             except Exception as e:
                 raise
             
@@ -240,9 +273,24 @@ class Workflow(object):
             v = (len(args) >= 2 and args[1] == '-v')
             try:
                 for tool in self.graph:
-                    tool.status(verbose=v)
+                    tool._status(verbose=v)
             except Exception as e:
                 raise
+
+        elif action == 'report':
+            grp = ''
+            if len(args) == 3 and args[1] == '--group':
+                grp = args[2]
+
+            for (vertex, data) in self.report(group=grp):
+                print >>sys.stderr, '=== {0} ==='.format(vertex.full_name())
+                for fields in data:
+                    print >>sys.stderr, '\t'.join(fields)
+
+        else:
+            print >>sys.stderr, 'Unrecognized action: {0}'.format(action)
+            sys.exit(1)
+            
             
             
     
