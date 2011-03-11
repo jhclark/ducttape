@@ -19,6 +19,12 @@ def showHeader():
     print >>sys.stderr
 showHeader()
 
+def getStatusScript(runScript):
+    toks = runScript.split('.')
+    toks[-1:-1] = ['status']
+    statusScript = '.'.join(toks)
+    return statusScript
+
 class Path(object):
     def __init__(self, path):
         self.absPath = path
@@ -31,6 +37,7 @@ class FuturePath(Path):
 class Tool(object):
     def __init__(self, workflow, script, name, realization, submitter):
         self.script = script
+        self.statusScript = getStatusScript(script)
         self.name = name 
         self.realization = realization
         self.submitter = submitter
@@ -39,6 +46,8 @@ class Tool(object):
         self.workDir = '{0}/{1}/{2}'.format(workflow.baseDir, name, '-'.join(realization))
         self.stdoutFile = '{0}/ducttape.job.stdout'.format(self.workDir)
         self.stderrFile = '{0}/ducttape.job.stderr'.format(self.workDir)
+        self.startFile = '{0}/ducttape.START'.format(self.workDir)
+        self.endFile = '{0}/ducttape.COMPLETED'.format(self.workDir)
 
         self.env = dict()
         
@@ -64,11 +73,14 @@ class Tool(object):
             scriptVar = 'P_{0}'.format(key)
             self.env[scriptVar] = str(value)
 
-    def output(self, outname):
-        scriptVar = 'O_{0}'.format(outname)
-        value = self.workDir + '/' + outname
-        self.env[scriptVar] = value
-        return FuturePath(value)
+    def outputs(self, *outnames):
+        paths = []
+        for outname in outnames:
+            scriptVar = 'O_{0}'.format(outname)
+            value = self.workDir + '/' + outname
+            self.env[scriptVar] = value
+            paths.append(FuturePath(value))
+        return paths
 
     # TODO: Rework this to automatically read from some central location
     def set_path(self, name, path):
@@ -78,58 +90,79 @@ class Tool(object):
     def full_name(self):
         return '{0}-{1}'.format(self.name, '-'.join(self.realization))
 
+    # Usage: use kwargs
+    def status(self, verbose):
+        print '=== {0} ==='.format(self.full_name())
+
+        if os.path.exists(self.startFile):
+            started = True
+            print >>sys.stderr, 'Started at', open(self.startFile).readline(),
+        if os.path.exists(self.endFile):
+            print >>sys.stderr, 'Finished at', open(self.endFile).readline(),
+        if not started:
+            return # nothing to show
+
+        if os.path.exists(self.statusScript):
+            try:
+                if verbose:
+                    vFlag = ' -v'
+                else:
+                    vFlag = ''
+                subprocess.check_call('bash '+self.statusScript+vFlag, shell=True, stdout=None, stderr=subprocess.STDOUT, cwd=self.workDir)
+            except:
+                pass
+
     def run(self):
-        startFile = '{0}/ducttape.START'.format(self.workDir)
-        endFile = '{0}/ducttape.COMPLETED'.format(self.workDir)
 
         pid = os.getpid()
         host = socket.gethostname()
 
-        if os.path.exists(endFile):
-            print >>sys.stderr, 'Step already completed according to {0}'.format(endFile)
+        if os.path.exists(self.endFile):
+            print >>sys.stderr, 'Step already completed according to {0}'.format(self.endFile)
             return
-        elif os.path.exists(startFile):
-            startInfo = loadKVFile(startFile)
+        elif os.path.exists(self.startFile):
+            startInfo = loadKVFile(self.startFile)
             oldHost = startInfo['Hostname']
             oldPid = startInfo['pid']
             if oldHost == host:
                 if isPidRunning(oldPid):
                     print >>sys.stderr, 'Another process is already running this step. Waiting for completion...'
-                    while isPidRunning(oldPid) and not os.path.exists(endFile):
+                    while isPidRunning(oldPid) and not os.path.exists(self.endFile):
                         time.sleep(15)
-                    if not os.path.exists(endFile):
-                        raise Exception('Competing process died and failed to complete {0}'.format(self.get_full_name()))
+                    if not os.path.exists(self.endFile):
+                        raise Exception('Competing process died and failed to complete {0}'.format(self.full_name()))
                     else:
-                        print >>sys.stderr, 'Another process completed {0}'.format(self.get_full_name())
+                        print >>sys.stderr, 'Another process completed {0}'.format(self.full_name())
                 else:
                     print >>sys.stderr, 'Another process on this host previously attempted this step, but failed. Retrying...'
                     shutil.rmtree(self.workDir)
             else:
-                raise Exception('Step is already in progress according to {0}, but it was started from {1} on pid {2}. Try rerunning me on the same host so that I can tell if the process is still running.'.format(startFile, oldHost, oldPid))
+                raise Exception('Step is already in progress according to {0}, but it was started from {1} on pid {2}. Try rerunning me on the same host so that I can tell if the process is still running.'.format(self.startFile, oldHost, oldPid))
 
         # Create directories
         if not os.path.exists(self.workDir):
             os.makedirs(self.workDir)
         
-        writeKVFile(startFile, {'SubmitTime': datetime.datetime.now(),
+        writeKVFile(self.startFile, {'SubmitTime': datetime.datetime.now(),
                                 'Hostname': host,
                                 'pid': pid})
         try:
             print 'Running {0}'.format(self.name)
             self.submitter.run(self)
             print 'Completed {0}'.format(self.name)
-            writeFile(endFile, str(datetime.datetime.now()))
+            writeFile(self.endFile, str(datetime.datetime.now()))
         except subprocess.CalledProcessError as e:
             print "Error while running", self.name, ":", str(e)
-            raise Exception('Died while running {0}'.format(self.name))
+            raise Exception('Died while running {0}'.format(self.full_name()))
 
 class Workflow(object):
 
-    # Recommended usage: Workflow(baseDir='/my/base/directory')
-    def __init__(self, baseDir):
+    # Recommended usage: Workflow(baseDir='/my/base/directory'...)
+    def __init__(self, baseDir, toolsDir):
         self.errors = []
         self.graph = []
         self.baseDir = os.path.abspath(baseDir)
+        self.toolsDir = os.path.abspath(toolsDir)
         if not os.path.exists(self.baseDir):
             os.makedirs(self.baseDir)
             #raise Exception('Workflow base directory not found: {0}'.format(self.baseDir))
@@ -161,7 +194,7 @@ class Workflow(object):
     def tool(self, script, name, submitter=submitters.Local()):
         # TODO: Use environ vars to determine tools dir
         realization = ['btecZhEn', 'btecGlc1']
-        script = os.path.abspath(script)
+        script = os.path.abspath(self.toolsDir+'/'+script)
         if not os.path.exists(script):
             self.error('Tool script not found: {0}'.format(script))
         t = Tool(self, script, name, realization, submitter)
@@ -175,13 +208,41 @@ class Workflow(object):
             sys.exit(1)
 
         # TODO: Topological sort
+        from optparse import OptionParser
+        parser = OptionParser()
+        parser.add_option("-f", "--file", dest="filename",
+                  help="write report to FILE", metavar="FILE")
+        parser.add_option("-q", "--quiet",
+                  action="store_false", dest="verbose", default=True,
+                  help="don't print status messages to stdout")
+
+        #(options, args) = parser.parse_args()
         args = sys.argv[1:]
-        try:
-            for tool in self.graph:
-                tool.run()
-        except Exception as e:
-            raise
-            #print "ERROR:", e[0]
-            #sys.exit(1)
+
+        if not len(args) >= 1:
+            print >>sys.stderr, 'Usage: [options...] action'
+            print >>sys.stderr
+            print >>sys.stderr, 'Valid actions: run'
+            sys.exit(1)
+
+        action = args[0]
+
+        if action == 'run':
+            try:
+                for tool in self.graph:
+                    tool.run()
+            except Exception as e:
+                raise
+            
+        elif action == 'status':
+            # TODO: running only/all
+            # verbose or not
+            v = (len(args) >= 2 and args[1] == '-v')
+            try:
+                for tool in self.graph:
+                    tool.status(verbose=v)
+            except Exception as e:
+                raise
+            
             
     
