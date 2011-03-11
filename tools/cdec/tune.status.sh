@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 egrep -o '^ITERATION [0-9]+' vest.log | tail -n 1
-egrep -ho '^DECODER SCORE: [0-9.]+' vest.log | tail -n 1
+egrep -ho '^DECODER SCORE: [0-9.]+' vest.log | tail -n 2
 egrep -ho '^PROJECTED SCORE: [0-9.]+' vest.log | tail -n 1
 fgrep 'OPT-ITERATION' vest.log | tail -n 1
 
