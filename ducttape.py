@@ -34,6 +34,29 @@ class Path(object):
 class FuturePath(Path):
     pass
 
+class BranchEdge(object):
+
+    def __init__(self):
+        self.files = dict()
+        self.params = dict()
+
+    def use_files(self, **kwargs):
+        self.files = kwargs
+
+    def use_params(self, **kwargs):
+        self.params = kwargs
+
+class BranchPoint(object):
+    def __init__(self, name):
+        self.name = name
+        self.edges = dict()
+
+    # add a new edge to this branch point
+    def add(self, edgeName):
+        edge = BranchEdge()
+        self.edges[edgeName] = edge
+        return edge
+
 class Tool(object):
     def __init__(self, workflow, script, name, realization, submitter):
         self.script = script
@@ -227,6 +250,11 @@ class Workflow(object):
         self.graph.append(t)
         return t
 
+    def branch(self, name):
+        b = Branch(name)
+        self.branches[name] = b
+        return b
+
     def report(self, group):
         """An alternate mode to run in which reported values are given directly to user code. """
         for tool in self.graph:
@@ -287,6 +315,9 @@ class Workflow(object):
                 for fields in data:
                     print >>sys.stderr, '\t'.join(fields)
 
+        elif action == 'branches':
+            for b in self.branches:
+                print >>sys.stderr, b.name, '\t', ' '.join(b.edges.keys())
         else:
             print >>sys.stderr, 'Unrecognized action: {0}'.format(action)
             sys.exit(1)
