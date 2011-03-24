@@ -35,7 +35,7 @@ class FuturePath(Path):
     pass
 
 class Tool(object):
-    def __init__(self, workflow, script, name, realization, submitter):
+    def __init__(self, workflow, script, name, realization, submitter, versioner):
         self.script = script
         self.statusScript = getStatusScript(script)
         self.reports = dict()
@@ -43,6 +43,7 @@ class Tool(object):
         self.name = name 
         self.realization = realization
         self.submitter = submitter
+        self.versioner = versioner
         self.workflow = workflow
 
         # baseDir is already guaranteed to be an absolute path
@@ -247,7 +248,7 @@ class Workflow(object):
         script = os.path.abspath(self.toolsDir+'/'+script)
         if not os.path.exists(script):
             self._error('Tool script not found: {0}'.format(script))
-        t = Tool(self, script, name, realization, submitter)
+        t = Tool(self, script, name, realization, submitter, versioner)
         self.graph.append(t)
         return t
 
@@ -298,7 +299,7 @@ class Workflow(object):
             runningOnly = ('-r' in args)
             try:
                 for tool in self.graph:
-                    for line in tool._status(sys.stderr, verbose=v, runningOnly=runningOnly):
+                    for line in tool._status(verbose=v, runningOnly=runningOnly):
                         print line
             except Exception as e:
                 raise
