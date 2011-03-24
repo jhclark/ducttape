@@ -41,10 +41,11 @@ echo "grammar=$I_grammar" >> cdec.ini
 echo "feature_function=KLanguageModel $I_lm" >> cdec.ini
 echo "feature_function=WordPenalty" >> cdec.ini
 echo "add_pass_through_rules=true" >> cdec.ini
+#echo "cubepruning_pop_limit=200" >> cdec.ini
 echo "density_prune=$P_densityPrune" >> cdec.ini
-echo "unique_k_best=true" >> cdec.ini
+
 if [[ $P_useGlc == "True" ]]; then
-    echo "feature_function=ContextCRF --srcVocabFile $I_glcSrcVocab --tgtVocabFile $I_glcTgtVocab --srcStopwordFile $I_glcSrcStopwords --tgtStopwordFile $I_glcTgtStopwords --weightsFile $I_glcFeatWeights --coocFile $I_glcCooc --allowableFeatsFile $I_glcAllowableFeats --config $I_glcFeatConfig" >> cdec.ini
+    echo "feature_function=ContextCRF --srcVocabFile $I_glcSrcVocab --tgtVocabFile $I_glcTgtVocab --srcStopwordFile $I_glcSrcStopwords --tgtStopwordFile $I_glcTgtStopwords --weightsFile $I_glcFeatWeights --ttFile $I_glcCooc --allowableFeatsFile $I_glcAllowableFeats --config $I_glcFeatConfig" >> cdec.ini
     echo "feature_function=WordSet -N crf.ContentWordCount -v $I_glcTgtVocab" >> cdec.ini
     echo "feature_function=WordSet -N crf.NonContentWordCount -v $I_glcTgtVocab --oov" >> cdec.ini
     echo "feature_function=WordSet -N crf.StopWordCount -v $I_glcTgtStopwords" >> cdec.ini
