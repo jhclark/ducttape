@@ -10,6 +10,7 @@ import time
 import shutil
 
 import submitters
+import versioners
 from ductutil import *
 
 scriptDir = get_ducttape_dir()
@@ -57,6 +58,16 @@ class BranchPoint(object):
         self.edges[edgeName] = edge
         return edge
 
+    def files(self, *args):
+        # Use first edge as proxy?
+        # TODO: Check that all edges have same files
+        edge = self.edges.iterkeys().next()
+        for filename in args:
+            if filename in args:
+                yield FuturePath('TODO')
+            else:
+                raise Exception('Filename not specified on any edge: '+filename)
+
 class Tool(object):
     def __init__(self, workflow, script, name, realization, submitter, versioner):
         self.script = script
@@ -81,14 +92,16 @@ class Tool(object):
         requiredSoftware = ['cdec']
         for who in requiredSoftware:
             try:
+                # TODO: Make this a private method of Workflow
                 # get absolute path to software
                 where = workflow.softwarePaths[who]
+                workflow.requiredPaths.append(who)
                 scriptVar = 'T_{0}'.format(who)
                 self.env[scriptVar] = where
                 if not os.path.exists(where):
-                    self._error('Software package {0} not found at {1}'.format(who, where))
+                    workflow._error('Software package {0} not found at {1}'.format(who, where))
             except KeyError:
-                self._error('No path specified for required software package {0}'.format(who))
+                workflow._error('No path specified for required software package {0}'.format(who))
         
         # Do some PATH trickery to make sure libducttape.bash can be found
         externalPath = os.environ.get("PATH")
@@ -234,13 +247,17 @@ class Workflow(object):
         self.graph = []
         self.baseDir = os.path.abspath(baseDir)
         self.toolsDir = os.path.abspath(toolsDir)
-        if not os.path.exists(self.baseDir):
-            os.makedirs(self.baseDir)
-            #raise Exception('Workflow base directory not found: {0}'.format(self.baseDir))
+        self.branches = dict()
         self.softwarePaths = dict()
-        for line in open(paths):
-            (key, value) = line.strip().split('=')
-            self.softwarePaths[key.strip()] = value.strip()
+        if os.path.exists(paths):
+            for line in open(paths):
+                (key, value) = line.strip().split('=')
+                self.softwarePaths[key.strip()] = value.strip()
+        else:
+            self._error("Tool path configuration file not found: " + paths)
+
+        self.requiredFiles = []
+        self.requiredPaths = []
 
     def _error(self, msg):
         # Get line number and source file name of workflow
@@ -262,11 +279,14 @@ class Workflow(object):
         absPath = os.path.abspath(filename)
         if not os.path.exists(absPath):
             self._error('File not found: {0}'.format(absPath))
-        return Path(absPath)
+        p = Path(absPath)
+        self.requiredFiles.append(p)
+        return p
+
         # TODO: Errors for unrecognized kwargs
 
     # Recommended usage: tool('script/path', name='MyName')
-    def tool(self, script, name, submitter=submitters.Local()):                
+    def tool(self, script, name, submitter=submitters.Local(), versioner=versioners.Installed()):
         realization = ['btecZhEn', 'btecGlc1']
         script = os.path.abspath(self.toolsDir+'/'+script)
         if not os.path.exists(script):
@@ -276,7 +296,7 @@ class Workflow(object):
         return t
 
     def branch(self, name):
-        b = Branch(name)
+        b = BranchPoint(name)
         self.branches[name] = b
         return b
 
@@ -288,10 +308,6 @@ class Workflow(object):
                 yield (tool, tool._report(group))
 
     def run(self):
-
-        if len(self.errors) > 0:
-            self._showErrors()
-            sys.exit(1)
 
         from optparse import OptionParser
         parser = OptionParser()
@@ -311,6 +327,30 @@ class Workflow(object):
             sys.exit(1)
 
         action = args[0]
+
+        if action == 'deps':
+            print >>sys.stderr, 'Required input files:'
+            for file in self.requiredFiles:
+                print >>sys.stderr, file
+            print >>sys.stderr, 'Required tool paths:'
+            for tp in self.requiredPaths:
+                print >>sys.stderr, tp
+            self._showErrors()
+            sys.exit(1)
+
+        elif action == 'branches':
+            print >>sys.stderr, '%30s\t%s'%('BRANCH POINT', 'BRANCH EDGES')
+            for (name, b) in self.branches.iteritems():
+                print >>sys.stderr, '%30s\t%s'%(name, ' '.join(b.edges.keys()))
+            sys.exit(1)
+
+        if len(self.errors) > 0:
+            self._showErrors()
+            sys.exit(1)
+
+        if not os.path.exists(self.baseDir):
+            os.makedirs(self.baseDir)
+            #raise Exception('Workflow base directory not found: {0}'.format(self.baseDir))
 
         if action == 'run':
             # TODO: Topological sort or agenda-based executor with serial (yield) and async impl
@@ -341,10 +381,6 @@ class Workflow(object):
                 print >>sys.stderr, '=== {0} ==='.format(vertex.full_name())
                 for fields in data:
                     print >>sys.stderr, '\t'.join(fields)
-
-        elif action == 'branches':
-            for b in self.branches:
-                print >>sys.stderr, b.name, '\t', ' '.join(b.edges.keys())
 
         elif action == 'webui':
             import cgi
