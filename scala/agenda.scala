@@ -8,21 +8,44 @@ package ducttape.hyperdag
 //             these second-level charts can also "handle" pairs of (realization, input files)
 //             by doing nothing, indicating that it might not be in the selection, etc.
 
-import collection.mutable._
+import collection._
 import java.util.concurrent._
 
-class HashMultiMap[A,B] extends HashMap[A,Set[B]] with MultiMap[A,B];
+import ducttape.Types._
 
-class PackedVertex[P] {
-  val antecedents = new ListBuffer[PackedVertex[P]]
+class PackedVertex[V](val value: V,
+                      val antecedents: immutable.List[PackedVertex[V]]) {
+  override def hashCode = value.hashCode
+  override def equals(that: Any): Boolean = that match {
+    case other: PackedVertex[V] => (other.value == this.value)
+    case _ => false
+  }
+  override def toString = value.toString
 }
 
 // immutable
-class PackedDag[P,U] {
-  val roots = new ListBuffer[PackedVertex[P]]
-  val vertices = new ListBuffer[PackedVertex[P]]
-  def size(): Int = {
-    0
+class PackedDag[V,U](val roots: immutable.List[PackedVertex[V]],
+                     val vertices: immutable.List[PackedVertex[V]]) {
+  val size: Int = vertices.size
+  def walker(): PackedDagWalker[V] = new PackedDagWalker[V](this)
+}
+
+class PackedDagBuilder[V] {
+
+  private val roots = new mutable.ListBuffer[PackedVertex[V]]
+  private val vertices = new mutable.HashSet[PackedVertex[V]]
+
+  def add(v: V, parents: PackedVertex[V]*): PackedVertex[V] = {
+    require(parents.forall(p => vertices(p)), "Add parents first")
+    val pv = new PackedVertex[V](v, parents.toList)
+    require(!vertices(pv), "Packed vertices must be uniquely hashable")
+    vertices += pv
+    if(parents.size == 0) roots += pv
+    pv
+  }
+
+  def build() = {
+    new PackedDag[V,V](roots.toList, vertices.toList)
   }
 }
 
@@ -34,9 +57,9 @@ trait Walker[A] extends Iterable[A] {
   private val self = this
 
   /**
-   * returns null when there are no more elements
+   * returns None when there are no more elements
    */
-  def take(): A
+  def take(): Option[A]
 
   /**
    * notify walker that caller is done with the item so that we know we
@@ -53,7 +76,7 @@ trait Walker[A] extends Iterable[A] {
     override def hasNext(): Boolean = {
       if(nextItem == None) {
         // NOTE: This could block infinitely for buggy Walkers
-        nextItem = Some(self.take)
+        nextItem = self.take
       }
       nextItem != None
     }
@@ -72,20 +95,27 @@ trait Walker[A] extends Iterable[A] {
 // agenda-based DAG iterator that allows for parallelization
 class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
 
-  class ActiveVertex[P](val v: PackedVertex[P]) {
+  private class ActiveVertex[P](val v: PackedVertex[P]) {
+    assert(v != null)
     val filled = new Array[ActiveVertex[P]](v.antecedents.size)
   }
 
-  val active = new HashMap[PackedVertex[P],ActiveVertex[P]]
-  val agenda = new ArrayBlockingQueue[ActiveVertex[P]](dag.size)
-  val completed = new HashSet[ActiveVertex[P]]
+  // taken and agenda must always be jointly locked when updating since if both are zero,
+  // it means we're done
+  private val active = new mutable.HashMap[PackedVertex[P],ActiveVertex[P]] with mutable.SynchronizedMap[PackedVertex[P],ActiveVertex[P]]
+  private val agenda = new ArrayBlockingQueue[ActiveVertex[P]](dag.size)
+  private val taken = new mutable.HashSet[ActiveVertex[P]] with mutable.SynchronizedSet[ActiveVertex[P]]
+  private val completed = new mutable.HashSet[ActiveVertex[P]] with mutable.SynchronizedSet[ActiveVertex[P]]
 
   // first, visit the roots
   for(root <- dag.roots.iterator) {
-    agenda.offer(new ActiveVertex[P](root))
+    val actRoot = new ActiveVertex[P](root)
+    agenda.offer(actRoot)
+    active += root -> actRoot
   }
 
   // forward pointers through trie (instead of just backpointers)
+  // (mutable, but never changed after creation)
   val forward = new HashMultiMap[PackedVertex[P],PackedVertex[P]]
   for(v <- dag.vertices.iterator) {
     for(ant <- v.antecedents) {
@@ -93,13 +123,41 @@ class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
     }
   }
 
-  override def take(): PackedVertex[P] = {
-    val key: ActiveVertex[P] = agenda.poll
-    key.v
+/*
+  def getCompleted(): Iterable[PackedVertex[P]] = {
+  }
+
+  def getRunning(): Iterable[PackedVertex[P]] = {
+  }
+
+  def getReady(): Iterable[PackedVertex[P]] = {
+  }
+
+  def getBlocked(): Iterable[PackedVertex[P]] = {
+    
+  }
+*/
+  
+  override def take(): Option[PackedVertex[P]] = {
+    if(agenda.size == 0 && taken.size == 0) {
+      return None
+    } else {
+      agenda.synchronized {
+        val key: ActiveVertex[P] = agenda.take
+        taken += key
+        Some(key.v)
+      }
+    }
   }
 
   override def complete(item: PackedVertex[P]) = {
+    require(active.contains(item), "Cannot find active vertex for %s in %s".format(item, active))
     val key: ActiveVertex[P] = active(item)
+
+    // we always lock agenda & completed jointly
+    agenda.synchronized {
+      taken -= key
+    }
 
     // first, match fronteir vertices
     for(consequent <- forward.getOrElse(key.v, Set.empty)) {
@@ -114,7 +172,9 @@ class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
       }
       // this consequent has all its dependencies fulfilled
       if(allFilled) {
-        agenda.offer(activeCon)
+        agenda.synchronized {
+          agenda.offer(activeCon)
+        }
         // TODO: We could sort the agenda here to impose different objectives...
       }
     }

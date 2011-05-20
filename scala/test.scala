@@ -34,7 +34,37 @@ class RDagTest extends FlatSpec {
 
 class PackedDagWalkerTest extends FlatSpec {
 
-  "A Packed DAG Walker" should "traverse a linear chain" is (pending)
+  "A Packed DAG Walker" should "traverse a linear chain graph with an iterator" in {
 
-  it should "travse a diamond" is (pending)
+    val builder = new PackedDagBuilder[String]
+    val a = builder.add("Vertex A")
+    val b = builder.add("Vertex B", a)
+    val c = builder.add("Vertex C", b)
+
+    val dag: PackedDag[String,String] = builder.build
+    val vertices = for(v <- dag.walker.iterator.toList) yield v.value
+    assert(vertices(0) == "Vertex A")
+    assert(vertices(1) == "Vertex B")
+    assert(vertices(2) == "Vertex C")
+  }
+
+  it should "travse a diamond with an iterator" in {
+
+    val builder = new PackedDagBuilder[String]
+    val a = builder.add("Vertex A")
+    val b = builder.add("Vertex B", a)
+    val c = builder.add("Vertex C", a)
+    val d = builder.add("Vertex D", b, c)
+
+    val dag: PackedDag[String,String] = builder.build
+    val vertices = for(v <- dag.walker.iterator.toList) yield v.value
+    assert(vertices(0) == "Vertex A")
+    assert(vertices(1) == "Vertex B")
+    assert(vertices(2) == "Vertex C")
+    assert(vertices(3) == "Vertex D")
+  }
+
+  it should "travse a linear chain graph with an asynchronous walker" is (pending)
+
+  it should "travse a diamond with an asynchronous walker" is (pending)
 }
