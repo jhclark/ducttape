@@ -8,6 +8,7 @@
 //             by doing nothing, indicating that it might not be in the selection, etc.
 
 import collection.mutable._
+import java.util.concurrent._
 
 class HashMultiMap[A,B] extends HashMap[A,Set[B]] with MultiMap[A,B];
 
@@ -24,20 +25,63 @@ class PackedDag[P,U] {
   }
 }
 
-// agenda-based DAG iterator
-class PackedDagIterator[P](dag: PackedDag[P,_]) extends Iterator[PackedVertex[P]] {
+/**
+ * must be threadsafe
+ */
+trait Walker[A] extends Iterable[A] {
+
+  private val self = this
+
+  /**
+   * returns null when there are no more elements
+   */
+  def take(): A
+
+  /**
+   * notify walker that caller is done with the item so that we know we
+   * can traverse its dependends
+   */
+  def complete(item: A)
+
+  /**
+   * get a synchronous iterator (not appropriate for multi-threaded consumers)
+   */
+  def iterator() = new Iterator[A] {
+    var nextItem: Option[A] = None
+
+    override def hasNext(): Boolean = {
+      if(nextItem == None) {
+        // NOTE: This could block infinitely for buggy Walkers
+        nextItem = Some(self.take)
+      }
+      nextItem != None
+    }
+
+    override def next(): A = {
+      val hazNext = hasNext
+      require(hazNext, "No more items. Call hasNext() first.")
+      val result:A = nextItem.get
+      nextItem = None
+      self.complete(result)
+      result
+    }
+  }
+}
+
+// agenda-based DAG iterator that allows for parallelization
+class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
 
   class ActiveVertex[P](val v: PackedVertex[P]) {
     val filled = new Array[ActiveVertex[P]](v.antecedents.size)
   }
 
   val active = new HashMap[PackedVertex[P],ActiveVertex[P]]
-  val agenda = new Queue[ActiveVertex[P]]
+  val agenda = new ArrayBlockingQueue[ActiveVertex[P]](dag.size)
   val completed = new HashSet[ActiveVertex[P]]
 
   // first, visit the roots
   for(root <- dag.roots.iterator) {
-    agenda += new ActiveVertex[P](root)
+    agenda.offer(new ActiveVertex[P](root))
   }
 
   // forward pointers through trie (instead of just backpointers)
@@ -48,12 +92,14 @@ class PackedDagIterator[P](dag: PackedDag[P,_]) extends Iterator[PackedVertex[P]
     }
   }
 
-  override def hasNext() = agenda.size > 0
+  override def take(): PackedVertex[P] = {
+    val key: ActiveVertex[P] = agenda.poll
+    key.v
+  }
 
-  override def next(): PackedVertex[P] = {
-    require(hasNext, "No more items. Call hasNext() first.")
-    val key: ActiveVertex[P] = agenda.dequeue
-    
+  override def complete(item: PackedVertex[P]) = {
+    val key: ActiveVertex[P] = active(item)
+
     // first, match fronteir vertices
     for(consequent <- forward.getOrElse(key.v, Set.empty)) {
       val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex[P](consequent))
@@ -61,26 +107,28 @@ class PackedDagIterator[P](dag: PackedDag[P,_]) extends Iterator[PackedVertex[P]
       for(i <- 0 until activeCon.filled.size) {
         if(key.v == consequent.antecedents(i)) {
           activeCon.filled(i) = key
-        } else if(activeCon.filled(i) == null) {
-          allFilled = false
-        }
+          } else if(activeCon.filled(i) == null) {
+            allFilled = false
+          }
       }
       // this consequent has all its dependencies fulfilled
       if(allFilled) {
-        agenda += activeCon
+        agenda.offer(activeCon)
         // TODO: We could sort the agenda here to impose different objectives...
       }
     }
 
     // finally visit this vertex
     completed += key
-    key.v
   }
 }
 
-class UnpackedDagIterator[U] {
-  
-}
+class UnpackedVertex[P](val packed: PackedVertex[P],
+                        val realization: List[RInst],
+                        val antecedents: List[UnpackedVertex[P]]);
 
-class Active {
+class UnpackedDagWalker[P] extends Walker[UnpackedVertex[P]] {
+  // TODO: Test packed walker first (hashCode & equals might be an issue)
+  // TODO: Then add RealizationDag as part of the state object?
+  //       or is this already part of each vertex after building?
 }
