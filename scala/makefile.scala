@@ -1,7 +1,3 @@
-#!/bin/sh
-exec scala $0 $@
-!#
-
 import scala.sys.process._
 import scala.io._
 import java.io._

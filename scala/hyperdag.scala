@@ -1,10 +1,12 @@
+package ducttape.hyperdag
+
 import collection.mutable._
 import collection.immutable
 
+import ducttape.Types._
+
 // RDag - Realization HyperDAG, which encodes the realizations at each HyperVertex
 // HyperDag - Encodes all DAGs in HyperDAG
-
-type RInstList = immutable.IndexedSeq[RInst]
 
 class Deque[T] {
   private var head = new DoubleLinkedList[T]
@@ -86,7 +88,7 @@ class RDag {
       for(inst <- vertex.rvar.values) {
         combo(pos) = inst
         if(selection == null || selection.couldContain(combo)) {
-          val antecedents = vertex.incomingHyperedges.get(inst)
+          val antecedents: Set[RVertex] = vertex.incomingHyperedges.getOrElse(inst, Set.empty)
 
           var addedDepth = 0
           for(ant <- antecedents if !visited(ant)) {
@@ -135,7 +137,7 @@ class RSelection {
    * @param combo The combination of realization instances, which
    *              can contain null entries 
    */
-  def couldContain(combo: Array[RInst]) = {
+  def couldContain(combo: Array[RInst]): Boolean = {
     for(set <- selectionSets) {
       if(set.containsAll(combo)) {
         return true
@@ -158,6 +160,8 @@ class RVar {
 // realization vertex
 class RVertex { 
   val rvar = new RVar
+  // TODO: Multimap type
+  val incomingHyperedges = new HashMap[RInst, Set[RVertex]]
 }
 
 class HyperDag[V,E] (xxx: V) {

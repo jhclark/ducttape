@@ -1,3 +1,4 @@
+package ducttape.hyperdag
 
 // 1) hierarchical agenda
 // 2) level 1: active (input/init hypervertices + hypervertices that have at least 1 active unpacked vertex)
@@ -127,8 +128,10 @@ class UnpackedVertex[P](val packed: PackedVertex[P],
                         val realization: List[RInst],
                         val antecedents: List[UnpackedVertex[P]]);
 
+/*
 class UnpackedDagWalker[P] extends Walker[UnpackedVertex[P]] {
   // TODO: Test packed walker first (hashCode & equals might be an issue)
   // TODO: Then add RealizationDag as part of the state object?
   //       or is this already part of each vertex after building?
 }
+*/
