@@ -13,39 +13,99 @@ import java.util.concurrent._
 
 import ducttape.Types._
 
-class PackedVertex[V](val value: V,
-                      val antecedents: immutable.List[PackedVertex[V]]) {
-  override def hashCode = value.hashCode
+object GraphViz {
+  def escape(str: String) = str.replace(' ', '_')
+}
+
+class PackedEdge[E](private val id: Int,
+                    val value: E) {
+
+  override def hashCode = id
   override def equals(that: Any): Boolean = that match {
-    case other: PackedVertex[V] => (other.value == this.value)
+    case other: PackedEdge[_] => (other.id == this.id)
+    case _ => false
+  }
+  override def toString = value.toString
+}
+
+class PackedVertex[V](private val id: Int,
+                      val value: V) {
+
+  override def hashCode = id
+  override def equals(that: Any): Boolean = that match {
+    case other: PackedVertex[_] => (other.id == this.id)
     case _ => false
   }
   override def toString = value.toString
 }
 
 // immutable
-class PackedDag[V,U](val roots: immutable.List[PackedVertex[V]],
-                     val vertices: immutable.List[PackedVertex[V]]) {
+class PackedDag[V,E](val roots: List[PackedVertex[V]],
+                     val vertices: List[PackedVertex[V]],
+                     private val inEdgesMap: Map[PackedVertex[V], Seq[PackedEdge[E]]],
+                     private val outEdgesMap: Map[PackedVertex[V], Seq[PackedEdge[E]]],
+                     private val edges:  Map[PackedEdge[E],(PackedVertex[V],PackedVertex[V])]) {
+ 
   val size: Int = vertices.size
-  def walker(): PackedDagWalker[V] = new PackedDagWalker[V](this)
+
+  def walker(): PackedDagWalker[V]
+    = new PackedDagWalker[V](this)
+  def inEdges(v: PackedVertex[V]): Seq[PackedEdge[E]]
+    = inEdgesMap.getOrElse(v, Seq.empty)
+  def outEdges(v: PackedVertex[V]): Seq[PackedEdge[E]]
+    = outEdgesMap.getOrElse(v, Seq.empty)
+  def parents(v: PackedVertex[V]): Seq[PackedVertex[V]]
+    = for(e <- inEdges(v)) yield edges(e)._1 // (source, sink)
+  def children(v: PackedVertex[V]): Seq[PackedVertex[V]]
+    = for(e <- outEdges(v)) yield edges(e)._2 // (source, sink)
+  def source(e: PackedEdge[E]): PackedVertex[V] = edges(e)._1
+  def sink(e: PackedEdge[E]): PackedVertex[V] = edges(e)._2
+
+  def toGraphViz(): String = {
+    val str = new StringBuilder(1000)
+    str ++= "digraph G {\n"
+    for(v <- vertices) {
+      for(ant <- parents(v)) {
+        str ++= GraphViz.escape(ant.toString) + " -> " + GraphViz.escape(v.toString) + "\n"
+      }
+    }
+    str ++= "}\n"
+    str.toString
+  }
 }
 
-class PackedDagBuilder[V] {
+class PackedDagBuilder[V,E] {
 
-  private val roots = new mutable.ListBuffer[PackedVertex[V]]
   private val vertices = new mutable.HashSet[PackedVertex[V]]
+  private val inEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[PackedEdge[E]]]
+  private val outEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[PackedEdge[E]]]
+  private val edges = new mutable.HashMap[PackedEdge[E],(PackedVertex[V],PackedVertex[V])]
+  private var vertexId = 0
+  private var edgeId = 0
 
-  def add(v: V, parents: PackedVertex[V]*): PackedVertex[V] = {
-    require(parents.forall(p => vertices(p)), "Add parents first")
-    val pv = new PackedVertex[V](v, parents.toList)
-    require(!vertices(pv), "Packed vertices must be uniquely hashable")
+  // before adding hyperparents we must already know the realizations?
+  // this seems to defeat the purpose of the builder...
+  def add(v: V): PackedVertex[V] = {
+    val pv = new PackedVertex[V](vertexId, v)
     vertices += pv
-    if(parents.size == 0) roots += pv
+    vertexId += 1
     pv
   }
 
+  def add(e: E, source: PackedVertex[V], sink: PackedVertex[V]) : PackedEdge[E] = {
+    require(vertices(source), "Add source first")
+    require(vertices(sink), "Add sink first")
+    val pe = new PackedEdge[E](edgeId, e)
+    edgeId += 1
+    outEdges.getOrElseUpdate(source, new mutable.ListBuffer) += pe
+    inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += pe
+    edges += pe -> (source, sink)
+    pe
+  }
+
   def build() = {
-    new PackedDag[V,V](roots.toList, vertices.toList)
+    val roots = for(v <- vertices if !inEdges.contains(v)) yield v
+    new PackedDag[V,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
   }
 }
 
@@ -74,17 +134,14 @@ trait Walker[A] extends Iterable[A] {
     var nextItem: Option[A] = None
 
     override def hasNext(): Boolean = {
-      if(nextItem == None) {
-        // NOTE: This could block infinitely for buggy Walkers
-        nextItem = self.take
-      }
+      if(nextItem == None) nextItem = self.take
       nextItem != None
     }
 
     override def next(): A = {
       val hazNext = hasNext
       require(hazNext, "No more items. Call hasNext() first.")
-      val result:A = nextItem.get
+      val result: A = nextItem.get
       nextItem = None
       self.complete(result)
       result
@@ -93,34 +150,26 @@ trait Walker[A] extends Iterable[A] {
 }
 
 // agenda-based DAG iterator that allows for parallelization
-class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
+class PackedDagWalker[V](dag: PackedDag[V,_]) extends Walker[PackedVertex[V]] {
 
-  private class ActiveVertex[P](val v: PackedVertex[P]) {
+  private class ActiveVertex(val v: PackedVertex[V]) {
     assert(v != null)
-    val filled = new Array[ActiveVertex[P]](v.antecedents.size)
+    val filled = new Array[ActiveVertex](dag.inEdges(v).size)
   }
 
   // taken and agenda must always be jointly locked when updating since if both are zero,
   // it means we're done
-  private val active = new mutable.HashMap[PackedVertex[P],ActiveVertex[P]] with mutable.SynchronizedMap[PackedVertex[P],ActiveVertex[P]]
-  private val agenda = new ArrayBlockingQueue[ActiveVertex[P]](dag.size)
-  private val taken = new mutable.HashSet[ActiveVertex[P]] with mutable.SynchronizedSet[ActiveVertex[P]]
-  private val completed = new mutable.HashSet[ActiveVertex[P]] with mutable.SynchronizedSet[ActiveVertex[P]]
+  private val active = new mutable.HashMap[PackedVertex[V],ActiveVertex]
+                         with mutable.SynchronizedMap[PackedVertex[V],ActiveVertex]
+  private val agenda = new ArrayBlockingQueue[ActiveVertex](dag.size)
+  private val taken = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
+  private val completed = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
 
   // first, visit the roots
   for(root <- dag.roots.iterator) {
-    val actRoot = new ActiveVertex[P](root)
+    val actRoot = new ActiveVertex(root)
     agenda.offer(actRoot)
     active += root -> actRoot
-  }
-
-  // forward pointers through trie (instead of just backpointers)
-  // (mutable, but never changed after creation)
-  val forward = new HashMultiMap[PackedVertex[P],PackedVertex[P]]
-  for(v <- dag.vertices.iterator) {
-    for(ant <- v.antecedents) {
-      forward.addBinding(ant, v)
-    }
   }
 
 /*
@@ -138,21 +187,21 @@ class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
   }
 */
   
-  override def take(): Option[PackedVertex[P]] = {
+  override def take(): Option[PackedVertex[V]] = {
     if(agenda.size == 0 && taken.size == 0) {
       return None
     } else {
       agenda.synchronized {
-        val key: ActiveVertex[P] = agenda.take
+        val key: ActiveVertex = agenda.take
         taken += key
         Some(key.v)
       }
     }
   }
 
-  override def complete(item: PackedVertex[P]) = {
+  override def complete(item: PackedVertex[V]) = {
     require(active.contains(item), "Cannot find active vertex for %s in %s".format(item, active))
-    val key: ActiveVertex[P] = active(item)
+    val key: ActiveVertex = active(item)
 
     // we always lock agenda & completed jointly
     agenda.synchronized {
@@ -160,11 +209,12 @@ class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
     }
 
     // first, match fronteir vertices
-    for(consequent <- forward.getOrElse(key.v, Set.empty)) {
-      val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex[P](consequent))
+    for(consequent <- dag.children(key.v)) {
+      val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex(consequent))
       var allFilled = true
       for(i <- 0 until activeCon.filled.size) {
-        if(key.v == consequent.antecedents(i)) {
+        val antecedents = dag.parents(consequent)
+        if(key.v == antecedents(i)) {
           activeCon.filled(i) = key
           } else if(activeCon.filled(i) == null) {
             allFilled = false
@@ -184,14 +234,65 @@ class PackedDagWalker[P](dag: PackedDag[P,_]) extends Walker[PackedVertex[P]] {
   }
 }
 
-class UnpackedVertex[P](val packed: PackedVertex[P],
-                        val realization: List[RInst],
-                        val antecedents: List[UnpackedVertex[P]]);
+class UnpackedVertex[V,E](val packed: PackedVertex[V],
+                          val realization: List[RInst],
+                          val parents: List[(PackedVertex[V],E,List[RInst])]);
 
-/*
-class UnpackedDagWalker[P] extends Walker[UnpackedVertex[P]] {
-  // TODO: Test packed walker first (hashCode & equals might be an issue)
-  // TODO: Then add RealizationDag as part of the state object?
-  //       or is this already part of each vertex after building?
+class UnpackedDagWalker[V,E] extends Walker[UnpackedVertex[V]] {
+
+  class ActiveVertex(val v: PackedVertex[V],
+                     val realization: List[RInst]) {
+
+    val filled = new Array[(PackedVertex[V],E,List[RInst])]
+    def toUnpacked() = new UnpackedVertex[V,E](v, realization, filled.toList)
+  }
+
+  // TODO: PackingVertex spawns a ??? for each hyperedge completed
+  // TODO: VanillaVertex spawns a ??? for each full incoming combo
+
+  private val active = new mutable.HashMap[UnpackedVertex[V],ActiveVertex]
+                         with mutable.SynchronizedMap[UnpackedVertex[V],ActiveVertex]
+  // TODO: dag.size might not be big enough for this unpacked version...
+  private val agenda = new ArrayBlockingQueue[ActiveVertex](dag.size)
+  private val taken = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
+  private val completed = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
+
+  // first, visit the roots
+  for(root <- dag.roots.iterator) {
+    val actRoot = new ActiveVertex(root)
+    agenda.offer(actRoot)
+    active += root -> actRoot
+  }
+
+  override def take(): Option[UnpackedVertex[V,E]] = {
+    if(agenda.size == 0 && taken.size == 0) {
+      return None
+    } else {
+      agenda.synchronized {
+        val key: ActiveVertex = agenda.take
+        taken += key
+        Some(key.toUnpacked)
+      }
+    }
+  }
+
+  override def complete(item: UnpackedVertex[V,E]) = {
+    require(active.contains(item), "Cannot find active vertex for %s in %s".format(item, active))
+    val key: ActiveVertex = active(item)
+
+    // we always lock agenda & completed jointly
+    agenda.synchronized {
+      taken -= key
+    }
+
+    // 1) see if this completes any hyperedges
+
+    // 2) see if this completed hyperedge completes any packing (meta?) edges
+
+    // 3) for the newly completed packing edge, complete any new UnpackedDagVertices
+    //    that come from the cross product of this new packing edge
+    //    and all other orthogonal unpacked edges; these must be checked
+    //    against the selection to make sure they're valid
+    // Orthogonal: coming from other incoming *packed* edges
+  }
 }
-*/
