@@ -2,6 +2,7 @@ import org.scalatest.FlatSpec
 import scala.collection.mutable.Stack
 
 import ducttape.hyperdag._
+import ducttape.viz._
 
 class ExampleSpec extends FlatSpec {
 

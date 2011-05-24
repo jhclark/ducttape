@@ -1,51 +1,19 @@
 package ducttape.hyperdag
 
-// 1) hierarchical agenda
-// 2) level 1: active (input/init hypervertices + hypervertices that have at least 1 active unpacked vertex)
-//             completed (hypervertices that have all of their unpacked vertices completed)
-// 3) level 2: each hypervertex has a list of active arcs, which accumulate antecedent input files
-//             and get moved to completed when all input files are satisfied for each realization
-//             these second-level charts can also "handle" pairs of (realization, input files)
-//             by doing nothing, indicating that it might not be in the selection, etc.
-
 import collection._
 import scala.collection.JavaConversions._
 import java.util.concurrent._
 
 import ducttape.Types._
+import ducttape.viz._
 
-object Files {
-  import java.io._
-  def write(str: String, file: File) = {
-    val fw = new FileWriter(file)
-    fw.write(str)
-    fw.close()    
-  }
-}
-
-object GraphViz {
-  def escape(str: String) = str.replace(' ', '_')
-  def compile(str: String, outFile: String) = {
-    import sys.process._
-    import java.io._
-    val temp = File.createTempFile("ducttape",".dot")
-    Files.write(str, temp)
-    "/usr/bin/dot -Tpdf" #< temp #> new File(outFile) ! ;
-  }
-}
-
-class HyperEdge[H,E](private[hyperdag] val id: Int,
-                     val h: H,
-                     val e: List[E]) {
-
+class HyperEdge[H,E](private val id: Int, val h: H, val e: List[E]) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }
   override def toString = h.toString + " " + e.toString
 }
 
-class PackedVertex[V](private[hyperdag] val id: Int,
-                      val value: V) {
-
+class PackedVertex[V](private val id: Int, val value: V) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: PackedVertex[_] => (other.id == this.id) }
   override def toString = value.toString
