@@ -9,57 +9,68 @@ package ducttape.hyperdag
 //             by doing nothing, indicating that it might not be in the selection, etc.
 
 import collection._
+import scala.collection.JavaConversions._
 import java.util.concurrent._
 
 import ducttape.Types._
 
+object Files {
+  import java.io._
+  def write(str: String, file: File) = {
+    val fw = new FileWriter(file)
+    fw.write(str)
+    fw.close()    
+  }
+}
+
 object GraphViz {
   def escape(str: String) = str.replace(' ', '_')
+  def compile(str: String, outFile: String) = {
+    import sys.process._
+    import java.io._
+    val temp = File.createTempFile("ducttape",".dot")
+    Files.write(str, temp)
+    "/usr/bin/dot -Tpdf" #< temp #> new File(outFile) ! ;
+  }
 }
 
-class PackedEdge[E](private val id: Int,
-                    val value: E) {
+class HyperEdge[H,E](private[hyperdag] val id: Int,
+                     val h: H,
+                     val e: List[E]) {
 
   override def hashCode = id
-  override def equals(that: Any): Boolean = that match {
-    case other: PackedEdge[_] => (other.id == this.id)
-    case _ => false
-  }
-  override def toString = value.toString
+  override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }
+  override def toString = h.toString + " " + e.toString
 }
 
-class PackedVertex[V](private val id: Int,
+class PackedVertex[V](private[hyperdag] val id: Int,
                       val value: V) {
 
   override def hashCode = id
-  override def equals(that: Any): Boolean = that match {
-    case other: PackedVertex[_] => (other.id == this.id)
-    case _ => false
-  }
+  override def equals(that: Any) = that match { case other: PackedVertex[_] => (other.id == this.id) }
   override def toString = value.toString
 }
 
 // immutable
-class PackedDag[V,E](val roots: List[PackedVertex[V]],
-                     val vertices: List[PackedVertex[V]],
-                     private val inEdgesMap: Map[PackedVertex[V], Seq[PackedEdge[E]]],
-                     private val outEdgesMap: Map[PackedVertex[V], Seq[PackedEdge[E]]],
-                     private val edges:  Map[PackedEdge[E],(PackedVertex[V],PackedVertex[V])]) {
- 
+class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
+                       val vertices: List[PackedVertex[V]],
+                       private val inEdgesMap: Map[PackedVertex[V], Seq[HyperEdge[H,E]]],
+                       private val outEdgesMap: Map[PackedVertex[V], Seq[HyperEdge[H,E]]],
+                       private val edges: Map[HyperEdge[H,E], (List[PackedVertex[V]],PackedVertex[V])]) {
+                       
   val size: Int = vertices.size
 
   def walker(): PackedDagWalker[V]
     = new PackedDagWalker[V](this)
-  def inEdges(v: PackedVertex[V]): Seq[PackedEdge[E]]
+  def inEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
-  def outEdges(v: PackedVertex[V]): Seq[PackedEdge[E]]
+  def outEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
     = outEdgesMap.getOrElse(v, Seq.empty)
-  def parents(v: PackedVertex[V]): Seq[PackedVertex[V]]
-    = for(e <- inEdges(v)) yield edges(e)._1 // (source, sink)
+  def parents(v: PackedVertex[V]): Seq[PackedVertex[V]] = for(e <- inEdges(v); src <- sources(e)) yield src
   def children(v: PackedVertex[V]): Seq[PackedVertex[V]]
-    = for(e <- outEdges(v)) yield edges(e)._2 // (source, sink)
-  def source(e: PackedEdge[E]): PackedVertex[V] = edges(e)._1
-  def sink(e: PackedEdge[E]): PackedVertex[V] = edges(e)._2
+    = for(e <- outEdges(v)) yield sink(e)
+  def sources(e: HyperEdge[H,E]): Seq[PackedVertex[V]] = edges(e)._1
+  def sink(e: HyperEdge[H,E]): PackedVertex[V] = edges(e)._2
 
   def toGraphViz(): String = {
     val str = new StringBuilder(1000)
@@ -74,12 +85,12 @@ class PackedDag[V,E](val roots: List[PackedVertex[V]],
   }
 }
 
-class PackedDagBuilder[V,E] {
+class PackedDagBuilder[V,H,E] {
 
   private val vertices = new mutable.HashSet[PackedVertex[V]]
-  private val inEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[PackedEdge[E]]]
-  private val outEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[PackedEdge[E]]]
-  private val edges = new mutable.HashMap[PackedEdge[E],(PackedVertex[V],PackedVertex[V])]
+  private val inEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[HyperEdge[H,E]]]
+  private val outEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[HyperEdge[H,E]]]
+  private val edges = new mutable.HashMap[HyperEdge[H,E], (List[PackedVertex[V]],PackedVertex[V])]
   private var vertexId = 0
   private var edgeId = 0
 
@@ -92,20 +103,20 @@ class PackedDagBuilder[V,E] {
     pv
   }
 
-  def add(e: E, source: PackedVertex[V], sink: PackedVertex[V]) : PackedEdge[E] = {
-    require(vertices(source), "Add source first")
+  def add(h: H, e: List[E], sources: List[PackedVertex[V]], sink: PackedVertex[V]): HyperEdge[H,E] = {
+    require(sources.forall(v => vertices(v)), "Add sources first")
     require(vertices(sink), "Add sink first")
-    val pe = new PackedEdge[E](edgeId, e)
+    val he = new HyperEdge[H,E](edgeId, h, e)
     edgeId += 1
-    outEdges.getOrElseUpdate(source, new mutable.ListBuffer) += pe
-    inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += pe
-    edges += pe -> (source, sink)
-    pe
+    for(src <- sources) outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
+    inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
+    edges += he -> (sources, sink)
+    he
   }
 
   def build() = {
     val roots = for(v <- vertices if !inEdges.contains(v)) yield v
-    new PackedDag[V,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
+    new PackedDag[V,H,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
   }
 }
 
@@ -150,7 +161,7 @@ trait Walker[A] extends Iterable[A] {
 }
 
 // agenda-based DAG iterator that allows for parallelization
-class PackedDagWalker[V](dag: PackedDag[V,_]) extends Walker[PackedVertex[V]] {
+class PackedDagWalker[V](dag: PackedDag[V,_,_]) extends Walker[PackedVertex[V]] {
 
   private class ActiveVertex(val v: PackedVertex[V]) {
     assert(v != null)
@@ -172,20 +183,10 @@ class PackedDagWalker[V](dag: PackedDag[V,_]) extends Walker[PackedVertex[V]] {
     active += root -> actRoot
   }
 
-/*
-  def getCompleted(): Iterable[PackedVertex[P]] = {
-  }
-
-  def getRunning(): Iterable[PackedVertex[P]] = {
-  }
-
-  def getReady(): Iterable[PackedVertex[P]] = {
-  }
-
-  def getBlocked(): Iterable[PackedVertex[P]] = {
-    
-  }
-*/
+  def getCompleted(): Traversable[PackedVertex[V]] = for(act <- completed) yield act.v
+  def getRunning(): Traversable[PackedVertex[V]] = for(act <- taken) yield act.v
+  def getReady(): Traversable[PackedVertex[V]] = for(act <- agenda) yield act.v
+//  def getBlocked(): Traversable[PackedVertex[P]] = 
   
   override def take(): Option[PackedVertex[V]] = {
     if(agenda.size == 0 && taken.size == 0) {
@@ -234,24 +235,28 @@ class PackedDagWalker[V](dag: PackedDag[V,_]) extends Walker[PackedVertex[V]] {
   }
 }
 
-class UnpackedVertex[V,E](val packed: PackedVertex[V],
-                          val realization: List[RInst],
-                          val parents: List[(PackedVertex[V],E,List[RInst])]);
+// this interface explicitly avoids giving unpacked vertices as
+// parents so that we can eventually discard more of the explored space
+class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
+                          val edge: HyperEdge[H,E],
+                          val realization: List[H],
+                          val parentRealizations: List[List[H]]);
 
-class UnpackedDagWalker[V,E] extends Walker[UnpackedVertex[V]] {
+class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E])
+  extends Walker[UnpackedVertex[V,H,E]]{
 
   class ActiveVertex(val v: PackedVertex[V],
-                     val realization: List[RInst]) {
+                     val realization: List[H]) {
 
-    val filled = new Array[(PackedVertex[V],E,List[RInst])]
-    def toUnpacked() = new UnpackedVertex[V,E](v, realization, filled.toList)
+//    val filled = new Array[(PackedVertex[V],E,List[RInst])]()
+    def toUnpacked() = new UnpackedVertex[V,H,E](v, realization, filled.toList)
   }
 
   // TODO: PackingVertex spawns a ??? for each hyperedge completed
   // TODO: VanillaVertex spawns a ??? for each full incoming combo
 
-  private val active = new mutable.HashMap[UnpackedVertex[V],ActiveVertex]
-                         with mutable.SynchronizedMap[UnpackedVertex[V],ActiveVertex]
+  private val active = new mutable.HashMap[UnpackedVertex[V,H,E],ActiveVertex]
+                         with mutable.SynchronizedMap[UnpackedVertex[V,H,E],ActiveVertex]
   // TODO: dag.size might not be big enough for this unpacked version...
   private val agenda = new ArrayBlockingQueue[ActiveVertex](dag.size)
   private val taken = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
@@ -264,7 +269,7 @@ class UnpackedDagWalker[V,E] extends Walker[UnpackedVertex[V]] {
     active += root -> actRoot
   }
 
-  override def take(): Option[UnpackedVertex[V,E]] = {
+  override def take(): Option[UnpackedVertex[V,H,E]] = {
     if(agenda.size == 0 && taken.size == 0) {
       return None
     } else {
@@ -276,7 +281,7 @@ class UnpackedDagWalker[V,E] extends Walker[UnpackedVertex[V]] {
     }
   }
 
-  override def complete(item: UnpackedVertex[V,E]) = {
+  override def complete(item: UnpackedVertex[V,H,E]) = {
     require(active.contains(item), "Cannot find active vertex for %s in %s".format(item, active))
     val key: ActiveVertex = active(item)
 

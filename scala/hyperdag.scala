@@ -183,11 +183,3 @@ class HyperDag[V,E] (xxx: V) {
     }
   }
 }
-
-class HyperVertex[V] {
-  
-}
-
-class HyperEdge[E] {
-      
-}
