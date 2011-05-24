@@ -166,9 +166,9 @@ class PackedDagWalker[V](dag: PackedDag[V,_,_]) extends Walker[PackedVertex[V]] 
 // this interface explicitly avoids giving unpacked vertices as
 // parents so that we can eventually discard more of the explored space
 class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
-                          val edge: HyperEdge[H,E],
-                          val realization: List[H],
-                          val parentRealizations: List[List[H]]);
+                            val edge: HyperEdge[H,E],
+                            val realization: List[H],
+                            val parentRealizations: List[List[H]]);
 
 class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E])
   extends Walker[UnpackedVertex[V,H,E]]{
@@ -204,7 +204,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E])
       agenda.synchronized {
         val key: ActiveVertex = agenda.take
         taken += key
-        Some(key.toUnpacked)
+        return Some(key.toUnpacked)
       }
     }
   }
