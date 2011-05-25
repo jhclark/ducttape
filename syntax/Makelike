@@ -1,3 +1,7 @@
+# TODO: How will subworkflows be handled?
+#       Can this be combined with the notion of scriptability?
+
+
 # TODO: Once the syntax is solidified, create a series of config files showing
 # the progression from the simplest to the most complicated use cases
 
