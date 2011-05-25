@@ -28,7 +28,8 @@ class Digest(alg: String) {
   dig.reset()
   def update(bytes: Array[Byte]) = dig.update(bytes)
   def digest() = dig.digest
-  override def toString = bytes.map(0xFF & _).map { "%02x".format(_) }.foldLeft(""){_ + _}
+  override def equals(that: Any) = that match { case other: Digest => (this.digest == other.digest) }
+  override def toString = digest.map(0xFF & _).map { "%02x".format(_) }.foldLeft(""){_ + _}
 }
 
 val dig = new Digest("sha1")
