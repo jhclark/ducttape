@@ -1,0 +1,88 @@
+# TODO: Once the syntax is solidified, create a series of config files showing
+# the progression from the simplest to the most complicated use cases
+
+x=$CONFIG
+
+# Separation of workflow (defines dataflow and high-level resource requirements) from configuration (local paths to input files and low-level resource mappings such as machine names)
+
+# CONFIG file should end up looking like a Moses EMS config
+# How to insert realizations from the config file w/o including them here? | syntax?
+
+# Actual machine information goes in config file
+# & specifies tool requirement
+# Versioner only needs to be specified if it is overriding the default for the required tool (moses) -- and we prefer it be done in config file
+# Specifying resources like this is a hack -- it should be done in config
+# Specifying raw paths like this is a hack -- it should be done in config
+# This also demonstrates that outputs with hardcoded paths can be specified in the IO declaration
+# RESOURCES: Are specified just like any other "annotation" variable with @
+# TODO: How do we specify different resources for different inputs?
+g1.step1: <a=/home/jhclark/file <b >a >b=hardcoded.txt &moses=moses-svn
+   @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
+   cat < $a > $a
+   cat < $b > hardcoded.txt
+   $moses/cmd/src/moses -f x
+
+# Actual repository information goes in config file
+# % indicates resource set
+# By not specifying moses=blah, we look in the config file for a value
+g1.step2: <a=$g1.step1.a <b=$g1.step1.b <<param=$x >a >b %big &moses
+   cat < $a > $a
+   cat < $b > $b
+
+# Simplest way to pack
+# Parentheses with "(name: a=x, b=y)" indicates packing a single file
+# Branch names are specified before =
+# Pack name is specified before :
+# Baseline is always first element by default
+g3.simplePack: <in=(whichSize: smaller=$g1.step1.a, bigger=$g2.step1.b) >out
+  cat < $in > $out
+
+# Multiple *branches* are *packed* together
+# Variable assignment must be done on + line
+# Bash commands are listed under + line
+# Hyperedges can specify *inputs* separately, but NOT outputs
+# - This does lead to confusion in reports:
+#   A report defaults to running for all hyperedges, unless some specializations are specified
+whichThing: <a >aOut <<paramA >>param
+  +choiceA: param=$paramA <b
+    cat $a $b $aOut
+  +choiceB: param=$x
+    ln -s $a $aOut
+  +choiceC: param=$x
+    ln -s $a $aOut
+  ++reportA: # Basic report, run for all non-specialized hyperedges (B/C)
+    echo "Line1=$(head -n1 $a)"
+  ++reportA: choiceA # Specializations listed to the right; THIS HAS DIFFERENT SEMANTICS THAN ABOVE
+    echo "Line1=$(head -n1 $a)"
+    echo "Line1B=$(head -n1 $b)"
+  
+
+g2.doStuff: <a=$g2.whichThing.a >a
+   cat < $a > $a
+
+# ! is the unpack operator
+# TODO: Does this unpack syntax seem reasonable?
+g2.unpack: <a=$g2.doStuff.a!whichThing(choiceA) >a
+   cat < $a > $a
+
+# SYNTAX:
+# TODO: Syntax for compression/hdfs tags? How do we know when the executable expects compressed input vs when we should decompress?
+# TODO: How do we allow globbing all files from a pack?
+# TODO: How do we integrate reporters?
+# User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
+
+# Fixed:
+# Multiple inputs are never a problem since we change the command directly
+# Comments are propagated to the UI and documentation as long as they are directly above the step
+# Output parameters are available for packing steps
+# $CONFIG is a reserved variable since it is in all caps
+
+# IMPLEMENTATION:
+# The resulting program should provide a lockable agenda that can be explored by:
+# a depth-first or breadth-first algorithm with integrated search
+
+# SCHEDULING CONSTRAINTS:
+# Sanity checks should be done ASAP, but copies and decompression should be done with
+# a set limit per machine, optionally outside of scheduling -- we must track
+# how many connections there are between machines, too. (a single ducttape server per user-machine?)
+# - User should be able to specify compression codec for cross-machine file transfers

@@ -1,0 +1,12 @@
+# Unfortunately, this conflates checkouts with build instructions... how bad is that?
+# Probably not too bad as long as building is simple enough and there's only a few
+# major software packages that need to be built
+
+disk <path=$CONFIG
+  ln -s $path .
+  find . -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}'
+
+# Last line must return a version of some sort
+svn <url=$CONFIG <<rev=$CONFIG
+  svn co -r $REV $url .
+  svn info | awk -F': ' '/Revision/{print $2}'
