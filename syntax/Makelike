@@ -69,10 +69,16 @@ g2.doStuff: <a=$g2.whichThing.a >a
 g2.unpack: <a=$g2.doStuff.a!whichThing(choiceA) >a
    cat < $a > $a
 
+# Subworkflows' inputs and outputs can be determined by using a simple command line utility
+# Any "unbound" inputs and any output can be used here
+# $SUB is a reserved variable indicating that the subworkflow be used
+# All branches from the subworkflow will be appended with this name to avoid conflicts
+g3.sub: <a >b
+  =Makelike.simple: b=$SUB.head-5.b
+
 # SYNTAX:
 # TODO: Syntax for compression/hdfs tags? How do we know when the executable expects compressed input vs when we should decompress?
-# TODO: How do we allow globbing all files from a pack?
-# TODO: How do we integrate reporters?
+# TODO: How do we allow globbing all files from a realization?
 # User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
 
 # Fixed:
