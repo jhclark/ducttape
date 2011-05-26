@@ -4,10 +4,10 @@ import java.io._
 
 def shell(cmd: String) = {
     def provideIn(x: OutputStream) = {
-	val bash = new PrintStream(x);
+	val bash = new PrintStream(x)
 	bash.println("set -eo pipefail")
-	bash.println(cmd);
-	bash.close();
+	bash.println(cmd)
+	bash.close()
     }
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
     def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
