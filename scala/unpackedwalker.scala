@@ -19,12 +19,12 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
 
     // accumulate parent realizations
     // indices: sourceEdge, whichUnpacking, whichRealization
-    val filled = new Array[mutable.Seq[Seq[H]]](if(he.isEmpty) 0 else dag.sources(he.get).size)
+    val filled = new Array[mutable.ListBuffer[Seq[H]]](if(he.isEmpty) 0 else dag.sources(he.get).size)
     for(i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
 
     // TODO: smear
     override def hashCode = v.hashCode ^ he.hashCode
-    override def equals(that: Any) = that match { case other: ActiveVertex => (other.v == this.v) && (other.he == this.he) }
+    override def equals(obj: Any) = obj match { case that: ActiveVertex => (that.v == this.v) && (that.he == this.he) }
     override def toString = "%s(he=%s)".format(v,he)
 
     private def unpack(i: Int,
@@ -33,8 +33,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
                        parentReals: Array[Seq[H]],
                        callback: UnpackedVertex[V,H,E] => Unit) {
 
-      val str = if(!he.isEmpty) he.get.h else ""
-      println("filled: %s %s %d/%d %s %s".format(v,str,i,filled.size, parentReals.toList, combo))
+//      println("filled: %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
       // hedgeFilter has already been applied
       if(i == filled.size) {
@@ -73,8 +72,10 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     }
   }
 
-  private val active = new mutable.HashMap[PackedVertex[V],ActiveVertex]
-            with mutable.SynchronizedMap[PackedVertex[V],ActiveVertex]
+  private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
+                   with mutable.SynchronizedMap[PackedVertex[V],ActiveVertex]
+  private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
+                   with mutable.SynchronizedMap[HyperEdge[H,E],ActiveVertex]
   // TODO: dag.size might not be big enough for this unpacked version...
   private val agenda = new ArrayBlockingQueue[UnpackedVertex[V,H,E]](dag.size)
   private val taken = new mutable.HashSet[UnpackedVertex[V,H,E]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E]]
@@ -86,7 +87,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     val unpackedRoot = new UnpackedVertex[V,H,E](root, None,
                              List.empty, List.empty)
     agenda.offer(unpackedRoot)
-    active += root -> actRoot
+    activeRoots += root -> actRoot
   }
 
   override def take(): Option[UnpackedVertex[V,H,E]] = {
@@ -102,10 +103,9 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
   }
 
   override def complete(item: UnpackedVertex[V,H,E]) = {
-    require(active.contains(item.packed), "Cannot find active vertex for %s in %s".format(item, active))
-    val key: ActiveVertex = active(item.packed)
-
-    // TODO: Are elements of taken properly hashable?
+    require(activeRoots.contains(item.packed) || item.edge.exists(activeEdges.contains(_)),
+            "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
+    val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
 
     // we always lock agenda & completed & taken jointly
     agenda.synchronized {
@@ -116,7 +116,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     // note: consequent is an edge unlike the packed walker
     for(consequentE <- dag.outEdges(key.v)) {
       val consequentV = dag.sink(consequentE)
-      val activeCon = active.getOrElseUpdate(consequentV,
+      val activeCon = activeEdges.getOrElseUpdate(consequentE,
                         new ActiveVertex(consequentV, Some(consequentE)))
 
       val antecedents = dag.sources(consequentE)
@@ -135,7 +135,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
                 // TODO: We could sort the agenda here to impose different objectives...
               }
             })
-          activeCon.filled(iEdge) :+ item.realization
+          activeCon.filled(iEdge) += item.realization
         }
       }
     }

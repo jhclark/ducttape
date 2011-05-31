@@ -113,6 +113,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
     builder.add("HyperEdge 2", List((a,"")), c)
     builder.add("HyperEdge 3", List((b,"")), d)
     builder.add("HyperEdge 4", List((c,"")), d)
+    builder.add("HyperEdge 5", List((b,""), (c,"")), d)
 
     val dag: PackedDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker.iterator.toList
