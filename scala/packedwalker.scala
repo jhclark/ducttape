@@ -12,6 +12,8 @@ class PackedDagWalker[V](dag: PackedDag[V,_,_]) extends Walker[PackedVertex[V]] 
   private class ActiveVertex(val v: PackedVertex[V]) {
     assert(v != null)
     val filled = new Array[ActiveVertex](dag.inEdges(v).size)
+    override def hashCode() = v.hashCode
+    override def equals(that: Any) = that match { case other: ActiveVertex => (v == other.v) }
   }
 
   // taken and agenda must always be jointly locked when updating since if both are zero,

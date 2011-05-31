@@ -22,11 +22,19 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     val filled = new Array[mutable.Seq[Seq[H]]](if(he.isEmpty) 0 else dag.sources(he.get).size)
     for(i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
 
+    // TODO: smear
+    override def hashCode = v.hashCode ^ he.hashCode
+    override def equals(that: Any) = that match { case other: ActiveVertex => (other.v == this.v) && (other.he == this.he) }
+    override def toString = "%s(he=%s)".format(v,he)
+
     private def unpack(i: Int,
                        iFixed: Int,
                        combo: MultiSet[H],
                        parentReals: Array[Seq[H]],
                        callback: UnpackedVertex[V,H,E] => Unit) {
+
+      val str = if(!he.isEmpty) he.get.h else ""
+      println("filled: %s %s %d/%d %s %s".format(v,str,i,filled.size, parentReals.toList, combo))
 
       // hedgeFilter has already been applied
       if(i == filled.size) {
@@ -38,6 +46,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
         unpack(i+1, iFixed, combo, parentReals, callback)
       } else {
         // for each backpointer to a realization...
+        // if we have zero, this will terminate the recursion, as expected
         for(parentRealization: Seq[H] <- filled(i)) {
           combo ++= parentRealization
           parentReals(i) = parentRealization
@@ -120,11 +129,10 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
           activeCon.unpack(iEdge, item.realization,
             (unpackedV: UnpackedVertex[V,H,E]) => {
               agenda.synchronized {
-                // TODOL This agenda membership test could be slow O(n)
-                if(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV)) {
-                  agenda.offer(unpackedV)
-                  // TODO: We could sort the agenda here to impose different objectives...
-                }
+                // TODO: This agenda membership test could be slow O(n)
+//                assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
+                agenda.offer(unpackedV)
+                // TODO: We could sort the agenda here to impose different objectives...
               }
             })
           activeCon.filled(iEdge) :+ item.realization
