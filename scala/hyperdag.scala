@@ -20,8 +20,8 @@ class PackedVertex[V](private val id: Int, val value: V) {
 // parents so that we can eventually discard more of the explored space
 class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
                             val edge: Option[HyperEdge[H,E]],
-                            val realization: Set[H],
-                            val parentRealizations: Seq[Set[H]]);
+                            val realization: Seq[H],
+                            val parentRealizations: Seq[Seq[H]]);
 
 // immutable
 class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
