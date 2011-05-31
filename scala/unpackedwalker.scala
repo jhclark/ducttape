@@ -55,6 +55,8 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
                callback: UnpackedVertex[V,H,E] => Unit) {
       
       val combo = new MultiSet[H]
+      if(!he.isEmpty)
+        combo += he.get.h
       val parentReals = new Array[Seq[H]](filled.size)
       parentReals(iFixed) = fixedRealization
       combo ++= fixedRealization
@@ -104,7 +106,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     // first, match fronteir vertices
     // note: consequent is an edge unlike the packed walker
     for(consequentE <- dag.outEdges(key.v)) {
-       val consequentV = dag.sink(consequentE)
+      val consequentV = dag.sink(consequentE)
       val activeCon = active.getOrElseUpdate(consequentV,
                         new ActiveVertex(consequentV, Some(consequentE)))
 
@@ -114,16 +116,14 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
         // as of this parent antecedent vertex
         if(item.packed == antecedents(iEdge)) {
           // before adding backpointer, take cross-product
-          // of unpackings possible when holding this realization
-          // fixed
+          // of unpackings possible when holding this realization fixed
           activeCon.unpack(iEdge, item.realization,
             (unpackedV: UnpackedVertex[V,H,E]) => {
               agenda.synchronized {
                 // TODOL This agenda membership test could be slow O(n)
                 if(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV)) {
                   agenda.offer(unpackedV)
-                  // TODO: We could sort the agenda
-                  // here to impose different objectives...
+                  // TODO: We could sort the agenda here to impose different objectives...
                 }
               }
             })

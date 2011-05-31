@@ -88,11 +88,16 @@ class PackedDagBuilder[V,H,E] {
     pv
   }
 
-  def add(h: H, e: List[E], sources: List[PackedVertex[V]], sink: PackedVertex[V]): HyperEdge[H,E] = {
+  def add(h: H, sourcePairs: List[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
+    val sources = for(pair <- sourcePairs) yield pair._1
+    val edgeLabels = for(pair <- sourcePairs) yield pair._2
+
     require(sources.forall(v => vertices(v)), "Add sources first")
     require(vertices(sink), "Add sink first")
-    val he = new HyperEdge[H,E](edgeId, h, e)
+
+    val he = new HyperEdge[H,E](edgeId, h, edgeLabels)
     edgeId += 1
+
     for(src <- sources) outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
     inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
     edges += he -> (sources, sink)

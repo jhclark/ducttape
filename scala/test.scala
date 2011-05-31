@@ -42,8 +42,8 @@ class PackedDagWalkerTest extends FlatSpec {
     val b = builder.add("Vertex B")
     val c = builder.add("Vertex C")
 
-    val e1 = builder.add("HyperEdge 1", List(), List(a), b)
-    val e2 = builder.add("HyperEdge 2", List(), List(b), c)
+    val e1 = builder.add("HyperEdge 1", List((a,"")), b)
+    val e2 = builder.add("HyperEdge 2", List((b,"")), c)
 
     val dag: PackedDag[String,String,String] = builder.build
     println(dag.toGraphViz)
@@ -61,10 +61,10 @@ class PackedDagWalkerTest extends FlatSpec {
     val c = builder.add("Vertex C")
     val d = builder.add("Vertex D")
 
-    builder.add("HyperEdge 1", List(), List(a), b)
-    builder.add("HyperEdge 2", List(), List(a), c)
-    builder.add("HyperEdge 3", List(), List(b), d)
-    builder.add("HyperEdge 4", List(), List(c), d)
+    builder.add("HyperEdge 1", List((a,"")), b)
+    builder.add("HyperEdge 2", List((a,"")), c)
+    builder.add("HyperEdge 3", List((b,"")), d)
+    builder.add("HyperEdge 4", List((c,"")), d)
 
     val dag: PackedDag[String,String,String] = builder.build
     GraphViz.compile(dag.toGraphViz, "ex.pdf")
@@ -89,8 +89,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val b = builder.add("Vertex B")
     val c = builder.add("Vertex C")
 
-    val e1 = builder.add("HyperEdge 1", List(), List(a), b)
-    val e2 = builder.add("HyperEdge 2", List(), List(b), c)
+    val e1 = builder.add("HyperEdge 1", List((a,"")), b)
+    val e2 = builder.add("HyperEdge 2", List((b,"")), c)
 
     val dag: PackedDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker.iterator.toList
@@ -109,10 +109,10 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val c = builder.add("Vertex C")
     val d = builder.add("Vertex D")
 
-    builder.add("HyperEdge 1", List(), List(a), b)
-    builder.add("HyperEdge 2", List(), List(a), c)
-    builder.add("HyperEdge 3", List(), List(b), d)
-    builder.add("HyperEdge 4", List(), List(c), d)
+    builder.add("HyperEdge 1", List((a,"")), b)
+    builder.add("HyperEdge 2", List((a,"")), c)
+    builder.add("HyperEdge 3", List((b,"")), d)
+    builder.add("HyperEdge 4", List((c,"")), d)
 
     val dag: PackedDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker.iterator.toList
