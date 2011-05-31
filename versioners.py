@@ -4,5 +4,7 @@ class Versioner(object):
     def prepare():
         pass
 
-class NullVersioner(Versioner):
+# just use the version already installed on the local system
+# do our best to track what happened, but make no guarantees
+class Installed(Versioner):
     pass
