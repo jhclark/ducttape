@@ -1,7 +1,3 @@
-# TODO: How will subworkflows be handled?
-#       Can this be combined with the notion of scriptability?
-
-
 # TODO: Once the syntax is solidified, create a series of config files showing
 # the progression from the simplest to the most complicated use cases
 
@@ -69,6 +65,17 @@ g2.doStuff: <a=$g2.whichThing.a >a
 g2.unpack: <a=$g2.doStuff.a!whichThing(choiceA) >a
    cat < $a > $a
 
+# Globbing realizations...
+# $x will be a space-delimited string
+g2.globRealization: <x=$g2.doStuff.a!whichThing(*) >y
+  for file in $x; do echo $file; done
+
+# Glob all output files from step1 and concatenate them
+# $x is again a space-delimited string
+g2.globFiles: <x=$g1.step1.* >y
+  cat $x > $y
+
+# To ease writing using subworkflows, the available inputs/outputs can be discovered by a CLI invocation
 # Subworkflows' inputs and outputs can be determined by using a simple command line utility
 # Any "unbound" inputs and any output can be used here
 # $SUB is a reserved variable indicating that the subworkflow be used
