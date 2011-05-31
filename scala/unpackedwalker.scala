@@ -10,16 +10,17 @@ import ducttape.util._
 // the "edge derivation" == the realization
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
-                               val hedgeFilter: H => Boolean,
-                               val selectionFilter: MultiSet[H] => Boolean)
+                               val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
+                               val hedgeFilter: H => Boolean = Function.const[Boolean,H](true)_)
   extends Walker[UnpackedVertex[V,H,E]] {
     
   class ActiveVertex(val v: PackedVertex[V],
-                     val e: Option[HyperEdge[H,E]]) {
+                     val he: Option[HyperEdge[H,E]]) {
 
     // accumulate parent realizations
     // indices: sourceEdge, whichUnpacking, whichRealization
-    val filled = new Array[mutable.Seq[Seq[H]]](if(e.isEmpty) 0 else e.get.e.size)
+    val filled = new Array[mutable.Seq[Seq[H]]](if(he.isEmpty) 0 else dag.sources(he.get).size)
+    for(i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
 
     private def unpack(i: Int,
                        iFixed: Int,
@@ -30,7 +31,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
       // hedgeFilter has already been applied
       if(i == filled.size) {
         if(selectionFilter(combo)) {
-          callback(new UnpackedVertex[V,H,E](v, e,
+          callback(new UnpackedVertex[V,H,E](v, he,
                          combo.toList, parentReals.toList))
         }
       } else if(i == iFixed) {
@@ -95,7 +96,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
 
     // TODO: Are elements of taken properly hashable?
 
-    // we always lock agenda & completed jointly
+    // we always lock agenda & completed & taken jointly
     agenda.synchronized {
       taken -= item
     }
@@ -103,7 +104,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     // first, match fronteir vertices
     // note: consequent is an edge unlike the packed walker
     for(consequentE <- dag.outEdges(key.v)) {
-      val consequentV = dag.sink(consequentE)
+       val consequentV = dag.sink(consequentE)
       val activeCon = active.getOrElseUpdate(consequentV,
                         new ActiveVertex(consequentV, Some(consequentE)))
 
@@ -118,9 +119,12 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
           activeCon.unpack(iEdge, item.realization,
             (unpackedV: UnpackedVertex[V,H,E]) => {
               agenda.synchronized {
-                agenda.offer(unpackedV)
-                // TODO: We could sort the agenda
-                // here to impose different objectives...
+                // TODOL This agenda membership test could be slow O(n)
+                if(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV)) {
+                  agenda.offer(unpackedV)
+                  // TODO: We could sort the agenda
+                  // here to impose different objectives...
+                }
               }
             })
           activeCon.filled(iEdge) :+ item.realization
@@ -129,6 +133,8 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     }
 
     // finally visit this vertex
-    completed += item
+    agenda.synchronized {
+      completed += item
+    }
   }
 }

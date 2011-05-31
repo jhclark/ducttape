@@ -3,18 +3,10 @@ set -eo pipefail
 
 mkdir -p bin/
 fsc -cp lib/scalatest-1.4.1/scalatest-1.4.1.jar \
-    -d bin/ \
-    test.scala \
-    viz.scala \
-    util.scala \
-    agenda.scala \
-    uagenda.scala \
-    types.scala \
-    multiset.scala \
-    hyperdag.scala \
-    walker.scala
+    -d bin/ *.scala
 
-scala -cp lib/scalatest-1.4.1/scalatest-1.4.1.jar:bin/ \
+JAVA_OPTS="-XX:MaxJavaStackTraceDepth=7" scala -cp lib/scalatest-1.4.1/scalatest-1.4.1.jar:bin/ \
     org.scalatest.tools.Runner \
     -p . -o \
-    -s PackedDagWalkerTest
+    -s PackedDagWalkerTest \
+    -s UnpackedDagWalkerTest
