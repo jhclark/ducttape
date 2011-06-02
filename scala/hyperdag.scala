@@ -4,13 +4,13 @@ import collection._
 
 import ducttape.viz._
 
-class HyperEdge[H,E](private val id: Int, val h: H, val e: List[E]) {
+class HyperEdge[H,E](private[hyperdag] val id: Int, val h: H, val e: List[E]) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }
   override def toString = h.toString + " " + e.toString
 }
 
-class PackedVertex[V](private val id: Int, val value: V) {
+class PackedVertex[V](private[hyperdag] val id: Int, val value: V) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: PackedVertex[_] => (other.id == this.id) }
   override def toString = value.toString
@@ -21,7 +21,14 @@ class PackedVertex[V](private val id: Int, val value: V) {
 class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
                             val edge: Option[HyperEdge[H,E]],
                             val realization: Seq[H],
-                            val parentRealizations: Seq[Seq[H]]);
+                            val parentRealizations: Seq[Seq[H]]) {
+  // TODO: More smearing of hash codes
+  override def hashCode = packed.id ^ realization.hashCode
+  override def equals(that: Any) = that match {
+    case other: UnpackedVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
+  }
+  override def toString = packed.toString + " (realization=" + realization.toString +")"
+}
 
 // immutable
 class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
@@ -32,8 +39,11 @@ class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
                        
   val size: Int = vertices.size
 
-  def walker(): PackedDagWalker[V]
+  def packedWalker()
     = new PackedDagWalker[V](this)
+  // TODO: Pass filters to dag walker
+  def unpackedWalker()
+    = new UnpackedDagWalker[V,H,E](this)
   def inEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
   def outEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
@@ -78,11 +88,16 @@ class PackedDagBuilder[V,H,E] {
     pv
   }
 
-  def add(h: H, e: List[E], sources: List[PackedVertex[V]], sink: PackedVertex[V]): HyperEdge[H,E] = {
+  def add(h: H, sourcePairs: List[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
+    val sources = for(pair <- sourcePairs) yield pair._1
+    val edgeLabels = for(pair <- sourcePairs) yield pair._2
+
     require(sources.forall(v => vertices(v)), "Add sources first")
     require(vertices(sink), "Add sink first")
-    val he = new HyperEdge[H,E](edgeId, h, e)
+
+    val he = new HyperEdge[H,E](edgeId, h, edgeLabels)
     edgeId += 1
+
     for(src <- sources) outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
     inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
     edges += he -> (sources, sink)

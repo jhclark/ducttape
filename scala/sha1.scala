@@ -33,6 +33,6 @@ class Digest(alg: String) {
   override def toString = digest.map(a => "%02x".format(a & 0xFF)).mkString("")
 }
 
-val dig = new Digest("sha1")
-FileUtils.read(args(0), dig.update)
-println(dig)
+//val dig = new Digest("sha1")
+//FileUtils.read(args(0), dig.update)
+//println(dig)

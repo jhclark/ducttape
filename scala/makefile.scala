@@ -1,21 +1,24 @@
+package ducttape.io
+
 import scala.sys.process._
 import scala.io._
 import java.io._
 
-def shell(cmd: String) = {
+class MakeReader {
+  def shell(cmd: String) = {
     def provideIn(x: OutputStream) = {
-	val bash = new PrintStream(x)
-	bash.println("set -eo pipefail")
-	bash.println(cmd)
-	bash.close()
+      val bash = new PrintStream(x)
+      bash.println("set -eo pipefail")
+      bash.println(cmd)
+      bash.close()
     }
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
     def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
     var code = "bash".run(new ProcessIO(provideIn, handleOut, handleErr)).exitValue()
     println("Returned %s".format(code))
-}
+  }
 
-def parse(file: String) = {
+  def parse(file: String) = {
     println("Reading %s...".format(file))
     
     val CommentRE = """\s*#.*""".r
@@ -42,8 +45,9 @@ def parse(file: String) = {
 	}
       }
     })
+  }
 }
 
 // main
-def file = args(0)
-parse(file)
+//def file = args(0)
+//vparse(file)
