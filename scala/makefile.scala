@@ -18,20 +18,26 @@ class MakeReader {
     println("Returned %s".format(code))
   }
 
-  def parse(file: String) = {
+  def parse(file: String):  = {
     println("Reading %s...".format(file))
     
     val CommentRE = """\s*#.*""".r
   // TODO: Make : optional
     val HeadRE = """\[([a-zA-Z0-9.-]+)\]\s*([a-zA-Z0-9.-]+)\s*(?::\s*([a-zA-Z0-9.-]+))""".r
     val CmdRE = """\s+(.+)""".r
+    val BlankRE = """^\s*$""".r
 
     var nLine = 0
+    val comments = mutable.ListBuffer[String]
     Source.fromFile(file, "utf-8").getLines.foreach(line => {
       nLine += 1
       line match {
+        case BlankRE => {
+          //comments.clear
+        }
 	case CommentRE => {
 	  println("comment %s".format(line))
+          comments += line
 	}
 	case HeadRE(step, consequent, antecedent) => {
 	  println("header %s %s %s".format(step, consequent, antecedent))
