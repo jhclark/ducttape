@@ -1,26 +1,21 @@
 package ducttape.hyperdag
 
-/**
- * must be threadsafe
- */
+/** A generalization of the iterator concept to allow parallel traversal
+ *  of structured collections (e.g. DAGs). Callers can use a producer-consumer
+ *  pattern to accomplish parallel traversal by calling take/complete.
+ *  Implementations must be threadsafe and might take the form of an
+ *  agenda-based traversal algorithm. */
 trait Walker[A] extends Iterable[A] {
-
   private val self = this
 
-  /**
-   * returns None when there are no more elements
-   */
+  /** Get the next traversable item. Returns None when there are no more elements */
   def take(): Option[A]
 
-  /**
-   * notify walker that caller is done with the item so that we know we
-   * can traverse its dependends
-   */
+  /** Callers must use this method to notify walker that caller is done with each
+   *  item so that walker can traverse its dependends */
   def complete(item: A)
 
-  /**
-   * get a synchronous iterator (not appropriate for multi-threaded consumers)
-   */
+  /** Get a synchronous iterator (not appropriate for multi-threaded consumers) */
   def iterator() = new Iterator[A] {
     var nextItem: Option[A] = None
 
