@@ -23,7 +23,7 @@ class MakeReader {
     
     val CommentRE = """\s*#.*""".r
   // TODO: Make : optional
-    val HeadRE = """\[([a-zA-Z0-9.-]+)\]\s*([a-zA-Z0-9.-]+)\s*:\s*([a-zA-Z0-9.-]+)""".r
+    val HeadRE = """\[([a-zA-Z0-9.-]+)\]\s*([a-zA-Z0-9.-]+)\s*(?::\s*([a-zA-Z0-9.-]+))""".r
     val CmdRE = """\s+(.+)""".r
 
     var nLine = 0
@@ -48,6 +48,11 @@ class MakeReader {
   }
 }
 
-// main
-//def file = args(0)
-//vparse(file)
+object MakeReader {
+  def main(args: Array[String]) = {
+    def file = args(0)
+    val reader = new MakeReader
+    reader.parse(file)
+  }
+}
+
