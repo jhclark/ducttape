@@ -15,27 +15,28 @@ x=$CONFIG
 # How to insert realizations from the config file w/o including them here? | syntax?
 
 # Actual machine information goes in config file
-# & specifies tool requirement
-# Versioner only needs to be specified if it is overriding the default for the required tool (moses) -- and we prefer it be done in config file
-# Specifying resources like this is a hack -- it should be done in config
-# Specifying raw paths like this is a hack -- it should be done in config
-# This also demonstrates that outputs with hardcoded paths can be specified in the IO declaration
-# RESOURCES: Are specified just like any other "annotation" variable with @
-# TODO: How do we specify different resources for different inputs?
+# * & specifies a tool Versioner (e.g. moses), defined in repos.txt:
+#   this tool can be a binary on disk or ducttape can fetch it
+#   from git/svn and then build the current version of it, remembering which revision was used
+# * This also demonstrates that outputs with hardcoded output filenames
+#   (e.g. Joshua's grammar extractor) can be specified in the IO declaration
+# * a Submitter
+# * @ specifies a key-value annotation that is associated with this step
+#   these will be available as variables in the submitter and versioner
+#   This allows you to specify things such as Sun Grid Engine resources (vmem)
+#   TODO: How do we specify different resources for different inputs?
 g1.step1: <a=/home/jhclark/file <b >a >b=hardcoded.txt &moses=moses-svn
    @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
    cat < $a > $a
    cat < $b > hardcoded.txt
    $moses/cmd/src/moses -f x
 
-# Actual repository information goes in config file
-# % indicates resource set
-# By not specifying moses=blah, we look in the config file for a value
-g1.step2: <a=$g1.step1.a <b=$g1.step1.b <<param=$x >a >b %big &moses
+# % indicates resource set (e.g. run on a "big" machine)
+g1.step2: <a=$g1.step1.a <b=$g1.step1.b <<param=$x >a >b %big
    cat < $a > $a
    cat < $b > $b
 
-# Simplest way to pack
+# This step shows the simplest way to pack (i.e. create a hyperworkflow)
 # Parentheses with "(name: a=x, b=y)" indicates packing a single file
 # Branch names are specified before =
 # Pack name is specified before :
