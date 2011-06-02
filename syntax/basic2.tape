@@ -4,7 +4,7 @@
 # and will be in a sandboxed directory, accessible by head-2
 # This pre-determined path will be substituted for $x and $y
 # NOTE: String substitution or as environment variables?
-[fiat] x y
+[fiat] > x y
   echo writing files $x and $y...
   echo hello > $x
   echo world > $y

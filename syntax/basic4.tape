@@ -5,5 +5,5 @@
 
 # We use first's output "a" as the input "x"
 # by using the = operator
-[andthen] b : x=$first.a
-  cat > $b < $x
+[andthen] b > x=$first.a
+  cat < $b > $x
