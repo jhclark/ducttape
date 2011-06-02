@@ -5,5 +5,6 @@
 # This pre-determined path will be substituted for $x and $y
 # NOTE: String substitution or as environment variables?
 [fiat] x y
+  echo writing files $x and $y...
   echo hello > $x
   echo world > $y
