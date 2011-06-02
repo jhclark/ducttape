@@ -19,7 +19,8 @@ def parse(file: String) = {
     println("Reading %s...".format(file))
     
     val CommentRE = """\s*#.*""".r
-    val HeadRE = """([a-z0-9]+)\s*:\s*([a-z0-9]+)""".r
+  // TODO: Make : optional
+    val HeadRE = """\[([a-zA-Z0-9.-]+)\]\s*([a-zA-Z0-9.-]+)\s*:\s*([a-zA-Z0-9.-]+)""".r
     val CmdRE = """\s+(.+)""".r
 
     var nLine = 0
@@ -29,8 +30,8 @@ def parse(file: String) = {
 	case CommentRE => {
 	  println("comment %s".format(line))
 	}
-	case HeadRE(consequent, antecedent) => {
-	  println("header %s %s".format(consequent, antecedent))
+	case HeadRE(step, consequent, antecedent) => {
+	  println("header %s %s %s".format(step, consequent, antecedent))
 	}
 	case CmdRE(cmd) => {
 	  println("command %s".format(cmd))
