@@ -1,7 +1,10 @@
-import scala.io._
+package ducttape.io
 
+import scala.io._
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
+
+class FileFormatException(msg: String) extends Exception(msg) {}
 
 class Task(val name: String,
            val comments: Seq[String],
@@ -23,6 +26,7 @@ object MakelikeDSL extends RegexParsers {
 
   def eol = "\r\n" | "\n" | CharArrayReader.EofCh
   def space = """[ \t]+""".r
+  def tasks: Parser[Seq[Task]] = repsep(taskBlock, eol)
   def taskBlock: Parser[Task] = comments ~ taskDef ~ commands ^^ {
     case com ~ td ~ cmds => new Task(td.name, com, td.deps, td.targets, cmds)
   }
@@ -48,17 +52,16 @@ object MakelikeDSL extends RegexParsers {
   def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)
   def command: Parser[String] = rep1(space) ~> """[^\r\n]+""".r
 
-  def doMatch(file: String) {
-    val result: ParseResult[Task] = parseAll(taskBlock, Source.fromFile(file, "UTF-8").reader)
+  def read(file: String): Seq[Task] = {
+    val result: ParseResult[Seq[Task]] = parseAll(tasks, Source.fromFile(file, "UTF-8").reader)
     val pos = result.next.pos
     result match {
-      case Success(res, _) => println(res)
-      case Failure(msg, _)
-        => println("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
-      case Error(msg, _) => println("Error: "+msg)
+      case Success(res, _) => res
+      case Failure(msg, _) =>
+       throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+      case Error(msg, _) =>
+       throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
     }
   }
 }
-
-MakelikeDSL.doMatch(args(0))
 

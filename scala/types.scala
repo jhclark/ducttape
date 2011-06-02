@@ -1,6 +1,7 @@
 package ducttape
 
 import collection._
+import ducttape.hyperdag._
 
 //import ducttape.hyperdag._
 
