@@ -1,3 +1,5 @@
+import scala.io._
+
 import scala.util.parsing.combinator._
 import scala.util.parsing.input._
 
@@ -30,35 +32,33 @@ object MakelikeDSL extends RegexParsers {
   def commentContent: Parser[String] = """[^\r\n]+""".r
 
   // deps CANNOT be separated by a newline or else we don't know where commands begin
-  def taskDef: Parser[TaskDef] = taskName ~ taskTargets ~ taskDeps <~ eol ^^ {
-    case name ~ targets ~ deps => new TaskDef(name, targets, deps)
-  }
+  def taskDef: Parser[TaskDef]
+    = taskName ~ rep(space) ~ taskTargets ~ rep(space) ~ taskDeps <~ eol ^^ {
+      case name ~ sp1 ~ targets ~ sp2 ~ deps => new TaskDef(name, targets, deps)
+    }
   def taskName: Parser[String] = "[" ~> """[a-zA-Z0-9.-]+""".r <~ "]"
-  def taskTargets: Parser[Seq[String]] = repsep(taskTarget, space) 
-  def taskTarget: Parser[String] = """[^\r\n:]+""".r
-  def taskDeps: Parser[Seq[String]] = opt("""\s*:\s*""".r ~> repsep(taskDep, space)) ^^ {
+  def taskTargets: Parser[Seq[String]] = repsep(taskTarget, space)
+  def taskTarget: Parser[String] = """[^\r\n: \t]+""".r
+  def taskDeps: Parser[Seq[String]] = opt(":" ~ rep(space) ~> repsep(taskDep, space)) ^^ {
     case Some(deps) => deps
     case None => List.empty
   }
-  def taskDep: Parser[String] = """[^\r\n:]+""".r
+  def taskDep: Parser[String] = """[^\r\n: \t]+""".r
 
   def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)
-  def command: Parser[String] = """[^\r\n]+""".r
+  def command: Parser[String] = rep1(space) ~> """[^\r\n]+""".r
 
-  def doMatch(str: String) {
-    val result: ParseResult[Task] = parseAll(taskBlock, str)
-    val pos: Position = result.next.pos
+  def doMatch(file: String) {
+    val result: ParseResult[Task] = parseAll(taskBlock, Source.fromFile(file, "UTF-8").reader)
+    val pos = result.next.pos
     result match {
       case Success(res, _) => println(res)
       case Failure(msg, _)
-        => println("FAIL on line %d column %d: %s".format(pos.line, pos.column, msg))
-      case Error(msg, _) => println("ERROR: "+msg)
+        => println("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+      case Error(msg, _) => println("Error: "+msg)
     }
   }
 }
 
-MakelikeDSL.doMatch("""# hi
-# how are you ?
-[head-5] a b c : x y z
-cat""")
+MakelikeDSL.doMatch(args(0))
 
