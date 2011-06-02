@@ -3,9 +3,15 @@
 
 x=$CONFIG
 
-# Separation of workflow (defines dataflow and high-level resource requirements) from configuration (local paths to input files and low-level resource mappings such as machine names)
+# Design philosophy:
+# * Keep simple things simple
+# * Copy paste is evil (see Clone and Modify, Snarf and Barf Programming)
+# * Inputs AND CODE will inevitably change during the course of workflow execution -- the user should have the power to decide whether to ignore these changes or invalidate dependents of these changes
+# * Documentation and visual representations are useful for understanding, but less so for authoring
+# * Separation of workflow (defines dataflow and high-level resource requirements) from configuration (local paths to input files and low-level resource mappings such as machine names) should be easy, but not required to get up and running
 
-# CONFIG file should end up looking like a Moses EMS config
+# Other high-level notes:
+# * CONFIG file should end up looking like a Moses EMS config
 # How to insert realizations from the config file w/o including them here? | syntax?
 
 # Actual machine information goes in config file
