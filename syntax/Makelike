@@ -27,14 +27,14 @@ x=$CONFIG
 #   these will be available as variables in the submitter and versioner
 #   This allows you to specify things such as Sun Grid Engine resources (vmem)
 #   TODO: How do we specify different resources for different inputs?
-[g1.step1] moses :: a=/home/jhclark/file b > x b=hardcoded.txt : N=5 @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
+[g1.step1] moses < a=/home/jhclark/file b > x b=hardcoded.txt :: N=5 @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
    cat < $a > $x
    cat < $b > hardcoded.txt
    $moses/cmd/src/moses -f x
 
 # @@ indicates an "annotation group" that is pulled from an earlier definition or config file
 # here, @@big might be annotations that describe how to schedule a job on a big machine using Torque/PBS/SGE
-[g1.step2] a=$g1.step1.a b=$g1.step1.b > x y : @@big
+[g1.step2] a=$g1.step1.a b=$g1.step1.b > x y :: @@big
    cat < $a > $x
    cat < $b > $y
 
@@ -52,9 +52,9 @@ x=$CONFIG
 # Hyperedges can specify *inputs* separately, but NOT outputs
 # - This does lead to confusion in reports:
 #   A report defaults to running for all hyperedges, unless some specializations are specified
-[whichThing] a > aOut : paramA
+[whichThing] a > aOut :: paramA
   # TODO: Need a better way of specifying individual inputs to packed realizations
-  +baseline [choiceA] b : param=$paramA
+  +baseline [choiceA] b :: param=$paramA
     cat $a $b $aOut
   +alt [choiceB] param=$x
     ln -s $a $aOut
