@@ -54,22 +54,22 @@ x=$CONFIG
 #   A report defaults to running for all hyperedges, unless some specializations are specified
 [whichThing] a > aOut : paramA
   # TODO: Need a better way of specifying individual inputs to packed realizations
-  +[choiceA] b : param=$paramA
+  +baseline [choiceA] b : param=$paramA
     cat $a $b $aOut
-  +[choiceB] param=$x
+  +alt [choiceB] param=$x
     ln -s $a $aOut
-  +[choiceC] param=$x
+  +alt [choiceC] param=$x
     ln -s $a $aOut
-  ++[reportA] # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
+  +report reportA # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
     echo "Line1=$(head -n1 $a)"
-  ++[reportA]!choiceA # Specializations listed after !
+  +report reportA!(choiceA) # Specializations listed after ! inside () -- node not necessary, since it it always this one
     echo "Line1=$(head -n1 $a)"
     echo "Line1B=$(head -n1 $b)"
 
 # what about a simple step with only a report?  
 [g2.simpleReport] a > x
   cat $a > $x
-  ++[reportA]
+  +report reportA
     echo "Line1=$(fgrep error $x)"
 
 # the following step will get run for each of the realizations in whichThing
@@ -111,7 +111,7 @@ x=$CONFIG
 # this task receives a gzip file as input since it specifies it *can* handle that
 # however, if there are multiple realizations upstream, it is *not guaranteed* to receive
 # compressed input
-[g5-fast-in] a+gz=$g5.compress-out.x > x
+[g5-fast-in] a:gz=$g5.compress-out.x > x
   zcat -f $a > $x
 
 # this task receives a process substition as input since it specified that is can
@@ -119,21 +119,21 @@ x=$CONFIG
 # The actual command passed to bash will be cat <(zcat /some/file) > $x
 # Unlike other file types, this substitution will be done as a string
 # substition rather than a simple export at the beginning of the script 
-[g5.fastest-in] a+stream=$g5.compress-out.x > x
+[g5.fastest-in] a:stream=$g5.compress-out.x > x
   cat $a > $x
 
 # this task reads a file from HDFS. the tag allows ducttape to still check that the file exists
-[g5.hadoop-rw] a+hdfs > x+hdfs
+[g5.hadoop-rw] a:hdfs > x:hdfs
   hadoop dfs -cp $a $x
 
 # this task reads a file from HDFS that is already on HDFS[
-[g5.hdfs-to-hdfs] a+hdfs=$g5.hadoop-rw.x > x+hdfs
+[g5.hdfs-to-hdfs] a:hdfs=$g5.hadoop-rw.x > x:hdfs
   hadoop dfs -cp $a $x
 
 # this task expects a normal UNIX file, but supports streaming
 # so the file is streamed directly off of HDFS to the task as a bash process substitution
 # The actual command run will look something like cat <(hadoop dfs -cat $a) > $x
-[g5.read-plain] a+stream=$g5.hadoop-rw.x > x
+[g5.read-plain] a:stream=$g5.hadoop-rw.x > x
   cat $a > $x
 
 # TODO: User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
