@@ -1,6 +1,8 @@
 # TODO: Once the syntax is solidified, create a series of config files showing
 # the progression from the simplest to the most complicated use cases
 
+# TODO: What about other machines?
+
 x=$CONFIG
 
 # Design philosophy:
@@ -25,23 +27,23 @@ x=$CONFIG
 #   these will be available as variables in the submitter and versioner
 #   This allows you to specify things such as Sun Grid Engine resources (vmem)
 #   TODO: How do we specify different resources for different inputs?
-g1.step1: <a=/home/jhclark/file <b >a >b=hardcoded.txt &moses=moses-svn
-   @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
-   cat < $a > $a
+[g1.step1] moses :: a=/home/jhclark/file b > x b=hardcoded.txt : N=5 @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
+   cat < $a > $x
    cat < $b > hardcoded.txt
    $moses/cmd/src/moses -f x
 
-# % indicates resource set (e.g. run on a "big" machine)
-g1.step2: <a=$g1.step1.a <b=$g1.step1.b <<param=$x >a >b %big
-   cat < $a > $a
-   cat < $b > $b
+# @@ indicates an "annotation group" that is pulled from an earlier definition or config file
+# here, @@big might be annotations that describe how to schedule a job on a big machine using Torque/PBS/SGE
+[g1.step2] a=$g1.step1.a b=$g1.step1.b > x y : @@big
+   cat < $a > $x
+   cat < $b > $y
 
 # This step shows the simplest way to pack (i.e. create a hyperworkflow)
 # Parentheses with "(name: a=x, b=y)" indicates packing a single file
 # Branch names are specified before =
 # Pack name is specified before :
 # Baseline is always first element by default
-g3.simplePack: <in=(whichSize: smaller=$g1.step1.a, bigger=$g2.step1.b) >out
+[g3.simplePack] in=(whichSize: smaller=$g1.step1.a, bigger=$g2.step1.b) > out
   cat < $in > $out
 
 # Multiple *branches* are *packed* together
@@ -50,36 +52,42 @@ g3.simplePack: <in=(whichSize: smaller=$g1.step1.a, bigger=$g2.step1.b) >out
 # Hyperedges can specify *inputs* separately, but NOT outputs
 # - This does lead to confusion in reports:
 #   A report defaults to running for all hyperedges, unless some specializations are specified
-whichThing: <a >aOut <<paramA >>param
-  +choiceA: param=$paramA <b
+[whichThing] a > aOut : paramA
+  # TODO: Need a better way of specifying individual inputs to packed realizations
+  +[choiceA] b : param=$paramA
     cat $a $b $aOut
-  +choiceB: param=$x
+  +[choiceB] param=$x
     ln -s $a $aOut
-  +choiceC: param=$x
+  +[choiceC] param=$x
     ln -s $a $aOut
-  ++reportA: # Basic report, run for all non-specialized hyperedges (B/C)
+  ++[reportA] # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
     echo "Line1=$(head -n1 $a)"
-  ++reportA: choiceA # Specializations listed to the right; THIS HAS DIFFERENT SEMANTICS THAN ABOVE
+  ++[reportA]!choiceA # Specializations listed after !
     echo "Line1=$(head -n1 $a)"
     echo "Line1B=$(head -n1 $b)"
-  
 
-g2.doStuff: <a=$g2.whichThing.a >a
-   cat < $a > $a
+# what about a simple step with only a report?  
+[g2.simpleReport] a > x
+  cat $a > $x
+  ++[reportA]
+    echo "Line1=$(fgrep error $x)"
+
+# the following step will get run for each of the realizations in whichThing
+[g2.doStuff] a=$g2.whichThing.a > x
+   cat < $a > $b
 
 # ! is the unpack operator
-# TODO: Does this unpack syntax seem reasonable?
-g2.unpack: <a=$g2.doStuff.a!whichThing(choiceA) >a
-   cat < $a > $a
+[g2.unpack] a=$g2.doStuff.a!whichThing(choiceA) > x
+   cat < $a > $x
 
 # Globbing realizations...
 # $x will be a space-delimited string
-g2.globRealization: <x=$g2.doStuff.a!whichThing(*) >y
+[g2.globRealization] x=$g2.doStuff.a!whichThing(*) > y
   for file in $x; do echo $file; done
 
 # Glob all output files from step1 and concatenate them
 # $x is again a space-delimited string
-g2.globFiles: <x=$g1.step1.* >y
+[g2.globFiles] x=$g1.step1.* > y
   cat $x > $y
 
 # To ease writing using subworkflows, the available inputs/outputs can be discovered by a CLI invocation
@@ -87,13 +95,48 @@ g2.globFiles: <x=$g1.step1.* >y
 # Any "unbound" inputs and any output can be used here
 # $SUB is a reserved variable indicating that the subworkflow be used
 # All branches from the subworkflow will be appended with this name to avoid conflicts
-g3.sub: <a >b
+[g3.sub] a > b
   =Makelike.simple: b=$SUB.head-5.b
 
-# SYNTAX:
-# TODO: Syntax for compression/hdfs tags? How do we know when the executable expects compressed input vs when we should decompress?
-# TODO: How do we allow globbing all files from a realization?
-# User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
+
+# what about doing automatic/transparent compression of files (i.e. loonybin file tags)
+[g5.compress-out] a > x+compress
+  cat $a > $x
+
+# this task has its input decompressed as a pre-processing step
+# tag doesn't specify that it knows how to receive streamed or compressed input
+[g5.slow-in] a=$g5.compress-out.x > x
+  cat $a > $x
+
+# this task receives a gzip file as input since it specifies it *can* handle that
+# however, if there are multiple realizations upstream, it is *not guaranteed* to receive
+# compressed input
+[g5-fast-in] a+gz=$g5.compress-out.x > x
+  zcat -f $a > $x
+
+# this task receives a process substition as input since it specified that is can
+# handle streaming output. this allows ducttape the most flexibility in optimization
+# The actual command passed to bash will be cat <(zcat /some/file) > $x
+# Unlike other file types, this substitution will be done as a string
+# substition rather than a simple export at the beginning of the script 
+[g5.fastest-in] a+stream=$g5.compress-out.x > x
+  cat $a > $x
+
+# this task reads a file from HDFS. the tag allows ducttape to still check that the file exists
+[g5.hadoop-rw] a+hdfs > x+hdfs
+  hadoop dfs -cp $a $x
+
+# this task reads a file from HDFS that is already on HDFS[
+[g5.hdfs-to-hdfs] a+hdfs=$g5.hadoop-rw.x > x+hdfs
+  hadoop dfs -cp $a $x
+
+# this task expects a normal UNIX file, but supports streaming
+# so the file is streamed directly off of HDFS to the task as a bash process substitution
+# The actual command run will look something like cat <(hadoop dfs -cat $a) > $x
+[g5.read-plain] a+stream=$g5.hadoop-rw.x > x
+  cat $a > $x
+
+# TODO: User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
 
 # Fixed:
 # Multiple inputs are never a problem since we change the command directly
