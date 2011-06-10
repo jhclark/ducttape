@@ -1,9 +1,11 @@
-# Now let's string 2 commands together
+# 4) Running tasks with dependencies
+
 # First a step we already know about...
-[first] > a
+[first] > x
   seq 10 > $x
 
-# We use first's output "a" as the input "x"
-# by using the = operator
-[andthen] b=$first.x > x
-  cat < $b > $x
+# * We use first's output "x" as the input "a" by using the = operator
+# * Instead of specifying an absolute path as before, we specify
+#   it as a dependency using the "$" prefix
+[and-then] a=$first/x > x
+  cat < $a > $x

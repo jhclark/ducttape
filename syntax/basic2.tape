@@ -1,10 +1,11 @@
-# This is a command that produces 2 output files
+# 2) Writing output files
 #
-# The path of the output files is determined by ducttape
-# and will be in a sandboxed directory, accessible by head-2
-# This pre-determined path will be substituted for $x and $y
-# NOTE: String substitution or as environment variables?
-[fiat] > x y
+# * Ducttape will assign the paths for the output files
+#   as something like ./hello-world-2/x and ./hello-world-2/y.txt
+# * The environment variables x and y.txt will be set by
+#   ducttape before calling bash
+# * Note that bash requires the use of ${} for using variables containing .
+[hello-world-2] > x y.txt
   echo writing files $x and $y...
   echo hello > $x
-  echo world > $y
+  echo world > ${y.txt}
