@@ -22,7 +22,7 @@
 # * "install" is run in a sandbox directory
 # * All other commands are run inside $dir
 [VERSIONER:git] :: url rev
-  +install > $dir
+  +checkout > $dir
     git clone $url $dir
   +update
     git pull

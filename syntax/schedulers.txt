@@ -1,5 +1,0 @@
-#VMEM is a resource variable from ???
-#SCRIPT is a special variable representing the content of this vertex
-pbs cmd=qsub:
-  #PBS vmem=$VMEM
-  $SCRIPT
