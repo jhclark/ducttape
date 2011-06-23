@@ -23,7 +23,7 @@ x=$CONFIG
 #   these will be available as variables in the submitter and versioner
 #   This allows you to specify things such as Sun Grid Engine resources (vmem)
 #   TODO: How do we specify different resources for different inputs?
-[g1.step1] moses < a=/home/jhclark/file b > x b=hardcoded.txt :: N=5 @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
+[g1.step1] moses < a=/home/jhclark/file b > x y=hardcoded.txt :: N=5 @vmem=32gb @cpus=8 @hostname=localhost @submitter=pbs
    cat < $a > $x
    cat < $b > hardcoded.txt
    $moses/cmd/src/moses -f x
