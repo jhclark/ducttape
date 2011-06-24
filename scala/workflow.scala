@@ -6,15 +6,9 @@ import ducttape.hyperdag._
 import ducttape.io._
 import ducttape.Types._
 
-// generally just a string, but will also
-// eventually represent a list of files (for globbing)
-class FileInfo(val path: String) {
-  override def toString = path
-}
-
-class Task(taskDef: TaskDef,
-           val inputVals: Map[String,FileInfo], // actual file paths
-           val paramVals: Map[String,String]) { // actual param values
+class Task(val taskDef: TaskDef,
+           val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
+           val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
   def name = taskDef.name
   def comments = taskDef.comments
   def inputs = taskDef.inputs
@@ -30,21 +24,25 @@ class Branch(val name: String) {
 
 object WorkflowBuilder {
 
+  // the resolved Spec is guaranteed to be a literal
   private def resolveVar(taskDef: TaskDef,
                          map: Map[String,TaskDef],
-                         spec: Spec): (String, Option[TaskDef]) = {
+                         spec: Spec)
+  : (LiteralSpec, TaskDef) = {
 
-    var rval: RValue = spec.value
-    var src: Option[TaskDef] = None
+    var curSpec: Spec = spec
+    var src: TaskDef = taskDef
     while(true) {
-      rval match {
+      curSpec.rval match {
         case Literal(litValue) => {
-          return (litValue, src)
+          val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
+          return (litSpec, src)
         }
         case Variable(srcTaskName, srcValue) => {
           map.get(srcTaskName) match {
             case Some(srcDef: TaskDef) => {
-              src = Some(srcDef)
+              src = srcDef
+              // TODO: Lookup source variable name
             }
             case None => {
               // TODO: Line #
@@ -54,9 +52,9 @@ object WorkflowBuilder {
             }
           }
         }
-        //case Unbound => {
-        //  throw new RuntimeException("Unsupported so far")
-        //}
+        case Unbound() => {
+          throw new RuntimeException("Unsupported so far")
+        }
       }
     }
     throw new Error("Unreachable")
@@ -80,27 +78,26 @@ object WorkflowBuilder {
     // first, create tasks, but don't link them in graph yet
     for(taskDef <- wd.tasks) {
 
+      // TODO: Check for all inputs/outputs/param names being unique in this step
+
       if(vertices.contains(taskDef.name)) {
           // TODO: Line #'s
         throw new FileFormatException("Duplicate task name: %s".format(taskDef.name))
       }
 
-      val paramVals = new mutable.HashMap[String,String]
+      val paramVals = new mutable.ListBuffer[(Spec,LiteralSpec,TaskDef)]
       for(paramSpec: Spec <-taskDef.params) {
-        val (value, _) = resolveVar(taskDef, defMap, paramSpec)
-        paramVals += paramSpec.name -> value
+        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, paramSpec)
+        paramVals.append( (paramSpec, srcSpec, srcTaskDef) )
       }
 
-      val inputVals = new mutable.HashMap[String,FileInfo]
+      val inputVals = new mutable.ListBuffer[(Spec,Spec,TaskDef)]
       val myParents = new mutable.HashSet[TaskDef]
       for(inSpec: Spec <- taskDef.inputs) {
-        val (value, srcOpt) = resolveVar(taskDef, defMap, inSpec)
-        inputVals += inSpec.name -> new FileInfo(value)
-        srcOpt match {
-          case Some(src: TaskDef) => {
-            myParents += src
-          }
-          case _ => ;
+        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, inSpec)
+        inputVals.append( (inSpec, srcSpec, srcTaskDef) )
+        if(srcTaskDef != taskDef) {
+            myParents += srcTaskDef
         }
       }
 

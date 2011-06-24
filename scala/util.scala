@@ -10,24 +10,51 @@ object Files {
     fw.write(str)
     fw.close()    
   }
+
+  def writer(file: File) = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
 }
 
 object Shell {
-  def run(cmds: Seq[String]) {
-    run(cmds.mkString("\n"))
+  def run(cmds: Seq[String],
+          workDir: File,
+          env: Seq[(String,String)],
+          stdoutFile: File,
+          stderrFile: File) {
+    run(cmds.mkString("\n"), workDir, env, stdoutFile, stderrFile)
   }
 
-  def run(cmd: String) {
+  def run(cmd: String,
+          workDir: File,
+          env: Seq[(String,String)],
+          stdoutFile: File,
+          stderrFile: File) {
+
+    val stdout = Files.writer(stdoutFile)
+    val stderr = Files.writer(stderrFile)
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
+      // TODO: Set environment here to be consistent with dry run script generation?
       bash.println("set -eo pipefail")
       bash.println(cmd)
       bash.close()
     }
-    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
-    var code = "bash".run(new ProcessIO(provideIn, handleOut, handleErr)).exitValue()
-    println("Command %s returned %s".format(cmd, code))
+    def handleOut(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
+      println(line)
+      stdout.print(line) // no flush like println
+      stderr.append('\n')
+    }}
+    def handleErr(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
+      System.err.println(line)
+      stderr.print(line)
+      stderr.append('\n')
+    }}
+    // pass env as varargs
+    val code = Process("bash", workDir, env:_*)
+            .run(new ProcessIO(provideIn, handleOut, handleErr))
+            .exitValue()
+    println("Command '''%s''' returned %s".format(cmd, code))
+    stdout.close
+    stderr.close
   }
 
   def runGetOutput(cmd: String): String = {
