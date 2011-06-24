@@ -27,7 +27,7 @@ object Shell {
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
     def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
     var code = "bash".run(new ProcessIO(provideIn, handleOut, handleErr)).exitValue()
-    println("Returned %s".format(code))
+    println("Command %s returned %s".format(cmd, code))
   }
 
   def runGetOutput(cmd: String): String = {

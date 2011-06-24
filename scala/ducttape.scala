@@ -1,5 +1,6 @@
 import ducttape.io._
 import ducttape.hyperdag._
+import ducttape.Types._
 import ducttape.workflow._
 import ducttape.util._
 import System._
@@ -20,7 +21,8 @@ object Ducttape {
     val wd: WorkflowDefinition = MakelikeDSL.read(file)
     println("Building workflow...")
     val workflow: HyperWorkflow = WorkflowBuilder.build(wd)
-    for(v: UnpackedVertex[Task,Branch,IOEdge] <- workflow.dag.unpackedWalker.iterator) {
+    println("Workflow contains %d tasks".format(workflow.dag.size))
+    for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
       val task = v.packed.value
       println("Running %s".format(task.name))
       Shell.run(task.commands)

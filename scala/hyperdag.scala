@@ -98,7 +98,9 @@ class PackedDagBuilder[V,H,E] {
     val he = new HyperEdge[H,E](edgeId, h, edgeLabels)
     edgeId += 1
 
-    for(src <- sources) outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
+    for(src <- sources) {
+      outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
+    }
     inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
     edges += he -> (sources, sink)
     he

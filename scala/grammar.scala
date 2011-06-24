@@ -6,18 +6,22 @@ import scala.util.parsing.input._
 
 class FileFormatException(msg: String) extends Exception(msg) {}
 
-class TaskDef(val name: String, val targets: Seq[String], val deps: Seq[DependencySpec], val params: Seq[ParamSpec]) {}
-class DependencySpec(val name: String, val value: Option[String]) {}
-class ParamSpec(val name: String, val value: Option[String]) {}
-
-class Task(val name: String,
-           val comments: Seq[String],
-           val inputs: Seq[DependencySpec],
-           val outputs: Seq[String],
-           val params: Seq[ParamSpec],
-           val commands: Seq[String]) {
+class WorkflowDefinition(val tasks: Seq[TaskDef]) {}
+class TaskDef(val name: String,
+              val comments: Seq[String],
+              val inputs: Seq[Spec],
+              val outputs: Seq[String],
+              val params: Seq[Spec],
+              val commands: Seq[String]) {
   override def toString = name + " " + comments.toString + " " + inputs + " " + outputs + " " + commands
 }
+class TaskHeader(val name: String, val targets: Seq[String], val deps: Seq[Spec], val params: Seq[Spec]) {}
+class Spec(val name: String, val value: RValue) {}
+
+abstract class RValue;
+case class Unbound extends RValue;
+case class Literal(value: String) extends RValue;
+case class Variable(task: String, value: String) extends RValue;
 
 // see http://stackoverflow.com/questions/5063022/use-scala-parser-combinator-to-parse-csv-files
 object MakelikeDSL extends RegexParsers {
@@ -27,9 +31,11 @@ object MakelikeDSL extends RegexParsers {
 
   def eol = "\r\n" | "\n" | CharArrayReader.EofCh
   def space = """[ \t]+""".r
-  def tasks: Parser[Seq[Task]] = repsep(taskBlock, eol)
-  def taskBlock: Parser[Task] = comments ~ taskDef ~ commands ^^ {
-    case com ~ td ~ cmds => new Task(td.name, com, td.deps, td.targets, td.params, cmds)
+
+  def workflow: Parser[WorkflowDefinition] = tasks ^^ { w => new WorkflowDefinition(w) }
+  def tasks: Parser[Seq[TaskDef]] = repsep(taskBlock, eol)
+  def taskBlock: Parser[TaskDef] = comments ~ taskHeader ~ commands ^^ {
+    case com ~ td ~ cmds => new TaskDef(td.name, com, td.deps, td.targets, td.params, cmds)
   }
 
   def comments: Parser[Seq[String]] = repsep(comment, eol) <~ (eol?)
@@ -37,38 +43,39 @@ object MakelikeDSL extends RegexParsers {
   def commentContent: Parser[String] = """[^\r\n]+""".r
 
   // deps CANNOT be separated by a newline or else we don't know where commands begin
-  def taskDef: Parser[TaskDef]
+  def taskHeader: Parser[TaskHeader]
     = taskName ~ rep(space) ~ taskTargets ~ rep(space) ~ taskDeps ~ rep(space) ~ taskParams <~ eol ^^ {
-      case name ~ sp1 ~ targets ~ sp2 ~ deps ~ sp3 ~ params => new TaskDef(name, targets, deps, params)
+      case name ~ sp1 ~ targets ~ sp2 ~ deps ~ sp3 ~ params => new TaskHeader(name, targets, deps, params)
     }
-  def taskName: Parser[String] = "[" ~> """[a-zA-Z0-9.-]+""".r <~ "]"
+  def taskName: Parser[String] = "[" ~> name <~ "]"
   def taskTargets: Parser[Seq[String]] = repsep(taskTarget, space)
-  def taskTarget: Parser[String] = variable
-  def taskDeps: Parser[Seq[DependencySpec]] = opt(">" ~ rep(space) ~> repsep(taskDep, space)) ^^ {
+  def taskTarget: Parser[String] = name
+  def taskDeps: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     case Some(deps) => deps
     case None => List.empty
   }
-  // TODO: Inputs without =
-  def taskDep: Parser[DependencySpec] = variable ~ "=" ~ value ^^ {
-    case strVar ~ x ~ strVal => new DependencySpec(strVar, Some(strVal))
-  }
-  def taskParams: Parser[Seq[ParamSpec]] = opt(":" ~ rep(space) ~> repsep(taskParam, space)) ^^ {
+  def taskParams: Parser[Seq[Spec]] = opt(":" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     case Some(params) => params
     case None => List.empty
   }
-  // TODO: Params without =
-  def taskParam: Parser[ParamSpec] = variable ~ "=" ~ value ^^ {
-    case strVar ~ x ~ strVal => new ParamSpec(strVar, Some(strVal))
+  // TODO: Inputs without = (None assignments)
+  def assignment: Parser[Spec] = name ~ "=" ~ rvalue ^^ {
+    case strVar ~ e ~ value => new Spec(strVar, value)
+  }
+  // TODO: Rewrite using |
+  def rvalue: Parser[RValue] = opt("$" ~ name ~ "/") ~ value ^^ {
+    case None ~ strVal => new Literal(strVal)
+    case Some("$" ~ strTask ~ slash) ~ strVal => new Variable(strTask, strVal)
   }
 
   def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)
   def command: Parser[String] = rep1(space) ~> """[^\r\n]+""".r
 
-  def variable: Parser[String] = """[^\r\n: \t=]+""".r
+  def name: Parser[String] = """[^\[\]\r\n: \t=]+""".r
   def value: Parser[String] = """[^\r\n: \t]+""".r
 
-  def read(file: String): Seq[Task] = {
-    val result: ParseResult[Seq[Task]] = parseAll(tasks, Source.fromFile(file, "UTF-8").reader)
+  def read(file: String): WorkflowDefinition = {
+    val result: ParseResult[WorkflowDefinition] = parseAll(workflow, Source.fromFile(file, "UTF-8").reader)
     val pos = result.next.pos
     result match {
       case Success(res, _) => res
@@ -79,4 +86,3 @@ object MakelikeDSL extends RegexParsers {
     }
   }
 }
-
