@@ -41,7 +41,7 @@ object Shell {
     def handleOut(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
       println(line)
       stdout.print(line) // no flush like println
-      stderr.append('\n')
+      stdout.append('\n')
     }}
     def handleErr(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
       System.err.println(line)

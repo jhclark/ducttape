@@ -24,11 +24,24 @@ class Branch(val name: String) {
 
 object WorkflowBuilder {
 
-  // the resolved Spec is guaranteed to be a literal
+  case class ResolveMode;
+  case class InputMode extends ResolveMode;
+  case class ParamMode extends ResolveMode;
+  case class OutputMode extends ResolveMode;
+
+  // the resolved Spec is guaranteed to be a literal for params
+  private def resolveParam(taskDef: TaskDef,
+                             map: Map[String,TaskDef],
+                             spec: Spec)
+  : (LiteralSpec, TaskDef) = {
+    resolveVar(taskDef, map, spec, ParamMode()).asInstanceOf[(LiteralSpec,TaskDef)]
+  }
+
   private def resolveVar(taskDef: TaskDef,
                          map: Map[String,TaskDef],
-                         spec: Spec)
-  : (LiteralSpec, TaskDef) = {
+                         spec: Spec,
+                         mode: ResolveMode)
+  : (Spec, TaskDef) = {
 
     var curSpec: Spec = spec
     var src: TaskDef = taskDef
@@ -38,11 +51,26 @@ object WorkflowBuilder {
           val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
           return (litSpec, src)
         }
-        case Variable(srcTaskName, srcValue) => {
+        case Variable(srcTaskName, srcOutName) => {
           map.get(srcTaskName) match {
             case Some(srcDef: TaskDef) => {
+              // determine where to search when resolving this variable's parent spec
+              val specSet = mode match {
+                case InputMode() => srcDef.outputs
+                case ParamMode() => srcDef.params
+              }
+              // now search for the parent spec
+              specSet.find(outSpec => outSpec.name == srcOutName) match {
+                case Some(srcSpec) => curSpec = srcSpec
+                case None => {
+                  // TODO: Line # of srcDef & spec
+                  throw new FileFormatException(
+                    "Output %s at source task %s for input %s at task %s not found".format(
+                      srcOutName, srcTaskName, spec.name, taskDef.name))
+                }
+              }
+              // assign after we've gotten a chance to print error messages
               src = srcDef
-              // TODO: Lookup source variable name
             }
             case None => {
               // TODO: Line #
@@ -53,7 +81,10 @@ object WorkflowBuilder {
           }
         }
         case Unbound() => {
-          throw new RuntimeException("Unsupported so far")
+          mode match {
+            case InputMode() => return (curSpec, src)
+            case _ => throw new RuntimeException("Unsupported unbound variable: %s".format(curSpec.name))
+          }
         }
       }
     }
@@ -87,14 +118,14 @@ object WorkflowBuilder {
 
       val paramVals = new mutable.ListBuffer[(Spec,LiteralSpec,TaskDef)]
       for(paramSpec: Spec <-taskDef.params) {
-        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, paramSpec)
+        val (srcSpec, srcTaskDef) = resolveParam(taskDef, defMap, paramSpec)
         paramVals.append( (paramSpec, srcSpec, srcTaskDef) )
       }
 
       val inputVals = new mutable.ListBuffer[(Spec,Spec,TaskDef)]
       val myParents = new mutable.HashSet[TaskDef]
       for(inSpec: Spec <- taskDef.inputs) {
-        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, inSpec)
+        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, inSpec, InputMode())
         inputVals.append( (inSpec, srcSpec, srcTaskDef) )
         if(srcTaskDef != taskDef) {
             myParents += srcTaskDef

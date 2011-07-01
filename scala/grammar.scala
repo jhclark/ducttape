@@ -20,7 +20,8 @@ class TaskDef(val name: String,
   override def toString = name + " " + comments.toString + " " + inputs + " " + outputs + " " + commands
 }
 class TaskHeader(val name: String, val inputs: Seq[Spec], val outputs: Seq[Spec], val params: Seq[Spec]) {}
-class SpecT[+RValueT](val name: String, val rval: RValueT) {
+class SpecT[+RValueT](val name: String, val rval: RValueT /*, val file: File, val line: Int*/) {
+  //def fileline = file.getAbsolutePath + ":" + line
   override def toString = name + "=" + rval
 }
 
@@ -39,8 +40,6 @@ case class Variable(task: String, value: String) extends RValue {
 object MakelikeDSL extends RegexParsers {
   override val skipWhitespace = false
 
-  var lineNum = 0
-
   def eol = "\r\n" | "\n" | CharArrayReader.EofCh
   def space = """[ \t]+""".r
   // actually consumes previous EOL and leaves next for use with repsep
@@ -54,7 +53,7 @@ object MakelikeDSL extends RegexParsers {
   }
   def comments: Parser[Seq[String]] = repsep(comment, eol) <~ (eol?)
   def comment: Parser[String] =  """#[ \t]*""".r ~> commentContent <~ (emptyline*)
-  def commentContent: Parser[String] = """[^\r\n]+""".r
+  def commentContent: Parser[String] = """[^\r\n]*""".r
 
   // deps CANNOT be separated by a newline or else we don't know where commands begin
   def taskHeader: Parser[TaskHeader]
@@ -66,11 +65,12 @@ object MakelikeDSL extends RegexParsers {
     case Some(list) => list
     case None => List.empty
   }
+  // TODO: Disallow variables here
   def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     case Some(list) => list
     case None => List.empty
   }
-  def taskParams: Parser[Seq[Spec]] = opt(":" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+  def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     case Some(params) => params
     case None => List.empty
   }
@@ -89,7 +89,7 @@ object MakelikeDSL extends RegexParsers {
   def command: Parser[String] = rep1(space) ~> """[^\r\n]+""".r
 
   // bash doesn't allow . in environment variables
-  def name: Parser[String] = """[^\[\]\r\n:. \t=]+""".r
+  def name: Parser[String] = """[A-Za-z0-9_-]+""".r // [^\[\]\r\n:. \t=<>]
   def value: Parser[String] = """[^\r\n: \t]+""".r
 
   // TODO: Show what element (or element tree?) we were expecting when we failed
