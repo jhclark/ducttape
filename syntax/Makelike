@@ -134,6 +134,8 @@ x=$CONFIG
 
 # TODO: User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
 
+# TODO: "Collaborative workflows"
+
 # Fixed:
 # Multiple inputs are never a problem since we change the command directly
 # Comments are propagated to the UI and documentation as long as they are directly above the step

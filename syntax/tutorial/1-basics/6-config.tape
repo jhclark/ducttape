@@ -10,10 +10,14 @@
 
 # You can specify inputs and parameters in a separate config file, like this:
 g1.step2.a = /etc/passwd
+
+#### TODO: Introduce these items after schedulers and meta-parameters are introduced...
 g1.step2.@vmem = 32g
-# Introduce a += operator just for this?
+
+# We use the += operator to add parameter sets
 g1.step2 += @@big
 
+#### TODO: Introduce this material after we introduce hyperworkflows
 # TODO: Syntax for adding parameter sweeps from config file
 
 # QUESTION: Must override w/ absolute path?

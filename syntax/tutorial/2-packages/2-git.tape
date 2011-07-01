@@ -1,15 +1,16 @@
-# 6) Using package versioning
+# Using package versioning
 #
 # * During R&D, software often changes while a workflow is running
 # * To reproduce a workflow, you need to know what version of
 #   the software you ran
 # * in, out, and N are shown only to illustrate syntax
-[param-step] cmdutils < in=/etc/passwd > out :: N=5
-  ls | $cmdutils/humanize | tee $out
+[param-step] codeheap < in=/etc/passwd > out :: N=5
+  ls | $codeheap/??? | tee $out
 
 # TODO: Need to show some simple build
+# TODO: Remove reference to jhclark
 # * Build commands are only called when versioner indicates a new version
-[PACKAGE:cmdutils] @versioner=git @url=git://github.com/brendano/cmdutils.git
+[PACKAGE:codeheap] @versioner=git @url=/home/jhclark/
   # We don't actually need to do this for python code,
   # but for the sake of example...
   python -m compileall .
