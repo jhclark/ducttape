@@ -2,6 +2,7 @@
 set -eo pipefail
 scriptDir=$(dirname 0)
 
+mkdir -p $scriptDir/lib/
 cd $scriptDir/lib/
 scalatest=scalatest-1.6.1
 if [ ! -e $scalatest.jar ]; then
