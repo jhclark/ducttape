@@ -5,6 +5,7 @@
 # like the following to config files:
 ++plan Basics
   # 4 experiments/realizations: all combinations of small and medium
+  # The * operator indicates a cross-product
   (whichTM: small, medium) * (whichLM: small, medium)
   # 1 experiment/realization: just the large model
   (whichLM: large) * (whichLM: large)
