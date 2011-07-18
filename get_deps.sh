@@ -14,4 +14,11 @@ if [ ! -e $scalatest.jar ]; then
     cp $scalatest/$scalatest.jar .
     rm -rf $scalatest $tmp
 fi
-cd $scriptDir
+
+if [ ! -e scala-library.jar ]; then
+  scalaDir=$(dirname $(which scala))/../
+  echo >&2 "Scala found at $scalaDir"
+  jar=$scalaDir/lib/scala-library.jar
+  echo >&2 "Copying scala library from $jar for use in packaging"
+  cp $jar .
+fi
