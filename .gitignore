@@ -1,3 +1,10 @@
 *.pyc
 *~
 *.class
+.metadata/.lock
+.metadata/.plugins
+.settings
+.scala_dependencies
+bin
+lib
+ducttape.jar
