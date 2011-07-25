@@ -1,16 +1,18 @@
 package ducttape.scratch {
 
 	import scala.util.parsing.combinator.Parsers
-	import scala.util.parsing.combinator.RegexParsers
-	import scala.util.parsing.input.CharArrayReader
+import scala.util.parsing.combinator.RegexParsers
+import scala.util.parsing.input.CharArrayReader
+import scala.util.parsing.input.Positional
   
   
 	//class WorkflowDefinition;
 	
-	class CommentBlock(val comments: Seq[String]) {
+	class CommentBlock(val comments: Seq[String]) extends Positional {
 		override def toString = comments.mkString("\n")
-		
 	}
+	
+	
 	
 	class MyParser extends RegexParsers {
 
@@ -33,10 +35,9 @@ package ducttape.scratch {
 	  def emptyLines = emptyLine*
 	  
 	  /** Contiguous block of comments. */
-//	  def comments: Parser[CommentBlock] = rep1sep(comment, eol*) <~ (eol?) ^^ {
-	  def comments: Parser[CommentBlock] = rep1sep(comment, eol) ^^ {
+	  def comments: Parser[CommentBlock] = positioned(rep1sep(comment, eol) ^^ {
 	      case c => new CommentBlock(c)
-	    }
+	  	})
 		
 	  /** A single line of comment. */
 	  def comment: Parser[String] = 
@@ -62,7 +63,7 @@ package ducttape.scratch {
 # Comments
 
 
-blah blah - this line should cause a parse failure
+# blah blah - this line should cause a parse failure
 
 # Another comment
 """;
