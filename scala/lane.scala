@@ -5,21 +5,26 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import ducttape.syntax.AbstractSyntaxTree._
 
+object GrammarParser extends RegexParsers {
+  	override val skipWhitespace = false;
+}
+
 /**
  * Grammar for ducttape scripts
  * 
  * @author Jon Clark
  * @author Lane Schwartz
  */
-class Grammar extends RegexParsers {
+class Grammar {
 
+	import GrammarParser._
+  
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
 	//                             WHITE SPACE                             //
 	//                                                                     //
 	/////////////////////////////////////////////////////////////////////////
 
-	override val skipWhitespace = false;
 
 	/** End of line characters */
 	def eol: Parser[String] = literal("\r\n") | literal("\n") | literal(CharArrayReader.EofCh.toString);
@@ -175,6 +180,8 @@ class Grammar extends RegexParsers {
 
 object MyParseApp extends Grammar with Application {
 
+	import GrammarParser._
+	
 	val sampleComment = """# Welcome to make
 			# This is a sample
 
