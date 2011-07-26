@@ -2,24 +2,52 @@ package ducttape.syntax;
 
 import scala.util.parsing.input.Positional
 
+object AbstractSyntaxTree {
+/** Parent class of all types representing elements in an abstract syntax tree. */
+abstract class ASTType extends Positional {}
 
-class CommentBlock(val comments: Seq[String]) extends Positional {
-	override def toString = comments.mkString("\n")
+/** Block of comments. */
+class CommentBlock(val comments: Seq[String]) extends ASTType {
+	override def toString = comments.mkString("\n");
 }
 
-abstract class RValue;
+
+/**
+ * Abstract specification of a variable name and its right hand side.
+ */
+class AbstractSpec[+RValue] (val name: String, val rval: RValue) extends ASTType {
+  override def toString = name + "=" + rval;
+}
+
+type Spec = AbstractSpec[RValue]
+
+type LiteralSpec = AbstractSpec[Literal]
+
+
+/** Right hand side type in a variable declaration. */
+abstract class RValue extends ASTType;
+
+/** Unbound is the right hand side type in an underspecified variable declaration.
+ *  
+ *  Conceptually, Unbound can be thought of as the None case if one were to define Option[+RValue].  
+ */
 case class Unbound extends RValue {
-	override def toString = ""
-}
-case class Literal(value: String) extends RValue {
-	override def toString = value
-}
-case class Variable(task: String, value: String) extends RValue {
-	override def toString = "$" + task + "/" + value
+	override def toString = "";
 }
 
-class TaskHeader(val name: String) {
+/** Type of a literal string value right hand side in a variable declaration. */
+case class Literal(value: String) extends RValue {
+	override def toString = value;
+}
+
+/** Type of a variable reference right hand side in a variable declaration. */
+case class Variable(task: String, value: String) extends RValue {
+	override def toString = "$" + task + "/" + value;
+}
+
+class TaskHeader(val name: String) extends ASTType {
 	override def toString = name; 
 }
 
 
+}

@@ -3,7 +3,7 @@ package ducttape.syntax
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
-
+import ducttape.syntax.AbstractSyntaxTree._
 
 class Grammar extends RegexParsers {
 
@@ -16,23 +16,25 @@ class Grammar extends RegexParsers {
 	override val skipWhitespace = false;
 
 	/** End of line characters */
-	def eol = "\r\n" | "\n" | CharArrayReader.EofCh;
+	def eol: Parser[String] = literal("\r\n") | literal("\n") | literal(CharArrayReader.EofCh.toString);
 
 	/** Non-end of line white space characters */
-	def space = """[ \t]+""".r;
+	def space: Parser[String] = regex("""[ \t]+""".r);
 
 	/**
 	 * End of line, optionally followed by more whitespace, followed by another end of line. 
 	 * <p>
 	 * This second end of line is recognized, but not consumed.
 	 */
-	def emptyLine = ("\r\n" | "\n") ~ """[ \t]*""".r ~ guard(eol);
+	def emptyLine = (literal("\r\n") | literal("\n")) ~ regex("""[ \t]*""".r) ~ guard(eol);
 
 	/** Sequence of empty lines. */
 	def emptyLines = emptyLine*;
 
+	/** Non-white space sequence. */
+	def nonSpace: Parser[String] = regex("""[^\r\n \t]+""".r)
 
-
+	
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
 	//                              COMMENTS                               //
@@ -58,7 +60,7 @@ class Grammar extends RegexParsers {
 
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
-	//                                NAMES                                //
+	//                        NAMES & VALUES                               //
 	//                                                                     //
 	/////////////////////////////////////////////////////////////////////////
 
@@ -66,13 +68,39 @@ class Grammar extends RegexParsers {
 	 * "A word consisting solely of letters, numbers, and underscores,
 	 * and beginning with a letter or underscore." 
 	 * This definition for a name is taken directly from Bash.*/
-	def name: Parser[String] = """[A-Za-z_-][A-Za-z0-9_-]*""".r;
+	def name: Parser[String] = 
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n \t=]+""".r))~!failure("Illegal character in variable name") |
+			// Finally, if the name contains only legal characters, then parse it!
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r
 
 	/** Name of a task, enclosed in square brackets. */
-	def taskName: Parser[String] = "[" ~> name <~ "]";
+	def taskName = "[" ~> name <~ "]";
 
+	/** 
+	 * String sequence that does not contain prohibited characters 
+	 * (end-of-line characters, space, tab, colon)
+	 */
+	def value = 
+			// If we find a value followed immediately by a colon, bail out and don't backtrack
+			regex("""[^\r\n: \t]+""".r)<~guard(":".r)~!failure("Right hand side value contains prohibited character `:'") |
+			// Finally, if the name contains only legal characters, then parse it!
+			regex("""[^\r\n: \t]+""".r)
 
+	/** Right hand side of a variable declaration. */
+	def rvalue: Parser[RValue] = opt("$" ~! name ~! "/") ~! value ^^ {
+		case None ~ strVal => new Literal(strVal);
+		case Some("$" ~ strTask ~ slash) ~ strVal => new Variable(strTask, strVal);
+	}
 
+	/** Variable declaration */
+	def assignment: Parser[Spec] = name ~ opt("=" ~! rvalue) ^^ {
+		case strVar ~ Some(e ~ value) => new Spec(strVar, value)
+		case strVar ~ None => new Spec(strVar, Unbound())
+	} 
+	
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
 	//                                TASKS                                //
@@ -83,7 +111,21 @@ class Grammar extends RegexParsers {
 		case name => new TaskHeader(name)
 	}
 
+	def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+    	case Some(list) => list
+    	case None => List.empty
+	} 
+	
+	def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+		case Some(list) => list
+		case None => List.empty
+    }
 
+    def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+    	case Some(params) => params
+    	case None => List.empty
+	}
+    
 }
 
 
@@ -106,10 +148,13 @@ object MyParseApp extends Grammar with Application {
 	val sampleTaskName = """[myTask]""";
 	val taskNameResult: ParseResult[TaskHeader] = parseAll(taskHeader,sampleTaskName);
 
+	val sampleAssignment = """< foo=a"""
+	val assignmentResult: ParseResult[Seq[Spec]] = parseAll(taskInputs,sampleAssignment);
+	
 	val result = 
 			//commentResult;
-			taskNameResult;
-
+			//taskNameResult;
+			assignmentResult;
 
 	result match {
 		case Success(result,_) => println(result)
