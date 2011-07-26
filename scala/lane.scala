@@ -3,7 +3,6 @@ package ducttape.syntax
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
-import ducttape.syntax.AbstractSyntaxTree._
 
 object GrammarParser extends RegexParsers {
   	override val skipWhitespace = false;
@@ -18,7 +17,8 @@ object GrammarParser extends RegexParsers {
 class Grammar {
 
 	import GrammarParser._
-  
+	import ducttape.syntax.AbstractSyntaxTree._
+
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
 	//                             WHITE SPACE                             //
@@ -181,6 +181,7 @@ class Grammar {
 object MyParseApp extends Grammar with Application {
 
 	import GrammarParser._
+	import ducttape.syntax.AbstractSyntaxTree._
 	
 	val sampleComment = """# Welcome to make
 			# This is a sample
