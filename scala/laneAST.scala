@@ -3,6 +3,7 @@ package ducttape.syntax;
 import scala.util.parsing.input.Positional
 
 object AbstractSyntaxTree {
+  
 /** Parent class of all types representing elements in an abstract syntax tree. */
 abstract class ASTType extends Positional {}
 
@@ -45,9 +46,17 @@ case class Variable(task: String, value: String) extends RValue {
 	override def toString = "$" + task + "/" + value;
 }
 
-class TaskHeader(val name: String) extends ASTType {
-	override def toString = name; 
+class TaskHeader(val name: String, val inputs: Seq[Spec], val outputs: Seq[Spec], val params: Seq[Spec]) extends ASTType {
+	override def toString = name + " " + " " + inputs + " " + outputs + " " + params;
 }
 
+class TaskDef(val name: String,
+              val comments: CommentBlock,
+              val inputs: Seq[Spec],
+              val outputs: Seq[Spec],
+              val params: Seq[Spec],
+              val commands: Seq[String]) {
+  override def toString = comments.toString + "\n" + name + " " + inputs + " " + outputs + " " + commands
+}
 
 }
