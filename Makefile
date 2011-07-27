@@ -8,6 +8,8 @@ compile: | lib/scalatest-1.6.1.jar bin
 
 all: jar doc
 
+clean:
+	rm -rf bin doc ducttape.jar
 
 doc scaladoc:
 	scaladoc -d scaladoc -cp lib/scalatest-1.6.1.jar scala/*.scala
