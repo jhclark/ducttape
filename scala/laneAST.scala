@@ -56,7 +56,13 @@ class TaskDef(val name: String,
               val outputs: Seq[Spec],
               val params: Seq[Spec],
               val commands: Seq[String]) {
-  override def toString = name + " " + comments.toString + " " + inputs + " " + outputs + " " + commands
+  override def toString = 
+      "Task name: " + name + 
+    "\n comments: " + comments.toString + 
+    "\n   inputs: " + inputs + 
+    "\n  outputs: " + outputs + 
+    "\n   params: " + params + 
+    "\n commands: " + commands
 }
 
 }
