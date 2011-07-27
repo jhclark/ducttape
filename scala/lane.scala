@@ -4,9 +4,59 @@ import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 
+class FileFormatException(msg: String) extends Exception(msg) {}
+
 object GrammarParser extends RegexParsers {
-  	override val skipWhitespace = false;
-  		
+  
+	import ducttape.syntax.AbstractSyntaxTree._
+	import ducttape.syntax.Grammar._
+	import java.io.ByteArrayInputStream
+	import java.io.CharArrayReader
+	import java.io.File
+	import java.io.InputStream
+	import java.io.InputStreamReader
+	import java.io.Reader
+	import java.io.StringReader
+	import java.net.URI
+	import java.net.URL
+	import scala.io.BufferedSource
+	import scala.io.Source
+	
+	override val skipWhitespace = false;
+//
+//  	private def read(input: Reader): WorkflowDefinition = {
+//  		val result: ParseResult[WorkflowDefinition] = parseAll(workflow, input)
+//  		val pos = result.next.pos
+//  		result match {
+//  			case Success(res, _) => res
+//  			case Failure(msg, _) =>
+//  				throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+//  			case Error(msg, _) =>
+//  				throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+//  		}
+//  	}
+//
+  	def read(input: Any, encoding:String): ParseResult[WorkflowDefinition] = {
+  	  val reader:Reader = (input match {
+  	
+  	    case bytes:Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding);
+  	    case chars:Array[Char]    => new CharArrayReader(chars);
+  	    case c:Char               => new StringReader(""+c);
+  	  	case file:File            => Source.fromFile(file, encoding).reader;
+  	  	case inStream:InputStream => Source.fromInputStream(inStream,encoding).reader;
+  	  	//case it:Iterable[Char]    => Source.fromIterable(it);
+  	  	case string:String        => new StringReader(string);
+  	  	case uri:URI              => Source.fromFile(uri,encoding).reader;
+  	  	case url:URL              => Source.fromURL(url,encoding).reader;
+  	  	case any:AnyRef           => throw new RuntimeException("I don't know how to parse objects of type " + any.getClass())
+  	  	case _                    => throw new RuntimeException("I don't know how to parse objects of that type")
+  	  })
+  	  
+  	  
+  	  return parseAll(workflow, reader)
+  	}
+  	
+  	def read(input: Any): ParseResult[WorkflowDefinition] = read(input, "UTF-8")
 }
 
 /**
@@ -15,7 +65,7 @@ object GrammarParser extends RegexParsers {
  * @author Jon Clark
  * @author Lane Schwartz
  */
-class Grammar {
+object Grammar {
 
 	import GrammarParser._
 	import ducttape.syntax.AbstractSyntaxTree._
@@ -256,10 +306,11 @@ class Grammar {
 
 
 
-object MyParseApp extends Grammar with Application {
+object MyParseApp extends Application {
 
-	import GrammarParser._
 	import ducttape.syntax.AbstractSyntaxTree._
+	import ducttape.syntax.Grammar._
+	import ducttape.syntax.GrammarParser._
 	
 	val sampleComment = """# Welcome to make
 			# This is a sample
@@ -332,7 +383,7 @@ object MyParseApp extends Grammar with Application {
 	val workflowResult: ParseResult[WorkflowDefinition] = parseAll(workflow,sampleWorkflow)
 
 	
-	val result = 
+	val result: ParseResult[Any] = 
 			//commentResult;
 			//taskNameResult;
 			//assignmentResult;
@@ -344,7 +395,7 @@ object MyParseApp extends Grammar with Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-	  		workflowResult
+	  		GrammarParser.read(sampleWorkflow)
 
 	result match {
 		case Success(result,_) => println(result)
