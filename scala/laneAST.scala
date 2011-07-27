@@ -9,7 +9,7 @@ abstract class ASTType extends Positional {}
 
 /** Block of comments. */
 class CommentBlock(val comments: Seq[String]) extends ASTType {
-	override def toString = comments.mkString("\n");
+	override def toString = comments.toString//comments.mkString("\n");
 }
 
 
@@ -56,7 +56,7 @@ class TaskDef(val name: String,
               val outputs: Seq[Spec],
               val params: Seq[Spec],
               val commands: Seq[String]) {
-  override def toString = comments.toString + "\n" + name + " " + inputs + " " + outputs + " " + commands
+  override def toString = name + " " + comments.toString + " " + inputs + " " + outputs + " " + commands
 }
 
 }
