@@ -6,6 +6,7 @@ import scala.util.parsing.input.CharArrayReader
 
 object GrammarParser extends RegexParsers {
   	override val skipWhitespace = false;
+  		
 }
 
 /**
@@ -170,7 +171,7 @@ class Grammar {
 	/** Branch declaration */
 	def branch: Parser[Branch] = 
 				(((literal("(") ~ (space*)) ~> branchName <~ literal(":")) ~  
-				(rep(space) ~> repsep(assignment, space)) <~ (space ~ literal(")"))) ^^ {
+				(rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
 		case strVar ~ seq => new Branch(strVar,seq)
 	}
 
@@ -247,6 +248,10 @@ class Grammar {
     	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds)
     }
     
+    /** Complete declaration of a hyperworkflow of tasks. */
+    def workflow: Parser[WorkflowDefinition] = repsep(taskBlock,eol) ^^ {
+    	case w => new WorkflowDefinition(w)
+    }
 }
 
 
@@ -310,6 +315,23 @@ object MyParseApp extends Grammar with Application {
 """;
 	val taskBlockResult: ParseResult[TaskDef] = parseAll(taskBlock,sampleTaskBlock)
 	
+	val sampleWorkflow = 
+"""
+
+# Hello
+
+# Welcome
+[myTask] < input i=( whichSize: smaller=smaller.txt bigger=big.txt ) > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
+    cat < $input > $output
+
+
+# More good stuff
+[another] > output
+	echo "Hello World" > $output
+""";
+	val workflowResult: ParseResult[WorkflowDefinition] = parseAll(workflow,sampleWorkflow)
+
+	
 	val result = 
 			//commentResult;
 			//taskNameResult;
@@ -321,7 +343,8 @@ object MyParseApp extends Grammar with Application {
 	  		//commandResult;
 			//commandsResult;
 	  		//branchResult;
-	  		taskBlockResult;
+	  		//taskBlockResult;
+	  		workflowResult
 
 	result match {
 		case Success(result,_) => println(result)

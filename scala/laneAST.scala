@@ -7,6 +7,11 @@ object AbstractSyntaxTree {
 /** Parent class of all types representing elements in an abstract syntax tree. */
 abstract class ASTType extends Positional {}
 
+/** Ducttape hyperworkflow file. */
+class WorkflowDefinition(val tasks: Seq[TaskDef]) extends ASTType {
+	override def toString = tasks.mkString("\n\n")
+}
+
 /** Block of comments. */
 class CommentBlock(val comments: Seq[String]) extends ASTType {
 	override def toString = comments.toString//comments.mkString("\n");
