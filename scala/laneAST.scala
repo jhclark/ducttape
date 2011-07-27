@@ -46,6 +46,11 @@ case class Variable(task: String, value: String) extends RValue {
 	override def toString = "${" + task + "}/" + value;
 }
 
+/** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
+case class Branch(val name: String, val specs: Seq[Spec]) extends RValue {
+	override def toString = name + " " + specs.toString
+}
+
 class TaskHeader(val name: String, val inputs: Seq[Spec], val outputs: Seq[Spec], val params: Seq[Spec]) extends ASTType {
 	override def toString = name + " " + " " + inputs + " " + outputs + " " + params;
 }

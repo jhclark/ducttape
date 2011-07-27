@@ -88,6 +88,19 @@ class Grammar {
 			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n= \t]+""".r))~!failure("Illegal character in variable name declaration") |
 			// Finally, if the name contains only legal characters, then parse it!
 			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")
+
+	/** Name of a branch.
+	 *  <p>
+	 *  The name must conform to Bash variable name requirements: 
+	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+	 */
+	def branchName: Parser[String] = 
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of branch name") |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n: \t]+""".r))~!failure("Illegal character in branch name declaration") |
+			// Finally, if the name contains only legal characters, then parse it!
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")			
 			
 	/** Name of a task, enclosed in square brackets. 
 	 *  <p>
@@ -153,11 +166,19 @@ class Grammar {
 			regex("""[^\r\n$ \t]+""".r)) ^^ {
 	  case strValue:String => new Literal(strValue) 
 	}
+	
+	/** Branch declaration */
+	def branch: Parser[Branch] = 
+				(((literal("(") ~ (space*)) ~> branchName <~ literal(":")) ~  
+				(rep(space) ~> repsep(assignment, space)) <~ (space ~ literal(")"))) ^^ {
+		case strVar ~ seq => new Branch(strVar,seq)
+	}
 
 	/** Right hand side of a variable declaration. */
-	def rvalue: Parser[RValue] = (variableRef | rvalueLiteral) ^^ {
-		case lit:Literal => lit;
-		case varRef:Variable => varRef;
+	def rvalue: Parser[RValue] = (variableRef | branch | rvalueLiteral) ^^ {
+		  case varRef:Variable => varRef;
+		  case branch:Branch => branch;
+		  case lit:Literal => lit;
 	}
 
 	/** Variable declaration */
@@ -165,6 +186,7 @@ class Grammar {
 		case strVar ~ Some(e ~ value) => new Spec(strVar, value)
 		case strVar ~ None => new Spec(strVar, Unbound())
 	} 
+
 	
 	/////////////////////////////////////////////////////////////////////////
 	//                                                                     //
@@ -172,21 +194,36 @@ class Grammar {
 	//                                                                     //
 	/////////////////////////////////////////////////////////////////////////	  
 
+	/** Task header line, consisting of 
+	 * <code>taskName</code>, <code>taskInputs</code>, <code>taskOutputs</code>, and <code>taskParams</code>. 
+	 */
 	def taskHeader: Parser[TaskHeader]
 			= taskName ~ (space*) ~ taskInputs ~ (space*) ~ taskOutputs ~ (space*) ~ taskParams <~ eol ^^ {
 		case name ~ sp1 ~ targets ~ sp2 ~ deps ~ sp3 ~ params => new TaskHeader(name, targets, deps, params)
     }
 
+	/**
+	 * Sequence of <code>assignment</code>s representing input files.
+	 * This sequence must be preceded by "<".
+	 */
 	def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     	case Some(list) => list
     	case None => List.empty
 	} 
-	
+
+	/**
+	 * Sequence of <code>assignment</code>s representing input files.
+	 * This sequence must be preceded by ">".
+	 */
 	def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment, space)) ^^ {
 		case Some(list) => list
 		case None => List.empty
     }
 
+	/**
+	 * Sequence of <code>assignment</code>s representing input files.
+	 * This sequence must be preceded by "::".
+	 */	
     def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment, space)) ^^ {
     	case Some(params) => params
     	case None => List.empty
@@ -259,13 +296,16 @@ object MyParseApp extends Grammar with Application {
 """;
 	val commandsResult: ParseResult[Seq[String]] = parseAll(commands,sampleCommands)
 	
+	val sampleBranch = """( whichSize: smaller=smaller.txt bigger=big.txt )"""
+	val branchResult: ParseResult[Branch] = parseAll(branch,sampleBranch)
+	
 	val sampleTaskBlock = 
 """
 
 # Hello
 
 # Welcome
-[myTask] < input > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
+[myTask] < input i=( whichSize: smaller=smaller.txt bigger=big.txt ) > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
     cat < $input > $output
 """;
 	val taskBlockResult: ParseResult[TaskDef] = parseAll(taskBlock,sampleTaskBlock)
@@ -280,6 +320,7 @@ object MyParseApp extends Grammar with Application {
 			//headerResult;
 	  		//commandResult;
 			//commandsResult;
+	  		//branchResult;
 	  		taskBlockResult;
 
 	result match {
