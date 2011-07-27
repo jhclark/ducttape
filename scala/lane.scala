@@ -36,7 +36,7 @@ object GrammarParser extends RegexParsers {
 //  		}
 //  	}
 //
-  	def read(input: Any, encoding:String): ParseResult[WorkflowDefinition] = {
+  	def read(input: Any, encoding:String): WorkflowDefinition = {
   	  val reader:Reader = (input match {
   	
   	    case bytes:Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding);
@@ -53,10 +53,19 @@ object GrammarParser extends RegexParsers {
   	  })
   	  
   	  
-  	  return parseAll(workflow, reader)
+  	  val result:ParseResult[WorkflowDefinition] = parseAll(workflow, reader)
+  	  
+  	  val pos = result.next.pos
+  	  return result match {
+  	  	case Success(res, _) => res
+  	  	case Failure(msg, _) =>
+  	  		throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+  	  	case Error(msg, _) =>
+  	  		throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+  	  }
   	}
   	
-  	def read(input: Any): ParseResult[WorkflowDefinition] = read(input, "UTF-8")
+  	def read(input: Any): WorkflowDefinition = read(input, "UTF-8")
 }
 
 /**
@@ -383,7 +392,7 @@ object MyParseApp extends Application {
 	val workflowResult: ParseResult[WorkflowDefinition] = parseAll(workflow,sampleWorkflow)
 
 	
-	val result: ParseResult[Any] = 
+	val result: WorkflowDefinition = 
 			//commentResult;
 			//taskNameResult;
 			//assignmentResult;
@@ -397,12 +406,14 @@ object MyParseApp extends Application {
 	  		//taskBlockResult;
 	  		GrammarParser.read(sampleWorkflow)
 
-	result match {
-		case Success(result,_) => println(result)
-		case x => println(x)
-		//case Failure(error,inputReader) => println(error)
-	}
-
+	  println(result)
+	  		
+//	result match {
+//		case Success(result,_) => println(result)
+//		case x => println(x)
+//		//case Failure(error,inputReader) => println(error)
+//	}
+//
 }
 
 
