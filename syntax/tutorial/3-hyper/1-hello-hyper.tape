@@ -24,7 +24,7 @@
 # Because there is a task with more than one Branch, we say that
 # this workflow has more than one Realization (which can be thought of
 # as a single DAG derivation of this HyperDAG).
-[has-branches] in=(whichSize: smaller=small.txt, bigger=big.txt) > out
+[has_branches] < in=(whichSize: smaller=small.txt bigger=big.txt) > out
   cat < $in > $out
 
 
@@ -34,5 +34,5 @@
 # * This task will also result in two output directories:
 #   ./parent-has-branches/baseline/1/work
 #   ./parent-has-branches/bigger/1/work
-[parent-has-branches] in=$has-branches/out
+[parent_has_branches] < in=$has_branches/out
   wc -l $in
