@@ -91,7 +91,7 @@ x=$CONFIG
 # Any "unbound" inputs and any output can be used here
 # $SUB is a reserved variable indicating that the subworkflow be used
 # All branches from the subworkflow will be appended with this name to avoid conflicts
-[g3.sub] a > b
+[g3.sub] < a > b
   =Makelike.simple: b=$SUB.head-5/b
 
 
