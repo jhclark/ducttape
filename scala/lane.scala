@@ -75,29 +75,12 @@ class Grammar {
 	//                                                                     //
 	/////////////////////////////////////////////////////////////////////////
 
-	/** 
-	 * "A word consisting solely of letters, numbers, and underscores,
-	 * and beginning with a letter or underscore." 
-	 * This definition for a name is taken directly from Bash.*/
-	def name: Parser[String] = 
-			// If the name starts with an illegal character, bail out and don't backtrack
-			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
-			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
-			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(nonSpace)~!failure("Illegal character in variable name") |
-			// Finally, if the name contains only legal characters, then parse it!
-			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")
 
-	/** Name of a task, enclosed in square brackets. */
-	def taskName: Parser[String] = "[" ~> (
-			// If the name starts with an illegal character, bail out and don't backtrack
-			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
-			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
-			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n\] \t]+""".r))~!failure("Illegal character in task name") |
-			// Finally, if the name contains only legal characters, then parse it!
-			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")
-			) <~ "]"
-			
-	/** Name of a variable, possibly followed by an equals sign. */
+	/** Name of a variable, possibly followed by an equals sign.
+	 *  <p>
+	 *  The name must conform to Bash variable name requirements: 
+	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+	 */
 	def variableName: Parser[String] = 
 			// If the name starts with an illegal character, bail out and don't backtrack
 			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
@@ -105,22 +88,76 @@ class Grammar {
 			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n= \t]+""".r))~!failure("Illegal character in variable name declaration") |
 			// Finally, if the name contains only legal characters, then parse it!
 			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")
-						
 			
-	/** 
-	 * String sequence that does not contain prohibited characters 
-	 * (end-of-line characters, space, tab, colon)
+	/** Name of a task, enclosed in square brackets. 
+	 *  <p>
+	 *  The name must conform to Bash variable name requirements: 
+	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
 	 */
-	def value = 
-			// If we find a value followed immediately by a colon, bail out and don't backtrack
-			regex("""[^\r\n: \t]+""".r)<~guard(":".r)~!failure("Right hand side value contains prohibited character `:'") |
+	def taskName: Parser[String] = "[" ~> (
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of task name") |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n\] \t]+""".r))~!failure("Illegal character in task name") |
 			// Finally, if the name contains only legal characters, then parse it!
-			regex("""[^\r\n: \t]+""".r)
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r// | failure("")
+			) <~ "]"
+			
+	/** A task name, preceded by a dollar sign and followed by a slash.
+	 *  The task name (but not the dollar sign or slash) may be optionally enclosed in curly brackets.
+	 *  <p>
+	 *  The name must conform to Bash variable name requirements: 
+	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+	 */
+	def taskRef: Parser[String] = 
+	  literal("$") ~> (
+			( literal("{") ~> (
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~(success()~!failure("Illegal character at start of task name")) |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n} \t]+""".r))~!failure("Illegal character in task name") |
+			// Finally, if the name contains only legal characters, then parse it!
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r)<~literal("}")) |
+			(
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~(success()~!failure("Illegal character at start of task name")) |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n/ \t]+""".r))~!failure("Illegal character in task name") |
+			// Finally, if the name contains only legal characters, then parse it!
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r))
+			
+			
+	
+	/** A <code>taskRef</code>, followed by a variable name.
+	 *  <p>
+	 *  The name must conform to Bash variable name requirements: 
+	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+	 */
+	def variableRef: Parser[Variable] = taskRef~literal("/")~(
+			// If the name starts with an illegal character, bail out and don't backtrack
+			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
+			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n \t]+""".r))~!failure("Illegal character in variable name") |
+			// Finally, if the name contains only legal characters, then parse it!
+			"""[A-Za-z_-][A-Za-z0-9_-]*""".r)^^ {
+		case taskRefString~slash~nonSpaceString => new Variable(taskRefString,nonSpaceString)
+	}
+	  								
+	/** 
+	 * String sequence that does not begin with a dollar sign, and ends at the first whitespace character.
+	 */
+	def rvalueLiteral: Parser[Literal] = (
+			// If we find a value followed immediately by a colon, bail out and don't backtrack
+			regex("""[^\r\n$ \t]+""".r)<~guard(":".r)~!failure("Right hand side value contains prohibited character `:'") |
+			// Finally, if the name contains only legal characters, then parse it!
+			regex("""[^\r\n$ \t]+""".r)) ^^ {
+	  case strValue:String => new Literal(strValue) 
+	}
 
 	/** Right hand side of a variable declaration. */
-	def rvalue: Parser[RValue] = (opt("$"~!name~!"/")) ~! value ^^ {
-		case None ~ strVal => new Literal(strVal);
-		case Some("$" ~ strTask ~ slash) ~ strVal => new Variable(strTask, strVal);
+	def rvalue: Parser[RValue] = (variableRef | rvalueLiteral) ^^ {
+		case lit:Literal => lit;
+		case varRef:Variable => varRef;
 	}
 
 	/** Variable declaration */
@@ -154,7 +191,6 @@ class Grammar {
     	case Some(params) => params
     	case None => List.empty
 	}
-    
     
     /** Shell command. */
     def command: Parser[String] =
@@ -229,7 +265,7 @@ object MyParseApp extends Grammar with Application {
 # Hello
 
 # Welcome
-[myTask] < input > output=/path/to/foo :: n=5
+[myTask] < input > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
     cat < $input > $output
 """;
 	val taskBlockResult: ParseResult[TaskDef] = parseAll(taskBlock,sampleTaskBlock)

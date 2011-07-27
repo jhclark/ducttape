@@ -38,12 +38,12 @@ case class Unbound extends RValue {
 
 /** Type of a literal string value right hand side in a variable declaration. */
 case class Literal(value: String) extends RValue {
-	override def toString = value;
+	override def toString = "'"+value+"'";
 }
 
 /** Type of a variable reference right hand side in a variable declaration. */
 case class Variable(task: String, value: String) extends RValue {
-	override def toString = "$" + task + "/" + value;
+	override def toString = "${" + task + "}/" + value;
 }
 
 class TaskHeader(val name: String, val inputs: Seq[Spec], val outputs: Seq[Spec], val params: Seq[Spec]) extends ASTType {
