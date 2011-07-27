@@ -1,6 +1,8 @@
-import ducttape.io._
+//import ducttape.io._
 import ducttape.hyperdag._
 import ducttape.Types._
+import ducttape.syntax.AbstractSyntaxTree._
+import ducttape.syntax.GrammarParser
 import ducttape.workflow._
 import ducttape.util._
 import System._
@@ -44,7 +46,7 @@ object Ducttape {
 
     var file = new File(args(0))
     println("Reading workflow from %s".format(file.getAbsolutePath))
-    val wd: WorkflowDefinition = MakelikeDSL.read(file)
+    val wd: WorkflowDefinition = GrammarParser.read(file)
     println("Building workflow...")
     val workflow: HyperWorkflow = WorkflowBuilder.build(wd)
     println("Workflow contains %d tasks".format(workflow.dag.size))

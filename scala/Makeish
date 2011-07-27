@@ -1,2 +1,0 @@
-[doit] a : b
-   head -n2 < a > b

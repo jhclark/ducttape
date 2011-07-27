@@ -2,7 +2,7 @@ package ducttape
 
 import collection._
 import ducttape.hyperdag._
-import ducttape.io._
+//import ducttape.io._
 import ducttape.workflow._
 
 object Types {
@@ -10,7 +10,7 @@ object Types {
 
   class HyperWorkflow(val dag: PackedDag[Task,Branch,Null]);
   type UnpackedWorkVert = UnpackedVertex[Task,Branch,Null]
-
-  type LiteralSpec = SpecT[Literal]
-  type Spec = SpecT[RValue]
+//
+//  type LiteralSpec = SpecT[Literal]
+//  type Spec = SpecT[RValue]
 }

@@ -3,7 +3,8 @@ package ducttape.workflow
 import collection._
 
 import ducttape.hyperdag._
-import ducttape.io._
+import ducttape.syntax.AbstractSyntaxTree._
+import ducttape.syntax.FileFormatException
 import ducttape.Types._
 
 class Task(val taskDef: TaskDef,
