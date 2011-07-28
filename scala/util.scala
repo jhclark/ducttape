@@ -14,6 +14,33 @@ object Files {
   def writer(file: File) = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
 }
 
+object IO {
+  import java.io.ByteArrayInputStream
+  import java.io.CharArrayReader
+  import java.io.File
+  import java.io.InputStream
+  import java.io.InputStreamReader
+  import java.io.Reader
+  import java.io.StringReader
+  import java.net.URI
+  import java.net.URL
+  import scala.io.BufferedSource
+  import scala.io.Source
+
+  def read(input: Any, encoding: String) = input match {
+    case bytes: Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding)
+    case chars: Array[Char]    => new CharArrayReader(chars)
+    case c: Char               => new StringReader(""+c)
+    case file: File            => Source.fromFile(file, encoding).reader
+    case inStream: InputStream => Source.fromInputStream(inStream,encoding).reader
+    case string: String        => new StringReader(string)
+    case uri: URI              => Source.fromFile(uri,encoding).reader
+    case url: URL              => Source.fromURL(url,encoding).reader
+    case any: AnyRef           => throw new RuntimeException("I don't know how to parse objects of type " + any.getClass())
+    case _                    => throw new RuntimeException("I don't know how to parse objects of that type")
+  }
+}
+
 object Shell {
   def run(cmds: Seq[String],
           workDir: File,

@@ -46,7 +46,7 @@ object Ducttape {
 
     var file = new File(args(0))
     println("Reading workflow from %s".format(file.getAbsolutePath))
-    val wd: WorkflowDefinition = GrammarParser.read(file)
+    val wd: WorkflowDefinition = GrammarParser.read(IO.read(file, "UTF-8"))
     println("Building workflow...")
     val workflow: HyperWorkflow = WorkflowBuilder.build(wd)
     println("Workflow contains %d tasks".format(workflow.dag.size))
