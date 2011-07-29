@@ -229,7 +229,7 @@ object Grammar {
 	
 	/** Branch declaration */
 	def branch: Parser[Branch] = 
-				(((literal("(") ~ (space*)) ~> branchName <~ literal(":")) ~  
+				(((literal("(") ~! ((space) | failure("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchName <~ literal(":")) ~  
 				(rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
 		case strVar ~ seq => new Branch(strVar,seq)
 	}
@@ -379,11 +379,13 @@ object MyParseApp extends Application {
 """
 
 # Hello
-
+# output=/path/to/foo v=$var/n w=${wow}/x :: n=5
 # Welcome
-[myTask] < input i=( whichSize: smaller=smaller.txt bigger=big.txt ) > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
+[myTask] < input i=(whichSize: smaller=smaller.txt bigger=big.txt ) > out 
     cat < $input > $output
 
+#[has_branches] < input i=( whichSize: smaller=small.txt bigger=big.txt) > out
+#  cat < $in > $out
 
 # More good stuff
 [another] > output
@@ -404,8 +406,9 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-	  		GrammarParser.read(sampleWorkflow)
-
+	  		GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
+			//GrammarParser.read(sampleWorkflow)
+	  
 	  println(result)
 	  		
 //	result match {
