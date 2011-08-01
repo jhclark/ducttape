@@ -8,7 +8,7 @@ import ducttape.workflow._
 object Types {
   class HashMultiMap[A,B] extends mutable.HashMap[A,mutable.Set[B]] with mutable.MultiMap[A,B];
 
-  class HyperWorkflow(val dag: PackedDag[Task,Branch,Null]);
+  class HyperWorkflow(val dag: MetaHyperDag[Task,BranchPoint,Branch,Null]);
   type UnpackedWorkVert = UnpackedVertex[Task,Branch,Null]
 //
 //  type LiteralSpec = SpecT[Literal]

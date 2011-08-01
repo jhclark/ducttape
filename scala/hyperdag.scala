@@ -4,7 +4,7 @@ import collection._
 
 import ducttape.viz._
 
-class HyperEdge[H,E](private[hyperdag] val id: Int, val h: H, val e: List[E]) {
+class HyperEdge[H,E](private[hyperdag] val id: Int, val h: H, val e: Seq[E]) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }
   override def toString = h.toString + " " + e.toString
@@ -31,11 +31,11 @@ class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
 }
 
 // immutable
-class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
-                       val vertices: List[PackedVertex[V]],
-                       private val inEdgesMap: Map[PackedVertex[V], Seq[HyperEdge[H,E]]],
-                       private val outEdgesMap: Map[PackedVertex[V], Seq[HyperEdge[H,E]]],
-                       private val edges: Map[HyperEdge[H,E], (List[PackedVertex[V]],PackedVertex[V])]) {
+class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
+                      val vertices: Seq[PackedVertex[V]],
+                      private[hyperdag] val inEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],
+                      private[hyperdag] val outEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],
+                      private[hyperdag] val edges: Map[HyperEdge[H,E], (Seq[PackedVertex[V]],PackedVertex[V])]) {
                        
   val size: Int = vertices.size
 
@@ -44,13 +44,13 @@ class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
   // TODO: Pass filters to dag walker
   def unpackedWalker()
     = new UnpackedDagWalker[V,H,E](this)
-  def inEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
+  def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
-  def outEdges(v: PackedVertex[V]): Seq[HyperEdge[H,E]]
+  def outEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = outEdgesMap.getOrElse(v, Seq.empty)
-  def parents(v: PackedVertex[V]): Seq[PackedVertex[V]]
+  def parents(v: PackedVertex[_]): Seq[PackedVertex[V]]
     = for(e <- inEdges(v); src <- sources(e)) yield src
-  def children(v: PackedVertex[V]): Seq[PackedVertex[V]]
+  def children(v: PackedVertex[_]): Seq[PackedVertex[V]]
     = for(e <- outEdges(v)) yield sink(e)
   def sources(e: HyperEdge[H,E]): Seq[PackedVertex[V]]
     = edges(e)._1
@@ -70,12 +70,12 @@ class PackedDag[V,H,E](val roots: List[PackedVertex[V]],
   }
 }
 
-class PackedDagBuilder[V,H,E] {
+class HyperDagBuilder[V,H,E] {
 
   private val vertices = new mutable.HashSet[PackedVertex[V]]
   private val inEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[HyperEdge[H,E]]]
   private val outEdges = new mutable.HashMap[PackedVertex[V],mutable.ListBuffer[HyperEdge[H,E]]]
-  private val edges = new mutable.HashMap[HyperEdge[H,E], (List[PackedVertex[V]],PackedVertex[V])]
+  private val edges = new mutable.HashMap[HyperEdge[H,E], (Seq[PackedVertex[V]],PackedVertex[V])]
   private var vertexId = 0
   private var edgeId = 0
 
@@ -88,7 +88,7 @@ class PackedDagBuilder[V,H,E] {
     pv
   }
 
-  def add(h: H, sourcePairs: List[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
+  def add(h: H, sourcePairs: Seq[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
     val sources = for(pair <- sourcePairs) yield pair._1
     val edgeLabels = for(pair <- sourcePairs) yield pair._2
 
@@ -108,6 +108,6 @@ class PackedDagBuilder[V,H,E] {
 
   def build() = {
     val roots = for(v <- vertices if !inEdges.contains(v)) yield v
-    new PackedDag[V,H,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
+    new HyperDag[V,H,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
   }
 }

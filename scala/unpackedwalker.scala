@@ -9,7 +9,7 @@ import ducttape.util._
 // the edge derivation (e.g. edges without a realization name)
 // the "edge derivation" == the realization
 // TODO: SPECIFY GOAL VERTICES
-class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
+class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
                                val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
                                val hedgeFilter: H => Boolean = Function.const[Boolean,H](true)_)
   extends Walker[UnpackedVertex[V,H,E]] {
@@ -117,7 +117,7 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
     for(consequentE <- dag.outEdges(key.v)) {
       val consequentV = dag.sink(consequentE)
       val activeCon = activeEdges.getOrElseUpdate(consequentE,
-                        new ActiveVertex(consequentV, Some(consequentE)))
+                                                  {new ActiveVertex(consequentV, Some(consequentE))} )
 
       val antecedents = dag.sources(consequentE)
       for(iEdge <- 0 until activeCon.filled.size) {
@@ -125,12 +125,15 @@ class UnpackedDagWalker[V,H,E](val dag: PackedDag[V,H,E],
         // as of this parent antecedent vertex
         if(item.packed == antecedents(iEdge)) {
           // before adding backpointer, take cross-product
-          // of unpackings possible when holding this realization fixed
+          // of unpackings possible when holding this realization fixed.
+          // if no complete unpacked vertex exists (i.e. the dependencies for
+          // any single realization are not satisfied), the below callback
+          // function will not be called during this invocation
           activeCon.unpack(iEdge, item.realization,
             (unpackedV: UnpackedVertex[V,H,E]) => {
               agenda.synchronized {
                 // TODO: This agenda membership test could be slow O(n)
-//                assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
+                //assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
                 agenda.offer(unpackedV)
                 // TODO: We could sort the agenda here to impose different objectives...
               }
