@@ -81,14 +81,14 @@ class HyperDagBuilder[V,H,E] {
 
   // before adding hyperparents we must already know the realizations?
   // this seems to defeat the purpose of the builder...
-  def add(v: V): PackedVertex[V] = {
+  def addVertex(v: V): PackedVertex[V] = {
     val pv = new PackedVertex[V](vertexId, v)
     vertices += pv
     vertexId += 1
     pv
   }
 
-  def add(h: H, sourcePairs: Seq[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
+  def addHyperEdge(h: H, sourcePairs: Seq[(PackedVertex[V],E)], sink: PackedVertex[V]): HyperEdge[H,E] = {
     val sources = for(pair <- sourcePairs) yield pair._1
     val edgeLabels = for(pair <- sourcePairs) yield pair._2
 

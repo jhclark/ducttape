@@ -96,18 +96,18 @@ object Grammar {
    )
   }
 
-  /** Name of a branch.
+  /** Name of a branch point.
    *  <p>
    *  The name must conform to Bash variable name requirements: 
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
    */
-  def branchName: Parser[String] = {
+  def branchPointName: Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( """[^A-Za-z_-]""".r<~failure("Illegal character at start of branch name")
+    ( """[^A-Za-z_-]""".r<~failure("Illegal character at start of branch point name")
 
      // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
      | """[A-Za-z_-][A-Za-z0-9_-]*""".r <~ guard(regex("""[^\r\n: \t]+""".r))
-     ~! failure("Illegal character in branch name declaration")
+     ~! failure("Illegal character in branch point name declaration")
     
      // Finally, if the name contains only legal characters, then parse it!
      | """[A-Za-z_-][A-Za-z0-9_-]*""".r // | failure("")
@@ -203,19 +203,19 @@ object Grammar {
       }
 	
     /** Branch declaration */
-    def branch: Parser[Branch] = {
-      (((literal("(") ~ (space*)) ~> branchName <~ literal(":")) ~  
+    def branchPoint: Parser[BranchPointDef] = {
+      (((literal("(") ~ (space*)) ~> branchPointName <~ literal(":")) ~  
        (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")")
         | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
-	 case strVar ~ seq => new Branch(strVar,seq)
+	 case strVar ~ seq => new BranchPointDef(strVar, seq)
        }
     }
 
     /** Right hand side of a variable declaration. */
-    def rvalue: Parser[RValue] = (variableRef | branch | rvalueLiteral) ^^ {
-      case varRef:Variable => varRef;
-      case branch:Branch => branch;
-      case lit:Literal => lit;
+    def rvalue: Parser[RValue] = (variableRef | branchPoint | rvalueLiteral) ^^ {
+      case varRef: Variable => varRef;
+      case branchPoint: BranchPointDef => branchPoint;
+      case lit: Literal => lit;
     }
 
     /** Variable declaration */
@@ -257,18 +257,19 @@ object Grammar {
      * This sequence must be preceded by "::".
      */	
     def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment, space)) ^^ {
-      case Some(params) => params
-      case None => List.empty
+        case Some(params) => params
+        case None => List.empty
       }
     
     /** Shell command. */
     def command: Parser[String] =
       // It would be nice to have operator that acted like <~ composed with ~! 
       // I use <~success()~! to get the result of non-back-tracking sequential composition
-      //   which only keeps the right result
-      (guard(nonSpace)<~success()~!failure("Command must be preceded by whitespace")) |
-    // If a command is preceded by whitespace, parse it!
-    (rep1(space) ~> """[^\r\n]+""".r)
+      // which only keeps the right result
+      ( guard(nonSpace) <~ success() ~! failure("Command must be preceded by whitespace")
+      // If a command is preceded by whitespace, parse it!
+      | (rep1(space) ~> """[^\r\n]+""".r)
+      )
     
     /** Sequence of commands, separated by end-of-line character(s). */
     def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)

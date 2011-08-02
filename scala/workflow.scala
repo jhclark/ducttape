@@ -7,20 +7,73 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
 import ducttape.Types._
 
-class Task(val taskDef: TaskDef,
-           val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
-           val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
+// short for "realized task"
+// we might shorten this to Task
+class RealTask(val taskT: TaskTemplate,
+               val activeBranches: Map[String,Branch], // TODO: Keep string branch point names?
+               val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
+               val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
+  def name = taskT.name
+  def comments = taskT.comments
+  def inputs = taskT.inputs
+  def outputs = taskT.outputs
+  def params = taskT.params
+  def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
+}
+
+// TODO: fix these insane types for inputVals and paramVals
+class TaskTemplate(val taskDef: TaskDef,
+           val branchPoints: Seq[BranchPoint],
+           val inputVals: Seq[(Spec,Map[Branch,(Spec,TaskDef)])], // (mySpec,srcSpec,srcTaskDef)
+           val paramVals: Seq[(Spec,Map[Branch,(LiteralSpec,TaskDef)])] ) { // (mySpec,srcSpec,srcTaskDef)
   def name = taskDef.name
   def comments = taskDef.comments
   def inputs = taskDef.inputs
   def outputs = taskDef.outputs
   def params = taskDef.params
   def commands = taskDef.commands
+
+  // realize this task by specifying one branch per branch point
+  // activeBranches should contain only the hyperedges encountered up until this vertex
+  // with the key being the branchPointNames
+  def realize(activeBranches: Map[String,Branch]): RealTask = {
+    // TODO: Assert all of our branch points are satisfied
+    // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
+
+    // resolve the source spec/task for the selected branch
+    def mapVals[T](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef)] = {
+      values.map{ case (mySpec, branchMap) => mySpec.rval match {
+        case BranchPointDef(branchPointName, _) => {
+          val activeBranch: Branch = activeBranches(branchPointName)
+          val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
+          (mySpec, srcSpec, srcTaskDef)
+        }
+        case _ => { // not a branch point
+          val(srcSpec: T, srcTaskDef) = branchMap.values.head
+          (mySpec, srcSpec, srcTaskDef)
+        }
+      }}
+    }
+
+    val realInputVals = mapVals(inputVals)
+    val realParamVals = mapVals(paramVals)
+
+    new RealTask(this, activeBranches, realInputVals, realParamVals)
+  }
   
   override def toString = name
 }
-class Branch(val name: String) {
-  override def toString = "Branch: " + name
+
+// TODO: Add Option[BranchPointDef] for line no info
+class BranchPoint(val name: String) {
+  override def toString = "BranchPoint: " + name
+}
+
+// TODO: Branch manager to remove bi-directional dependency?
+// TODO: Add Option[BranchPointDef] for line no info
+class Branch(val name: String,
+             val branchPoint: BranchPoint) {
+  override def toString = "Branch: " + name + " from " + branchPoint
 }
 
 object WorkflowBuilder {
@@ -81,6 +134,9 @@ object WorkflowBuilder {
             }
           }
         }
+        case BranchPointDef(name, specs: Seq[Spec]) => {
+          throw new RuntimeException("Expected branches to be resolved by now")
+        }
         case Unbound() => {
           mode match {
             case InputMode() => return (curSpec, src)
@@ -92,10 +148,12 @@ object WorkflowBuilder {
     throw new Error("Unreachable")
   }
 
-  // create dependency pointers based on workflow definition  
+  // create dependency pointers based on workflow definition
+  // TODO: This method has become morbidly obese -- break it out into several methods
   def build(wd: WorkflowDefinition): HyperWorkflow = {
 
-    val NO_BRANCH = new Branch("")
+    val NO_BRANCH_POINT = new BranchPoint("")
+    val NO_BRANCH = new Branch("", NO_BRANCH_POINT)
 
     val defMap = new mutable.HashMap[String,TaskDef]
     for(t <- wd.tasks) {
@@ -103,9 +161,11 @@ object WorkflowBuilder {
     }
 
     // (task, parents)
-    val parents = new mutable.HashMap[Task, Seq[TaskDef]]
-    val vertices = new mutable.HashMap[String,PackedVertex[Task]]
-    val dag = new PackedDagBuilder[Task,Branch,Null]
+    val parents = new mutable.HashMap[TaskTemplate, Map[Branch,Set[TaskDef]]] // TODO: Multimap
+    val vertices = new mutable.HashMap[String,PackedVertex[TaskTemplate]]
+    val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Null](null,null,null)
+    val branchPoints = new mutable.ArrayBuffer[BranchPoint]
+    val branchPointsByTask = new mutable.HashMap[TaskDef,mutable.Set[BranchPoint]] // TODO: Multimap
 
     // first, create tasks, but don't link them in graph yet
     for(taskDef <- wd.tasks) {
@@ -113,44 +173,113 @@ object WorkflowBuilder {
       // TODO: Check for all inputs/outputs/param names being unique in this step
 
       if(vertices.contains(taskDef.name)) {
-          // TODO: Line #'s
+        // TODO: Line #'s
         throw new FileFormatException("Duplicate task name: %s".format(taskDef.name))
       }
 
-      val paramVals = new mutable.ListBuffer[(Spec,LiteralSpec,TaskDef)]
-      for(paramSpec: Spec <-taskDef.params) {
-        val (srcSpec, srcTaskDef) = resolveParam(taskDef, defMap, paramSpec)
-        paramVals.append( (paramSpec, srcSpec, srcTaskDef) )
-      }
+      // define branch resolution as a function that takes some callback functions
+      // since we use it for both parameter and input file resolution,
+      // but it behaves slightly different for each (parameters don't
+      // imply a temporal ordering between vertices)
+      def resolveBranchPoint[SpecT](inSpec: Spec,
+                        resolvedVars: mutable.ArrayBuffer[(Spec,Map[Branch,(SpecT,TaskDef)])],
+                        recordParentsFunc: (Branch,TaskDef) => Unit,
+                        resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, TaskDef) ) = {
+        inSpec.rval match {
+          case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
 
-      val inputVals = new mutable.ListBuffer[(Spec,Spec,TaskDef)]
-      val myParents = new mutable.HashSet[TaskDef]
-      for(inSpec: Spec <- taskDef.inputs) {
-        val (srcSpec, srcTaskDef) = resolveVar(taskDef, defMap, inSpec, InputMode())
-        inputVals.append( (inSpec, srcSpec, srcTaskDef) )
-        if(srcTaskDef != taskDef) {
-            myParents += srcTaskDef
+            // TODO: If a branch point is *REDECLARED* in a workflow
+            // assert that it has exactly the same branches in all locations
+            // else die
+            // This must be done for the paramSpecs above as well
+
+            val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
+            for(branchSpec <- branchSpecs) {
+              val branch = new Branch(branchSpec.name, branchPoint)
+              val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
+              branchMap.put(branch, (srcSpec, srcTaskDef) )
+              recordParentsFunc(branch, srcTaskDef)
+            }
+
+            // TODO: Rework this so that branch points can be associated with multiple tasks
+            val branchPoint = new BranchPoint(branchPointName)
+            branchPoints += branchPoint
+            branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += branchPoint
+            resolvedVars.append( (inSpec, branchMap) )
+          }
+          case _ => {
+            val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
+            resolvedVars.append( (inSpec, Map(NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
+
+            if(srcTaskDef != taskDef) {
+              parentsByBranch += NO_BRANCH -> mutable.Set(srcTaskDef)
+            }
+            branchPoints += NO_BRANCH_POINT
+            branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += NO_BRANCH_POINT
+          }
         }
       }
 
-      val task = new Task(taskDef, inputVals, paramVals)
-      parents += task -> myParents.toSeq
-      vertices += task.name -> dag.add(task)
+      // parameters are different than file dependencies in that they do not
+      // add any temporal dependencies between tasks and therefore do not
+      // add any edges in the MetaHyperDAG
+      val paramVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(LiteralSpec,TaskDef)])](taskDef.params.size)
+      for(paramSpec: Spec <-taskDef.params) {
+        def recordParentsFunc(branch: Branch, srcTaskDef: TaskDef) {
+          // do nothing -- params have no effect on temporal ordering
+        }
+        def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], paramSpec: Spec)
+          : (LiteralSpec, TaskDef) = {
+            resolveParam(taskDef, defMap, paramSpec)
+        }
+        resolveBranchPoint(paramSpec, paramVals, recordParentsFunc, resolveVarFunc)
+      }
+
+      val inputVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(Spec,TaskDef)])](taskDef.inputs.size)
+      // TODO: Roll own multimap since scala's is a bit awkward
+      val parentsByBranch = new mutable.HashMap[Branch,mutable.Set[TaskDef]]
+      for(inSpec: Spec <- taskDef.inputs) {
+        println("Resolving: " + inSpec)
+        def recordParentsFunc(branch: Branch, srcTaskDef: TaskDef) {
+          // make a note of what edges we'll need to add later
+          parentsByBranch.getOrElseUpdate(branch, {new mutable.HashSet[TaskDef]}) += srcTaskDef
+        }
+        def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], inSpec: Spec)
+          : (Spec, TaskDef) = {
+            resolveVar(taskDef, defMap, inSpec, InputMode())
+        }
+        resolveBranchPoint(inSpec, inputVals, recordParentsFunc, resolveVarFunc)
+      }
+
+      val task = new TaskTemplate(taskDef, branchPointsByTask(taskDef).toSeq, inputVals, paramVals)
+      parents += task -> parentsByBranch
+      vertices += task.name -> dag.addVertex(task)
     }
 
     println("Got %d vertices".format(vertices.size))
 
-    // now link the tasks in the graph
+    // now link the tasks in the graph by adding (meta/hyper) edges
     for(v <- vertices.values) {
-      val task = v.value
-      val edges = new mutable.ListBuffer[(PackedVertex[Task],Null)]
-      for(parentTaskDef: TaskDef <- parents(task)) {
-        val parentVert = vertices(parentTaskDef.name)
-        edges.append( (parentVert, null) )
-      }
+      val task: TaskTemplate = v.value
 
-      if(!edges.isEmpty) {
-        dag.add(NO_BRANCH, edges.toList, v)
+      // add one metaedge per branch point
+      for(branchPoint <- branchPointsByTask(task.taskDef)) {
+        // create a hyperedge list in the format expected by the HyperDAG API
+
+        val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(PackedVertex[TaskTemplate],Null)])]
+        for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
+          
+          val edges = new mutable.ArrayBuffer[(PackedVertex[TaskTemplate],Null)]
+          for(parentTaskDef <- parentTaskDefs) {
+            val parentVert = vertices(parentTaskDef.name)
+            edges.append( (parentVert, null) )
+          }
+          hyperedges.append( (branch, edges) )
+
+          if(!hyperedges.isEmpty) {
+            dag.addMetaEdge(branchPoint, hyperedges, v)
+          }
+        }
       }
     }
 
