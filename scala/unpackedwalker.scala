@@ -10,8 +10,8 @@ import ducttape.util._
 // the "edge derivation" == the realization
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
-                               val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
-                               val hedgeFilter: H => Boolean = Function.const[Boolean,H](true)_)
+        val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
+        val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_)
   extends Walker[UnpackedVertex[V,H,E]] {
     
   class ActiveVertex(val v: PackedVertex[V],
@@ -38,6 +38,7 @@ class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
       // hedgeFilter has already been applied
       if(i == filled.size) {
         if(selectionFilter(combo)) {
+          println("Callback with combo %s".format(combo.toString))
           callback(new UnpackedVertex[V,H,E](v, he,
                          combo.toList, parentReals.toList))
         }
@@ -47,6 +48,7 @@ class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
         for(parentRealization: Seq[H] <- filled(i)) {
+          println("Combo is now %s".format(combo.toString))
           combo ++= parentRealization
           parentReals(i) = parentRealization
           unpack(i+1, iFixed, combo, parentReals, callback)
@@ -63,7 +65,8 @@ class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
                callback: UnpackedVertex[V,H,E] => Unit) {
       
       val combo = new MultiSet[H]
-      if(!he.isEmpty)
+      // allow user to filter out certain hyperedges from the derivation
+      if(!he.isEmpty && hedgeFilter(he.get))
         combo += he.get.h
       val parentReals = new Array[Seq[H]](filled.size)
       parentReals(iFixed) = fixedRealization
@@ -89,6 +92,8 @@ class UnpackedDagWalker[V,H,E](val dag: HyperDag[V,H,E],
     agenda.offer(unpackedRoot)
     activeRoots += root -> actRoot
   }
+
+  println("UnpackedDagWalker: roots = %d; agenda = %d".format(dag.roots.size, agenda.size))
 
   override def take(): Option[UnpackedVertex[V,H,E]] = {
     if(agenda.size == 0 && taken.size == 0) {

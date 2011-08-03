@@ -7,13 +7,13 @@ import ducttape.viz._
 class HyperEdge[H,E](private[hyperdag] val id: Int, val h: H, val e: Seq[E]) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }
-  override def toString = h.toString + " " + e.toString
+  override def toString = (if(h == null) "ID=%d".format(id) else h.toString) + e.toString
 }
 
 class PackedVertex[V](private[hyperdag] val id: Int, val value: V) {
   override def hashCode = id
   override def equals(that: Any) = that match { case other: PackedVertex[_] => (other.id == this.id) }
-  override def toString = value.toString
+  override def toString = if(value == null) "ID=%d".format(id) else value.toString
 }
 
 // this interface explicitly avoids giving unpacked vertices as
@@ -99,6 +99,7 @@ class HyperDagBuilder[V,H,E] {
     edgeId += 1
 
     for(src <- sources) {
+      assert(src != sink)
       outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
     }
     inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
@@ -107,7 +108,10 @@ class HyperDagBuilder[V,H,E] {
   }
 
   def build() = {
+    println("HyperDagBuilder: vertices.size = %d; inEdges.size = %d; inEdges = %s".format(vertices.size, inEdges.size, inEdges.toString))
     val roots = for(v <- vertices if !inEdges.contains(v)) yield v
+    println("HyperDagBuilder: roots = %s".format(roots.toString))
+    assert(roots.size > 0 || vertices.size == 0, "No roots found for non-empty HyperDAG")
     new HyperDag[V,H,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
   }
 }

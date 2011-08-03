@@ -7,6 +7,19 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
 import ducttape.Types._
 
+object Task {
+  // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
+  def realizationName(real: Map[String,Branch]) = real.toSeq.sortBy(_._1).map(_._2.name).mkString("-")
+  //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
+  def branchesToMap(real: Seq[Branch]) = {
+    val result = new mutable.HashMap[String,Branch]
+    for(branch <- real) {
+      result += branch.branchPoint.name -> branch
+    }
+    result
+  }
+}
+
 // short for "realized task"
 // we might shorten this to Task
 class RealTask(val taskT: TaskTemplate,
@@ -14,6 +27,7 @@ class RealTask(val taskT: TaskTemplate,
                val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
                val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
   def name = taskT.name
+  def realizationName = Task.realizationName(activeBranches)
   def taskDef = taskT.taskDef
   def comments = taskT.comments
   def inputs = taskT.inputs
@@ -45,9 +59,13 @@ class TaskTemplate(val taskDef: TaskDef,
     // TODO: Assert all of our branch points are satisfied
     // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
 
-    val activeBranchMap = new mutable.HashMap[String,Branch]
-    for(branch <- activeBranches) {
-      activeBranchMap += branch.branchPoint.name -> branch
+    val activeBranchMap = Task.branchesToMap(activeBranches)
+
+    // do a bit of sanity checking
+    for(branchPoint <- branchPoints) {
+      assert(activeBranchMap.contains(branchPoint.name),
+             "Required branch point for this task '%s' not found in active branch points '%s'"
+             .format(branchPoint.name, activeBranchMap.keys.mkString("-")))
     }
 
     // resolve the source spec/task for the selected branch
@@ -74,14 +92,14 @@ class TaskTemplate(val taskDef: TaskDef,
 
 // TODO: Add Option[BranchPointDef] for line no info
 class BranchPoint(val name: String) {
-  override def toString = "BranchPoint: " + name
+  override def toString = name
 }
 
 // TODO: Branch manager to remove bi-directional dependency?
 // TODO: Add Option[BranchPointDef] for line no info
 class Branch(val name: String,
              val branchPoint: BranchPoint) {
-  override def toString = "Branch: " + name + " from " + branchPoint
+  override def toString = name + "@" + branchPoint
 }
 
 object WorkflowBuilder {
@@ -168,8 +186,10 @@ object WorkflowBuilder {
       defMap += t.name -> t
     }
 
-    // (task, parents)
-    val parents = new mutable.HashMap[TaskTemplate, Map[Branch,Set[TaskDef]]] // TODO: Multimap
+    // (task, parents) -- Option as None indicates that parent should be a phantom vertex
+    // so as not to affect temporal ordering nor appear when walking the DAG
+    // TODO: Fix this painful data structure into something more readable (use typedefs?)
+    val parents = new mutable.HashMap[TaskTemplate, Map[Branch,mutable.Set[Option[TaskDef]]]] // TODO: Multimap
     val vertices = new mutable.HashMap[String,PackedVertex[TaskTemplate]]
     val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Null](null,null,null)
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
@@ -191,7 +211,7 @@ object WorkflowBuilder {
       // imply a temporal ordering between vertices)
       def resolveBranchPoint[SpecT](inSpec: Spec,
                         resolvedVars: mutable.ArrayBuffer[(Spec,Map[Branch,(SpecT,TaskDef)])],
-                        recordParentsFunc: (Branch,TaskDef) => Unit,
+                        recordParentsFunc: (Branch,Option[TaskDef]) => Unit,
                         resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, TaskDef) ) = {
         inSpec.rval match {
           case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
@@ -205,9 +225,13 @@ object WorkflowBuilder {
             val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
             for(branchSpec <- branchSpecs) {
               val branch = new Branch(branchSpec.name, branchPoint)
-              val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
+              val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, branchSpec)
               branchMap.put(branch, (srcSpec, srcTaskDef) )
-              recordParentsFunc(branch, srcTaskDef)
+              if(srcTaskDef != taskDef) { // don't create cycles
+                recordParentsFunc(branch, Some(srcTaskDef))
+              } else {
+                recordParentsFunc(branch, None)
+              }
             }
 
             // TODO: Rework this so that branch points can be associated with multiple tasks
@@ -219,8 +243,10 @@ object WorkflowBuilder {
             val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
             resolvedVars.append( (inSpec, Map(NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
 
-            if(srcTaskDef != taskDef) {
-              recordParentsFunc(NO_BRANCH, srcTaskDef)
+            if(srcTaskDef != taskDef) { // don't create cycles
+              recordParentsFunc(NO_BRANCH, Some(srcTaskDef))
+            } else {
+              recordParentsFunc(NO_BRANCH, None)
             }
             branchPoints += NO_BRANCH_POINT
             branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += NO_BRANCH_POINT
@@ -228,13 +254,17 @@ object WorkflowBuilder {
         }
       }
 
+      val parentsByBranch = new mutable.HashMap[Branch,mutable.Set[Option[TaskDef]]]
+
       // parameters are different than file dependencies in that they do not
       // add any temporal dependencies between tasks and therefore do not
       // add any edges in the MetaHyperDAG
       val paramVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(LiteralSpec,TaskDef)])](taskDef.params.size)
       for(paramSpec: Spec <-taskDef.params) {
-        def recordParentsFunc(branch: Branch, srcTaskDef: TaskDef) {
-          // do nothing -- params have no effect on temporal ordering
+        def recordParentsFunc(branch: Branch, srcTaskDef: Option[TaskDef]) {
+          // params have no effect on temporal ordering, but can affect derivation of branches
+          // therefore, params are *always* rooted at phantom vertices, no matter what
+         parentsByBranch.getOrElseUpdate(branch, {new mutable.HashSet}) += None
         }
         def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], paramSpec: Spec)
           : (LiteralSpec, TaskDef) = {
@@ -245,12 +275,11 @@ object WorkflowBuilder {
 
       val inputVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(Spec,TaskDef)])](taskDef.inputs.size)
       // TODO: Roll own multimap since scala's is a bit awkward
-      val parentsByBranch = new mutable.HashMap[Branch,mutable.Set[TaskDef]]
       for(inSpec: Spec <- taskDef.inputs) {
-        println("Resolving: " + inSpec)
-        def recordParentsFunc(branch: Branch, srcTaskDef: TaskDef) {
+        println("Resolving Input File Spec: " + inSpec)
+        def recordParentsFunc(branch: Branch, srcTaskDef: Option[TaskDef]) {
           // make a note of what edges we'll need to add later
-          parentsByBranch.getOrElseUpdate(branch, {new mutable.HashSet[TaskDef]}) += srcTaskDef
+          parentsByBranch.getOrElseUpdate(branch, {new mutable.HashSet}) += srcTaskDef
         }
         def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], inSpec: Spec)
           : (Spec, TaskDef) = {
@@ -274,19 +303,25 @@ object WorkflowBuilder {
       for(branchPoint <- branchPointsByTask(task.taskDef)) {
         // create a hyperedge list in the format expected by the HyperDAG API
 
-        val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(PackedVertex[TaskTemplate],Null)])]
+        val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Null)])]
         for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
           
-          val edges = new mutable.ArrayBuffer[(PackedVertex[TaskTemplate],Null)]
-          for(parentTaskDef <- parentTaskDefs) {
-            val parentVert = vertices(parentTaskDef.name)
-            edges.append( (parentVert, null) )
+          val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Null)]
+          // parents are stored as Options so that we can use None to indicate phantom parent vertices
+          for( parentTaskDefOpt <- parentTaskDefs) parentTaskDefOpt match {
+            case Some(parentTaskDef) => {
+              val parentVert = vertices(parentTaskDef.name)
+              edges.append( (Some(parentVert), null) )
+            }
+            case None => {
+              edges.append( (None, null) )
+            }
           }
           hyperedges.append( (branch, edges) )
-
-          if(!hyperedges.isEmpty) {
-            dag.addMetaEdge(branchPoint, hyperedges, v)
-          }
+        }
+        if(!hyperedges.isEmpty) {
+          // NOTE: The meta edges are not necessarily phantom, but just have that option
+          dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
         }
       }
     }
