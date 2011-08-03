@@ -54,7 +54,9 @@ object Ducttape {
     val baseDir = file.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
     for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
-      val task = v.packed.value
+      val taskT: TaskTemplate  = v.packed.value
+      val task: RealTask = taskT.realize(v.realization)
+      println("TASK:" + task)
 
       val where = dirs.assignDir(task.taskDef)
       val stdoutFile = new File(where, "stdout.txt")

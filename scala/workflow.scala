@@ -14,11 +14,14 @@ class RealTask(val taskT: TaskTemplate,
                val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
                val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
   def name = taskT.name
+  def taskDef = taskT.taskDef
   def comments = taskT.comments
   def inputs = taskT.inputs
   def outputs = taskT.outputs
   def params = taskT.params
   def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
+
+  override def toString = name + "/" + activeBranches.values.mkString("-")
 }
 
 // TODO: fix these insane types for inputVals and paramVals
@@ -33,18 +36,25 @@ class TaskTemplate(val taskDef: TaskDef,
   def params = taskDef.params
   def commands = taskDef.commands
 
+  override def toString = name
+
   // realize this task by specifying one branch per branch point
   // activeBranches should contain only the hyperedges encountered up until this vertex
   // with the key being the branchPointNames
-  def realize(activeBranches: Map[String,Branch]): RealTask = {
+  def realize(activeBranches: Seq[Branch]): RealTask = {
     // TODO: Assert all of our branch points are satisfied
     // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
+
+    val activeBranchMap = new mutable.HashMap[String,Branch]
+    for(branch <- activeBranches) {
+      activeBranchMap += branch.branchPoint.name -> branch
+    }
 
     // resolve the source spec/task for the selected branch
     def mapVals[T](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef)] = {
       values.map{ case (mySpec, branchMap) => mySpec.rval match {
         case BranchPointDef(branchPointName, _) => {
-          val activeBranch: Branch = activeBranches(branchPointName)
+          val activeBranch: Branch = activeBranchMap(branchPointName)
           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
           (mySpec, srcSpec, srcTaskDef)
         }
@@ -58,10 +68,8 @@ class TaskTemplate(val taskDef: TaskDef,
     val realInputVals = mapVals(inputVals)
     val realParamVals = mapVals(paramVals)
 
-    new RealTask(this, activeBranches, realInputVals, realParamVals)
+    new RealTask(this, activeBranchMap, realInputVals, realParamVals)
   }
-  
-  override def toString = name
 }
 
 // TODO: Add Option[BranchPointDef] for line no info
@@ -193,6 +201,7 @@ object WorkflowBuilder {
             // else die
             // This must be done for the paramSpecs above as well
 
+            val branchPoint = new BranchPoint(branchPointName)
             val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
             for(branchSpec <- branchSpecs) {
               val branch = new Branch(branchSpec.name, branchPoint)
@@ -202,7 +211,6 @@ object WorkflowBuilder {
             }
 
             // TODO: Rework this so that branch points can be associated with multiple tasks
-            val branchPoint = new BranchPoint(branchPointName)
             branchPoints += branchPoint
             branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += branchPoint
             resolvedVars.append( (inSpec, branchMap) )
@@ -212,7 +220,7 @@ object WorkflowBuilder {
             resolvedVars.append( (inSpec, Map(NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
 
             if(srcTaskDef != taskDef) {
-              parentsByBranch += NO_BRANCH -> mutable.Set(srcTaskDef)
+              recordParentsFunc(NO_BRANCH, srcTaskDef)
             }
             branchPoints += NO_BRANCH_POINT
             branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += NO_BRANCH_POINT

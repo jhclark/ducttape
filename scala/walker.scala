@@ -5,7 +5,7 @@ package ducttape.hyperdag
  *  pattern to accomplish parallel traversal by calling take/complete.
  *  Implementations must be threadsafe and might take the form of an
  *  agenda-based traversal algorithm. */
-trait Walker[+A] extends Iterable[A] {
+trait Walker[A] extends Iterable[A] {
   private val self = this
 
   /** Get the next traversable item. Returns None when there are no more elements */
