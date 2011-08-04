@@ -23,19 +23,7 @@ object GrammarParser extends RegexParsers {
 	import scala.io.Source
 	
 	override val skipWhitespace = false;
-//
-//  	private def read(input: Reader): WorkflowDefinition = {
-//  		val result: ParseResult[WorkflowDefinition] = parseAll(workflow, input)
-//  		val pos = result.next.pos
-//  		result match {
-//  			case Success(res, _) => res
-//  			case Failure(msg, _) =>
-//  				throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
-//  			case Error(msg, _) =>
-//  				throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
-//  		}
-//  	}
-//
+
   	def read(input: Any, encoding:String): WorkflowDefinition = {
   	  val reader:Reader = (input match {
   	
@@ -87,7 +75,7 @@ object Grammar {
 
 
 	/** End of line characters */
-	def eol: Parser[String] = literal("\r\n") | literal("\n") | literal(CharArrayReader.EofCh.toString);
+	def eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString);
 
 	/** Non-end of line white space characters */
 	def space: Parser[String] = regex("""[ \t]+""".r);
@@ -113,10 +101,10 @@ object Grammar {
 	/////////////////////////////////////////////////////////////////////////
 
 	/** Contiguous block of comments. */
-	def comments: Parser[CommentBlock] = opt(repsep(comment, eol))<~opt(eol) ^^ {
+	def comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~(rep(emptyLine)~opt(eol)) ^^ {
 		case Some(c) => new CommentBlock(c)
 		case None => new CommentBlock(Seq())
-	};
+	});
 
 	/** A single line of comment. */
 	def comment: Parser[String] = 
@@ -206,7 +194,7 @@ object Grammar {
 	 *  The name must conform to Bash variable name requirements: 
 	 *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
 	 */
-	def variableRef: Parser[Variable] = taskRef~literal("/")~(
+	def variableRef: Parser[Variable] = positioned(taskRef~literal("/")~(
 			// If the name starts with an illegal character, bail out and don't backtrack
 			"""[^A-Za-z_-]""".r<~failure("Illegal character at start of variable name") |
 			// Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
@@ -214,38 +202,38 @@ object Grammar {
 			// Finally, if the name contains only legal characters, then parse it!
 			"""[A-Za-z_-][A-Za-z0-9_-]*""".r)^^ {
 		case taskRefString~slash~nonSpaceString => new Variable(taskRefString,nonSpaceString)
-	}
+	})
 	  								
 	/** 
 	 * String sequence that does not begin with a dollar sign, and ends at the first whitespace character.
 	 */
-	def rvalueLiteral: Parser[Literal] = (
+	def rvalueLiteral: Parser[Literal] = positioned((
 			// If we find a value followed immediately by a colon, bail out and don't backtrack
 			regex("""[^\r\n$ \t]+""".r)<~guard(":".r)~!failure("Right hand side value contains prohibited character `:'") |
 			// Finally, if the name contains only legal characters, then parse it!
 			regex("""[^\r\n$ \t]+""".r)) ^^ {
 	  case strValue:String => new Literal(strValue) 
-	}
+	})
 	
 	/** Branch declaration */
-	def branch: Parser[Branch] = 
+	def branch: Parser[Branch] = positioned(
 				(((literal("(") ~! ((space) | failure("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchName <~ literal(":")) ~  
 				(rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
 		case strVar ~ seq => new Branch(strVar,seq)
-	}
+	})
 
 	/** Right hand side of a variable declaration. */
-	def rvalue: Parser[RValue] = (variableRef | branch | rvalueLiteral) ^^ {
+	def rvalue: Parser[RValue] = positioned((variableRef | branch | rvalueLiteral) ^^ {
 		  case varRef:Variable => varRef;
 		  case branch:Branch => branch;
 		  case lit:Literal => lit;
-	}
+	})
 
 	/** Variable declaration */
-	def assignment: Parser[Spec] = variableName ~ opt("=" ~! rvalue) ^^ {
+	def assignment: Parser[Spec] = positioned(variableName ~ opt("=" ~! rvalue) ^^ {
 		case strVar ~ Some(e ~ value) => new Spec(strVar, value)
 		case strVar ~ None => new Spec(strVar, Unbound())
-	} 
+	})
 
 	
 	/////////////////////////////////////////////////////////////////////////
@@ -258,9 +246,9 @@ object Grammar {
 	 * <code>taskName</code>, <code>taskInputs</code>, <code>taskOutputs</code>, and <code>taskParams</code>. 
 	 */
 	def taskHeader: Parser[TaskHeader]
-			= taskName ~ (space*) ~ taskInputs ~ (space*) ~ taskOutputs ~ (space*) ~ taskParams <~ eol ^^ {
+			= positioned(taskName ~ (space*) ~ taskInputs ~ (space*) ~ taskOutputs ~ (space*) ~ taskParams <~ eol ^^ {
 		case name ~ sp1 ~ targets ~ sp2 ~ deps ~ sp3 ~ params => new TaskHeader(name, targets, deps, params)
-    }
+    })
 
 	/**
 	 * Sequence of <code>assignment</code>s representing input files.
@@ -302,15 +290,15 @@ object Grammar {
     def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)
     
     /** Complete declaration of a task, including command(s) and optional comments. */
-    def taskBlock: Parser[TaskDef] =  comments ~ taskHeader ~! commands <~ emptyLines ^^ {
+    def taskBlock: Parser[TaskDef] =  positioned(comments ~ taskHeader ~! commands <~ emptyLines ^^ {
     	case ((com:CommentBlock) ~ (head:TaskHeader) ~ (cmds:Seq[String])) => 
     	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds)
-    }
+    })
     
     /** Complete declaration of a hyperworkflow of tasks. */
-    def workflow: Parser[WorkflowDefinition] = repsep(taskBlock,eol) ^^ {
+    def workflow: Parser[WorkflowDefinition] = positioned(repsep(taskBlock,eol) ^^ {
     	case w => new WorkflowDefinition(w)
-    }
+    })
 }
 
 
@@ -330,7 +318,7 @@ object MyParseApp extends Application {
 			# blah blah - this line should cause a parse failure
 
 			# Another comment
-			""";
+""";
 
 	val commentResult: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
 
@@ -381,7 +369,7 @@ object MyParseApp extends Application {
 # Hello
 # output=/path/to/foo v=$var/n w=${wow}/x :: n=5
 # Welcome
-[myTask] < input i=(whichSize: smaller=smaller.txt bigger=big.txt ) > out 
+[myTask] < input i=( whichSize: smaller=smaller.txt bigger=big.txt ) > out 
     cat < $input > $output
 
 #[has_branches] < input i=( whichSize: smaller=small.txt bigger=big.txt) > out
@@ -394,8 +382,8 @@ object MyParseApp extends Application {
 	val workflowResult: ParseResult[WorkflowDefinition] = parseAll(workflow,sampleWorkflow)
 
 	
-	val result: WorkflowDefinition = 
-			//commentResult;
+	val result: ParseResult[scala.util.parsing.input.Positional] = 
+			commentResult;
 			//taskNameResult;
 			//assignmentResult;
 	  		//inputsResult;
@@ -406,10 +394,11 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-	  		GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
+	  		//GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
 			//GrammarParser.read(sampleWorkflow)
 	  
 	  println(result)
+	  println(result.get.pos)
 	  		
 //	result match {
 //		case Success(result,_) => println(result)
