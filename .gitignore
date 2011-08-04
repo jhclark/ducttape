@@ -9,3 +9,4 @@ bin
 lib
 ducttape.jar
 syntax/tutorial/[0-9]*-*/[a-zA-Z]*
+scaladoc
