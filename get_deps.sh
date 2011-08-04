@@ -8,7 +8,7 @@ scalatest=scalatest-1.6.1
 if [ ! -e $scalatest.jar ]; then
     echo >&2 "Retrieving library $scalatest"
     scalatestUrl=http://www.scalatest.org/releases/$scalatest.zip
-    tmp=$(mktemp)
+    tmp=tmp.zip
     curl -L $scalatestUrl > $tmp
     unzip $tmp
     cp $scalatest/$scalatest.jar .

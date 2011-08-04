@@ -7,7 +7,7 @@ import java.util.concurrent._
 import ducttape.Types._
 
 // agenda-based DAG iterator that allows for parallelization
-class PackedDagWalker[V](dag: PackedDag[V,_,_]) extends Walker[PackedVertex[V]] {
+class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
 
   private class ActiveVertex(val v: PackedVertex[V]) {
     assert(v != null)
