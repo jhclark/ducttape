@@ -72,3 +72,29 @@ object Shell {
     output.toString
   }
 }
+
+
+object Tests {
+  
+  import ducttape.syntax.AbstractSyntaxTree._
+  import ducttape.syntax.Grammar._
+  import ducttape.syntax.GrammarParser._
+  import org.scalatest.FlatSpec
+  import scala.util.parsing.combinator.Parsers
+  
+  def verify(testCase:FlatSpec, result:ParseResult[Any]) : Unit = {
+	result match {
+		case Success(res, _) => ()
+		case Failure(msg, _) => testCase.fail(msg)
+		case Error(msg, _)   => testCase.fail(msg)
+	}
+  }
+  
+  def verifyFailure(testCase:FlatSpec, result:ParseResult[Any]) : Unit = {
+	result match {
+		case Success(res, _) => testCase.fail(res.toString)
+		case Failure(msg, _) => ()
+		case Error(msg, _)   => testCase.fail(msg)
+	}
+  }
+}
