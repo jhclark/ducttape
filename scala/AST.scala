@@ -53,7 +53,7 @@ object AbstractSyntaxTree {
 
   /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
   case class BranchPointDef(val name: String, val specs: Seq[Spec]) extends RValue {
-    override def toString = List(name, specs.toString).mkString(" ")
+    override def toString = "(%s: %s)".format(name, specs.mkString(" "))
   }
 
   class TaskHeader(val name: String,
