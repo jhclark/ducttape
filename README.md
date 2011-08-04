@@ -79,17 +79,17 @@ Re-open Eclipse, and you should be good to go. To verify, open ducttape.scala in
 Setting Up Connections to Remote Machines (Not Yet Implemented)
 ===============================================================
 
-# You will constantly have a SSH tunnel active to the remote machine
+You will constantly have a SSH tunnel active to the remote machine
 ```
 local.com$ ssh -L3333:localhost:4444 -N remote.com
 ```
 
-# Start the remote server on the remote machine (e.g. a cluster head node)
+Start the remote server on the remote machine (e.g. a cluster head node)
 ```
 remote.com$ scala ducttape.remote.RemoteServer 4444
 ```
 
-# Now the remote client can control what happens on the remote machines
+Now the remote client can control what happens on the remote machines
 ```
 local.com$ scala ducttape.remote.RemoteClient 3333
 ```
