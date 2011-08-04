@@ -8,8 +8,19 @@ import ducttape.syntax.FileFormatException
 import ducttape.Types._
 
 object Task {
+  val NO_BRANCH_POINT = new BranchPoint("Baseline")
+  val NO_BRANCH = new Branch("baseline", NO_BRANCH_POINT)
+
   // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
-  def realizationName(real: Map[String,Branch]) = real.toSeq.sortBy(_._1).map(_._2.name).mkString("-")
+  // and don't include our default branch "baseline"
+  def realizationName(real: Map[String,Branch]) = {
+    val branches = real.toSeq.sortBy(_._1).map(_._2)
+    branches.size match {
+      case 0 => NO_BRANCH // make sure we have at least baseline in the name
+      case 1 => branches.head.name // keep baseline if it's the only (it may not be)
+      case _ => branches.filter(_ != NO_BRANCH).map(_.name).mkString("-")
+    }
+  }
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
   def branchesToMap(real: Seq[Branch]) = {
     val result = new mutable.HashMap[String,Branch]
@@ -178,9 +189,6 @@ object WorkflowBuilder {
   // TODO: This method has become morbidly obese -- break it out into several methods
   def build(wd: WorkflowDefinition): HyperWorkflow = {
 
-    val NO_BRANCH_POINT = new BranchPoint("")
-    val NO_BRANCH = new Branch("", NO_BRANCH_POINT)
-
     val defMap = new mutable.HashMap[String,TaskDef]
     for(t <- wd.tasks) {
       defMap += t.name -> t
@@ -241,15 +249,15 @@ object WorkflowBuilder {
           }
           case _ => {
             val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
-            resolvedVars.append( (inSpec, Map(NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
+            resolvedVars.append( (inSpec, Map(Task.NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
 
             if(srcTaskDef != taskDef) { // don't create cycles
-              recordParentsFunc(NO_BRANCH, Some(srcTaskDef))
+              recordParentsFunc(Task.NO_BRANCH, Some(srcTaskDef))
             } else {
-              recordParentsFunc(NO_BRANCH, None)
+              recordParentsFunc(Task.NO_BRANCH, None)
             }
-            branchPoints += NO_BRANCH_POINT
-            branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += NO_BRANCH_POINT
+            branchPoints += Task.NO_BRANCH_POINT
+            branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT
           }
         }
       }
@@ -276,7 +284,6 @@ object WorkflowBuilder {
       val inputVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(Spec,TaskDef)])](taskDef.inputs.size)
       // TODO: Roll own multimap since scala's is a bit awkward
       for(inSpec: Spec <- taskDef.inputs) {
-        println("Resolving Input File Spec: " + inSpec)
         def recordParentsFunc(branch: Branch, srcTaskDef: Option[TaskDef]) {
           // make a note of what edges we'll need to add later
           parentsByBranch.getOrElseUpdate(branch, {new mutable.HashSet}) += srcTaskDef
@@ -292,8 +299,6 @@ object WorkflowBuilder {
       parents += task -> parentsByBranch
       vertices += task.name -> dag.addVertex(task)
     }
-
-    println("Got %d vertices".format(vertices.size))
 
     // now link the tasks in the graph by adding (meta/hyper) edges
     for(v <- vertices.values) {
