@@ -74,24 +74,24 @@ object Grammar {
 	/////////////////////////////////////////////////////////////////////////
 
 
-	/** End of line characters */
-	def eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString);
+	/** End of line characters, including end of file. */
+	val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString);
 
 	/** Non-end of line white space characters */
-	def space: Parser[String] = regex("""[ \t]+""".r);
+	val space: Parser[String] = regex("""[ \t]+""".r);
 
 	/**
 	 * End of line, optionally followed by more whitespace, followed by another end of line. 
 	 * <p>
 	 * This second end of line is recognized, but not consumed.
 	 */
-	def emptyLine = (literal("\r\n") | literal("\n")) ~ regex("""[ \t]*""".r) ~ guard(eol);
+	val emptyLine = (literal("\r\n") | literal("\n")) ~ regex("""[ \t]*""".r) ~ guard(eol);
 
 	/** Sequence of empty lines. */
-	def emptyLines = emptyLine*;
+	val emptyLines = emptyLine*;
 
 	/** Non-white space sequence. */
-	def nonSpace: Parser[String] = regex("""[^\r\n \t]+""".r)
+	val nonSpace: Parser[String] = regex("""[^\r\n \t]+""".r)
 
 	
 	/////////////////////////////////////////////////////////////////////////
@@ -101,19 +101,19 @@ object Grammar {
 	/////////////////////////////////////////////////////////////////////////
 
 	/** Contiguous block of comments. */
-	def comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~(rep(emptyLine)~opt(eol)) ^^ {
+	val comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~(rep(emptyLine)~opt(eol)) ^^ {
 		case Some(c) => new CommentBlock(c)
 		case None => new CommentBlock(Seq())
 	});
 
 	/** A single line of comment. */
-	def comment: Parser[String] = 
+	val comment: Parser[String] = 
 		"""[ \n\r\t]*#[ \t]*""".r ~> commentContent <~ guard(eol) //| failure("Expected a comment line, but didn't find one."); 
 
 	/** The content portion of a single line of comment. 
 	 *  Notably, this excludes the syntactic comment marker itself. 
 	 */
-	def commentContent: Parser[String] = """[^\r\n]*""".r;
+	val commentContent: Parser[String] = """[^\r\n]*""".r;
 
 
 
@@ -308,6 +308,7 @@ object MyParseApp extends Application {
 	import ducttape.syntax.AbstractSyntaxTree._
 	import ducttape.syntax.Grammar._
 	import ducttape.syntax.GrammarParser._
+	import scala.util.parsing.input.Positional;
 	
 	val sampleComment = """# Welcome to make
 			# This is a sample
@@ -382,8 +383,8 @@ object MyParseApp extends Application {
 	val workflowResult: ParseResult[WorkflowDefinition] = parseAll(workflow,sampleWorkflow)
 
 	
-	val result: ParseResult[scala.util.parsing.input.Positional] = 
-			commentResult;
+	val result = 
+			//commentResult;
 			//taskNameResult;
 			//assignmentResult;
 	  		//inputsResult;
@@ -394,11 +395,11 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-	  		//GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
+	  		GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
 			//GrammarParser.read(sampleWorkflow)
 	  
 	  println(result)
-	  println(result.get.pos)
+	  //println(result.get.pos)
 	  		
 //	result match {
 //		case Success(result,_) => println(result)
