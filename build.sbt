@@ -8,7 +8,7 @@ scalaVersion := "2.9.0"
 
 //defaultExcludes ~= (filter: FileFilter => filter || "*~")
 
-scalaSource in Compile := file("scala")
+//scalaSource in Compile := file("scala")
 
 docDirectory in Compile := file("scaladoc")
 

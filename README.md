@@ -11,13 +11,25 @@ To keep updated on the latest versions of ducttape, subscribe to our low-traffic
 Building
 ========
 
+TODO: Move this section to a separate file once we move out of alpha...
+
 Assuming you have Scala 2.9.0+ installed, just run:
 
 ```bash
-./build.sh
+sbt compile
+```
+
+To continuously recompile whenever source files change:
+```bash
+sbt ~compile
 ```
 
 This will download the required version of scala test and build a JAR file using the Scala Compiler.
+
+To generate scaladoc:
+```bash
+sbt doc
+```
 
 Testing
 =======
@@ -25,7 +37,7 @@ Testing
 To test low level data structures, run:
 
 ```bash
-./test-unit.sh
+sbt test
 ```
 
 To test high-level functionality, run:
