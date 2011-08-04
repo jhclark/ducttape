@@ -12,3 +12,5 @@ ducttape.jar
 project/boot
 target/
 dist/
+
+scaladoc/
