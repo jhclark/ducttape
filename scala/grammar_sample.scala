@@ -56,8 +56,11 @@ object MyParseApp extends Application {
 # Hello
 
 # Welcome
-[myTask] < input i=( whichSize: smaller=smaller.txt bigger=big.txt ) > output=/path/to/foo v=$var/n w=${wow}/x :: n=5
+[myTask] < input i=(whichSize: smaller=smaller.txt bigger=big.txt ) > out
     cat < $input > $output
+
+#[has_branches] < input i=( whichSize: smaller=small.txt bigger=big.txt) > out
+#  cat < $in > $out
 """;
 	val taskBlockResult: ParseResult[TaskDef] = parseAll(taskBlock,sampleTaskBlock)
 	
@@ -90,7 +93,8 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-	  		GrammarParser.read(IO.read(sampleWorkflow, "UTF-8"))
+          GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
+          //GrammarParser.read(IO.read(sampleWorkflow, "UTF-8"))
 
 	  println(result)
 	  		

@@ -204,10 +204,10 @@ object Grammar {
 	
     /** Branch declaration */
     def branchPoint: Parser[BranchPointDef] = {
-      (((literal("(") ~ (space*)) ~> branchPointName <~ literal(":")) ~  
-       (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")")
-        | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
-	 case strVar ~ seq => new BranchPointDef(strVar, seq)
+      (((literal("(") ~ (space*)) ~> branchName <~ literal(":")) ~  
+       (((literal("(") ~! ((space) | failure("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchName <~ literal(":")) ~  
+        (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
+          case strVar ~ seq => new BranchPointDef(strVar,seq)
        }
     }
 
