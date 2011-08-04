@@ -46,7 +46,7 @@ object Shell {
           workDir: File,
           env: Seq[(String,String)],
           stdoutFile: File,
-          stderrFile: File) {
+          stderrFile: File): Int = {
     run(cmds.mkString("\n"), workDir, env, stdoutFile, stderrFile)
   }
 
@@ -54,7 +54,7 @@ object Shell {
           workDir: File,
           env: Seq[(String,String)],
           stdoutFile: File,
-          stderrFile: File) {
+          stderrFile: File): Int = {
 
     val stdout = Files.writer(stdoutFile)
     val stderr = Files.writer(stderrFile)
@@ -79,9 +79,9 @@ object Shell {
     val code = Process("bash", workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
             .exitValue()
-    println("Command '''%s''' returned %s".format(cmd, code))
     stdout.close
     stderr.close
+    code
   }
 
   def runGetOutput(cmd: String): String = {
