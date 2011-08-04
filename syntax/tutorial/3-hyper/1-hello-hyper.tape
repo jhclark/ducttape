@@ -9,8 +9,9 @@
 
 # This step shows the simplest way to pack (i.e. create a hyperworkflow)
 # Parentheses with "fileName=(packName: a=x, b=y)" indicates that we will
-# have branches "a" and "b" for file "f" and the name of the Pack will
-# be "packName". The file "x" will be used for branch a and the file "y"
+# have branches "a" and "b" for file "f" and the name of the Branch Point
+# (aka Pack) will be "packName".
+# The file "x" will be used for branch a and the file "y"
 # will be used when the branch b is active.
 #
 # * This task will result in two output directories:
