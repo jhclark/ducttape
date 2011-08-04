@@ -139,6 +139,13 @@ x=$CONFIG
 [g5.read-plain] a:stream=$g5.hadoop-rw/x > x
   cat $a > $x
 
+# Defining work plans to get more than just one-off experiments (this is intended primarily for config files)
++plan Basics
+  # 4 experiments/realizations: all combinations of small and medium
+  (whichTM: small, medium) * (whichLM: small, medium)
+  # 1 experiment/realization: just the large model
+  (whichLM: large) * (whichLM: large)
+
 # TODO: User can specify shortened names when they are unambiguous. (e.g. drop a prefix of group qualifiers?)
 
 # TODO: "Collaborative workflows"

@@ -93,7 +93,7 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-          GrammarParser.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
+          GrammarParser.read(IO.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"), "UTF-8"))
           //GrammarParser.read(IO.read(sampleWorkflow, "UTF-8"))
 
 	  println(result)

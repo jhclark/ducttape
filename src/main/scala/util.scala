@@ -1,8 +1,10 @@
 package ducttape.util
 
-import scala.sys.process._
-import scala.io._
+import sys.process._
+import io._
+
 import java.io._
+import java.net._
 
 object Files {
   def write(str: String, file: File) = {
@@ -12,21 +14,18 @@ object Files {
   }
 
   def writer(file: File) = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
+
+  def deleteDir(dir: File): Unit = {
+    if(dir.isDirectory)
+      for(child <- dir.listFiles)
+        deleteDir(child)
+
+    if(!dir.delete)
+      throw new IOException("Could not delete file: %s".format(dir.getAbsolutePath))
+  }
 }
 
 object IO {
-  import java.io.ByteArrayInputStream
-  import java.io.CharArrayReader
-  import java.io.File
-  import java.io.InputStream
-  import java.io.InputStreamReader
-  import java.io.Reader
-  import java.io.StringReader
-  import java.net.URI
-  import java.net.URL
-  import scala.io.BufferedSource
-  import scala.io.Source
-
   def read(input: Any, encoding: String) = input match {
     case bytes: Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding)
     case chars: Array[Char]    => new CharArrayReader(chars)
