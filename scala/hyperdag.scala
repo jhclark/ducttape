@@ -108,9 +108,7 @@ class HyperDagBuilder[V,H,E] {
   }
 
   def build() = {
-    println("HyperDagBuilder: vertices.size = %d; inEdges.size = %d; inEdges = %s".format(vertices.size, inEdges.size, inEdges.toString))
     val roots = for(v <- vertices if !inEdges.contains(v)) yield v
-    println("HyperDagBuilder: roots = %s".format(roots.toString))
     assert(roots.size > 0 || vertices.size == 0, "No roots found for non-empty HyperDAG")
     new HyperDag[V,H,E](roots.toList, vertices.toList, inEdges.toMap, outEdges.toMap, edges.toMap)
   }
