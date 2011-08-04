@@ -21,13 +21,19 @@ class DirectoryArchitect(val baseDir: File) {
     new File(dir, spec.name)
   }
 
+  // TODO: Detect more than just UNIX paths?
+  def isAbsolute(path: String) = new File(path).isAbsolute
+
   def getInFile(spec: Spec, srcTaskDef: TaskDef, srcRealization: Map[String,Branch]): File = {
+    // TODO: We should have already checked that this file exists by now?
     spec.rval match {
       case Literal(value) => {
-        // TODO: Determine if this is a relative or absolute path
-        // and define behavior
-        // TODO: We should have already checked that this file exists by now
-        return new File(value)
+        if(isAbsolute(value)) {
+          return new File(value)
+        } else {
+          // resolve relative paths relative to the workflow file (baseDir)
+          return new File(baseDir, value)
+        }
       }
       case Unbound() => {
         return assignOutFile(spec, srcTaskDef, srcRealization)
@@ -42,6 +48,9 @@ object Ducttape {
     println("%sBy Jonathan Clark".format(Console.BLUE))
     println(Console.RESET)
 
+    val taskColor = Console.GREEN
+    val errorColor = Console.RED
+
     if(args.length != 1) {
       err.println("Usage: ducctape workflow.tape")
       exit(1)
@@ -53,6 +62,9 @@ object Ducttape {
     println("Building workflow...")
     val workflow: HyperWorkflow = WorkflowBuilder.build(wd)
     println("Workflow contains %d tasks".format(workflow.dag.size))
+    
+    // TODO: Check that all input files exist
+
     println("Executing...")
 
     val baseDir = file.getParentFile
@@ -60,7 +72,7 @@ object Ducttape {
     for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
       val taskT: TaskTemplate  = v.packed.value
       val task: RealTask = taskT.realize(v.realization)
-      println("TASK: %s Realization: %s".format(task.name, task.realizationName))
+      println("%sRunning: %s/%s%s".format(taskColor, task.name, task.realizationName, Console.RESET))
 
       val where = dirs.assignDir(task.taskDef, task.activeBranches)
       val stdoutFile = new File(where, "stdout.txt")
@@ -109,7 +121,11 @@ object Ducttape {
         val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.activeBranches)
         env.append( (outSpec.name, outFile.getAbsolutePath) )
       }
-      Shell.run(task.commands, workDir, env, stdoutFile, stderrFile)
+      val code = Shell.run(task.commands, workDir, env, stdoutFile, stderrFile)
+      if(code != 0) {
+        println("%sTask %s/%s returned %s%s".format(errorColor, task.name, task.realizationName, code, Console.RESET))
+        exit(1)
+      }
     }
   }
 }
