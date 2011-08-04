@@ -1,9 +1,16 @@
 import java.io._
 import io._
 import collection.JavaConversions._
+import System._
 
 object DuctTapeDoc {
   def main(args: Array[String]) {
+    if(args.size != 1) {
+      err.println("Usage: DuctTapeDoc ./syntax/tutorial/")
+      exit(1)
+    }
+    val docRoot = args(0)    
+
     // annoying substitution of "\\" to avoid unicode escape
     println("""
             \documentclass[10pt]{article}
@@ -23,11 +30,11 @@ object DuctTapeDoc {
             This is documentation for DuctTape.
             """.stripMargin)
 
-    val docRoot = args(0)
     for(dir <- new File(docRoot).listFiles.toList.sort((e1,e2) => (e1.getName < e2.getName))) {
       if(dir.isDirectory) {
         println("""\section{%s}""".format(dir.getName))
-        for(file <- dir.listFiles.toList.sort((e1,e2) => (e1.getName < e2.getName))) {
+        val docFiles = dir.listFiles.toList.filter(_.getName.endsWith(".tape")).sort((e1,e2) => (e1.getName < e2.getName))
+        for(file <- docFiles) {
           println("""\subsection{%s}""".format(file.getName))
           println("""\makebox[\textwidth]{\hrulefill}""")
           println("""\begin{verbatim}""")

@@ -26,6 +26,15 @@ sbt ~compile
 
 This will download the required version of scala test and build a JAR file using the Scala Compiler.
 
+Documentation
+=============
+
+To generate the tutorial documentation as doc/doc.pdf:
+```bash
+./doc.sh
+```
+
+
 To generate scaladoc:
 ```bash
 sbt doc
