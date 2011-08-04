@@ -4,7 +4,7 @@
 # "one off" experiments.
 
 # We start with a task much like the previous example
-[one-off-1] in=(whichSize: smaller=small.txt, bigger=big.txt) > out
+[one-off-1] in=( whichSize: smaller=small.txt bigger=big.txt ) > out
   cat < $in > $out
 
 # And now add a child task that also has a packed parameter with multiple branches

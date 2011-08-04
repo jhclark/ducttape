@@ -68,7 +68,7 @@ object AbstractSyntaxTree {
                 val inputs: Seq[Spec],
                 val outputs: Seq[Spec],
                 val params: Seq[Spec],
-                val commands: Seq[String]) {
+                val commands: Seq[String]) extends ASTType {
     override def toString =
       "Task name: " + name + 
     "\n comments: " + comments.toString + 

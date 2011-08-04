@@ -40,41 +40,41 @@ object Grammar {
 
   // === WHITE SPACE ===
 
-  /** End of line characters */
-  def eol: Parser[String] = literal("\r\n") | literal("\n") | literal(CharArrayReader.EofCh.toString)
+  /** End of line characters, including end of file. */
+  val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString)
  
   /** Non-end of line white space characters */
-  def space: Parser[String] = regex("""[ \t]+""".r)
+  val space: Parser[String] = regex("""[ \t]+""".r)
   
   /**
    * End of line, optionally followed by more whitespace, followed by another end of line. 
    * <p>
    * This second end of line is recognized, but not consumed.
    */
-  def emptyLine = (literal("\r\n") | literal("\n")) ~ regex("""[ \t]*""".r) ~ guard(eol)
+  val emptyLine = (literal("\r\n") | literal("\n")) ~ regex("""[ \t]*""".r) ~ guard(eol)
   
   /** Sequence of empty lines. */
-  def emptyLines = emptyLine*
+  val emptyLines = emptyLine*
     
   /** Non-white space sequence. */
-  def nonSpace: Parser[String] = regex("""[^\r\n \t]+""".r)
+  val nonSpace: Parser[String] = regex("""[^\r\n \t]+""".r)
      
   // === COMMENTS ===
 
   /** Contiguous block of comments. */
-  def comments: Parser[CommentBlock] = opt(repsep(comment, eol))<~opt(eol) ^^ {
+  val comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~opt(eol) ^^ {
     case Some(c) => new CommentBlock(c)
     case None => new CommentBlock(Seq())
-  }
+  })
 
   /** A single line of comment. */
-  def comment: Parser[String] = 
+  val comment: Parser[String] = 
     """[ \n\r\t]*#[ \t]*""".r ~> commentContent <~ guard(eol) //| failure("Expected a comment line, but didn't find one.")
 
   /** The content portion of a single line of comment. 
    *  Notably, this excludes the syntactic comment marker itself. 
    */
-  def commentContent: Parser[String] = """[^\r\n]*""".r
+  val commentContent: Parser[String] = """[^\r\n]*""".r
 
   // === NAMES & VALUES ===
 
@@ -170,7 +170,7 @@ object Grammar {
    *  The name must conform to Bash variable name requirements: 
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
    */
-  def variableRef: Parser[Variable] = {
+  def variableRef: Parser[Variable] = { positioned(
     taskRef ~ literal("/") ~
     (
     
@@ -186,7 +186,7 @@ object Grammar {
     ) ^^ {
       case taskRefString~slash~nonSpaceString => new Variable(taskRefString,nonSpaceString)
     }
-  }
+  )}
 	  								
     /** 
      * String sequence that does not begin with a dollar sign, and ends at the first whitespace character.
@@ -203,24 +203,24 @@ object Grammar {
       }
 	
     /** Branch declaration */
-    def branchPoint: Parser[BranchPointDef] = 
+    def branchPoint: Parser[BranchPointDef] = positioned(
       (((literal("(") ~! ((space) | failure("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchPointName <~ literal(":")) ~  
        (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
          case strVar ~ seq => new BranchPointDef(strVar,seq)
-       }
+       })
 
     /** Right hand side of a variable declaration. */
-    def rvalue: Parser[RValue] = (variableRef | branchPoint | rvalueLiteral) ^^ {
+    def rvalue: Parser[RValue] = positioned((variableRef | branchPoint | rvalueLiteral) ^^ {
       case varRef: Variable => varRef;
       case branchPoint: BranchPointDef => branchPoint;
       case lit: Literal => lit;
-    }
+    })
 
     /** Variable declaration */
-    def assignment: Parser[Spec] = variableName ~ opt("=" ~! rvalue) ^^ {
+    def assignment: Parser[Spec] = positioned(variableName ~ opt("=" ~! rvalue) ^^ {
       case strVar ~ Some(e ~ value) => new Spec(strVar, value)
       case strVar ~ None => new Spec(strVar, Unbound())
-    } 
+    })
 
     // === TASKS ===
     
@@ -228,9 +228,9 @@ object Grammar {
      * <code>taskName</code>, <code>taskInputs</code>, <code>taskOutputs</code>, and <code>taskParams</code>. 
      */
     def taskHeader: Parser[TaskHeader]
-      = taskName ~ (space*) ~ taskInputs ~ (space*) ~ taskOutputs ~ (space*) ~ taskParams <~ eol ^^ {
+      = positioned(taskName ~ (space*) ~ taskInputs ~ (space*) ~ taskOutputs ~ (space*) ~ taskParams <~ eol ^^ {
         case name ~ sp1 ~ targets ~ sp2 ~ deps ~ sp3 ~ params => new TaskHeader(name, targets, deps, params)
-      }
+      })
 
     /**
      * Sequence of <code>assignment</code>s representing input files.
@@ -273,13 +273,13 @@ object Grammar {
     def commands: Parser[Seq[String]] = repsep(command, eol) <~ (eol?)
     
     /** Complete declaration of a task, including command(s) and optional comments. */
-    def taskBlock: Parser[TaskDef] =  comments ~ taskHeader ~! commands <~ emptyLines ^^ {
+    def taskBlock: Parser[TaskDef] =  positioned(comments ~ taskHeader ~! commands <~ emptyLines ^^ {
     	case ((com:CommentBlock) ~ (head:TaskHeader) ~ (cmds:Seq[String])) => 
     	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds)
-    }
+    })
     
     /** Complete declaration of a hyperworkflow of tasks. */
-    def workflow: Parser[WorkflowDefinition] = repsep(taskBlock,eol) ^^ {
+    def workflow: Parser[WorkflowDefinition] = positioned(repsep(taskBlock,eol) ^^ {
     	case w => new WorkflowDefinition(w)
-    }
+    })
 }
