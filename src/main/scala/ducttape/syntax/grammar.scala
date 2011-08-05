@@ -62,7 +62,7 @@ object Grammar {
   // === COMMENTS ===
 
   /** Contiguous block of comments. */
-  val comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~opt(eol) ^^ {
+  val comments: Parser[CommentBlock] = positioned(opt(repsep(comment, eol))<~(rep(emptyLine)~opt(eol)) ^^ {
     case Some(c) => new CommentBlock(c)
     case None => new CommentBlock(Seq())
   })
