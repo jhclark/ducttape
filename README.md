@@ -24,6 +24,11 @@ To continuously recompile whenever source files change:
 sbt ~compile
 ```
 
+To run the program during the build cycle:
+```bash
+sbt run
+```
+
 This will download the required version of scala test and build a JAR file using the Scala Compiler.
 
 Documentation
