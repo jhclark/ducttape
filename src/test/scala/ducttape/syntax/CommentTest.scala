@@ -1,82 +1,49 @@
 package ducttape.syntax 
 
-import org.scalatest.FlatSpec
+import org.scalatest.WordSpec
 import scala.util.parsing.combinator.Parsers
 
-import ducttape.syntax.AbstractSyntaxTree._
-import ducttape.syntax.Grammar._
-import ducttape.syntax.GrammarParser._
-
-import ducttape.util.Tests._
-
-class CommentTest extends FlatSpec {
+import ducttape.syntax.GrammarParser.ParseResult
+import ducttape.syntax.GrammarParser.Parser
+import ducttape.util.Tests
 
 
-	"A single-line comment" should "parse successfully" in {
-		val sampleComment = """# Welcome to make
-""";
+class CommentTest extends WordSpec {
 
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
+  val successCases = Map(
 
-		verify(this,result)
+"a single-line comment" -> 
+"""# Welcome to make
+""",
 
-	}
-	
-	"A single-line comment with preceding white space" should "parse successfully" in {
-		val sampleComment = 
+
+"a single-line comment with preceding white space" ->
 """	 	# Welcome to make
-""";
+""",
 
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
 
-		verify(this,result)
+"a single-line comment with no trailing newline" ->
+"""# Welcome to make""",
 
-	}	
 
-	"A single-line comment with no trailing newline" should "parse successfully" in {
-		val sampleComment = """# Welcome to make""";
-
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
-
-		verify(this,result)
-
-	}
-	
-	"A multi-line comment" should "parse successfully" in {
-
-	  val sampleComment = 
+"a multi-line comment" ->
 """# Welcome to make
 # This is a sample
 # Comments
 # blah blah - this line should cause a parse failure
 # Another comment
-""";
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
+""",
 
-		verify(this,result)
-	}	
-	
-	
-	
-	"A multi-line comment with preceding white space" should "parse successfully" in {
 
-	  val sampleComment = 
+"a multi-line comment with preceding white space" ->
 """ # Welcome to make
 			   # This is a sample
   # Comments
  # blah blah - this line should cause a parse failure
 			  # Another comment
-""";
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
+""",
 
-		verify(this,result)
-	}		
-	
-
-	"A multi-line comment with interspersed blank lines" should "parse successfully" in {
-		val sampleComment = 
+"a multi-line comment with interspersed blank lines" ->
 """# Welcome to make
 # This is a sample
 
@@ -86,17 +53,10 @@ class CommentTest extends FlatSpec {
 # blah blah - this line should cause a parse failure
 
 # Another comment
-""";
+""",
 
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
-
-		verify(this,result)
-	}	
-	
-	
-	"A multi-line comment with preceding white space and interspersed blank lines" should "parse successfully" in {
-		val sampleComment = """# Welcome to make
+"a multi-line comment with preceding white space and interspersed blank lines" ->
+"""# Welcome to make
 				# This is a sample
 
 				# Comments
@@ -105,16 +65,10 @@ class CommentTest extends FlatSpec {
 				# blah blah - this line should cause a parse failure
 
 				# Another comment
-""";
+""",
 
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
-
-		verify(this,result)
-	}
-
-	"A multi-line comment with preceding white space and interspersed blank lines followed by blank lines" should "parse successfully" in {
-		val sampleComment = """# Welcome to make
+"a multi-line comment with preceding white space and interspersed blank lines followed by blank lines" ->
+"""# Welcome to make
 				# This is a sample
 
 				# Comments
@@ -125,16 +79,11 @@ class CommentTest extends FlatSpec {
 				# Another comment
 
 
-""";
+""",
 
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
 
-		verify(this,result)
-	}	
-	
-	"A multi-line comment with preceding white space and interspersed white space lines followed by blank lines" should "parse successfully" in {
-		val sampleComment = """# Welcome to make
+"a multi-line comment with preceding white space and interspersed white space lines followed by blank lines" ->
+"""# Welcome to make
 				# This is a sample
 				   
 				# Comments
@@ -145,28 +94,35 @@ class CommentTest extends FlatSpec {
 				# Another comment
 
 
-""";
-
-		
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
-
-		verify(this,result)
-	}	
-	
-	
-	"A non-comment line" should "fail to parse" in {
-	  
-		val sampleComment = """[jobName]"""
-		  
-		val result: ParseResult[CommentBlock] = parseAll(comments, sampleComment);
-
-		verifyFailure(this,result)		  
-	  
-	}
-}
+"""
+  )
 
 
-class TaskHeaderTest extends FlatSpec {
-
-
+    val errorCases = Map(
+    		"A non-comment line" -> 
+        """[jobName]"""
+    )
+    
+    
+    
+    "Parsing comment" should {
+    
+    for ((key,value) <- successCases) {   
+      "succeed for "+key in {
+        val result: ParseResult[Any] = GrammarParser.parseAll(Grammar.comments, value);
+        Tests.verify(this,result)
+      }
+    }
+    
+    for ((key,value) <- errorCases) {   
+      "fail for "+key in {
+        val result: ParseResult[Any] = GrammarParser.parseAll(Grammar.comments, value);
+        Tests.verifyFailure(this,result)
+      }
+    }    
+    
+  }
+  
+  
+  
 }
