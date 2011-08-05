@@ -189,6 +189,10 @@ object WorkflowBuilder {
   // TODO: This method has become morbidly obese -- break it out into several methods
   def build(wd: WorkflowDefinition): HyperWorkflow = {
 
+    import scala.util.parsing.input.Position
+    val pos: Position = wd.pos
+    println("Workflow defined at " + pos)
+
     val defMap = new mutable.HashMap[String,TaskDef]
     for(t <- wd.tasks) {
       defMap += t.name -> t

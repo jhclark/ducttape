@@ -60,7 +60,7 @@ object Shell {
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
       // TODO: Set environment here to be consistent with dry run script generation?
-      bash.println("set -eo pipefail")
+      bash.println("set -euo pipefail")
       bash.println(cmd)
       bash.close()
     }
