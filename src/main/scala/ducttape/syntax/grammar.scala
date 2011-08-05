@@ -85,14 +85,14 @@ object Grammar {
    */
   def variableName: Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( """[^A-Za-z_-]""".r <~ failure("Illegal character at start of variable name")
+    ( ("""[^A-Za-z_]""".r <~ err("Illegal character at start of variable name"))
 
      // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
-     | """[A-Za-z_-][A-Za-z0-9_-]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
-     ~! failure("Illegal character in variable name declaration")
+     | ("""[A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
+     ~! err("Illegal character in variable name declaration"))
     
      // Finally, if the name contains only legal characters, then parse it!
-     | """[A-Za-z_-][A-Za-z0-9_-]*""".r // | failure("")
+     | ("""[A-Za-z_][A-Za-z0-9_]*""".r) //| err("")
    )
   }
 
@@ -103,11 +103,11 @@ object Grammar {
    */
   def branchPointName: Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( """[^A-Za-z_-]""".r<~failure("Illegal character at start of branch point name")
+    ( """[^A-Za-z_-]""".r<~err("Illegal character at start of branch point name")
 
      // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
      | """[A-Za-z_-][A-Za-z0-9_-]*""".r <~ guard(regex("""[^\r\n: \t]+""".r))
-     ~! failure("Illegal character in branch point name declaration")
+     ~! err("Illegal character in branch point name declaration")
     
      // Finally, if the name contains only legal characters, then parse it!
      | """[A-Za-z_-][A-Za-z0-9_-]*""".r // | failure("")
@@ -122,10 +122,10 @@ object Grammar {
   def taskName: Parser[String] = {
     "[" ~> (
     // If the name starts with an illegal character, bail out and don't backtrack
-    """[^A-Za-z_-]""".r<~failure("Illegal character at start of task name")
+    """[^A-Za-z_-]""".r<~err("Illegal character at start of task name")
 	
     // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
-    | """[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n\] \t]+""".r))~!failure("Illegal character in task name")
+    | """[A-Za-z_-][A-Za-z0-9_-]*""".r<~guard(regex("""[^\r\n\] \t]+""".r))~!err("Illegal character in task name")
 
     // Finally, if the name contains only legal characters, then parse it!
     | """[A-Za-z_-][A-Za-z0-9_-]*""".r // | failure("")

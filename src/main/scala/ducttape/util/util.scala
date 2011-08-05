@@ -105,10 +105,11 @@ object Tests {
   import ducttape.syntax.AbstractSyntaxTree._
   import ducttape.syntax.Grammar._
   import ducttape.syntax.GrammarParser._
-  import org.scalatest.FlatSpec
+  import org.scalatest.Assertions
   import scala.util.parsing.combinator.Parsers
   
-  def verify(testCase:FlatSpec, result:ParseResult[Any]) : Unit = {
+  /** Verify that a test case succeeded. */
+  def verify(testCase:Assertions, result:ParseResult[Any]) : Unit = {
 	result match {
 		case Success(res, _) => ()
 		case Failure(msg, _) => testCase.fail(msg)
@@ -116,11 +117,21 @@ object Tests {
 	}
   }
   
-  def verifyFailure(testCase:FlatSpec, result:ParseResult[Any]) : Unit = {
+  /** Verify that a test case failed in a way that the parser will not attempt to backtrack. */
+  def verifyError(testCase:Assertions, result:ParseResult[Any]) : Unit = {
+	result match {
+		case Success(res, _) => testCase.fail(res.toString)
+		case Failure(msg, _) => testCase.fail("Encounted Failure instead of Error: " + msg)
+		case Error(msg, _)   => ()
+	}
+  }
+  
+  /** Verify that a test case failed in a way that the parser will attempt to backtrack. */
+  def verifyFailure(testCase:Assertions, result:ParseResult[Any]) : Unit = {
 	result match {
 		case Success(res, _) => testCase.fail(res.toString)
 		case Failure(msg, _) => ()
-		case Error(msg, _)   => testCase.fail(msg)
+		case Error(msg, _)   => testCase.fail("Encounted Error instead of Failure: " + msg)
 	}
   }
 }
