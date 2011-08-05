@@ -1,5 +1,7 @@
 import java.security.MessageDigest
 
+// just some toy code for now...
+
 // problem: this currently only works for files < 2gb due to Java's mmap deficiencies 
 object FileUtils {
   import java.io.File
