@@ -13,7 +13,7 @@ import ducttape.util._
 class DirectoryArchitect(val baseDir: File) {
   def assignDir(taskDef: TaskDef, realization: Map[String,Branch]) = {
     val packedDir = assignPackedDir(taskDef)
-    new File(packedDir, "%s/1".format(taskDef.name, Task.realizationName(realization)))
+    new File(packedDir, "%s/1".format(Task.realizationName(realization)))
   }
 
   def assignPackedDir(taskDef: TaskDef) = {
@@ -72,8 +72,8 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
     println("%sRunning: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
     println("Running %s in %s".format(task.name, where.getAbsolutePath))
     if(where.exists) {
-      println("Removing partial output at %s".format(where))
-      Files.deleteDir(where)
+      println("Partial output detected at %s; NOT DELETING".format(where))
+      //Files.deleteDir(where)
     }
     workDir.mkdirs
     if(!workDir.exists) {
@@ -82,25 +82,25 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
       
     val env = new mutable.ListBuffer[(String,String)]
 
-      // grab input paths -- how are these to be resolved?
-      for( (inSpec, srcSpec, srcTaskDef) <- task.inputVals) {
+    // grab input paths -- how are these to be resolved?
+    for( (inSpec, srcSpec, srcTaskDef) <- task.inputVals) {
 
-        // TODO: Move this inside getInFile?
-        val srcActiveBranches = inSpec.rval match {
-          // if this came from a branch point, it's source vertex will have
-          // no knowledge of that branch point
-          //
-          // TODO: Simply removing one branch will not work once we
-          // introduce constraint DAGs that allow branch points to be reused
-          case BranchPointDef(branchPointName, _)
-            => task.activeBranches.filter(_ != branchPointName)
-          case _ => task.activeBranches
-        }
-        
-        val inFile = dirs.getInFile(srcSpec, srcTaskDef, srcActiveBranches)
-        println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
-        env.append( (inSpec.name, inFile.getAbsolutePath) )
+      // TODO: Move this inside getInFile?
+      val srcActiveBranches = inSpec.rval match {
+        // if this came from a branch point, it's source vertex will have
+        // no knowledge of that branch point
+        //
+        // TODO: Simply removing one branch will not work once we
+        // introduce constraint DAGs that allow branch points to be reused
+        case BranchPointDef(branchPointName, _)
+        => task.activeBranches.filter(_ != branchPointName)
+        case _ => task.activeBranches
       }
+      
+      val inFile = dirs.getInFile(srcSpec, srcTaskDef, srcActiveBranches)
+      println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
+      env.append( (inSpec.name, inFile.getAbsolutePath) )
+    }
     
     // set param values
     // TODO: Make these work properly with hyperworkflows
