@@ -6,9 +6,10 @@ $scriptDir/get_deps.sh
 
 echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
-fsc -cp $scriptDir/lib/scalatest-1.6.1.jar \
-    -d $scriptDir/bin/ \
-    $scriptDir/scala/*.scala
+find $scriptDir/src/main/scala \
+  | egrep '\.scala$' \
+  | xargs fsc -cp $scriptDir/lib/scalatest-1.6.1.jar \
+    -d $scriptDir/bin/
 
 echo >&2 "Building JAR..."
 (cd $scriptDir/bin; zip -qr $scriptDir/ducttape.jar *)
