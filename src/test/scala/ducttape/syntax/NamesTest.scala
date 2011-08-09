@@ -15,10 +15,14 @@ abstract class NamesTest(val description:String, val parser:Parser[Any]) extends
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_"
   ) 
   
-  val errorCases = Set(
-    "A-variable_Name__",
+  val failureCases = Set(
     " "
   ) 
+  
+  val errorCases = Set(
+    "A-variable_Name__"
+  )
+  
   
   
   "Parsing "+description should {
@@ -29,6 +33,13 @@ abstract class NamesTest(val description:String, val parser:Parser[Any]) extends
         Tests.verify(this,result)
       }
     }
+
+    for (value <- failureCases) {   
+      "fail for \""+value+"\"" in {
+        val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
+        Tests.verifyFailure(this,result)
+      }
+    }       
     
     for (value <- errorCases) {   
       "fail for \""+value+"\"" in {
