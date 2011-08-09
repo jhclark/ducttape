@@ -85,7 +85,7 @@ object Grammar {
    */
   def variableName: Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( ("""[^A-Za-z_]""".r <~ err("Illegal character at start of variable name"))
+    ( ("""[^A-Za-z_]""".r <~ failure("Illegal character at start of variable name"))
 
      // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
      | ("""[A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
@@ -103,7 +103,7 @@ object Grammar {
    */
   def branchPointName: Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( """[^A-Za-z_]""".r<~err("Illegal character at start of branch point name")
+    ( """[^A-Za-z_]""".r<~failure("Illegal character at start of branch point name")
 
      // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
      | """[A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n: \t]+""".r))
@@ -194,7 +194,7 @@ object Grammar {
     def rvalueLiteral: Parser[Literal] = (
       // If we find a value followed immediately by a colon, bail out and don't backtrack
       regex("""[^\r\n$ \t]+""".r) <~ guard(":".r)
-      ~! failure("Right hand side value contains prohibited character `:'")
+      ~! err("Right hand side value contains prohibited character `:'")
       
       // Finally, if the name contains only legal characters, then parse it!
       | regex("""[^\r\n$ \t]+""".r)
@@ -204,8 +204,8 @@ object Grammar {
 	
     /** Branch declaration */
     def branchPoint: Parser[BranchPointDef] = positioned(
-      (((literal("(") ~! ((space) | failure("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchPointName <~ literal(":")) ~  
-       (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | failure("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
+      (((literal("(") ~! ((space) | err("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchPointName <~ literal(":")) ~  
+       (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | err("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
          case strVar ~ seq => new BranchPointDef(strVar,seq)
        })
 
