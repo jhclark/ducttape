@@ -107,21 +107,24 @@ object Tests {
   import ducttape.syntax.GrammarParser._
   import org.scalatest.Assertions
   import scala.util.parsing.combinator.Parsers
-  
+
   /** Verify that a test case succeeded. */
   def verify(testCase:Assertions, result:ParseResult[Any]) : Unit = {
+    
+
+//    
 	result match {
 		case Success(res, _) => ()
-		case Failure(msg, _) => testCase.fail(msg)
-		case Error(msg, _)   => testCase.fail(msg)
+		case Failure(msg, next) => testCase.fail("At position " + next.pos.toString + ": " + msg) //"At " + position+ ": "+ 
+		case Error(msg, next)   => testCase.fail("At position " + next.pos.toString + ": " + msg)//("At " + position+ ": "+ msg)
 	}
   }
   
   /** Verify that a test case failed in a way that the parser will not attempt to backtrack. */
   def verifyError(testCase:Assertions, result:ParseResult[Any]) : Unit = {
 	result match {
-		case Success(res, _) => testCase.fail(res.toString)
-		case Failure(msg, _) => testCase.fail("Encounted Failure instead of Error: " + msg)
+		case Success(res, next) => testCase.fail("At position " + next.pos.toString + ": " + res.toString)
+		case Failure(msg, next) => testCase.fail("At position " + next.pos.toString + ": Encounted Failure instead of Error: " + msg)
 		case Error(msg, _)   => ()
 	}
   }
@@ -129,9 +132,9 @@ object Tests {
   /** Verify that a test case failed in a way that the parser will attempt to backtrack. */
   def verifyFailure(testCase:Assertions, result:ParseResult[Any]) : Unit = {
 	result match {
-		case Success(res, _) => testCase.fail(res.toString)
+		case Success(res, next) => testCase.fail("At position " + next.pos.toString + ": " + res.toString)
 		case Failure(msg, _) => ()
-		case Error(msg, _)   => testCase.fail("Encounted Error instead of Failure: " + msg)
+		case Error(msg, next)   => testCase.fail("At position " + next.pos.toString + ": Encounted Error instead of Failure: " + msg)
 	}
   }
 }
