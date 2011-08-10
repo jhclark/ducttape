@@ -1,20 +1,26 @@
 DuctTape by Example
+
 By Jonathan Clark
+
+All examples in this tutorial are runnable (and in fact used as regression tests).
+You can find them in ./syntax/tutorial/
+
 
 1-basics
 ========
 
-1-hello-world.tape
-------------------
+ 1) Running a single command (1-hello-world.tape)
+-------------------------------------------------
 
- 1) Running a single command
 
  Syntax:
+
  * This is just a single command that writes output to stdout and stderr
  * Lines that begin with # are comments
  * Comment blocks preceeding task declarations are associated with that task
 
  Execution:
+
  * After ducttape has been added to your PATH, this workflow can be executed with:
    $ ducttape basic.tape
  * Artifacts from this workflow will be in the current directory of basic.tape (./)
@@ -30,10 +36,9 @@ By Jonathan Clark
   echo >&2 hello
 ```
 
-2-outputs.tape
---------------
+ 2) Writing output files (2-outputs.tape)
+-----------------------------------------
 
- 2) Writing output files
 
  * Ducttape will assign the paths for the output files
    as something like ./hello-world-2/x and ./hello-world-2/y.txt
@@ -48,10 +53,9 @@ By Jonathan Clark
   echo world > $y_txt
 ```
 
-3-inputs.tape
--------------
+ 3) Reading input files (3-inputs.tape)
+---------------------------------------
 
- 3) Reading input files
 
  * This task takes 2 input files (a and b) and produces no output
  * Ducttape will set the environment variables in $a and $b before invoking bash
@@ -63,13 +67,10 @@ By Jonathan Clark
   cat $b>/dev/null
 ```
 
-4-dependencies.tape
--------------------
-
- 4) Running tasks with dependencies
+ 4) Running tasks with dependencies (4-dependencies.tape)
+---------------------------------------------------------
 
 ```
-
 ```
 
  First a step we already know about...
@@ -79,7 +80,6 @@ By Jonathan Clark
   for i in {1..10}; do
     echo $i >> $x
   done
-
 ```
 
  * We use first's output "x" as the input "a" by using the = operator
@@ -91,10 +91,9 @@ By Jonathan Clark
   cat < $a > $x
 ```
 
-5-params.tape
--------------
+ 5) Using parameters (5-params.tape)
+------------------------------------
 
- 5) Using parameters
 
  * Parameters are for variables that aren't files
  * They are listed after inputs and outputs, using a double colon
@@ -106,7 +105,6 @@ By Jonathan Clark
   echo "$in has $(wc -l < $in) lines"
   echo "The parameter N is $N"
   echo $N > $out
-
 ```
 
  * The distinction between files and parameters also means
@@ -122,8 +120,9 @@ By Jonathan Clark
 3-hyper
 =======
 
-1-hello-hyper.tape
-------------------
+ 1) Basic HyperWorkflows (1-hello-hyper.tape)
+---------------------------------------------
+
 
  Experimentation often requires one to run similar sequences of tasks
  in a variety of configurations. To compactly represent such workflows,
@@ -132,11 +131,6 @@ By Jonathan Clark
  For example, if we want to determine the effect of data size on some task,
  we could run the task several times, using input files of differing sizes,
  as below.
-
-```
-
-
-```
 
  This step shows the simplest way to pack (i.e. create a hyperworkflow)
  Parentheses with "fileName=(packName: a=x, b=y)" indicates that we will
@@ -160,8 +154,6 @@ By Jonathan Clark
 ```
 [has_branches] < in=( whichSize: smaller=small.txt bigger=big.txt ) > out
   cat < $in > $out
-
-
 ```
 
  Since its parent task has several branches (smaller and bigger),
