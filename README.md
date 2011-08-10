@@ -3,7 +3,7 @@ Introduction
 
 This is the in-progress baking of DuctTape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is not yet suitable for production use.
 
-For a basic tutorial on the syntax of DuctTape that currently works, see [tutorial.md](tutorial.md).
+For a basic tutorial on the syntax of DuctTape that currently works, see [tutorial.md](https://github.com/jhclark/ducttape/blob/master/tutorial.md).
 
 Updates
 =======
