@@ -70,9 +70,6 @@ You can find them in ./syntax/tutorial/
  4) Running tasks with dependencies (4-dependencies.tape)
 ---------------------------------------------------------
 
-```
-```
-
  First a step we already know about...
 
 ```
