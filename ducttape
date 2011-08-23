@@ -4,5 +4,5 @@ scriptDir=$(dirname $0)
 
 java -XX:+UseCompressedOops \
      -XX:MaxJavaStackTraceDepth=10 \
-     -cp $scriptDir/bin:$scriptDir/ducttape.jar:$scriptDir/lib/scala-library.jar \
+     -cp $scriptDir/ducttape.jar:$scriptDir/lib/scala-library.jar \
      Ducttape $@
