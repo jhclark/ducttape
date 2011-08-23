@@ -57,7 +57,7 @@ class UnpackedMetaDagWalker[V,M,H,E](val dag: MetaHyperDag[V,M,H,E],
         val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_)
   extends Walker[UnpackedVertex[V,H,E]] {
 
-  private val delegate = new UnpackedDagWalker[V,H,E](dag.delegate, selectionFilter, hedgeFilter) 
+  private val delegate = new UnpackedDagWalker[V,H,E,Null](dag.delegate, selectionFilter, hedgeFilter) 
 
   override def complete(item: UnpackedVertex[V,H,E]) = delegate.complete(item)
 
@@ -134,31 +134,30 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
     return metaEdgesByEpsilon(delegate.sink(he))
   }
 
-  private def skipEpsilons(v: PackedVertex[_],
-                           func: PackedVertex[_] => Seq[PackedVertex[V]])
+  private def skipEpsilonsAndPhantom(v: PackedVertex[_],
+                                     func: PackedVertex[_] => Seq[PackedVertex[V]])
     : Seq[PackedVertex[V]] = {
 
+    import System._
     var directParents = func(v)
     // check if we can just return these parents without modification
-    if(directParents.exists(x => isEpsilon(x))) {
+    if(directParents.exists(p => shouldSkip(p))) {
       // replace the epsilon vertices by their parents
       // it's guaranteed that those parents are not epsilon vertices themselves
-      val result = new mutable.ArrayBuffer[PackedVertex[V]]
-      for(p <- directParents) {
-        if(isEpsilon(p)) {
-          result ++= func(v)
-        } else {
-          result += p
-        }
-      }
-      result
+      // TODO: This could be made into an ArrayBuffer if this turns out to be inefficient
+      directParents.flatMap({
+        case p if(isEpsilon(p)) => func(p).filter(!isPhantom(_)) // skip any phantom grandparents
+        case p if(isPhantom(p)) => Seq.empty // skip entirely
+        case p => Seq(p) // direct parent is normal
+      })
     } else {
       directParents
     }    
   }
 
-  def parents(v: PackedVertex[_]): Seq[PackedVertex[V]] = skipEpsilons(v, delegate.parents)
-  def children(v: PackedVertex[_]): Seq[PackedVertex[V]] = skipEpsilons(v, delegate.children)
+  def vertices() = delegate.vertices.filter(!shouldSkip(_))
+  def parents(v: PackedVertex[_]): Seq[PackedVertex[V]] = skipEpsilonsAndPhantom(v, delegate.parents)
+  def children(v: PackedVertex[_]): Seq[PackedVertex[V]] = skipEpsilonsAndPhantom(v, delegate.children)
   
   def sources(e: MetaEdge[M,H,E]): Seq[PackedVertex[V]] = {
     val srcs = new mutable.ArrayBuffer[PackedVertex[V]]
@@ -170,6 +169,8 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   def sources(e: HyperEdge[H,E]): Seq[PackedVertex[V]] = delegate.sources(e)
   def sink(e: HyperEdge[H,E]): PackedVertex[V] = sink(outMetaEdge(e))
   def sink(e: MetaEdge[M,H,E]): PackedVertex[V] = delegate.children(e.epsilonV).head
+
+  def toGraphViz(): String = delegate.toGraphViz(vertices, parents)
 }
 
 /** epsilonValue is just a dummy value that will never be given back to the user

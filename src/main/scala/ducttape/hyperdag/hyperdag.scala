@@ -43,7 +43,7 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
     = new PackedDagWalker[V](this)
   // TODO: Pass filters to dag walker
   def unpackedWalker()
-    = new UnpackedDagWalker[V,H,E](this)
+    = new UnpackedDagWalker[V,H,E,Null](this)
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
   def outEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
@@ -57,12 +57,14 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   def sink(e: HyperEdge[H,E]): PackedVertex[V]
     = edges(e)._2
 
-  def toGraphViz(): String = {
+  def toGraphViz(): String = toGraphViz(vertices, parents)
+
+  def toGraphViz(vertexList: Seq[PackedVertex[V]], parentsFunc: PackedVertex[V] => Seq[PackedVertex[V]]): String = {
     val str = new StringBuilder(1000)
     str ++= "digraph G {\n"
-    for(v <- vertices) {
-      for(ant <- parents(v)) {
-        str ++= GraphViz.escape(ant.toString) + " -> " + GraphViz.escape(v.toString) + "\n"
+    for(v <- vertexList) {
+      for(ant <- parentsFunc(v)) {
+        str ++= "\"%s\" -> \"%s\"\n".format(GraphViz.escape(ant.toString), GraphViz.escape(v.toString))
       }
     }
     str ++= "}\n"

@@ -86,7 +86,10 @@ object Shell {
   def runGetOutput(cmd: String): String = {
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
-      bash.println("set -eo pipefail")
+      bash.println("set -e") // stop on errors
+      bash.println("set -o pipefail") // stop on errors in pipelines
+      bash.println("set -u") // don't allow unbound variables
+      bash.println("set -x") // show each command as it is executed
       bash.println(cmd)
       bash.close()
     }
@@ -99,42 +102,3 @@ object Shell {
   }
 }
 
-
-object Tests {
-  
-  import ducttape.syntax.AbstractSyntaxTree._
-  import ducttape.syntax.Grammar._
-  import ducttape.syntax.GrammarParser._
-  import org.scalatest.Assertions
-  import scala.util.parsing.combinator.Parsers
-
-  /** Verify that a test case succeeded. */
-  def verify(testCase:Assertions, result:ParseResult[Any]) : Unit = {
-    
-
-//    
-	result match {
-		case Success(res, _) => ()
-		case Failure(msg, next) => testCase.fail("At position " + next.pos.toString + ": " + msg) //"At " + position+ ": "+ 
-		case Error(msg, next)   => testCase.fail("At position " + next.pos.toString + ": " + msg)//("At " + position+ ": "+ msg)
-	}
-  }
-  
-  /** Verify that a test case failed in a way that the parser will not attempt to backtrack. */
-  def verifyError(testCase:Assertions, result:ParseResult[Any]) : Unit = {
-	result match {
-		case Success(res, next) => testCase.fail("At position " + next.pos.toString + ": " + res.toString)
-		case Failure(msg, next) => testCase.fail("At position " + next.pos.toString + ": Encounted Failure instead of Error: " + msg)
-		case Error(msg, _)   => ()
-	}
-  }
-  
-  /** Verify that a test case failed in a way that the parser will attempt to backtrack. */
-  def verifyFailure(testCase:Assertions, result:ParseResult[Any]) : Unit = {
-	result match {
-		case Success(res, next) => testCase.fail("At position " + next.pos.toString + ": " + res.toString)
-		case Failure(msg, _) => ()
-		case Error(msg, next)   => testCase.fail("At position " + next.pos.toString + ": Encounted Error instead of Failure: " + msg)
-	}
-  }
-}

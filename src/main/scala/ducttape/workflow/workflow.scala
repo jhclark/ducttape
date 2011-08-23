@@ -13,10 +13,10 @@ object Task {
 
   // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
   // and don't include our default branch "baseline"
-  def realizationName(real: Map[String,Branch]) = {
+  def realizationName(real: Map[String,Branch]): String = {
     val branches = real.toSeq.sortBy(_._1).map(_._2)
     branches.size match {
-      case 0 => NO_BRANCH // make sure we have at least baseline in the name
+      case 0 => NO_BRANCH.name // make sure we have at least baseline in the name
       case 1 => branches.head.name // keep baseline if it's the only (it may not be)
       case _ => branches.filter(_ != NO_BRANCH).map(_.name).mkString("-")
     }
@@ -51,7 +51,7 @@ class RealTask(val taskT: TaskTemplate,
 
 // TODO: fix these insane types for inputVals and paramVals
 class TaskTemplate(val taskDef: TaskDef,
-           val branchPoints: Seq[BranchPoint],
+           val branchPoints: Seq[BranchPoint], // only the branch points introduced at this task
            val inputVals: Seq[(Spec,Map[Branch,(Spec,TaskDef)])], // (mySpec,srcSpec,srcTaskDef)
            val paramVals: Seq[(Spec,Map[Branch,(LiteralSpec,TaskDef)])] ) { // (mySpec,srcSpec,srcTaskDef)
   def name = taskDef.name
@@ -110,15 +110,17 @@ class BranchPoint(val name: String) {
 // TODO: Add Option[BranchPointDef] for line no info
 class Branch(val name: String,
              val branchPoint: BranchPoint) {
+  override def hashCode = name.hashCode
+  override def equals(obj: Any) = obj match { case that: Branch => this.name == that.name }
   override def toString = name + "@" + branchPoint
 }
 
 object WorkflowBuilder {
 
-  case class ResolveMode;
-  case class InputMode extends ResolveMode;
-  case class ParamMode extends ResolveMode;
-  case class OutputMode extends ResolveMode;
+  class ResolveMode();
+  case class InputMode() extends ResolveMode;
+  case class ParamMode() extends ResolveMode;
+  case class OutputMode() extends ResolveMode;
 
   // the resolved Spec is guaranteed to be a literal for params
   private def resolveParam(taskDef: TaskDef,

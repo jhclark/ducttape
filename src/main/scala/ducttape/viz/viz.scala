@@ -1,14 +1,17 @@
 package ducttape.viz
 
-import ducttape.util._
-
 object GraphViz {
-  def escape(str: String) = str.replace(' ', '_')
+  import sys.process._
+  import java.io._
+  import ducttape.util._
+
+  def escape(str: String) = str.replace(' ', '_').replace("\"", "\\\"")
   def compile(str: String, outFile: String) = {
-    import sys.process._
-    import java.io._
     val temp = File.createTempFile("ducttape",".dot")
     Files.write(str, temp)
-    "/usr/bin/dot -Tpdf" #< temp #> new File(outFile) ! ;
+    compileFile(temp, outFile)
+  }
+  def compileFile(file: File, outFile: String) = {
+    "/usr/bin/dot -Tpdf" #< file #> new File(outFile) ! ;
   }
 }
