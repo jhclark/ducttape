@@ -127,7 +127,7 @@ object DuctTapeDoc {
           case "code" => {
             val lines = buffer.filter(_.trim().length > 0)
             if(lines.size > 0)
-              f.code()
+              f.code(lines)
           }
         }
         buffer.clear
