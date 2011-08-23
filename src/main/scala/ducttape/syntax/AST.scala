@@ -17,7 +17,6 @@ object AbstractSyntaxTree {
     override def toString = comments.toString //comments.mkString("\n");
   }
 
-
   /**
    * Abstract specification of a variable name and its right hand side.
    */
@@ -37,7 +36,7 @@ object AbstractSyntaxTree {
    *  
    *  Conceptually, Unbound can be thought of as the None case if one were to define Option[+RValue].  
    */
-  case class Unbound extends RValue {
+  case class Unbound() extends RValue {
     override def toString = ""
   }
 
@@ -69,12 +68,14 @@ object AbstractSyntaxTree {
                 val outputs: Seq[Spec],
                 val params: Seq[Spec],
                 val commands: Seq[String]) extends ASTType {
-    override def toString =
+    override def toString = name
+/*
       "Task name: " + name + 
     "\n comments: " + comments.toString + 
     "\n   inputs: " + inputs + 
     "\n  outputs: " + outputs + 
     "\n   params: " + params + 
     "\n commands: " + commands
+*/
   }
 }
