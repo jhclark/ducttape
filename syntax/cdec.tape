@@ -23,7 +23,7 @@
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $tgt > $tok
 
 # TODO: Split so that it can be parallelized/resumed
-[align] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok > $symmetrized
+[align] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok > symmetrized
         :: .vmem=(size: small=2gb large=16gb) .cpus=8
   TODO > $symmetrized
 
