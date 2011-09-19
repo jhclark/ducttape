@@ -4,8 +4,7 @@
 # TODO: How messy does this start looking if we integrate scheduler submission?
 # GRAMMAR CHANGE: Overload $ to mean both task dependence and variable resolution to allow using parameters as variables in literal filenames
 # GRAMMAR CHANGE: Use * to glob and match branches (used for deciding config settings without introducing new realizations)
-# GRAMMAR CHANGE: We will use @ instead of ! to mean branch grabbing
-# GRAMMAR CHANGE: Use square brackets instead of parens for branch grabbing so that the grammar doesn't explode
+# GRAMMAR CHANGE: We will use square brackets with an internal colon for branch grabbing. This also opens up the possibility of omitting branch names in both declarations and branch grabs as long as "all branches of nameless branch points must have unique branch names"
 
 # If we wanted to specify different amounts of memory per language (i.e. even more power than in align's .vmem),
 # there should be a separate "input def" block
@@ -24,30 +23,30 @@
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $tgt > $tok
 
 # TODO: Split so that it can be parallelized/resumed
-[align] < src=$tok_src/tok@sets[train] tgt=$tok_tgt/tok@sets[train] > $symmetrized
+[align] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok > $symmetrized
         :: .vmem=(size: small=2gb large=16gb) .cpus=8
   TODO > $symmetrized
 
 # Setup Adam Lopez's extractor.
 # Extract a grammar for both the tuning set and test set with the magic of realizations
-[extract_gra] < src=$tok_src/tok@sets[train] tgt=$tok_tgt/tok@sets[train] align=$align/symmetrized
-              < filteredTo=(filterSet: tune=$tok_src/tok@sets[tune] test=$tok_src/tok@sets[test])
+[extract_gra] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok align=$align/symmetrized
+              < filteredTo=(filterSet: tune=$tok_src[sets:tune]/tok test=$tok_src[sets:test]/tok)
               > gra
               :: .vmem=16gb .cpus=1
   /home/jhclark/workspace/sa-extract TODO $filteredTo > $gra
 
-[tune] < src=$tok_src/tok@sets[tune] refs=$tok_tgt/tok@sets[tune] gra=$extract_gra/gra@filterSet[tune]
+[tune] < src=$tok_src[sets:tune]/tok refs=$tok_tgt[sets:tune]/tok gra=$extract_gra[filterSet:tune]/gra
        > hyps weights
        :: .submitter=localhost # submits its own jobs
   /home/jhclark/workspace/cdec/pro-trainer/dist-pro.pl TODO
 
-[decode] < src=$tok_src/tok@sets[test] gra=$extract_gra/gra@filterSet[test] weights=$tune/weights
+[decode] < src=$tok_src[sets:test]/tok gra=$extract_gra[filterSet:test]/gra weights=$tune/weights
          > hyps
          :: .vmem=16gb .cpus=8
   /home/jhclark/workspace/cdec/decoder/cdec TODO -w $weights > $hyps
 
 [eval] < hyps=(scoreSet: tune=$tune/hyps test=$decode/hyps)
-       < refs=(scoreSet: tune=$tok_tgt/tok@sets[tune] test=$tok_tgt/tok@sets[test])
+       < refs=(scoreSet: tune=$tok_tgt[sets:tune]/tok test=$tok_tgt[sets:test]/tok)
        > scores
        :: .vmem=4gb .cpus=1
   /home/jhclark/workspace/multeval/multeval.sh TODO $hyps $refs > $scores
