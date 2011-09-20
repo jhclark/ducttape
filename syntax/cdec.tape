@@ -23,30 +23,30 @@
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $tgt > $tok
 
 # TODO: Split so that it can be parallelized/resumed
-[align] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok > symmetrized
+[align] < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] > symmetrized
         :: .vmem=(size: small=2gb large=16gb) .cpus=8
   TODO > $symmetrized
 
 # Setup Adam Lopez's extractor.
 # Extract a grammar for both the tuning set and test set with the magic of realizations
-[extract_gra] < src=$tok_src[sets:train]/tok tgt=$tok_tgt[sets:train]/tok align=$align/symmetrized
-              < filteredTo=(filterSet: tune=$tok_src[sets:tune]/tok test=$tok_src[sets:test]/tok)
+[extract_gra] < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] align=$symmetrized@align
+              < filteredTo=(filterSet: tune=$tok@tok_src[sets:tune] test=$tok@tok_src[sets:test])
               > gra
               :: .vmem=16gb .cpus=1
   /home/jhclark/workspace/sa-extract TODO $filteredTo > $gra
 
-[tune] < src=$tok_src[sets:tune]/tok refs=$tok_tgt[sets:tune]/tok gra=$extract_gra[filterSet:tune]/gra
+[tune] < src=$tok/tok_src[sets:tune] refs=$tok@tok_tgt[sets:tune] gra=$gra@extract_gra[filterSet:tune]
        > hyps weights
        :: .submitter=localhost # submits its own jobs
   /home/jhclark/workspace/cdec/pro-trainer/dist-pro.pl TODO
 
-[decode] < src=$tok_src[sets:test]/tok gra=$extract_gra[filterSet:test]/gra weights=$tune/weights
+[decode] < src=$tok@tok_src[sets:test] gra=$gra@extract_gra[filterSet:test] weights=$weights@tune
          > hyps
          :: .vmem=16gb .cpus=8
   /home/jhclark/workspace/cdec/decoder/cdec TODO -w $weights > $hyps
 
-[eval] < hyps=(scoreSet: tune=$tune/hyps test=$decode/hyps)
-       < refs=(scoreSet: tune=$tok_tgt[sets:tune]/tok test=$tok_tgt[sets:test]/tok)
+[eval] < hyps=(scoreSet: tune=$hyps@tune test=$hyps@decode)
+       < refs=(scoreSet: tune=$tok@tok_tgt[sets:tune] test=$tok@tok_tgt[sets:test])
        > scores
        :: .vmem=4gb .cpus=1
   /home/jhclark/workspace/multeval/multeval.sh TODO $hyps $refs > $scores
