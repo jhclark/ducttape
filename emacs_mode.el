@@ -6,6 +6,8 @@
 
 (setq myKeywords
  `(
+   ; The first matched rule wins
+   ("^ +[^<>: ].*$" . font-lock-string-face)
 
    ;( ,(regexp-opt '("::" "<" ">" "=" "(" ")" "@") 'word) . font-lock-function-name-face)
    ;
@@ -16,7 +18,7 @@
    ; stuff between "
    ("\"\\.\\*\\?" . font-lock-string-face)
    ("^\\[.*?\\]" . font-lock-function-name-face)
-   ; : , ; { } =>  @ $ = are all special elements
+
    ;(":\\|,\\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-keyword-face)
    ;( ,(regexp-opt mydsl-keywords 'words) . font-lock-builtin-face)
    ;( ,(regexp-opt mydsl-events 'words) . font-lock-constant-face)
