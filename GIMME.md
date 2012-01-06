@@ -17,7 +17,7 @@ gimme
 
 Syntax:
 ```bash
-./my_builder gimme $repo $dest [--rev $rev] [--branch $branch]
+./my_builder gimme $dest
 ```
 
 This command requests that the builder "my_builder" retrieve its target tool from the
@@ -26,24 +26,58 @@ If $rev is omitted, it is taken to be the latest version; otherwise, it is inter
 as a revision relative to $repo. If $branch is omitted, it is taken to be HEAD (git)
 or TRUNK (svn); otherwise, it should be specified as a branch known to $repo.
 
+This command should also always output a file called gimme.ver in the $dest dir, which
+stores the result of "my_builder version $dest". Importantly, this will return an
+*absolute* revision identifier. This identifier should include any branch information,
+if relevant.
+
+The address 
+
+Future versions may require "gimme" to provide a specific reversion and branch as arguments.
+For now, if such reproducibility is desired, it should be accomplished by directly modifying
+the gimme builder script "my_builder".
+
 For example:
 ```bash
-./my_builder.sh gimme https://github.com/jhclark/multeval.git /tmp/multeval-012345 HEAD
+./my_builder.sh gimme /tmp/multeval-012345
 ```
 
-version
--------
+dest-version
+------------
 
 Syntax:
 ```bash
-./my_builder version $dest
+./my_builder dest-version $dest
 ```
+
+This command returns the current *absolute* revision relative to the repository from 
+which the tool was checked out. This version should *never* be a relative, mutable
+revision identifier such as HEAD or TRUNK.
 
 For example:
 ```bash
-./my_builder.sh version /tmp/multeval-012345
+./my_builder.sh dest-version /tmp/multeval-012345
 ```
 might return the git SHA1 revision:
 ```
 7425f75
 ```
+
+repo-version
+------------
+
+```bash
+./my_builder repo-version https://github.com/jhclark/multeval.git
+```
+
+
+Adapting for Your Environment
+=============================
+
+Currently, system specific modifications such as where prefix, etc is located is recommended to be done by copying the build scripts. This may seem bad, but build system and repository system already abstract fairly complicated operations. Between the Gimme interface and the build system and repo interfaces, these should be small scripts, which act more or less like configuration files.
+
+However, it is considered best practice to have variables for such things at the top of your gimme script rather than buried in the commands.
+
+TODO
+====
+Passing in number of cores for make -j, scons -j, bjam -j, etc
