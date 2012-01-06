@@ -35,3 +35,5 @@
   (modify-syntax-entry ?# "< b" ducttape-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" ducttape-mode-syntax-table)
 )
+
+(setq auto-mode-alist (cons '("\\.tape$" . ducttape-mode) auto-mode-alist))

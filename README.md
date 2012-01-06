@@ -63,6 +63,14 @@ To test high-level functionality, run:
 ```
 This will run all of the example files associated with the tutorial, which also serve as regression tests.
 
+Emacs Mode
+==========
+
+To get syntax highlighting in emacs, add a line similar to the following in your ~/.emacs file:
+
+```
+(load "/home/jhclark/software/ducttape/emacs_mode.el")
+```
 
 Eclipse
 =======
