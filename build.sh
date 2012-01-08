@@ -9,7 +9,8 @@ mkdir -p $scriptDir/bin
 find $scriptDir/src/main/scala \
   | egrep '\.scala$' \
   | xargs fsc -cp $scriptDir/lib/scalatest-1.6.1.jar \
-    -d $scriptDir/bin/
+    -d $scriptDir/bin/ \
+  | $scriptDir/color_scalac.awk
 
 echo >&2 "Building JAR..."
 (cd $scriptDir/bin; zip -qr $scriptDir/ducttape.jar *)
