@@ -81,17 +81,8 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
     val stderrFile = new File(where, "stderr.txt")
     val workDir = new File(where, "work")
     
-    println("%sRunning: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
-    println("Running %s in %s".format(task.name, where.getAbsolutePath))
-    if(where.exists) {
-      println("Partial output detected at %s; NOT DELETING".format(where))
-      //Files.deleteDir(where)
-    }
-    workDir.mkdirs
-    if(!workDir.exists) {
-      throw new RuntimeException("Could not make directory: " + where.getAbsolutePath)
-    }
-      
+    println("%sConsidering running: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
+
     val env = new mutable.ListBuffer[(String,String)]
 
     // TODO: Move this inside getInFile?
@@ -125,9 +116,10 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
     }
     
     // set param values (no need to know source active branches since we already resolved the literal)
-    for( (paramSpec, srcSpec, srcTaskDef) <- task.paramVals) {
+    val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef) <- task.paramVals) yield {
       println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
       env.append( (paramSpec.name, srcSpec.rval.value) )
+      (paramSpec.name, srcSpec.rval.value)
     }
 
     // assign output paths
@@ -141,14 +133,24 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
       env.append( (outSpec.name, outFile.getAbsolutePath) )
     }
 
-    // TODO: Move this check and make it into checksums
+    // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     if(allOutFilesExist) {
       err.println("Determined that %s already has all required outputs".format(task.name))
     } else {
-      // TODO: Detect whether to use shell runner or qsub runner
-      // TODO: Turn this into a factory that receives a submitter?
+
+      println("Running %s in %s".format(task.name, where.getAbsolutePath))
+      if(where.exists) {
+        err.println("Partial output detected at %s; DELETING ALL PARTIAL OUTPUT".format(where))
+        Files.deleteDir(where)
+      }
+      workDir.mkdirs
+      if(!workDir.exists) {
+        throw new RuntimeException("Could not make directory: " + where.getAbsolutePath)
+      }
+      
       // TODO: Get the environment variables up in there! Was this already taken care of by -V?
-      val submitCommands = Submitter.prepare(dirs.baseDir, where, task)
+      val commandsWithGimme = Gimme.augment(dirs.baseDir, params, task.commands)
+      val submitCommands = Submitter.prepare(dirs.baseDir, where, params, commandsWithGimme)
       val exitCode = Shell.run(submitCommands, workDir, env, stdoutFile, stderrFile)
       if(exitCode != 0) {
         println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))

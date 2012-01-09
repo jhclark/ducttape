@@ -14,12 +14,9 @@ object Submitter {
   // we expect this to return one command such as "qsub job-script.sh"
   def prepare(workflowDir: File,
               taskWhere: File,
-              task: RealTask
+              params: Seq[(String,String)],
+              commands: Seq[String]
               ): Seq[String] = {
-
-    val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef) <- task.paramVals) yield {
-      (paramSpec.name, srcSpec.rval.value)
-    }
 
     // use "shell" as default if none specified
     val submitterName = params.filter{case (k:String, v:String) => k == ".submitter"}.
@@ -38,7 +35,7 @@ object Submitter {
     // 3) Invoke script as subprocess and receive lines of stdout back
     //    as the new commands
     implicit def file2str(f: File) = f.getAbsolutePath
-    Shell.runGetOutputLinesNoShell(submitterScript, taskWhere, env, task.commands)
+    Shell.runGetOutputLinesNoShell(submitterScript, taskWhere, env, commands)
   }
 
   def findSubmitter(workflowDir: File,
