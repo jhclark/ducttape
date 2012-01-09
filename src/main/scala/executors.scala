@@ -74,6 +74,7 @@ trait UnpackedDagVisitor {
 }
 
 class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+
   override def visit(task: RealTask) {
     val where = dirs.assignDir(task.taskDef, task.activeBranches)
     val stdoutFile = new File(where, "stdout.txt")
@@ -144,9 +145,13 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
     if(allOutFilesExist) {
       err.println("Determined that %s already has all required outputs".format(task.name))
     } else {
-      val code = Shell.run(task.commands, workDir, env, stdoutFile, stderrFile)
-      if(code != 0) {
-        println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, code, Console.RESET))
+      // TODO: Detect whether to use shell runner or qsub runner
+      // TODO: Turn this into a factory that receives a submitter?
+      // TODO: Get the environment variables up in there! Was this already taken care of by -V?
+      val submitCommands = Submitter.prepare(dirs.baseDir, where, task)
+      val exitCode = Shell.run(submitCommands, workDir, env, stdoutFile, stderrFile)
+      if(exitCode != 0) {
+        println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))
         exit(1)
       }
     }

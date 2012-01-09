@@ -1,10 +1,16 @@
 package ducttape.util
 
-import sys.process._
+import collection._
 import io._
+import sys.process._
 
 import java.io._
 import java.net._
+
+object Environment {
+  def getJarFile = new File(Environment.getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
+  def getJarDir = getJarFile.getParentFile
+}
 
 object Files {
   def write(str: String, file: File) = {
@@ -83,7 +89,37 @@ object Shell {
     code
   }
 
-  def runGetOutput(cmd: String): String = {
+  def runGetOutputLinesNoShell(cmd: String,
+                               workDir: File,
+                               env: Seq[(String,String)],
+                               stdin: Seq[String]
+                               ): Seq[String] = {
+    // Run command
+    // TODO: How do we handle 
+    def provideIn(x: OutputStream) = {
+      val procin = new PrintStream(x)
+      for(line <- stdin) procin.println(line)
+      procin.close
+    }
+    var output = new mutable.ArrayBuffer[String]
+    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
+    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( System.err.println(_) ) }
+    // pass env as varargs
+    val code = Process(cmd, workDir, env:_*)
+            .run(new ProcessIO(provideIn, handleOut, handleErr))
+            .exitValue
+    if(code != 0) {
+      // TODO: More specific exception?
+      throw new RuntimeException("Command '%s' returned error code %d".format(cmd, code))
+    }
+    output
+  }
+
+  def runGetOutputLines(cmd: String,
+                        workDir: File,
+                        env: Seq[(String,String)]
+                       ): Seq[String] = {
+
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
       bash.println("set -e") // stop on errors
@@ -91,14 +127,24 @@ object Shell {
       bash.println("set -u") // don't allow unbound variables
       bash.println("set -x") // show each command as it is executed
       bash.println(cmd)
-      bash.close()
+      bash.close
     }
-    val output = new StringBuilder
-    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( output.append(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines().foreach( println(_) ) }
-    var code = "bash".run(new ProcessIO(provideIn, handleOut, handleErr)).exitValue()
-    println("Returned %s".format(code))
-    output.toString
+    var output = new mutable.ArrayBuffer[String]
+    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
+    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( System.err.println(_) ) }
+    // pass env as varargs
+    val code = Process("bash", workDir, env:_*)
+            .run(new ProcessIO(provideIn, handleOut, handleErr))
+            .exitValue
+    if(code != 0) {
+      // TODO: More specific exception?
+      throw new RuntimeException("Command '%s' returned error code %d".format(cmd, code))
+    }
+    output
+  }
+
+  // TODO: Default arguments for workDir and env
+  def runGetOutput(cmd: String, workDir: File, env: Seq[(String,String)]): String = {
+    runGetOutputLines(cmd, workDir, env).mkString("\n")
   }
 }
-
