@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# This is the shell submitter. It edits the commands so that they can
+# be sent to bash. **It does not actually execute the commands.**
+#
+# * We receive the raw task commands on stdin
+# * We write the commands for ducttape to submit the job on stdout
+# * We may optionally write files in the current directory
+# * $PWD is the task's realization directory. It contains the work/ directory.
+# * All "resource" parameters that start with . (as in .vmem)
+#   are passed in as environment variables as $RESOURCE_vmem
+# * We also receive the environment variables $TASK_NAME and $REALIZATION
+# * We should also make sure that stdout.txt and stderr.txt are properly
+#   placed in the current directory
+
+# To submit to the shell, do nothing to the commands --
+# pass them through unaltered
+cat
