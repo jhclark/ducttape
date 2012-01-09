@@ -1,6 +1,7 @@
 package ducttape.syntax;
 
 import scala.util.parsing.input.Positional
+import java.io.File
 
 object AbstractSyntaxTree {
   
@@ -8,7 +9,7 @@ object AbstractSyntaxTree {
   abstract class ASTType extends Positional {}
 
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val tasks: Seq[TaskDef]) extends ASTType {
+  class WorkflowDefinition(val file: File, val tasks: Seq[TaskDef]) extends ASTType {
     override def toString = tasks.mkString("\n\n")
   }
 

@@ -17,6 +17,10 @@ package ducttape {
     var byColor = Console.BLUE
     var taskColor = Console.GREEN
     var errorColor = Console.RED
+    var resetColor = Console.RESET
+
+    var errorLineColor = Console.BLUE // file and line number of error
+    var errorScriptColor = Console.WHITE // quote from file
   }
 }
 
@@ -50,7 +54,19 @@ object Ducttape {
 
     // format exceptions as nice error messages
     def ex2err[T](func: => T): T = {
+      import ducttape.syntax.FileFormatException
       try { func } catch {
+        case e: FileFormatException => {
+          err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
+          for( (file: File, line: Int, col: Int) <- e.refs) {
+            var badLine = io.Source.fromFile(file).getLines.drop(line-1).next
+            err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
+            err.println(conf.errorScriptColor + badLine)
+            err.println(" " * (col-2) + "^")
+          }
+          exit(1)
+          throw new Error("Unreachable") // make the compiler happy
+        }
         case e: Exception => {
           err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
           exit(1)
@@ -62,7 +78,7 @@ object Ducttape {
 
     var file = new File(args(0))
     println("Reading workflow from %s".format(file.getAbsolutePath))
-    val wd: WorkflowDefinition = ex2err(GrammarParser.read(IO.read(file, "UTF-8")))
+    val wd: WorkflowDefinition = ex2err(GrammarParser.read(file))
     println("Building workflow...")
     val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd))
     println("Workflow contains %d tasks".format(workflow.dag.size))

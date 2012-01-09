@@ -1,28 +1,40 @@
 package ducttape.syntax 
 
+import ducttape.util._
+
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
+import scala.util.parsing.input.Position
 
-class FileFormatException(msg: String) extends Exception(msg) {}
+import java.io.File
+
+// refs is a list of tuples with (file, line, col)
+class FileFormatException(val msg: String, val refs: Seq[(File, Int, Int)]) extends Exception(msg) {
+  def this(msg: String, file: File, line: Int, col: Int) = this(msg, List( (file, line, col) ))
+  def this(msg: String, file: File, pos: Position) = this(msg, List( (file, pos.line, pos.column) ))
+  // require list instead of Seq to get around erasure
+  def this(msg: String, refs: List[(File, Position)]) = this(msg, for( (f,p) <- refs) yield (f, p.line, p.column) )
+}
 
 object GrammarParser extends RegexParsers {
   
   import ducttape.syntax.AbstractSyntaxTree._
-  import ducttape.syntax.Grammar._
-  import java.io.Reader
 	
   override val skipWhitespace = false
-  // use IO.reader to get a reader (force files to be UTF-8 encoded?)
-  def read(reader: Reader): WorkflowDefinition = {      
-    val result: ParseResult[WorkflowDefinition] = parseAll(workflow, reader)
+  // use file over reader to provide more informative error messages
+  // file must be UTF-8 encoded
+  def read(file: File): WorkflowDefinition = {
+
+    val grammar = new Grammar(file)
+    val result: ParseResult[WorkflowDefinition] = parseAll(grammar.workflow, IO.read(file, "UTF-8"))
     val pos = result.next.pos
     return result match {
       case Success(res, _) => res
       case Failure(msg, _) =>
-  	throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+  	throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
       case Error(msg, _) =>
-  	throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg))
+  	throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
     }
   }
 }
@@ -33,7 +45,7 @@ object GrammarParser extends RegexParsers {
  * @author Jon Clark
  * @author Lane Schwartz
  */
-object Grammar {
+class Grammar(val workflowFile: File) {
 
   import GrammarParser._
   import ducttape.syntax.AbstractSyntaxTree._
@@ -280,6 +292,6 @@ object Grammar {
     
     /** Complete declaration of a hyperworkflow of tasks. */
     def workflow: Parser[WorkflowDefinition] = positioned(repsep(taskBlock,eol) ^^ {
-    	case w => new WorkflowDefinition(w)
+    	case w => new WorkflowDefinition(workflowFile, w)
     })
 }
