@@ -1,3 +1,4 @@
+/*
 package ducttape.remote
 
 import java.io._
@@ -78,3 +79,4 @@ class ServerThread(socket: Socket) extends Thread("ServerThread") {
     }
   }
 }
+*/
