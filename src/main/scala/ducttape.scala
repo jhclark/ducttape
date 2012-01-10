@@ -128,12 +128,19 @@ object Ducttape {
         }
       }
       case "execute" => {
-        val visitor: UnpackedDagVisitor = new Executor(conf, dirs)
-        for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
-          val taskT: TaskTemplate = v.packed.value
-          val task: RealTask = taskT.realize(v.realization)
-          visitor.visit(task)
+        def visitAll(visitor: UnpackedDagVisitor) {
+          for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+            val taskT: TaskTemplate = v.packed.value
+            val task: RealTask = taskT.realize(v.realization)
+            visitor.visit(task)
+          }
         }
+        err.println("Removing partial output...")
+        visitAll(new PartialOutputRemover(conf, dirs))
+        err.println("Retreiving code and building...")
+        visitAll(new Builder(conf, dirs))
+        err.println("Executing tasks...")
+        visitAll(new Executor(conf, dirs))
       }
       case "viz" => {
         println("Compiling GraphViz visualization to viz.pdf...")

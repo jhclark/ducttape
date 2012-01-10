@@ -18,12 +18,13 @@ class DirectoryArchitect(val baseDir: File) {
     new File(packedDir, "%s/1".format(Task.realizationName(realization)))
   }
 
+
   def assignPackedDir(taskDef: TaskDef): File = {
     new File(baseDir, taskDef.name).getAbsoluteFile
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Map[String,Branch]): File = {
-    println("Assigning outfile for " + spec)
+    //println("Assigning outfile for " + spec)
     val taskDir = assignDir(taskDef, realization)
     assert(!spec.isInstanceOf[BranchPointDef])
 
@@ -101,26 +102,28 @@ class TaskEnvironment(dirs: DirectoryArchitect, task: RealTask) {
   val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef) <- task.inputVals) yield {
     val srcActiveBranches = getSourceActiveBranches(task)
     val inFile = dirs.getInFile(inSpec, task.activeBranches, srcSpec, srcTaskDef, srcActiveBranches)
-    err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
+    //err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
     (inSpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
   val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef) <- task.paramVals) yield {
-    err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
+    //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
     (paramSpec.name, srcSpec.rval.value)
   }
 
   // assign output paths
   val outputs: Seq[(String, String)] = for(outSpec <- task.outputs) yield {
     val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.activeBranches)
-    err.println("For outSpec %s got path: %s".format(outSpec, outFile))
+    //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
 
   lazy val env = inputs ++ outputs ++ params
   
   val where = dirs.assignDir(task.taskDef, task.activeBranches)
+  val buildStdoutFile = new File(where, "gimme_stdout.txt")
+  val buildStderrFile = new File(where, "gimme_stderr.txt")
   val stdoutFile = new File(where, "stdout.txt")
   val stderrFile = new File(where, "stderr.txt")
   val workDir = new File(where, "work")
@@ -152,8 +155,38 @@ object CompletionChecker {
   }
 }
 
-class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+class PartialOutputRemover(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+  override def visit(task: RealTask) {
+    val taskEnv = new TaskEnvironment(dirs, task)
+    if(CompletionChecker.isComplete(taskEnv)) {
+      err.println("Determined that %s already has all required outputs. Keeping output.".format(task.name))
+    } else if(taskEnv.where.exists) {
+      err.println("Partial output detected at %s; DELETING ALL PARTIAL OUTPUT".format(taskEnv.where))
+      Files.deleteDir(taskEnv.where)
+    }
+  }  
+}
 
+class Builder(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+  override def visit(task: RealTask) {
+    val taskEnv = new TaskEnvironment(dirs, task)
+    if(CompletionChecker.isComplete(taskEnv)) {
+      err.println("Determined that %s already has all required outputs. No need to rebuild tools.".format(task.name))
+    } else {
+      println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
+      // TODO: Rename the augment method
+      taskEnv.workDir.mkdirs
+      val gimmeCmds = Gimme.augment(dirs.baseDir, taskEnv.params, Seq.empty)
+      val exitCode = Shell.run(gimmeCmds, taskEnv.workDir, taskEnv.env, taskEnv.buildStdoutFile, taskEnv.buildStderrFile)
+      if(exitCode != 0) {
+        println("%sBuild task %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))
+        exit(1)
+      }
+    }
+  }
+}
+
+class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
     
@@ -163,21 +196,15 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
     if(CompletionChecker.isComplete(taskEnv)) {
       err.println("Determined that %s already has all required outputs".format(task.name))
     } else {
-
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
-      if(taskEnv.where.exists) {
-        err.println("Partial output detected at %s; DELETING ALL PARTIAL OUTPUT".format(taskEnv.where))
-        Files.deleteDir(taskEnv.where)
-      }
       taskEnv.workDir.mkdirs
       if(!taskEnv.workDir.exists) {
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
       
-      // TODO: Get the environment variables up in there! Was this already taken care of by -V?
-      val commandsWithGimme = Gimme.augment(dirs.baseDir, taskEnv.params, task.commands)
+      // there's so many parameters here in case we want to "augment" the commands in some way
       val submitCommands = Submitter.prepare(dirs.baseDir, taskEnv.where, taskEnv.params,
-                                             commandsWithGimme, task.name, task.realizationName)
+                                             task.commands, task.name, task.realizationName)
       val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
       if(exitCode != 0) {
