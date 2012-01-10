@@ -13,25 +13,40 @@ object Environment {
 }
 
 object Files {
-  def write(str: String, file: File) = {
+  def write(str: String, file: File) {
     val fw = new FileWriter(file)
     fw.write(str)
     fw.close()    
   }
 
-  def writer(file: File) = new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
+  def writer(file: File): PrintWriter = {
+    new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
+  }
 
-  def deleteDir(dir: File): Unit = {
-    if(dir.isDirectory)
-      for(child <- dir.listFiles)
-        deleteDir(child)
+  def writer(opt: Option[File]): PrintWriter = opt match {
+    case Some(file: File) => writer(file)
+    case None => new PrintWriter(NullWriter)
+  }
 
-    if(!dir.delete)
-      throw new IOException("Could not delete file: %s".format(dir.getAbsolutePath))
+  // there is no reliable way of detecting symlinks in Java
+  // f.getAbsolutePath != f.getCanonicalPath fails since /home/./jhclark is not canonical
+  def deleteDir(dir: File) {
+    val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
+    if(code != 0) {
+      throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
+    }
   }
 }
 
+object NullWriter extends Writer {
+  override def close(): Unit = Unit
+  override def flush(): Unit = Unit
+  override def write(cbuf: Array[Char]): Unit = Unit
+  override def write(cbuf: Array[Char], off: Int, len: Int): Unit = Unit
+}
+
 object IO {
+
   def read(input: Any, encoding: String) = input match {
     case bytes: Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding)
     case chars: Array[Char]    => new CharArrayReader(chars)
@@ -55,11 +70,16 @@ object Shell {
     run(cmds.mkString("\n"), workDir, env, stdoutFile, stderrFile)
   }
 
+  def run(cmd: String, workDir: File, env: Seq[(String,String)],
+          stdoutFile: File, stderrFile: File): Int = {
+    run(cmd, Some(workDir), env, Some(stdoutFile), Some(stderrFile))
+  }
+
   def run(cmd: String,
-          workDir: File,
-          env: Seq[(String,String)],
-          stdoutFile: File,
-          stderrFile: File): Int = {
+          workDir: Option[File] = None,
+          env: Seq[(String,String)] = Seq.empty,
+          stdoutFile: Option[File] = None,
+          stderrFile: Option[File] = None): Int = {
 
     val stdout = Files.writer(stdoutFile)
     val stderr = Files.writer(stderrFile)
