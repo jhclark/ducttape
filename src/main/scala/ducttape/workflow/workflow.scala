@@ -160,9 +160,9 @@ class RealTask(val taskT: TaskTemplate,
                  case Some(srcSpec) => curSpec = srcSpec
                  case None => {
                    throw new FileFormatException(
-                     "Output %s at source task %s for input %s at task %s not found".format(
-                       srcOutName, srcTaskName, spec.name, taskDef.name),
-                       wd.file, srcDef.pos)
+                     "Output %s at source task %s for required by input %s at task %s not found. Candidate outputs are: %s".format(
+                       srcOutName, srcTaskName, spec.name, taskDef.name, specSet.map(_.name).mkString(" ")),
+                     List( (wd.file, spec.pos, spec.pos.line), (wd.file, srcDef.pos, srcDef.lastHeaderLine) ))
                  }
                }
                // assign after we've gotten a chance to print error messages
@@ -192,10 +192,6 @@ class RealTask(val taskT: TaskTemplate,
    // create dependency pointers based on workflow definition
    // TODO: This method has become morbidly obese -- break it out into several methods
    def build(wd: WorkflowDefinition): HyperWorkflow = {
-
-     import scala.util.parsing.input.Position
-     val pos: Position = wd.pos
-     println("Workflow defined at " + pos)
 
      val defMap = new mutable.HashMap[String,TaskDef]
      for(t <- wd.tasks) {
