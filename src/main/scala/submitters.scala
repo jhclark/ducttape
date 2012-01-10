@@ -15,7 +15,9 @@ object Submitter {
   def prepare(workflowDir: File,
               taskWhere: File,
               params: Seq[(String,String)],
-              commands: Seq[String]
+              commands: Seq[String],
+              taskName: String,
+              realizationName: String
               ): Seq[String] = {
 
     // use "shell" as default if none specified
@@ -27,10 +29,10 @@ object Submitter {
     
     // 2) Send resource parameters (those that start with dots)
     // as environment variables to this script
-    val env: Seq[(String,String)] = for( (k,v) <- params; if k.startsWith(".") ) yield {
+    val env: Seq[(String,String)] = (for( (k,v) <- params; if k.startsWith(".") ) yield {
       val name = k.substring(1) // remove leading dot
       ("RESOURCE_%s".format(name), v)
-    }
+    }) ++ Seq( ("TASK_NAME", taskName), ("REALIZATION", realizationName) )
 
     // 3) Invoke script as subprocess and receive lines of stdout back
     //    as the new commands
