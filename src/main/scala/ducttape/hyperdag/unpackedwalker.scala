@@ -72,10 +72,16 @@ class UnpackedDagWalker[V,H,E,FilterState](val dag: HyperDag[V,H,E],
           constraintFilter(prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
+              //System.err.println(i + " pre-add combo=" + combo)
               combo ++= parentRealization
+              //System.err.println(i + " post-add combo=" + combo)
               parentReals(i) = parentRealization
+              //System.err.println(i + " pre-recurse parentRealization=" + parentRealization.toList)
               unpack(i+1, iFixed, combo, parentReals, nextState, callback)
+              //System.err.println(i + " post-recurse parentRealization=" + parentRealization.toList)
+              //System.err.println(i + " pre-remove combo=" + combo)
               combo --= parentRealization
+              //System.err.println(i + " post-remove combo=" + combo)
             }
           }
         }     
