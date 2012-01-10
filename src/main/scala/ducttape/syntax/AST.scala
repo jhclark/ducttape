@@ -1,6 +1,7 @@
 package ducttape.syntax;
 
 import scala.util.parsing.input.Positional
+import scala.util.parsing.input.Position
 import java.io.File
 
 object AbstractSyntaxTree {
@@ -68,7 +69,13 @@ object AbstractSyntaxTree {
                 val inputs: Seq[Spec],
                 val outputs: Seq[Spec],
                 val params: Seq[Spec],
-                val commands: Seq[String]) extends ASTType {
+                val commands: Seq[String],
+                val headerPos: Position) extends ASTType {
+    pos = headerPos // use header as position information instead of comment block
+    lazy val lastHeaderLine: Int = {
+      System.err.println("lazy header line... " + (inputs ++ outputs ++ params).map(spec => spec.pos.line) )
+      (inputs ++ outputs ++ params).map(spec=>spec.pos.line).max
+    }
     override def toString = name
 /*
       "Task name: " + name + 

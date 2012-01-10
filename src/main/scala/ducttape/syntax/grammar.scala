@@ -6,15 +6,17 @@ import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
+import scala.util.parsing.input.Positional
 
 import java.io.File
 
-// refs is a list of tuples with (file, line, col)
-class FileFormatException(val msg: String, val refs: Seq[(File, Int, Int)]) extends Exception(msg) {
-  def this(msg: String, file: File, line: Int, col: Int) = this(msg, List( (file, line, col) ))
-  def this(msg: String, file: File, pos: Position) = this(msg, List( (file, pos.line, pos.column) ))
+// refs is a list of tuples with (file, line, col, untilLine)
+class FileFormatException(val msg: String, val refs: Seq[(File, Int, Int, Int)]) extends Exception(msg) {
+  def this(msg: String, file: File, line: Int, col: Int) = this(msg, List( (file, line, col, line) ))
+  def this(msg: String, file: File, pos: Position) = this(msg, List( (file, pos.line, pos.column, pos.line) ))
   // require list instead of Seq to get around erasure
-  def this(msg: String, refs: List[(File, Position)]) = this(msg, for( (f,p) <- refs) yield (f, p.line, p.column) )
+  def this(msg: String, refs: Iterable[(File, Position)]) = this(msg, (for( (f,p) <- refs) yield (f, p.line, p.column, p.line)).toList )
+  def this(msg: String, refs: List[(File, Position, Int)]) = this(msg, for( (f,p,until) <- refs) yield (f, p.line, p.column, until) )
 }
 
 object GrammarParser extends RegexParsers {
@@ -53,8 +55,7 @@ class Grammar(val workflowFile: File) {
   // === WHITE SPACE ===
 
   /** End of line characters, including end of file. */
-  val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString)
- 
+  val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
   
@@ -94,18 +95,33 @@ class Grammar(val workflowFile: File) {
    *  <p>
    *  The name must conform to Bash variable name requirements: 
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+   *  We make an exception for parameter names, which may be prefixed with a dot, to indicate that they are
+   *  Resource Parameters, for use with submitters rather than by the task's bash code
    */
-  def variableName: Parser[String] = {
+  def variableName(allowLeadingDot: Boolean): Parser[String] = {
     // If the name starts with an illegal character, bail out and don't backtrack
-    ( ("""[^A-Za-z_]""".r <~ failure("Illegal character at start of variable name"))
+    // TODO: Can we reduce the duplicated code here? (Lane: Sorry for the mess -Jon)
+    if(allowLeadingDot) {
+      ( ("""[^.A-Za-z_]""".r <~ failure("Illegal character at start of variable name"))
 
-     // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
-     | ("""[A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
-     ~! err("Illegal character in variable name declaration"))
-    
-     // Finally, if the name contains only legal characters, then parse it!
-     | ("""[A-Za-z_][A-Za-z0-9_]*""".r) //| err("")
-   )
+       // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+       | ("""[.A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
+          ~! err("Illegal character in variable name declaration"))
+       
+       // Finally, if the name contains only legal characters, then parse it!
+       | ("""[.A-Za-z_][A-Za-z0-9_]*""".r) //| err("")
+     )
+    } else {
+      ( ("""[^A-Za-z_]""".r <~ failure("Illegal character at start of variable name"))
+
+       // Else if the name starts out OK, but then contains an illegal non-whitespace character, bail out and don't backtrack
+       | ("""[A-Za-z_][A-Za-z0-9_]*""".r <~ guard(regex("""[^\r\n= \t]+""".r))
+          ~! err("Illegal character in variable name declaration"))
+       
+       // Finally, if the name contains only legal characters, then parse it!
+       | ("""[A-Za-z_][A-Za-z0-9_]*""".r) //| err("")
+     )
+     }
   }
 
   /** Name of a branch point.
@@ -217,7 +233,7 @@ class Grammar(val workflowFile: File) {
     /** Branch declaration */
     def branchPoint: Parser[BranchPointDef] = positioned(
       (((literal("(") ~! ((space) | err("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchPointName <~ literal(":")) ~  
-       (rep(space) ~> repsep(assignment, space)) <~ ((space ~ literal(")") | err("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
+       (rep(space) ~> repsep(assignment(false), space)) <~ ((space ~ literal(")") | err("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
          case strVar ~ seq => new BranchPointDef(strVar,seq)
        })
 
@@ -229,7 +245,7 @@ class Grammar(val workflowFile: File) {
     })
 
     /** Variable declaration */
-    def assignment: Parser[Spec] = positioned(variableName ~ opt("=" ~! rvalue) ^^ {
+    def assignment(allowLeadingDot: Boolean): Parser[Spec] = positioned(variableName(allowLeadingDot) ~ opt("=" ~! rvalue) ^^ {
       case strVar ~ Some(e ~ value) => new Spec(strVar, value)
       case strVar ~ None => new Spec(strVar, Unbound())
     })
@@ -248,7 +264,7 @@ class Grammar(val workflowFile: File) {
      * Sequence of <code>assignment</code>s representing input files.
      * This sequence must be preceded by "<".
      */
-    def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+    def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment(false), space)) ^^ {
       case Some(list) => list
       case None => List.empty
     } 
@@ -257,7 +273,7 @@ class Grammar(val workflowFile: File) {
      * Sequence of <code>assignment</code>s representing input files.
      * This sequence must be preceded by ">".
      */
-    def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+    def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment(false), space)) ^^ {
       case Some(list) => list
       case None => List.empty
     }
@@ -266,7 +282,7 @@ class Grammar(val workflowFile: File) {
      * Sequence of <code>assignment</code>s representing input files.
      * This sequence must be preceded by "::".
      */	
-    def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment, space)) ^^ {
+    def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment(true), space)) ^^ {
         case Some(params) => params
         case None => List.empty
       }
@@ -287,7 +303,7 @@ class Grammar(val workflowFile: File) {
     /** Complete declaration of a task, including command(s) and optional comments. */
     def taskBlock: Parser[TaskDef] =  positioned(comments ~ taskHeader ~! commands <~ emptyLines ^^ {
     	case ((com:CommentBlock) ~ (head:TaskHeader) ~ (cmds:Seq[String])) => 
-    	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds)
+    	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds, head.pos)
     })
     
     /** Complete declaration of a hyperworkflow of tasks. */
