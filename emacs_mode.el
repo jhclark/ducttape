@@ -27,7 +27,7 @@
 
 ;; define the major mode.
 (define-derived-mode ducttape-mode fundamental-mode
-"ducctape-mode is a major mode for editing ducttape workflow files."
+"ducttape workflow"
 
   (setq font-lock-defaults '(myKeywords))
 
