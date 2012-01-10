@@ -34,20 +34,18 @@ object Ducttape {
     println(Console.RESET)
 
     def usage() = {
-      err.println("Usage: ducctape workflow.tape [--purge] [--viz]")
+      err.println("Usage: ducctape workflow.tape [--purge] [--viz] [--env taskName [realName]] [--markDone taskName [realName]]")
       exit(1)
     }
     if(args.length == 0) usage()
-
-    // TODO: Confirm this drastic action (purge)
-    val purge = {args.length > 1 && args(1) == "--purge"}
-    val viz = {args.length > 1 && args(1) == "--viz"}
 
     val mode: String = args.length match {
       case 1 => "execute"
       case _ => args(1) match {
         case "--purge" => "purge"
         case "--viz" => "viz"
+        case "--env" => "env"
+        case "--markDone" => "markDone"
         case _ => usage(); ""
       }
     }
@@ -58,10 +56,10 @@ object Ducttape {
       try { func } catch {
         case e: FileFormatException => {
           err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
-          for( (file: File, line: Int, col: Int) <- e.refs) {
-            var badLine = io.Source.fromFile(file).getLines.drop(line-1).next
+          for( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
             err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
-            err.println(conf.errorScriptColor + badLine)
+            val badLines = io.Source.fromFile(file).getLines.drop(line-1).take(line-untilLine+1)
+            err.println(conf.errorScriptColor + badLines.mkString("\n"))
             err.println(" " * (col-2) + "^")
           }
           exit(1)
@@ -92,9 +90,41 @@ object Ducttape {
 
     mode match {
       case "purge" => {
+        // TODO: Confirm this drastic action
         val visitor: PackedDagVisitor = new Purger(conf, dirs)
         for(v: PackedWorkVert <- workflow.dag.packedWalker.iterator) {
           visitor.visit(v.value)
+        }
+      }
+      case "env" => {
+        // TODO: Apply filters so that we do much less work to get here
+        val goalTaskName = args(2)
+        for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+          val taskT: TaskTemplate = v.packed.value
+          if(taskT.name == goalTaskName) {
+            val task: RealTask = taskT.realize(v.realization)
+            val env = new TaskEnvironment(dirs, task)
+            for( (k,v) <- env.env) {
+              println("%s=%s".format(k,v))
+            }
+          }
+        }
+      }
+      case "markDone" => {
+        // TODO: Apply filters so that we do much less work to get here
+        val goalTaskName = args(2)
+        for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+          val taskT: TaskTemplate = v.packed.value
+          if(taskT.name == goalTaskName) {
+            val task: RealTask = taskT.realize(v.realization)
+            val env = new TaskEnvironment(dirs, task)
+            if(CompletionChecker.isComplete(env)) {
+              err.println("Task already complete")
+            } else {
+              CompletionChecker.forceCompletion(env)
+              err.println("Forced completion of task")
+            }
+          }
         }
       }
       case "execute" => {
