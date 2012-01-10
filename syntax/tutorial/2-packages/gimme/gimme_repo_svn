@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case $1 in
+    repo-version) repo=$2; svn info $repo | awk '/^Revision/{print $2}' ;;
+    dest-version) dest=$2; svnversion $dest ;;
+    gimme)
+	repo=$2
+	dest=$3
+	echo >&2 "Fetching package from svn repository $repo into $dest"
+	# TODO: Better handling for existing? (e.g. svn up?)
+	if (( $# >= 4 )); then
+	    rev=$4
+	    svn checkout -r $rev $repo $dest
+	else
+	    svn checkout $repo $dest
+	fi
+	$0 dest-version $dest > $dest/gimme.rev
+	;;
+    *) echo >&2 "Unrecognized mode: $mode"; exit 1 ;;
+esac
