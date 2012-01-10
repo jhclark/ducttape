@@ -5,17 +5,17 @@ import collection._
 class MultiSet[A] {
   private val map = new mutable.HashMap[A,Int]
 
-  def +=(a: A) = {
+  def +=(a: A) {
     map.get(a) match {
       case Some(n) => map.put(a, n+1)
       case None => map.put(a, 1)
     }
   }
 
-  def -=(a: A) = {
+  def -=(a: A) {
     map.get(a) match {
-      case Some(n) if n == 1 => map.put(a, n-1)
-      case Some(n) if n > 1 => map.remove(a)
+      case Some(n) if n == 1 => map.remove(a)
+      case Some(n) if n > 1 => map.put(a, n-1)
       case None => throw new NoSuchElementException(a.toString)
     }
   }
