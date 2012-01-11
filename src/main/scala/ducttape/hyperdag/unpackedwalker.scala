@@ -164,6 +164,7 @@ class UnpackedDagWalker[V,H,E,FilterState](val dag: HyperDag[V,H,E],
           // any single realization are not satisfied), the below callback
           // function will not be called during this invocation
           activeCon.unpack(iEdge, item.realization,
+            // callback function:
             (unpackedV: UnpackedVertex[V,H,E]) => {
               agenda.synchronized {
                 // TODO: This agenda membership test could be slow O(n)

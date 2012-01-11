@@ -51,13 +51,17 @@ class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
 }
 
 // our only job is to hide epsilon vertices during iteration
+// see UnpackedDagWalker for definitions of filter and state types
+// F is the FilterState
 // TODO: Allow
-class UnpackedMetaDagWalker[V,M,H,E](val dag: MetaHyperDag[V,M,H,E],
+class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
         val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
-        val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_)
+        val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_,
+        val initState: F,
+        val constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F])
   extends Walker[UnpackedVertex[V,H,E]] {
 
-  private val delegate = new UnpackedDagWalker[V,H,E,Null](dag.delegate, selectionFilter, hedgeFilter) 
+  private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter, initState, constraintFilter)
 
   override def complete(item: UnpackedVertex[V,H,E]) = delegate.complete(item)
 
@@ -101,9 +105,9 @@ class UnpackedMetaDagWalker[V,M,H,E](val dag: MetaHyperDag[V,M,H,E],
 //
 // TODO: Pass filters to dag walker
 class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
-                            private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[V],MetaEdge[M,H,E]],
-                            private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]],
-                            private[hyperdag] val phantomVertices: Set[PackedVertex[V]]) {
+                              private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[V],MetaEdge[M,H,E]],
+                              private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]],
+                              private[hyperdag] val phantomVertices: Set[PackedVertex[V]]) {
   
   // don't include epsilon vertices
   val size: Int = delegate.size - metaEdgesByEpsilon.size - phantomVertices.size
@@ -115,15 +119,18 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
 
   def packedWalker()
     = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
-  def unpackedWalker() = {
+
+  def unpackedWalker[F](initFilterState: F, 
+                     constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F]) = {
 
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
     def selectionFilter(selection: MultiSet[H]) = true
     def hedgeFilter(h: HyperEdge[H,E]) = !isEpsilon(h)
-    
-    new UnpackedMetaDagWalker[V,M,H,E](this, selectionFilter, hedgeFilter)
+
+    new UnpackedMetaDagWalker[V,M,H,E,F](this, selectionFilter, hedgeFilter, initFilterState, constraintFilter)
   }
+
   def inMetaEdges(v: PackedVertex[V]): Seq[MetaEdge[M,H,E]]
     = for(parent <- delegate.parents(v)) yield metaEdgesByEpsilon(parent)
   def inHyperEdges(me: MetaEdge[M,H,E]): Seq[HyperEdge[H,E]]

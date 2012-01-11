@@ -42,6 +42,7 @@ object Ducttape {
     val mode: String = args.length match {
       case 1 => "execute"
       case _ => args(1) match {
+        case "--list" => "list"
         case "--purge" => "purge"
         case "--viz" => "viz"
         case "--env" => "env"
@@ -89,17 +90,24 @@ object Ducttape {
     val dirs = new DirectoryArchitect(baseDir)
 
     mode match {
+      case "list" => {
+        for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+          val taskT: TaskTemplate = v.packed.value
+          val task: RealTask = taskT.realize(v.realization)
+          println("%s %s".format(task.name, task.realizationName))
+        }
+      }
       case "purge" => {
         // TODO: Confirm this drastic action
         val visitor: PackedDagVisitor = new Purger(conf, dirs)
-        for(v: PackedWorkVert <- workflow.dag.packedWalker.iterator) {
+        for(v: PackedWorkVert <- workflow.packedWalker.iterator) {
           visitor.visit(v.value)
         }
       }
       case "env" => {
         // TODO: Apply filters so that we do much less work to get here
         val goalTaskName = args(2)
-        for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+        for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
             val task: RealTask = taskT.realize(v.realization)
@@ -113,7 +121,7 @@ object Ducttape {
       case "markDone" => {
         // TODO: Apply filters so that we do much less work to get here
         val goalTaskName = args(2)
-        for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+        for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
             val task: RealTask = taskT.realize(v.realization)
@@ -129,7 +137,7 @@ object Ducttape {
       }
       case "execute" => {
         def visitAll(visitor: UnpackedDagVisitor) {
-          for(v: UnpackedWorkVert <- workflow.dag.unpackedWalker.iterator) {
+          for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
             val taskT: TaskTemplate = v.packed.value
             val task: RealTask = taskT.realize(v.realization)
             visitor.visit(task)

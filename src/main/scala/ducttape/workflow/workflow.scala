@@ -116,6 +116,10 @@ class RealTask(val taskT: TaskTemplate,
    override def toString = name + "@" + branchPoint
  }
 
+ class UnpackState {
+   
+ }
+
  object WorkflowBuilder {
 
    class ResolveMode();
