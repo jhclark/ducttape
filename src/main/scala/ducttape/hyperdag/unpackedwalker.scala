@@ -46,6 +46,9 @@ class UnpackedDagWalker[V,H,E,FilterState](val dag: HyperDag[V,H,E],
     override def equals(obj: Any) = obj match { case that: ActiveVertex => (that.v == this.v) && (that.he == this.he) }
     override def toString = "%s(he=%s)".format(v,he)
 
+    // recursively scan left-to-right across the array called filled,
+    // building up the combination of hyperedges that forms a realization
+    // we can bail at any point during this process if a filter fails
     private def unpack(i: Int,
                        iFixed: Int,
                        combo: MultiSet[H],
@@ -148,10 +151,16 @@ class UnpackedDagWalker[V,H,E,FilterState](val dag: HyperDag[V,H,E],
 
     // first, match fronteir vertices
     // note: consequent is an edge unlike the packed walker
-    for(consequentE <- dag.outEdges(key.v)) {
+    for(consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
       val consequentV = dag.sink(consequentE)
-      val activeCon = activeEdges.getOrElseUpdate(consequentE,
-                                                  {new ActiveVertex(consequentV, Some(consequentE), key.state)} )
+      def newActiveVertex = { // thunk
+        // get() will throw if we don't get a valid state
+        // -- we should be guaranteed a valid state
+        val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
+        val newState = constraintFilter(key.state, MultiSet.empty, h).get
+        new ActiveVertex(consequentV, Some(consequentE), newState)
+      }
+      val activeCon = activeEdges.getOrElseUpdate(consequentE, newActiveVertex)
 
       val antecedents = dag.sources(consequentE)
       for(iEdge <- 0 until activeCon.filled.size) {

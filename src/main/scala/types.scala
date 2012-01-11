@@ -17,12 +17,20 @@ object Types {
   // TODO: Move this  
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Null]) {
 
+    // TODO: Should we allow access to "real" in this function -- that seems inefficient
     def unpackFilter(seen: UnpackState, real: MultiSet[Branch], parentReal: Seq[Branch]): Option[UnpackState] = {
-      // did we just add another copy of the same branch? if so, disallow it
-      if(parentReal.exists(branch => seen.contains(branch.branchPoint))) {
-        None // we've already seen this branch before
+      assert(seen != null)
+      assert(parentReal != null)
+      assert(!parentReal.exists(_ == null))
+      def violatesChosenBranch(newBranch: Branch) = seen.get(newBranch.branchPoint) match {
+        case None => false // no branch chosen yet
+        case Some(prevChosenBranch) => newBranch != prevChosenBranch
+      }
+      if(parentReal.exists(violatesChosenBranch)) {
+        None // we've already seen this branch point before -- and we just chose the wrong branch
       } else {
-        Some(seen ++ parentReal.map(branch => (branch.branchPoint, branch))) // left operand determines return type
+        //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
+        Some(seen ++ parentReal.map(b => (b.branchPoint, b))) // left operand determines return type
       }
     }
 
