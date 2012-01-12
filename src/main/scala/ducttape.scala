@@ -75,16 +75,15 @@ object Ducttape {
       }
     }
 
+    // make these messages optional with verbosity levels?
     var file = new File(args(0))
-    println("Reading workflow from %s".format(file.getAbsolutePath))
+    //println("Reading workflow from %s".format(file.getAbsolutePath))
     val wd: WorkflowDefinition = ex2err(GrammarParser.read(file))
-    println("Building workflow...")
+    //println("Building workflow...")
     val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd))
-    println("Workflow contains %d tasks".format(workflow.dag.size))
+    //println("Workflow contains %d tasks".format(workflow.dag.size))
     
     // TODO: Check that all input files exist
-
-    println("Executing...")
 
     val baseDir = file.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
@@ -93,7 +92,7 @@ object Ducttape {
       case "list" => {
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
-          val task: RealTask = taskT.realize(v.realization)
+          val task: RealTask = taskT.realize(v)
           println("%s %s".format(task.name, task.realizationName))
         }
       }
@@ -106,14 +105,18 @@ object Ducttape {
       }
       case "env" => {
         // TODO: Apply filters so that we do much less work to get here
+        // TODO: Complain if wrong number of args
         val goalTaskName = args(2)
+        val goalRealName = args(3)
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
-            val task: RealTask = taskT.realize(v.realization)
-            val env = new TaskEnvironment(dirs, task)
-            for( (k,v) <- env.env) {
-              println("%s=%s".format(k,v))
+            val task: RealTask = taskT.realize(v)
+            if(task.realizationName == goalRealName) {
+              val env = new TaskEnvironment(dirs, task)
+              for( (k,v) <- env.env) {
+                println("%s=%s".format(k,v))
+              }
             }
           }
         }
@@ -124,7 +127,7 @@ object Ducttape {
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
-            val task: RealTask = taskT.realize(v.realization)
+            val task: RealTask = taskT.realize(v)
             val env = new TaskEnvironment(dirs, task)
             if(CompletionChecker.isComplete(env)) {
               err.println("Task already complete")
@@ -139,7 +142,7 @@ object Ducttape {
         def visitAll(visitor: UnpackedDagVisitor) {
           for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
             val taskT: TaskTemplate = v.packed.value
-            val task: RealTask = taskT.realize(v.realization)
+            val task: RealTask = taskT.realize(v)
             visitor.visit(task)
           }
         }

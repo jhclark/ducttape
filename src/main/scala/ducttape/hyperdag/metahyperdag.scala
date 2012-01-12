@@ -23,6 +23,33 @@ class MetaEdge[M,H,E](private[hyperdag] val epsilonV: PackedVertex[_],
   override def toString = m.toString + " " + hyperedges.toString
 }
 
+// Unlike a plain UnpackedVertex, with a MetaHyperDAG, our choice of incoming
+// Meta edge may affect what our previous constraint state is (since we traverse
+// multiple hyperedges). Therefore, we must include a mapping from metaEdge to prevState
+//
+// All incoming metaedges to a vertex will be assigned exactly one of their member hyperedges.
+// This is represented by the sequence "edges". The parentRealizations are actually parallel
+// with the number of incoming metaedges for a vertex. The next sequence is parallel with the
+// number of edges in the active hyperedge for our current path (the one in this unpacking).
+// TODO: Document an example of how to iterate over this easily with zip()
+//
+// Like UnpackedVertex, this interface explicitly avoids giving unpacked vertices as
+// parents so that we can eventually discard more of the explored space
+// the prevState can store information such as "what realizations does my parent have?"
+// NOTE: It's actually the incoming edges that are meta -- not the vertex itself
+class UnpackedMetaVertex[V,H,E](val packed: PackedVertex[V],
+                                val edges: Seq[HyperEdge[H,E]],
+                                val realization: Seq[H],
+                                val parentRealizations: Seq[Seq[Seq[H]]],
+                                private[hyperdag] val dual: UnpackedVertex[V,H,E]) {
+  // TODO: More smearing of hash codes
+  override def hashCode = packed.id ^ realization.hashCode
+  override def equals(that: Any) = that match {
+    case other: UnpackedVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
+  }
+  override def toString = packed.toString + " (realization=" + realization.toString +")"
+}
+
 // our only job is to hide epsilon vertices during iteration
 // TODO: Create trait for getCompleted etc
 class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
@@ -38,13 +65,13 @@ class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
   override def complete(item: PackedVertex[V]) = delegate.complete(item)
 
   override def take(): Option[PackedVertex[V]] = {
-    var result = delegate.take()
+    var result = delegate.take
     // never return epsilon vertices nor phantom vertices
     // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
     // but phantom vertices break this
     while(!result.isEmpty && (dag.shouldSkip(result.get))) {
       complete(result.get)
-      result = delegate.take()
+      result = delegate.take
     }
     return result
   }
@@ -59,40 +86,59 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
         val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_,
         val initState: F,
         val constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F])
-  extends Walker[UnpackedVertex[V,H,E]] {
+  extends Walker[UnpackedMetaVertex[V,H,E]] {
 
   private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter, initState, constraintFilter)
 
-  override def complete(item: UnpackedVertex[V,H,E]) = delegate.complete(item)
+  // we must be able to recover the epsilon-antecedents of non-epsilon vertices
+  // so that we can properly populate their state maps
+  // unfortunately, this kills space complexity, since we must hold on to these until
+  // all members of a packed vertex have been unpacked
+  // TODO: Right now, we don't dectect when all members of a packed vertex have
+  // been unpacked so that we can reclaim space. Could we refcount them?
+  private val epsilons = new mutable.HashMap[(PackedVertex[V],Seq[H]), UnpackedVertex[V,H,E]]
 
-  override def take(): Option[UnpackedVertex[V,H,E]] = {
-    var result = delegate.take()
+  override def complete(item: UnpackedMetaVertex[V,H,E]) = delegate.complete(item.dual)
+
+  override def take(): Option[UnpackedMetaVertex[V,H,E]] = {
+    var result: Option[UnpackedVertex[V,H,E]] = delegate.take
     // never return epsilon vertices nor phantom verties
     // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
     // but phantom vertices break this
     while(!result.isEmpty && dag.shouldSkip(result.get.packed)) {
       //println("TAKE SKIPPING: " + result)
-      complete(result.get)
-      result = delegate.take()
+      val uv = result.get
+      delegate.complete(uv)
+      if(dag.isEpsilon(uv.packed)) {
+        // TODO: We'd really prefer not to store these...
+        epsilons += (uv.packed, uv.realization) -> uv
+      }
+      result = delegate.take
     }
     //println("TAKING: " + result)
 
-    result match {
+    return result match {
       case None => None
       case Some(raw: UnpackedVertex[V,H,E]) => {
-        // TODO: One more thing: The parent realizations now point to epsilon vertices,
-        // let's fix that
-        // * We must remove from the hyperedge derivation (realization)
-        //   the hyperedge payloads associated with the incoming 
-        val justAdded: Set[H] = (for(me <- dag.inMetaEdges(raw.packed);
-                                    he <- dag.inHyperEdges(me)) yield he.h
-                                )(breakOut)
-        val fixedReals = for(parentReal: Seq[H] <- raw.parentRealizations) yield {
-          // TODO: XXX: This is broken if there is at least one non-unique hyperedge !!!
-          // Perhaps we could do this directly on the multiset?
-          parentReal.filter(h => !justAdded(h))
+        
+        val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
+        val metaParentReals = new mutable.ListBuffer[Seq[Seq[H]]]
+
+        dag.delegate.parents(raw.packed) match {
+          // skip the case of phantom parents
+          case Seq(singleParent) if(dag.isPhantom(singleParent)) => ;
+          case parents => {
+            assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
+            // for parallel to number of incoming meta edges
+            for((parentEpsilonV: PackedVertex[V], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
+              val parentEpsilonUV: UnpackedVertex[V,H,E] = epsilons( (parentEpsilonV, parentEpsilonReals) )
+              // use this Seq[Seq[H]], which is parallel to the active hyperedge
+              activeEdges += parentEpsilonUV.edge.get
+              metaParentReals += parentEpsilonUV.parentRealizations
+            }
+          }
         }
-        Some(new UnpackedVertex[V,H,E](raw.packed, raw.edge, raw.realization, fixedReals))
+        Some(new UnpackedMetaVertex[V,H,E](raw.packed, activeEdges, raw.realization, metaParentReals, raw))
       }
     }
   }
@@ -108,7 +154,7 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
                               private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[V],MetaEdge[M,H,E]],
                               private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]],
                               private[hyperdag] val phantomVertices: Set[PackedVertex[V]]) {
-  
+
   // don't include epsilon vertices
   val size: Int = delegate.size - metaEdgesByEpsilon.size - phantomVertices.size
 
@@ -117,12 +163,11 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   private[hyperdag] def shouldSkip(v: PackedVertex[V]) = isEpsilon(v) || isPhantom(v)
   private[hyperdag] def isEpsilon(h: HyperEdge[H,E]) = epsilonEdges(h)
 
-  def packedWalker()
-    = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
+  def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
   def unpackedWalker[F](initFilterState: F, 
                      constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F]) = {
-
+    // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
     def selectionFilter(selection: MultiSet[H]) = true
@@ -184,9 +229,9 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   * (needed since we can't directly created objects with generic types)
   *
   * <img src="x.gif" /> */
-class MetaHyperDagBuilder[V,M,H,E](private val epsilonV: V,
-                                   private val epsilonH: H,
-                                   private val epsilonE: E) {
+class MetaHyperDagBuilder[V,M,H,E](private val epsilonV: V = null,
+                                   private val epsilonH: H = null,
+                                   private val epsilonE: E = null) {
   private val delegate = new HyperDagBuilder[V,H,E]
   private val metaEdgesByEpsilon = new mutable.HashMap[PackedVertex[V], MetaEdge[M,H,E]]
   private val metaEdgeSinks = new mutable.HashMap[PackedVertex[V], mutable.ArrayBuffer[PackedVertex[V]]]
@@ -194,7 +239,8 @@ class MetaHyperDagBuilder[V,M,H,E](private val epsilonV: V,
   
   def addVertex(v: V): PackedVertex[V] = delegate.addVertex(v)
 
-  // an edge with no source vertices
+  // phantom edge: an edge with no source vertices
+  // phantom vertex: the source vertex of a phantom edge
   // used in ducttape for literal file paths, which may be linked with branches
   // but don't have any executable code associated with them
   // TODO: Should this be incorporated into HyperDAG, too?

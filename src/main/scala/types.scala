@@ -3,6 +3,7 @@ package ducttape
 import collection._
 import ducttape.hyperdag._
 //import ducttape.io._
+import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.workflow._
 import ducttape.util.MultiSet
 
@@ -15,7 +16,7 @@ object Types {
   type UnpackState = immutable.HashMap[BranchPoint, Branch]
 
   // TODO: Move this  
-  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Null]) {
+  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Spec]) {
 
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
     def unpackFilter(seen: UnpackState, real: MultiSet[Branch], parentReal: Seq[Branch]): Option[UnpackState] = {
@@ -38,7 +39,7 @@ object Types {
     def unpackedWalker = dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter)
   }
   type PackedWorkVert = PackedVertex[TaskTemplate]
-  type UnpackedWorkVert = UnpackedVertex[TaskTemplate,Branch,Null]
+  type UnpackedWorkVert = UnpackedMetaVertex[TaskTemplate,Branch,Spec]
 //
 //  type LiteralSpec = SpecT[Literal]
 //  type Spec = SpecT[RValue]

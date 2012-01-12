@@ -23,6 +23,8 @@ object AbstractSyntaxTree {
    * Abstract specification of a variable name and its right hand side.
    */
   class AbstractSpec[+RValue] (val name: String, val rval: RValue) extends ASTType {
+    override def hashCode = name.hashCode
+    override def equals(that: Any) = that match { case other: AbstractSpec[_] => (other.name == this.name) }
     override def toString = "%s=%s".format(name, rval)
   }
 

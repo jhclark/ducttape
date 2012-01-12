@@ -18,10 +18,11 @@ class PackedVertex[V](private[hyperdag] val id: Int, val value: V) {
 
 // this interface explicitly avoids giving unpacked vertices as
 // parents so that we can eventually discard more of the explored space
+// the prevState can store information such as "what realizations does my parent have?"
 class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
-                            val edge: Option[HyperEdge[H,E]],
-                            val realization: Seq[H],
-                            val parentRealizations: Seq[Seq[H]]) {
+                              val edge: Option[HyperEdge[H,E]],
+                              val realization: Seq[H],
+                              val parentRealizations: Seq[Seq[H]]) {
   // TODO: More smearing of hash codes
   override def hashCode = packed.id ^ realization.hashCode
   override def equals(that: Any) = that match {
