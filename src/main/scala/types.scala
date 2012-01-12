@@ -16,7 +16,8 @@ object Types {
   type UnpackState = immutable.HashMap[BranchPoint, Branch]
 
   // TODO: Move this  
-  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Spec]) {
+  // final type parameter TaskDef is for storing the source of input edges
+  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]]) {
 
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
     def unpackFilter(seen: UnpackState, real: MultiSet[Branch], parentReal: Seq[Branch]): Option[UnpackState] = {
@@ -39,7 +40,7 @@ object Types {
     def unpackedWalker = dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter)
   }
   type PackedWorkVert = PackedVertex[TaskTemplate]
-  type UnpackedWorkVert = UnpackedMetaVertex[TaskTemplate,Branch,Spec]
+  type UnpackedWorkVert = UnpackedMetaVertex[TaskTemplate,Branch,Seq[Spec]]
 //
 //  type LiteralSpec = SpecT[Literal]
 //  type Spec = SpecT[RValue]

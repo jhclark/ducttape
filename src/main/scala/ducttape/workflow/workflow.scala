@@ -82,9 +82,13 @@ class RealTask(val taskT: TaskTemplate,
      // iterate over the hyperedges selected in this realization
      // remember: *every* metaedge has exactly one active incoming hyperedge
      val spec2reals = new mutable.HashMap[Spec, Seq[Branch]]
-     for( (he: HyperEdge[Branch, Spec], parentRealsByE: Seq[Seq[Branch]]) <- v.edges.zip(v.parentRealizations)) {
-       for( (e: Spec, eReals: Seq[Branch]) <- he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null} ) {
-         spec2reals += e -> eReals
+     for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
+          <- v.edges.zip(v.parentRealizations)) {
+       val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
+       for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
+         for(spec <- specs) {
+           spec2reals += spec -> srcReal
+         }
        }
      }
 
@@ -218,7 +222,7 @@ class RealTask(val taskT: TaskTemplate,
      // TODO: Fix this painful data structure into something more readable (use typedefs?)
      val parents = new mutable.HashMap[TaskTemplate, Map[Branch,mutable.Set[Option[TaskDef]]]] // TODO: Multimap
      val vertices = new mutable.HashMap[String,PackedVertex[TaskTemplate]]
-     val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Spec]
+     val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Seq[Spec]]
      val branchPoints = new mutable.ArrayBuffer[BranchPoint]
      val branchPointsByTask = new mutable.HashMap[TaskDef,mutable.Set[BranchPoint]] // TODO: Multimap
 
@@ -330,20 +334,21 @@ class RealTask(val taskT: TaskTemplate,
        for(branchPoint <- branchPointsByTask(task.taskDef)) {
          // create a hyperedge list in the format expected by the HyperDAG API
 
-         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Spec)])]
+         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
          for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
 
-           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Spec)]
+           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
            for( parentTaskDefOpt <- parentTaskDefs) parentTaskDefOpt match {
              case Some(parentTaskDef) => {
                val parentVert = vertices(parentTaskDef.name)
                // add an edge for each parameter/input at task that originates from parentVert
-               for( (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) <- task.inputVals ++ task.paramVals) {
-                 if(specBranches.contains(branch) && specBranches(branch)._2 == parentTaskDef) {
-                   edges.append( (Some(parentVert), ipSpec) )
+               val ipSpecs = (task.inputVals ++ task.paramVals).filter{
+                 case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
+                   specBranches.contains(branch) && specBranches(branch)._2 == parentTaskDef
                  }
-               }
+               }.map{ case(ipSpec, specBranches) => ipSpec }
+               edges.append( (Some(parentVert), ipSpecs) )
              }
              case None => {
                edges.append( (None, null) )
