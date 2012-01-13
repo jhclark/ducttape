@@ -32,8 +32,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
   type ConstraintFilter[F] = (F, MultiSet[H], Seq[H]) => Option[F]
     
   class ActiveVertex(val v: PackedVertex[V],
-                     val he: Option[HyperEdge[H,E]],
-                     val stateBeforeHe: F) {
+                     val he: Option[HyperEdge[H,E]]) {
 
     // accumulate parent realizations
     // TODO: Could we make this more space efficient by only accumulating deltas?
@@ -64,12 +63,13 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
           callback(new UnpackedVertex[V,H,E](v, he,
                          combo.toList, parentReals.toList))
         }
-      } else if(i == iFixed) {
-        unpack(i+1, iFixed, combo, parentReals, prevState, callback)
       } else {
+        //unpack(i+1, iFixed, combo, parentReals, prevState, callback)
+        // NOTE: We previously set parentReals(iFixed) to be the fixed realization
+        val myParentReals: Iterable[Seq[H]] = if(i == iFixed) Seq(parentReals(iFixed)) else filled(i)
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
-        for(parentRealization: Seq[H] <- filled(i)) {
+        for(parentRealization: Seq[H] <- myParentReals) {
           // TODO: Get prevState
           // check if we meet external semantic constraints
           constraintFilter(prevState, combo, parentRealization) match {
@@ -105,7 +105,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       val parentReals = new Array[Seq[H]](filled.size)
       parentReals(iFixed) = fixedRealization
       combo ++= fixedRealization
-      unpack(0, iFixed, combo, parentReals, stateBeforeHe, callback)
+      unpack(0, iFixed, combo, parentReals, initState, callback)
     }
   } // end ActiveVertex
 
@@ -121,7 +121,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
 
   // first, visit the roots, which are guaranteed not to be packed
   for(root <- dag.roots.iterator) {
-    val actRoot = new ActiveVertex(root, None, initState)
+    val actRoot = new ActiveVertex(root, None)
     val unpackedRoot = new UnpackedVertex[V,H,E](root, None,
                              List.empty, List.empty)
     agenda.offer(unpackedRoot)
@@ -155,14 +155,10 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     for(consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
       val consequentV = dag.sink(consequentE)
       def newActiveVertex = { // thunk
-        // get() will throw if we don't get a valid state
-        // -- we should be guaranteed a valid state
+        // get() will throw if we don't get a valid state -- we should be guaranteed a valid state
         // TODO: Can the following line be written prettier? Also, consequentE should never be null
         val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
-        val newState = constraintFilter(key.stateBeforeHe, MultiSet.empty, h).get
-        // TODO: XXX?: Either we shouldn't be initializing the new state here (apply constraint filter)
-        // even for iFixed in unpack() -- or use the state *after* the he has been applied
-        new ActiveVertex(consequentV, Some(consequentE), newState)
+        new ActiveVertex(consequentV, Some(consequentE))
       }
       val activeCon = activeEdges.getOrElseUpdate(consequentE, newActiveVertex)
 

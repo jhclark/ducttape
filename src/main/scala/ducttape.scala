@@ -98,6 +98,7 @@ object Ducttape {
           val taskT: TaskTemplate = v.packed.value
           val task: RealTask = taskT.realize(v)
           println("%s %s".format(task.name, task.realizationName))
+          //println("Actual realization: " + v.realization)
         }
       }
       case "purge" => {

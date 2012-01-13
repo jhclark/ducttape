@@ -87,6 +87,7 @@ class RealTask(val taskT: TaskTemplate,
        val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
        for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
          for(spec <- specs) {
+           //System.err.println("Spec %s has source real: %s".format(spec, srcReal))
            spec2reals += spec -> srcReal
          }
        }
@@ -103,7 +104,12 @@ class RealTask(val taskT: TaskTemplate,
            val parentReal = spec2reals(mySpec)
            (mySpec, srcSpec, srcTaskDef, parentReal)
          }
-         case _ => { // not a branch point
+         case Variable(_,_) => { // not a branch point, but defined elsewhere
+           val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           val parentReal = spec2reals(mySpec)
+           (mySpec, srcSpec, srcTaskDef, parentReal)
+         }
+         case _ => { // not a branch point, but either a literal or unbound
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
            (mySpec, srcSpec, srcTaskDef, v.realization)
          }
@@ -119,6 +125,8 @@ class RealTask(val taskT: TaskTemplate,
 
  // TODO: Add Option[BranchPointDef] for line no info
  class BranchPoint(val name: String) {
+   override def hashCode = name.hashCode
+   override def equals(obj: Any) = obj match { case that: BranchPoint => this.name == that.name }
    override def toString = name
  }
 
@@ -348,6 +356,7 @@ class RealTask(val taskT: TaskTemplate,
                    specBranches.contains(branch) && specBranches(branch)._2 == parentTaskDef
                  }
                }.map{ case(ipSpec, specBranches) => ipSpec }
+               //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
                edges.append( (Some(parentVert), ipSpecs) )
              }
              case None => {
