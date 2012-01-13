@@ -45,7 +45,7 @@ class UnpackedMetaVertex[V,H,E](val packed: PackedVertex[V],
   // TODO: More smearing of hash codes
   override def hashCode = packed.id ^ realization.hashCode
   override def equals(that: Any) = that match {
-    case other: UnpackedVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
+    case other: UnpackedMetaVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
   override def toString = packed.toString + " (realization=" + realization.toString +")"
 }
