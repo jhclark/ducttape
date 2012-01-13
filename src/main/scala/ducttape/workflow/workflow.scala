@@ -35,8 +35,8 @@ object Task {
 // we might shorten this to Task
 class RealTask(val taskT: TaskTemplate,
                val activeBranches: Map[String,Branch], // TODO: Keep string branch point names?
-               val inputVals: Seq[(Spec,Spec,TaskDef)], // (mySpec,srcSpec,srcTaskDef)
-               val paramVals: Seq[(Spec,LiteralSpec,TaskDef)]) { // (mySpec,srcSpec,srcTaskDef)
+               val inputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
+               val paramVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])]) { // (mySpec,srcSpec,srcTaskDef,srcRealization)
    def name = taskT.name
    def realizationName = Task.realizationName(activeBranches)
    def taskDef = taskT.taskDef
@@ -67,11 +67,10 @@ class RealTask(val taskT: TaskTemplate,
    // realize this task by specifying one branch per branch point
    // activeBranches should contain only the hyperedges encountered up until this vertex
    // with the key being the branchPointNames
-   def realize(activeBranches: Seq[Branch]): RealTask = {
+   def realize(v: UnpackedWorkVert): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
-
-     val activeBranchMap = Task.branchesToMap(activeBranches)
+     val activeBranchMap = Task.branchesToMap(v.realization)
 
      // do a bit of sanity checking
      for(branchPoint <- branchPoints) {
@@ -80,17 +79,39 @@ class RealTask(val taskT: TaskTemplate,
               .format(branchPoint.name, activeBranchMap.keys.mkString("-")))
      }
 
+     // iterate over the hyperedges selected in this realization
+     // remember: *every* metaedge has exactly one active incoming hyperedge
+     val spec2reals = new mutable.HashMap[Spec, Seq[Branch]]
+     for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
+          <- v.edges.zip(v.parentRealizations)) {
+       val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
+       for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
+         for(spec <- specs) {
+           //System.err.println("Spec %s has source real: %s".format(spec, srcReal))
+           spec2reals += spec -> srcReal
+         }
+       }
+     }
+
+     // TODO: So how on earth are all these things parallel to meta edges etc?
+
      // resolve the source spec/task for the selected branch
-     def mapVals[T](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef)] = {
+     def mapVals[T](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
        values.map{ case (mySpec, branchMap) => mySpec.rval match {
          case BranchPointDef(branchPointName, _) => {
            val activeBranch: Branch = activeBranchMap(branchPointName)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
-           (mySpec, srcSpec, srcTaskDef)
+           val parentReal = spec2reals(mySpec)
+           (mySpec, srcSpec, srcTaskDef, parentReal)
          }
-         case _ => { // not a branch point
+         case Variable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           (mySpec, srcSpec, srcTaskDef)
+           val parentReal = spec2reals(mySpec)
+           (mySpec, srcSpec, srcTaskDef, parentReal)
+         }
+         case _ => { // not a branch point, but either a literal or unbound
+           val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           (mySpec, srcSpec, srcTaskDef, v.realization)
          }
        }}
      }
@@ -104,6 +125,8 @@ class RealTask(val taskT: TaskTemplate,
 
  // TODO: Add Option[BranchPointDef] for line no info
  class BranchPoint(val name: String) {
+   override def hashCode = name.hashCode
+   override def equals(obj: Any) = obj match { case that: BranchPoint => this.name == that.name }
    override def toString = name
  }
 
@@ -114,6 +137,10 @@ class RealTask(val taskT: TaskTemplate,
    override def hashCode = name.hashCode
    override def equals(obj: Any) = obj match { case that: Branch => this.name == that.name }
    override def toString = name + "@" + branchPoint
+ }
+
+ class UnpackState {
+   
  }
 
  object WorkflowBuilder {
@@ -203,7 +230,7 @@ class RealTask(val taskT: TaskTemplate,
      // TODO: Fix this painful data structure into something more readable (use typedefs?)
      val parents = new mutable.HashMap[TaskTemplate, Map[Branch,mutable.Set[Option[TaskDef]]]] // TODO: Multimap
      val vertices = new mutable.HashMap[String,PackedVertex[TaskTemplate]]
-     val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Null](null,null,null)
+     val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Seq[Spec]]
      val branchPoints = new mutable.ArrayBuffer[BranchPoint]
      val branchPointsByTask = new mutable.HashMap[TaskDef,mutable.Set[BranchPoint]] // TODO: Multimap
 
@@ -246,7 +273,8 @@ class RealTask(val taskT: TaskTemplate,
                }
              }
 
-             // TODO: Rework this so that branch points can be associated with multiple tasks
+             // TODO: Rework this so that branch points can be associated with multiple tasks?
+             // Right now the constraintFilter is taking care of this at traversal time
              branchPoints += branchPoint
              branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += branchPoint
              resolvedVars.append( (inSpec, branchMap) )
@@ -304,7 +332,9 @@ class RealTask(val taskT: TaskTemplate,
        vertices += task.name -> dag.addVertex(task)
      }
 
-     // now link the tasks in the graph by adding (meta/hyper) edges
+     // == we've just completed our second pass over the workflow file and linked everything together ==
+
+     // now build a graph representation by adding converting to (meta/hyper) edges
      for(v <- vertices.values) {
        val task: TaskTemplate = v.value
 
@@ -312,21 +342,28 @@ class RealTask(val taskT: TaskTemplate,
        for(branchPoint <- branchPointsByTask(task.taskDef)) {
          // create a hyperedge list in the format expected by the HyperDAG API
 
-         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Null)])]
+         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
          for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
 
-           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Null)]
+           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
            for( parentTaskDefOpt <- parentTaskDefs) parentTaskDefOpt match {
              case Some(parentTaskDef) => {
                val parentVert = vertices(parentTaskDef.name)
-               edges.append( (Some(parentVert), null) )
-            }
-            case None => {
-              edges.append( (None, null) )
-            }
-          }
-          hyperedges.append( (branch, edges) )
+               // add an edge for each parameter/input at task that originates from parentVert
+               val ipSpecs = (task.inputVals ++ task.paramVals).filter{
+                 case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
+                   specBranches.contains(branch) && specBranches(branch)._2 == parentTaskDef
+                 }
+               }.map{ case(ipSpec, specBranches) => ipSpec }
+               //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
+               edges.append( (Some(parentVert), ipSpecs) )
+             }
+             case None => {
+               edges.append( (None, null) )
+             }
+           }
+           hyperedges.append( (branch, edges) )
         }
         if(!hyperedges.isEmpty) {
           // NOTE: The meta edges are not necessarily phantom, but just have that option
@@ -337,6 +374,7 @@ class RealTask(val taskT: TaskTemplate,
 
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
+    // (i.e. parameter dependencies should not imply temporal dependencies)
     new HyperWorkflow(dag.build)
   }
 }

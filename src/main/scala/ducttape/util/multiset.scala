@@ -2,6 +2,11 @@ package ducttape.util
 
 import collection._
 
+object MultiSet {
+  // TODO: Can we make this more efficient
+  def empty[A] = new MultiSet[A]
+}
+
 class MultiSet[A] {
   private val map = new mutable.HashMap[A,Int]
 

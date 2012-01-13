@@ -18,7 +18,6 @@ class DirectoryArchitect(val baseDir: File) {
     new File(packedDir, "%s/1".format(Task.realizationName(realization)))
   }
 
-
   def assignPackedDir(taskDef: TaskDef): File = {
     new File(baseDir, taskDef.name).getAbsoluteFile
   }
@@ -53,6 +52,9 @@ class DirectoryArchitect(val baseDir: File) {
       case _ => mySpec.rval
     }
 
+    //err.println("My realization is " + Task.realizationName(realization))
+    //err.println("Src realization is " + Task.realizationName(srcRealization))
+
     // TODO: We should have already checked that this file exists by now?
     realizedRval match {
       case Literal(path) => isAbsolute(path) match {
@@ -76,38 +78,28 @@ trait UnpackedDagVisitor {
 
 class TaskEnvironment(dirs: DirectoryArchitect, task: RealTask) {
   
-  // TODO: Move this inside getInFile?
-  private def getSourceActiveBranches(task: RealTask) = {
-    // if this came from a branch point, its source vertex will have
-    // no knowledge of that branch point
-    //
-    // TODO: Simply removing one branch will not work once we
-    // introduce constraint DAGs that allow branch points to be reused
-    // XXX: For reasonably complex HyperDAGs this also breaks when the visibility
-    // of a branch point X is conditioned on the choice by another branch point Y
-    // TODO: Move all of these sorts of unit tests from LoonyBin to ducttape
-    // TODO: Then associate Specs with edge info to link parent realizations properly
-    //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-    /*
-     s.rval match {
-     case BranchPointDef(branchPointName, _) => task.activeBranches.filter(_ != branchPointName)
-     case _ => task.activeBranches
-     }
-     */
-    val newBranchPoints = task.taskT.branchPoints.map(_.name).toSet
-    task.activeBranches.filter{ case (bpName: String, branch: Branch) => !newBranchPoints(bpName)}
-  }
-
   // grab input paths -- how are these to be resolved?
-  val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef) <- task.inputVals) yield {
-    val srcActiveBranches = getSourceActiveBranches(task)
-    val inFile = dirs.getInFile(inSpec, task.activeBranches, srcSpec, srcTaskDef, srcActiveBranches)
+  // If this came from a branch point, its source vertex *might* not
+  // no knowledge of that branch point. However, we might *still* have
+  // knowledge of that branch point at the source:
+  // 1) If that branch point is defined in multiple places (i.e. a factored HyperDAG)
+  //    and this the second time along an unpacked path that we encountered that
+  //    branch point, then we might still need to keep it. This state information
+  //    along a path is maintained by the constraintFilter.
+  // 2) If the visibility of a branch point X is conditioned on the choice by another
+  //    branch point Y?
+  // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
+  // TODO: Then associate Specs with edge info to link parent realizations properly
+  //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
+  val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- task.inputVals) yield {
+    val inFile = dirs.getInFile(inSpec, task.activeBranches, srcSpec, srcTaskDef, Task.branchesToMap(srcRealization))
     //err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
     (inSpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
-  val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef) <- task.paramVals) yield {
+  // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
+  val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef, srcRealization) <- task.paramVals) yield {
     //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
     (paramSpec.name, srcSpec.rval.value)
   }
@@ -131,6 +123,8 @@ class TaskEnvironment(dirs: DirectoryArchitect, task: RealTask) {
 }
 
 // checks the state of a task directory to make sure things completed as expected
+// TODO: Return a set object with incomplete nodes that can be handed to future passes
+// so that completion checking is atomic
 object CompletionChecker {
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
     // TODO: Grep stdout/stderr for "error"
