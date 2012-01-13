@@ -33,7 +33,7 @@ object Ducttape {
     println("%sBy Jonathan Clark".format(conf.byColor))
     println(Console.RESET)
 
-    def usage() = {
+    def usage() {
       err.println("Usage: ducctape workflow.tape [--purge] [--viz] [--env taskName [realName]] [--markDone taskName [realName]]")
       exit(1)
     }
