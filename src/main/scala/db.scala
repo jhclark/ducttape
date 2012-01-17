@@ -36,3 +36,10 @@ class WorkflowDatabase(dbFile: String) {
   addTask("decode")
   commit
 }
+
+// represents the serialized workflow state from a DB
+class WorkflowState {
+  def toGraphViz(): String = {
+    ""
+  }
+}
