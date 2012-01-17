@@ -13,6 +13,8 @@ import ducttape.util._
 
 class DirectoryArchitect(val baseDir: File) {
 
+  val xdotFile = new File(baseDir, ".xdot")
+
   def assignDir(taskDef: TaskDef, realization: Map[String,Branch]): File = {
     val packedDir = assignPackedDir(taskDef)
     new File(packedDir, "%s/1".format(Task.realizationName(realization)))
@@ -149,6 +151,20 @@ object CompletionChecker {
   }
 }
 
+class CompletionChecker(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+  private val complete = new mutable.HashSet[(String,String)] // TODO: Change datatype of realization?
+  def completed: Set[(String,String)] = complete // return immutable
+
+  override def visit(task: RealTask) {
+    val taskEnv = new TaskEnvironment(dirs, task)
+    if(CompletionChecker.isComplete(taskEnv)) {
+      err.println("Determined that %s already has all required outputs. Keeping output.".format(task.name))
+      complete += ((task.name, task.realizationName))
+    }
+  }  
+}
+
+
 class PartialOutputRemover(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
@@ -180,11 +196,27 @@ class Builder(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor
   }
 }
 
-class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+// workflow used for viz
+class Executor(conf: Config,
+               dirs: DirectoryArchitect,
+               workflow: HyperWorkflow,
+               alreadyDone: Set[(String,String)]) extends UnpackedDagVisitor {
+  import ducttape.viz._
+
+  // TODO: Construct set elsewhere?
+  val completed = new mutable.HashSet[(String,String)]
+  completed ++= alreadyDone
+  val running = new mutable.HashSet[(String,String)]
+  val failed = new mutable.HashSet[(String,String)]
+
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
     
     println("%sConsidering running: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
+    dirs.xdotFile.synchronized {
+      running += ((task.name, task.realizationName))
+      Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+    }
 
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     if(CompletionChecker.isComplete(taskEnv)) {
@@ -193,6 +225,11 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
       taskEnv.workDir.mkdirs
       if(!taskEnv.workDir.exists) {
+        failed += ((task.name, task.realizationName))
+        running -= ((task.name, task.realizationName))
+        dirs.xdotFile.synchronized {
+          Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
+        }
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
       
@@ -203,8 +240,18 @@ class Executor(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisito
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
       if(exitCode != 0) {
         println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))
-        exit(1)
+        failed += ((task.name, task.realizationName))
+        running -= ((task.name, task.realizationName))
+        dirs.xdotFile.synchronized {
+          Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
+        }
+        throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
       }
+    }
+    completed += ((task.name, task.realizationName))
+    running -= ((task.name, task.realizationName))
+    dirs.xdotFile.synchronized {
+      Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
     }
   }
 }

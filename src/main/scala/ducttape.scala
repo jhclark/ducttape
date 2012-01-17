@@ -151,12 +151,16 @@ object Ducttape {
             visitor.visit(task)
           }
         }
+        // TODO: Atomically determine which tasks are already complete
+        err.println("Checking for completed steps...")
+        val cc = new CompletionChecker(conf, dirs)
+        visitAll(cc)
         err.println("Removing partial output...")
         visitAll(new PartialOutputRemover(conf, dirs))
         err.println("Retreiving code and building...")
         visitAll(new Builder(conf, dirs))
         err.println("Executing tasks...")
-        visitAll(new Executor(conf, dirs))
+        visitAll(new Executor(conf, dirs, workflow, cc.completed))
       }
       case "viz" => {
         err.println("Compiling GraphViz visualization to viz.pdf...")
