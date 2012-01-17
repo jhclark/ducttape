@@ -32,9 +32,9 @@ object Ducttape {
   def main(args: Array[String]) {
     val conf = new Config
 
-    println("%sDuctTape v0.1".format(conf.headerColor))
-    println("%sBy Jonathan Clark".format(conf.byColor))
-    println(Console.RESET)
+    err.println("%sDuctTape v0.1".format(conf.headerColor))
+    err.println("%sBy Jonathan Clark".format(conf.byColor))
+    err.println(Console.RESET)
 
     def usage() {
       err.println("Usage: ducctape workflow.tape [--purge] [--viz] [--env taskName [realName]] [--markDone taskName [realName]] [--invalidate taskName [realNames...]]")
@@ -159,11 +159,13 @@ object Ducttape {
         visitAll(new Executor(conf, dirs))
       }
       case "viz" => {
-        println("Compiling GraphViz visualization to viz.pdf...")
+        err.println("Compiling GraphViz visualization to viz.pdf...")
         import ducttape.viz._
-        val dotFile = new File("viz.dot")
-        Files.write(workflow.dag.toGraphViz, dotFile)
-        GraphViz.compileFile(dotFile, "viz.pdf")
+        //val dotFile = new File("viz.dot")
+        //Files.write(workflow.dag.toGraphViz, dotFile)
+        //Files.write(WorkflowViz.toGraphViz(workflow), dotFile)
+        //GraphViz.compileFile(dotFile, "viz.pdf")	
+        println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow)))
       }
       case "invalidate" => {
         val taskToKill = args(2)
