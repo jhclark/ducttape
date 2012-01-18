@@ -1,20 +1,45 @@
 import javax.servlet.http._
-import java.io.File
+import java.io._
 
 class WorkflowServlet(workflowDirs: Seq[File]) extends HttpServlet {
   import ducttape.viz._
 
   val db = new WorkflowDatabase("workflow.db")
   val dotFile = new File(workflowDirs.head, ".xdot") // TODO: This should actually just be .dot
+  val timeout = 5 // poll file every 5 secs
+
+  var lastChanged: Long = 0 // unix timestamp
+  def pollFileForUpdates() {
+    while(lastChanged == dotFile.lastModified) {
+      Thread.sleep(timeout*1000)
+    }
+    lastChanged = dotFile.lastModified
+    System.err.println("Detected file change")
+  }
+
+  def sendFile(pw: PrintWriter) {
+    val dot = io.Source.fromFile(dotFile.getAbsolutePath).getLines.mkString("\n")
+    val xdot = GraphViz.compileXDot(dot)
+    pw.println(xdot)
+    pw.flush
+  }
 
   override def init() {}
   override def doGet(req: HttpServletRequest, resp: HttpServletResponse) = service(req, resp)
   override def service(req: HttpServletRequest, resp: HttpServletResponse) { 
     val pw = resp.getWriter
-    val dot = io.Source.fromFile(dotFile.getAbsolutePath).getLines.mkString("\n")
-    val xdot = GraphViz.compileXDot(dot)
-    pw.println(xdot)
-    pw.flush
+    req.getParameter("queryType") match {
+      case "first" => {
+        sendFile(pw)
+      }
+      case "update" => {
+        pollFileForUpdates
+        sendFile(pw)
+      }
+      case _ @ t => {
+        throw new RuntimeException("Unknown queryType: " + t)
+      }
+    }
   }
 }
 

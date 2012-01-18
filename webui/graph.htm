@@ -18,11 +18,24 @@ Ajax.Responders.register({
 		$('busy').show();
 	},
 	onComplete: function() {
-		if (0 == Ajax.activeRequestCount) {
+//		if (0 == Ajax.activeRequestCount) {
 			$('busy').hide();
-		}
+//		}
 	}
 });
+
+var queryType = "first";
+function do_long_poll() {
+  new Ajax.Request("/json", {
+    method: 'get',
+    parameters: {"queryType": queryType},
+    onComplete: function(response) {
+      canviz.parse(response.responseText);
+      queryType = "update";
+      do_long_poll(); // do this forever
+    }.bind(this)
+    });
+}
 
 var canviz;
 document.observe('dom:loaded', function() {
@@ -35,13 +48,7 @@ document.observe('dom:loaded', function() {
 	canviz.setImagePath('graphs/images/');
 	canviz.setScale($F('graph_scale'));
 
-        new Ajax.Request("/json", {
-			method: 'get',
-			//parameters: urlParams,
-			onComplete: function(response) {
-				canviz.parse(response.responseText);
-			}.bind(this)
-		});
+	do_long_poll();
 });
 function set_graph_scale() {
 	canviz.setScale($F('graph_scale'));
