@@ -15,10 +15,11 @@ object Task {
   // and don't include our default branch "baseline"
   def realizationName(real: Map[String,Branch]): String = {
     val branches = real.toSeq.sortBy(_._1).map(_._2)
+    // TODO: Can we get rid of some of these cases now?
     branches.size match {
       case 0 => NO_BRANCH.name // make sure we have at least baseline in the name
       case 1 => branches.head.name // keep baseline if it's the only (it may not be)
-      case _ => branches.filter(_.toString != NO_BRANCH.toString).map(_.name).mkString("-")
+      case _ => branches.map(_.name).filter(_ != NO_BRANCH.name).mkString("-")
     }
   }
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
