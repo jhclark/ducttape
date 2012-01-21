@@ -135,7 +135,9 @@ class RealTask(val taskT: TaskTemplate,
  class Branch(val name: String,
               val branchPoint: BranchPoint) {
    override def hashCode = name.hashCode
-   override def equals(obj: Any) = obj match { case that: Branch => this.name == that.name }
+   override def equals(obj: Any) = obj match {
+     case that: Branch => this.name == that.name && this.branchPoint == that.branchPoint
+   }
    override def toString = name + "@" + branchPoint
  }
 
