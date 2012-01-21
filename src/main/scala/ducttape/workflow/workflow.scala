@@ -18,7 +18,7 @@ object Task {
     branches.size match {
       case 0 => NO_BRANCH.name // make sure we have at least baseline in the name
       case 1 => branches.head.name // keep baseline if it's the only (it may not be)
-      case _ => branches.filter(_ != NO_BRANCH).map(_.name).mkString("-")
+      case _ => branches.filter(_.toString != NO_BRANCH.toString).map(_.name).mkString("-")
     }
   }
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
