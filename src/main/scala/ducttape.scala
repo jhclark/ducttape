@@ -48,6 +48,7 @@ object Ducttape {
         case "--list" => "list"
         case "--purge" => "purge"
         case "--viz" => "viz"
+        case "--viz-debug" => "viz-debug"
         case "--env" => "env"
         case "--markDone" => "markDone"
         case "--invalidate" => "invalidate"
@@ -163,13 +164,14 @@ object Ducttape {
         visitAll(new Executor(conf, dirs, workflow, cc.completed))
       }
       case "viz" => {
-        err.println("Compiling GraphViz visualization to viz.pdf...")
+        err.println("Generating GraphViz dot visualization...")
         import ducttape.viz._
-        //val dotFile = new File("viz.dot")
-        //Files.write(workflow.dag.toGraphViz, dotFile)
-        //Files.write(WorkflowViz.toGraphViz(workflow), dotFile)
-        //GraphViz.compileFile(dotFile, "viz.pdf")	
         println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow)))
+      }
+      case "viz-debug" => {
+        err.println("Generating GraphViz dot visualization of MetaHyperDAG...")
+        import ducttape.viz._
+        println(workflow.dag.toGraphVizDebug)
       }
       case "invalidate" => {
         val taskToKill = args(2)

@@ -50,7 +50,7 @@ object WorkflowViz {
         case t if failed(t) => "firebrick"
         case _ => "white"
       }
-      str ++= "\"%s\" [fillcolor=%s,style=filled];\n".format(getName(task.name, task.realizationName), color)
+      str ++= "\"%s\" [fillcolor=%s];\n".format(getName(task.name, task.realizationName), color)
     }
 
     // now list edges
