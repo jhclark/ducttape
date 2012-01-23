@@ -15,11 +15,11 @@ object Task {
   // and don't include our default branch "baseline"
   def realizationName(real: Map[String,Branch]): String = {
     val branches = real.toSeq.sortBy(_._1).map(_._2)
+    val names = branches.map(_.name).filter(_ != NO_BRANCH.name)
     // TODO: Can we get rid of some of these cases now?
-    branches.size match {
+    names.size match {
       case 0 => NO_BRANCH.name // make sure we have at least baseline in the name
-      case 1 => branches.head.name // keep baseline if it's the only (it may not be)
-      case _ => branches.map(_.name).filter(_ != NO_BRANCH.name).mkString("-")
+      case _ => names.mkString("-")
     }
   }
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
@@ -102,6 +102,7 @@ class RealTask(val taskT: TaskTemplate,
          case BranchPointDef(branchPointName, _) => {
            val activeBranch: Branch = activeBranchMap(branchPointName)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
+           // TODO: Borken for params
            val parentReal = spec2reals(mySpec)
            (mySpec, srcSpec, srcTaskDef, parentReal)
          }
@@ -347,23 +348,35 @@ class RealTask(val taskT: TaskTemplate,
 
          val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
          for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
-
            val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
-           // parents are stored as Options so that we can use None to indicate phantom parent vertices
-           for( parentTaskDefOpt <- parentTaskDefs) parentTaskDefOpt match {
-             case Some(parentTaskDef) => {
-               val parentVert = vertices(parentTaskDef.name)
-               // add an edge for each parameter/input at task that originates from parentVert
-               val ipSpecs = (task.inputVals ++ task.paramVals).filter{
+
+           // find which inputs and parameters are attached to this branch point
+           // this will be the payload associated with each plain edge in the MetaHyperDAG
+           def findInputParamSpecs(parentTaskDef: TaskDef): Seq[Spec] = {
+               (task.inputVals ++ task.paramVals).filter{
                  case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
-                   specBranches.contains(branch) && specBranches(branch)._2 == parentTaskDef
+                   specBranches.get(branch) match {
+                     case None => false
+                     case Some( (spec: Spec, specParent: TaskDef) ) => specParent == parentTaskDef
+                   }
                  }
                }.map{ case(ipSpec, specBranches) => ipSpec }
+           }
+
+           // parents are stored as Options so that we can use None to indicate phantom parent vertices
+           for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
+             case Some(parentTaskDef) => {
+               val parentVert = vertices(parentTaskDef.name)
+               val ipSpecs = findInputParamSpecs(parentTaskDef)
+               // add an edge for each parameter/input at task that originates from parentVert
                //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
                edges.append( (Some(parentVert), ipSpecs) )
              }
              case None => {
-               edges.append( (None, null) )
+               // We have a branch point using only literal paths
+               // or literal param values
+               val ipSpecs = findInputParamSpecs(task.taskDef) // we are our own parent
+               edges.append( (None, ipSpecs) )
              }
            }
            hyperedges.append( (branch, edges) )
