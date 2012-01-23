@@ -18,7 +18,7 @@ object Files {
   def write(str: String, file: File) {
     val fw = new FileWriter(file)
     fw.write(str)
-    fw.close()    
+    fw.close
   }
 
   def writer(file: File): PrintWriter = {
