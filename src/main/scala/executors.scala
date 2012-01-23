@@ -30,7 +30,7 @@ class DirectoryArchitect(val baseDir: File) {
     assert(!spec.isInstanceOf[BranchPointDef])
 
     spec.rval match {
-      case Unbound()  => { // user didn't specify a name for this output file
+      case Unbound() => { // user didn't specify a name for this output file
         new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
       }
       case Literal(filename) => { // the user told us what name to use for the file -- put it under work/
@@ -205,9 +205,12 @@ class Executor(conf: Config,
 
   // TODO: Construct set elsewhere?
   val completed = new mutable.HashSet[(String,String)]
-  completed ++= alreadyDone
   val running = new mutable.HashSet[(String,String)]
   val failed = new mutable.HashSet[(String,String)]
+  dirs.xdotFile.synchronized {
+    completed ++= alreadyDone
+    Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+  }
 
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
