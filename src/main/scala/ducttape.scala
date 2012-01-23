@@ -100,6 +100,14 @@ Usage: ducctape workflow.tape
     val baseDir = file.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
 
+    def colorizeDirs(list: Traversable[(String,String)]): Seq[String] = {
+      list.toSeq.map{case (name, real) => {
+        "%s/%s%s%s/%s%s%s".format(baseDir.getAbsolutePath,
+                                  conf.taskNameColor, name, conf.resetColor,
+                                  conf.realNameColor, real, conf.resetColor)
+      }}
+    }
+
     mode match {
       case "list" => {
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
@@ -162,16 +170,34 @@ Usage: ducctape workflow.tape
             visitor.visit(task)
           }
         }
-        // TODO: Atomically determine which tasks are already complete
+
         err.println("Checking for completed steps...")
         val cc = new CompletionChecker(conf, dirs)
         visitAll(cc)
-        err.println("Removing partial output...")
-        visitAll(new PartialOutputRemover(conf, dirs))
-        err.println("Retreiving code and building...")
-        visitAll(new Builder(conf, dirs))
-        err.println("Executing tasks...")
-        visitAll(new Executor(conf, dirs, workflow, cc.completed))
+
+        err.println("About to run the following tasks:")
+        err.println(colorizeDirs(cc.todo).mkString("\n"))
+
+        if(cc.partial.size > 0) {
+          err.println("About to permenantly delete the partial output in the following directories:")
+          err.println(colorizeDirs(cc.partial).mkString("\n"))
+          err.print("Are you sure you want to DELETE all these? [y/n] ") // user must still press enter
+        } else {
+          err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
+        }
+
+        Console.readChar match {
+          case 'y' | 'Y' => {
+            err.println("Removing partial output...")
+            visitAll(new PartialOutputRemover(conf, dirs, cc.partial))
+            err.println("Retreiving code and building...")
+            visitAll(new Builder(conf, dirs, cc.todo))
+            err.println("Executing tasks...")
+            visitAll(new Executor(conf, dirs, workflow, cc.completed, cc.todo))
+          }
+          case _ => err.println("Doing nothing")
+        }
+
       }
       case "viz" => {
         err.println("Generating GraphViz dot visualization...")
@@ -223,11 +249,7 @@ Usage: ducctape workflow.tape
         err.println("About to permenantly delete the following directories:")
         // TODO: Use directory architect here
         val absDirs = victimList.map{case (name, real) => new File(baseDir, "%s/%s".format(name,real))}
-        val coloredDirs = victimList.map{case (name, real) =>
-          "%s/%s%s%s/%s%s%s".format(baseDir.getAbsolutePath,
-                                    conf.taskNameColor, name, conf.resetColor,
-                                    conf.realNameColor, real, conf.resetColor)}
-        err.println(coloredDirs.mkString("\n"))
+        err.println(colorizeDirs(victimList).mkString("\n"))
 
         err.print("Are you sure you want to delete all these? [y/n] ") // user must still press enter
         Console.readChar match {
