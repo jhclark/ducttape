@@ -37,7 +37,14 @@ object Ducttape {
     err.println(Console.RESET)
 
     def usage() {
-      err.println("Usage: ducctape workflow.tape [--purge] [--viz] [--env taskName [realName]] [--markDone taskName [realName]] [--invalidate taskName [realNames...]]")
+      err.println("""
+Usage: ducctape workflow.tape
+  --purge
+  --viz
+  --env taskName realName
+  --markDone taskName realNames...
+  --invalidate taskName realNames...
+""")
       exit(1)
     }
     if(args.length == 0) usage()
@@ -130,16 +137,19 @@ object Ducttape {
       case "markDone" => {
         // TODO: Apply filters so that we do much less work to get here
         val goalTaskName = args(2)
+        val goalRealNames = args.toList.drop(3).toSet
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
             val task: RealTask = taskT.realize(v)
-            val env = new TaskEnvironment(dirs, task)
-            if(CompletionChecker.isComplete(env)) {
-              err.println("Task already complete")
-            } else {
-              CompletionChecker.forceCompletion(env)
-              err.println("Forced completion of task")
+            if(goalRealNames(task.realizationName)) {
+              val env = new TaskEnvironment(dirs, task)
+              if(CompletionChecker.isComplete(env)) {
+                err.println("Task already complete: " + task.name + "/" + task.realizationName)
+              } else {
+                CompletionChecker.forceCompletion(env)
+                err.println("Forced completion of task: " + task.name + "/" + task.realizationName)
+              }
             }
           }
         }
