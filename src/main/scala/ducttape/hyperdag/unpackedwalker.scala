@@ -129,7 +129,15 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
   }
 
   override def take(): Option[UnpackedVertex[V,H,E]] = {
-    if(agenda.size == 0 && taken.size == 0) {
+    // TODO: XXX: If agenda.size is zero, do we have to wait if taken.size == 0?
+    // always synchronize on agenda for any agenda/taken operations
+    while(agenda.size == 0 && taken.size == 0) {
+      agenda.synchronized {
+        agenda.wait
+      }
+    }
+
+    if(agenda.size == 0) {
       return None
     } else {
       agenda.synchronized {
@@ -191,5 +199,6 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     agenda.synchronized {
       completed += item
     }
+    agenda.notifyAll
   }
 }

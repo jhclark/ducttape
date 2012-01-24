@@ -5,7 +5,7 @@ package ducttape.hyperdag
  *  pattern to accomplish parallel traversal by calling take/complete.
  *  Implementations must be threadsafe and might take the form of an
  *  agenda-based traversal algorithm. */
-trait Walker[A] extends Iterable[A] {
+trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
   private val self = this
 
   /** Get the next traversable item. Returns None when there are no more elements */
@@ -32,5 +32,28 @@ trait Walker[A] extends Iterable[A] {
       self.complete(result)
       result
     }
+  }
+
+  // TODO: Add a .par(j) method that returns a parallel walker
+  // j = numCores (as in make -j)
+  def foreach[U](j: Int, f: A => U) {
+    val threads: Seq[Thread] = (0 until j).map(_ => new Thread {
+      override def run {
+        var running = true
+        while(running) {
+          take match {
+            case Some(a: A) => {
+              f(a)
+              complete(a)
+            }
+            case None => {
+              running = false
+            }
+          }
+        }
+      }
+    })
+    threads.foreach(_.start)
+    threads.foreach(_.join)
   }
 }
