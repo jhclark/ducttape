@@ -43,8 +43,11 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
         while(running) {
           take match {
             case Some(a: A) => {
-              f(a)
-              complete(a)
+              try {
+                f(a)
+              } finally {
+                complete(a)
+              }
             }
             case None => {
               running = false

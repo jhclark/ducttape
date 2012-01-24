@@ -128,20 +128,25 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     activeRoots += root -> actRoot
   }
 
+  // TODO: XXX: may never return if complete() is not called as expected!!!
+  // (use foreach to prevent this)
+  // TODO: Make take and complete private?
   override def take(): Option[UnpackedVertex[V,H,E]] = {
     // TODO: XXX: If agenda.size is zero, do we have to wait if taken.size == 0?
     // always synchronize on agenda for any agenda/taken operations
-    while(agenda.size == 0 && taken.size == 0) {
+    while(agenda.size == 0 && taken.size > 0) {
       agenda.synchronized {
         agenda.wait
       }
     }
 
     if(agenda.size == 0) {
+      assert(taken.size == 0)
       return None
     } else {
+      // take MUST be outside synchronized block to avoid deadlock!
+      val key: UnpackedVertex[V,H,E] = agenda.take
       agenda.synchronized {
-        val key: UnpackedVertex[V,H,E] = agenda.take
         taken += key
         return Some(key)
       }
@@ -198,7 +203,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     // finally visit this vertex
     agenda.synchronized {
       completed += item
+      agenda.notifyAll
     }
-    agenda.notifyAll
   }
 }
