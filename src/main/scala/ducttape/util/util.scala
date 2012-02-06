@@ -7,6 +7,8 @@ import sys.process._
 import java.io._
 import java.net._
 
+import System._
+
 object Environment {
   def getJarFile = new File(Environment.getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
   def getJarDir = getJarFile.getParentFile
@@ -16,7 +18,7 @@ object Files {
   def write(str: String, file: File) {
     val fw = new FileWriter(file)
     fw.write(str)
-    fw.close()    
+    fw.close
   }
 
   def writer(file: File): PrintWriter = {
@@ -26,6 +28,14 @@ object Files {
   def writer(opt: Option[File]): PrintWriter = opt match {
     case Some(file: File) => writer(file)
     case None => new PrintWriter(NullWriter)
+  }
+
+  // reads all lines, but closes file unlike io.Source
+  def read(file: File): Seq[String] = {
+    val br = new BufferedReader(new FileReader(file))
+    val lines = Iterator.continually(br.readLine).takeWhile(_ != null).toList
+    br.close
+    lines
   }
 
   // there is no reliable way of detecting symlinks in Java
@@ -96,7 +106,8 @@ object Shell {
       stdout.append('\n')
     }}
     def handleErr(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
-      System.err.println(line)
+      err.println(line)
+      err.flush
       stderr.print(line)
       stderr.append('\n')
     }}
@@ -123,7 +134,7 @@ object Shell {
     }
     var output = new mutable.ArrayBuffer[String]
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( System.err.println(_) ) }
+    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( err.println(_) ) } // TODO: flush?
     // pass env as varargs
     val code = Process(cmd, workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
@@ -151,7 +162,7 @@ object Shell {
     }
     var output = new mutable.ArrayBuffer[String]
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( System.err.println(_) ) }
+    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( err.println(_) ) } // TODO: Flush?
     // pass env as varargs
     val code = Process("bash", workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))

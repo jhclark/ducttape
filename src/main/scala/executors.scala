@@ -30,7 +30,7 @@ class DirectoryArchitect(val baseDir: File) {
     assert(!spec.isInstanceOf[BranchPointDef])
 
     spec.rval match {
-      case Unbound()  => { // user didn't specify a name for this output file
+      case Unbound() => { // user didn't specify a name for this output file
         new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
       }
       case Literal(filename) => { // the user told us what name to use for the file -- put it under work/
@@ -78,7 +78,7 @@ trait UnpackedDagVisitor {
   def visit(task: RealTask)
 }
 
-class TaskEnvironment(dirs: DirectoryArchitect, task: RealTask) {
+class TaskEnvironment(val dirs: DirectoryArchitect, val task: RealTask) {
   
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
@@ -130,9 +130,20 @@ class TaskEnvironment(dirs: DirectoryArchitect, task: RealTask) {
 object CompletionChecker {
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
     // TODO: Grep stdout/stderr for "error"
-    return (taskEnv.exitCodeFile.exists && io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0"
-      && taskEnv.stdoutFile.exists && taskEnv.stderrFile.exists
-      && taskEnv.outputs.forall{case (_,f) => new File(f).exists})
+    // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
+    // use a series of thunks so that we don't try to open non-existent files
+    val conditions = (
+      Seq(( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
+          ( () => io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0", "Non-zero exit code"),
+          ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
+          ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
+      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist")}
+    )
+    for( (cond, msg) <- conditions; if(!cond())) {
+      System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realizationName, msg))
+      return false
+    }
+    return true
   }
 
   // not recommended -- but sometimes manual intervention is required
@@ -152,37 +163,49 @@ object CompletionChecker {
 }
 
 class CompletionChecker(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
-  private val complete = new mutable.HashSet[(String,String)] // TODO: Change datatype of realization?
+  // we make a single pass to atomically determine what needs to be done
+  // so that we can then prompt the user for confirmation
+  private val complete = new OrderedSet[(String,String)] // TODO: Change datatype of realization?
+  private val partialOutput = new OrderedSet[(String,String)] // not complete, but has partial output
+  private val todoList = new OrderedSet[(String,String)]
+
   def completed: Set[(String,String)] = complete // return immutable
+  def partial: Set[(String,String)] = partialOutput // return immutable
+  def todo: Set[(String,String)] = todoList
 
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
     if(CompletionChecker.isComplete(taskEnv)) {
-      err.println("Determined that %s already has all required outputs. Keeping output.".format(task.name))
       complete += ((task.name, task.realizationName))
+    } else {
+      todoList += ((task.name, task.realizationName))
+      if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
+        partialOutput += ((task.name, task.realizationName))
+      }
     }
   }  
 }
 
+object PartialOutputRemover {
+  def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
+}
 
-class PartialOutputRemover(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+class PartialOutputRemover(conf: Config,
+                           dirs: DirectoryArchitect,
+                           partial: Set[(String,String)]) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
-    if(CompletionChecker.isComplete(taskEnv)) {
-      err.println("Determined that %s already has all required outputs. Keeping output.".format(task.name))
-    } else if(taskEnv.where.exists) {
-      err.println("Partial output detected at %s; DELETING ALL PARTIAL OUTPUT".format(taskEnv.where))
+    if(partial( (task.name, task.realizationName) )) {
+      err.println("Removing partial output at %s".format(taskEnv.where))
       Files.deleteDir(taskEnv.where)
     }
   }  
 }
 
-class Builder(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+class Builder(conf: Config, dirs: DirectoryArchitect, todo: Set[(String,String)]) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, task)
-    if(CompletionChecker.isComplete(taskEnv)) {
-      err.println("Determined that %s already has all required outputs. No need to rebuild tools.".format(task.name))
-    } else {
+    if(todo( (task.name, task.realizationName) )) {
       println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
       // TODO: Rename the augment method
       taskEnv.workDir.mkdirs
@@ -200,29 +223,29 @@ class Builder(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor
 class Executor(conf: Config,
                dirs: DirectoryArchitect,
                workflow: HyperWorkflow,
-               alreadyDone: Set[(String,String)]) extends UnpackedDagVisitor {
+               alreadyDone: Set[(String,String)],
+               todo: Set[(String,String)]) extends UnpackedDagVisitor {
   import ducttape.viz._
 
   // TODO: Construct set elsewhere?
   val completed = new mutable.HashSet[(String,String)]
-  completed ++= alreadyDone
   val running = new mutable.HashSet[(String,String)]
   val failed = new mutable.HashSet[(String,String)]
+  dirs.xdotFile.synchronized {
+    completed ++= alreadyDone
+    Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+  }
 
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, task)
-    
-    println("%sConsidering running: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
-    dirs.xdotFile.synchronized {
-      running += ((task.name, task.realizationName))
-      Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
-    }
-
-    // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
-    if(CompletionChecker.isComplete(taskEnv)) {
-      err.println("Determined that %s already has all required outputs".format(task.name))
-    } else {
+    if(todo((task.name, task.realizationName))) {
+      val taskEnv = new TaskEnvironment(dirs, task)
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
+
+      dirs.xdotFile.synchronized {
+        running += ((task.name, task.realizationName))
+        Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+      }
+
       taskEnv.workDir.mkdirs
       if(!taskEnv.workDir.exists) {
         failed += ((task.name, task.realizationName))

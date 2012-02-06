@@ -37,7 +37,14 @@ object Ducttape {
     err.println(Console.RESET)
 
     def usage() {
-      err.println("Usage: ducctape workflow.tape [--purge] [--viz] [--env taskName [realName]] [--markDone taskName [realName]] [--invalidate taskName [realNames...]]")
+      err.println("""
+Usage: ducctape workflow.tape
+  --purge
+  --viz
+  --env taskName realName
+  --markDone taskName realNames...
+  --invalidate taskName realNames...
+""")
       exit(1)
     }
     if(args.length == 0) usage()
@@ -48,6 +55,7 @@ object Ducttape {
         case "--list" => "list"
         case "--purge" => "purge"
         case "--viz" => "viz"
+        case "--viz-debug" => "viz-debug"
         case "--env" => "env"
         case "--markDone" => "markDone"
         case "--invalidate" => "invalidate"
@@ -92,6 +100,14 @@ object Ducttape {
     val baseDir = file.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
 
+    def colorizeDirs(list: Traversable[(String,String)]): Seq[String] = {
+      list.toSeq.map{case (name, real) => {
+        "%s/%s%s%s/%s%s%s".format(baseDir.getAbsolutePath,
+                                  conf.taskNameColor, name, conf.resetColor,
+                                  conf.realNameColor, real, conf.resetColor)
+      }}
+    }
+
     mode match {
       case "list" => {
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
@@ -129,16 +145,19 @@ object Ducttape {
       case "markDone" => {
         // TODO: Apply filters so that we do much less work to get here
         val goalTaskName = args(2)
+        val goalRealNames = args.toList.drop(3).toSet
         for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
           val taskT: TaskTemplate = v.packed.value
           if(taskT.name == goalTaskName) {
             val task: RealTask = taskT.realize(v)
-            val env = new TaskEnvironment(dirs, task)
-            if(CompletionChecker.isComplete(env)) {
-              err.println("Task already complete")
-            } else {
-              CompletionChecker.forceCompletion(env)
-              err.println("Forced completion of task")
+            if(goalRealNames(task.realizationName)) {
+              val env = new TaskEnvironment(dirs, task)
+              if(CompletionChecker.isComplete(env)) {
+                err.println("Task already complete: " + task.name + "/" + task.realizationName)
+              } else {
+                CompletionChecker.forceCompletion(env)
+                err.println("Forced completion of task: " + task.name + "/" + task.realizationName)
+              }
             }
           }
         }
@@ -151,25 +170,44 @@ object Ducttape {
             visitor.visit(task)
           }
         }
-        // TODO: Atomically determine which tasks are already complete
+
         err.println("Checking for completed steps...")
         val cc = new CompletionChecker(conf, dirs)
         visitAll(cc)
-        err.println("Removing partial output...")
-        visitAll(new PartialOutputRemover(conf, dirs))
-        err.println("Retreiving code and building...")
-        visitAll(new Builder(conf, dirs))
-        err.println("Executing tasks...")
-        visitAll(new Executor(conf, dirs, workflow, cc.completed))
+
+        err.println("About to run the following tasks:")
+        err.println(colorizeDirs(cc.todo).mkString("\n"))
+
+        if(cc.partial.size > 0) {
+          err.println("About to permenantly delete the partial output in the following directories:")
+          err.println(colorizeDirs(cc.partial).mkString("\n"))
+          err.print("Are you sure you want to DELETE all these? [y/n] ") // user must still press enter
+        } else {
+          err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
+        }
+
+        Console.readChar match {
+          case 'y' | 'Y' => {
+            err.println("Removing partial output...")
+            visitAll(new PartialOutputRemover(conf, dirs, cc.partial))
+            err.println("Retreiving code and building...")
+            visitAll(new Builder(conf, dirs, cc.todo))
+            err.println("Executing tasks...")
+            visitAll(new Executor(conf, dirs, workflow, cc.completed, cc.todo))
+          }
+          case _ => err.println("Doing nothing")
+        }
+
       }
       case "viz" => {
-        err.println("Compiling GraphViz visualization to viz.pdf...")
+        err.println("Generating GraphViz dot visualization...")
         import ducttape.viz._
-        //val dotFile = new File("viz.dot")
-        //Files.write(workflow.dag.toGraphViz, dotFile)
-        //Files.write(WorkflowViz.toGraphViz(workflow), dotFile)
-        //GraphViz.compileFile(dotFile, "viz.pdf")	
         println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow)))
+      }
+      case "viz-debug" => {
+        err.println("Generating GraphViz dot visualization of MetaHyperDAG...")
+        import ducttape.viz._
+        println(workflow.dag.toGraphVizDebug)
       }
       case "invalidate" => {
         val taskToKill = args(2)
@@ -211,11 +249,7 @@ object Ducttape {
         err.println("About to permenantly delete the following directories:")
         // TODO: Use directory architect here
         val absDirs = victimList.map{case (name, real) => new File(baseDir, "%s/%s".format(name,real))}
-        val coloredDirs = victimList.map{case (name, real) =>
-          "%s/%s%s%s/%s%s%s".format(baseDir.getAbsolutePath,
-                                    conf.taskNameColor, name, conf.resetColor,
-                                    conf.realNameColor, real, conf.resetColor)}
-        err.println(coloredDirs.mkString("\n"))
+        err.println(colorizeDirs(victimList).mkString("\n"))
 
         err.print("Are you sure you want to delete all these? [y/n] ") // user must still press enter
         Console.readChar match {

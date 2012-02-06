@@ -222,7 +222,17 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   def sink(e: HyperEdge[H,E]): PackedVertex[V] = sink(outMetaEdge(e))
   def sink(e: MetaEdge[M,H,E]): PackedVertex[V] = delegate.children(e.epsilonV).head
 
-  def toGraphViz(): String = delegate.toGraphViz(vertices, parents)
+  def toGraphViz(): String = delegate.toGraphViz(vertices, parents, {v => v.toString})
+
+  // visualize with all epsilon and phantom vertices
+  def toGraphVizDebug(): String = {
+    def stringify(v: PackedVertex[V]): String = v match {
+        case p if isPhantom(p) => "Phantom#" + p.id
+        case p if isEpsilon(p) => "Epsilon:" + metaEdgesByEpsilon(p).m.toString + "#" + p.id
+        case p => p.toString
+    }
+    delegate.toGraphViz(delegate.vertices, delegate.parents, stringify)
+  }
 }
 
 /** epsilonValue is just a dummy value that will never be given back to the user

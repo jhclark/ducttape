@@ -58,14 +58,16 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   def sink(e: HyperEdge[H,E]): PackedVertex[V]
     = edges(e)._2
 
-  def toGraphViz(): String = toGraphViz(vertices, parents)
+  def toGraphViz(): String = toGraphViz(vertices, parents, {v => v.toString}) 
 
-  def toGraphViz(vertexList: Seq[PackedVertex[V]], parentsFunc: PackedVertex[V] => Seq[PackedVertex[V]]): String = {
+  def toGraphViz(vertexList: Seq[PackedVertex[V]],
+                 parentsFunc: PackedVertex[V] => Seq[PackedVertex[V]],
+                 stringify: PackedVertex[V] => String): String = {
     val str = new StringBuilder(1000)
     str ++= "digraph G {\n"
-    for(v <- vertexList) {
-      for(ant <- parentsFunc(v)) {
-        str ++= "\"%s\" -> \"%s\"\n".format(GraphViz.escape(ant.toString), GraphViz.escape(v.toString))
+    for(v: PackedVertex[V] <- vertexList) {
+      for(ant: PackedVertex[V] <- parentsFunc(v)) {
+        str ++= "\"%s\" -> \"%s\"\n".format(GraphViz.escape(stringify(ant)), GraphViz.escape(stringify(v)))
       }
     }
     str ++= "}\n"

@@ -1,12 +1,14 @@
 import javax.servlet.http._
 import java.io._
+import System._
 
 class WorkflowServlet(workflowDirs: Seq[File]) extends HttpServlet {
   import ducttape.viz._
+  import ducttape.util._
 
-  val db = new WorkflowDatabase("workflow.db")
+  //val db = new WorkflowDatabase("workflow.db")
   val dotFile = new File(workflowDirs.head, ".xdot") // TODO: This should actually just be .dot
-  val timeout = 5 // poll file every 5 secs
+  val timeout = 15 // poll file every N secs
 
   var lastChanged: Long = 0 // unix timestamp
   def pollFileForUpdates() {
@@ -18,8 +20,9 @@ class WorkflowServlet(workflowDirs: Seq[File]) extends HttpServlet {
   }
 
   def sendFile(pw: PrintWriter) {
-    val dot = io.Source.fromFile(dotFile.getAbsolutePath).getLines.mkString("\n")
+    val dot = Files.read(dotFile).mkString("\n")
     val xdot = GraphViz.compileXDot(dot)
+    err.println("Sending new XDot graph")
     pw.println(xdot)
     pw.flush
   }
