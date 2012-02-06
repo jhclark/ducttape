@@ -72,6 +72,22 @@ To get syntax highlighting in emacs, add a line similar to the following in your
 (load "/home/jhclark/software/ducttape/emacs_mode.el")
 ```
 
+Vim Mode
+========
+
+To get syntax highlighting in vim, copy (or symlink) the ducttape's vim syntax highlighting file, like so:
+
+```
+$ mkdir -p ~/.vim/syntax
+$ cp vim_syntax.vim ~/.vim/syntax/ducctape.vim
+```
+
+Then add a line to your ~/.vimrc to create an association with .tape files:
+
+```
+au BufRead,BufNewFile *.tape set filetype=ducttape
+```
+
 Eclipse
 =======
 
