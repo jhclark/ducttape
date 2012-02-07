@@ -6,68 +6,12 @@ import collection._
 import java.io.File
 
 import ducttape.hyperdag._
+import ducttape.environment._
 import ducttape.Types._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.workflow._
 import ducttape.util._
-
-class DirectoryArchitect(val baseDir: File) {
-
-  val xdotFile = new File(baseDir, ".xdot")
-
-  def assignDir(taskDef: TaskDef, realization: Map[String,Branch]): File = {
-    val packedDir = assignPackedDir(taskDef)
-    new File(packedDir, "%s/1".format(Task.realizationName(realization)))
-  }
-
-  def assignPackedDir(taskDef: TaskDef): File = {
-    new File(baseDir, taskDef.name).getAbsoluteFile
-  }
-
-  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Map[String,Branch]): File = {
-    //println("Assigning outfile for " + spec)
-    val taskDir = assignDir(taskDef, realization)
-    assert(!spec.isInstanceOf[BranchPointDef])
-
-    spec.rval match {
-      case Unbound() => { // user didn't specify a name for this output file
-        new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
-      }
-      case Literal(filename) => { // the user told us what name to use for the file -- put it under work/
-        new File(taskDir, "work/%s".format(filename))
-      }
-    }
-  }
-
-  def isAbsolute(path: String) = new File(path).isAbsolute
-
-  def getInFile(mySpec: Spec,
-                realization: Map[String,Branch],
-                srcSpec: Spec,
-                srcTaskDef: TaskDef,
-                srcRealization: Map[String,Branch]): File = {
-
-    // first, resolve the realization, if necessary
-    // TODO: Move this into the realization unpacking code
-    val realizedRval = mySpec.rval match {
-      case BranchPointDef(_,_) => srcSpec.rval // the "source" internal to the branch declaration
-      case _ => mySpec.rval
-    }
-
-    //err.println("My realization is " + Task.realizationName(realization))
-    //err.println("Src realization is " + Task.realizationName(srcRealization))
-
-    // TODO: We should have already checked that this file exists by now?
-    realizedRval match {
-      case Literal(path) => isAbsolute(path) match {
-        case true => new File(path)
-        case false => new File(baseDir, path) // resolve relative paths relative to the workflow file (baseDir)
-      }
-      // branches, variables, etc get matched on the src, which we already resolved
-      case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization)
-    }
-  }
-}
+import ducttape.versioner._
 
 // TODO: Abstract beyond just workflows?
 trait PackedDagVisitor {
@@ -78,52 +22,6 @@ trait UnpackedDagVisitor {
   def visit(task: RealTask)
 }
 
-class TaskEnvironment(val dirs: DirectoryArchitect, val task: RealTask) {
-  
-  // grab input paths -- how are these to be resolved?
-  // If this came from a branch point, its source vertex *might* not
-  // no knowledge of that branch point. However, we might *still* have
-  // knowledge of that branch point at the source:
-  // 1) If that branch point is defined in multiple places (i.e. a factored HyperDAG)
-  //    and this the second time along an unpacked path that we encountered that
-  //    branch point, then we might still need to keep it. This state information
-  //    along a path is maintained by the constraintFilter.
-  // 2) If the visibility of a branch point X is conditioned on the choice by another
-  //    branch point Y?
-  // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
-  // TODO: Then associate Specs with edge info to link parent realizations properly
-  //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-  val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- task.inputVals) yield {
-    val inFile = dirs.getInFile(inSpec, task.activeBranches, srcSpec, srcTaskDef, Task.branchesToMap(srcRealization))
-    //err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
-    (inSpec.name, inFile.getAbsolutePath)
-  }
-    
-  // set param values (no need to know source active branches since we already resolved the literal)
-  // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
-  val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef, srcRealization) <- task.paramVals) yield {
-    //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
-    (paramSpec.name, srcSpec.rval.value)
-  }
-
-  // assign output paths
-  val outputs: Seq[(String, String)] = for(outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.activeBranches)
-    //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
-    (outSpec.name, outFile.getAbsolutePath)
-  }
-
-  lazy val env = inputs ++ outputs ++ params
-  
-  val where = dirs.assignDir(task.taskDef, task.activeBranches)
-  val buildStdoutFile = new File(where, "gimme_stdout.txt")
-  val buildStderrFile = new File(where, "gimme_stderr.txt")
-  val stdoutFile = new File(where, "stdout.txt")
-  val stderrFile = new File(where, "stderr.txt")
-  val workDir = new File(where, "work")
-  val exitCodeFile = new File(where, "exit_code.txt")
-}
-
 // checks the state of a task directory to make sure things completed as expected
 // TODO: Return a set object with incomplete nodes that can be handed to future passes
 // so that completion checking is atomic
@@ -132,12 +30,15 @@ object CompletionChecker {
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     // use a series of thunks so that we don't try to open non-existent files
-    val conditions = (
-      Seq(( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
+    val conditions: Seq[(() => Boolean, String)] = (
+      Seq(( () => taskEnv.where.exists, "No previous output"),
+          ( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
           ( () => io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0", "Non-zero exit code"),
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
-      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist")}
+      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist")} ++
+      Seq(( () => isInvalidated(taskEnv), "Previous version is complete, but invalidated"))
+
     )
     for( (cond, msg) <- conditions; if(!cond())) {
       System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realizationName, msg))
@@ -145,6 +46,8 @@ object CompletionChecker {
     }
     return true
   }
+
+  def isInvalidated(taskEnv: TaskEnvironment): Boolean = taskEnv.invalidatedFile.exists
 
   // not recommended -- but sometimes manual intervention is required
   // and the user just wants the workflow to continue
@@ -162,19 +65,30 @@ object CompletionChecker {
   }
 }
 
-class CompletionChecker(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+// the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
+// the most recent result is untouched, invalid, partial, or complete
+class CompletionChecker(conf: Config, dirs: DirectoryArchitect, initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   private val complete = new OrderedSet[(String,String)] // TODO: Change datatype of realization?
   private val partialOutput = new OrderedSet[(String,String)] // not complete, but has partial output
+  private val invalid = new OrderedSet[(String,String)] // invalidated by user (whether complete or not)
   private val todoList = new OrderedSet[(String,String)]
 
-  def completed: Set[(String,String)] = complete // return immutable
-  def partial: Set[(String,String)] = partialOutput // return immutable
+  // what is the workflow version of the completed version that we'll be reusing?
+  private val foundVersions = new mutable.HashMap[(String,String), Int]
+
+  // return immutable views:
+  def completed: Set[(String,String)] = complete
+  def partial: Set[(String,String)] = partialOutput
+  def invalidated: Set[(String,String)] = invalid
   def todo: Set[(String,String)] = todoList
 
+  // the workflow versions of each completed unpacked task
+  def completedVersions: Map[(String,String),Int] = foundVersions
+
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, task)
+    val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
     if(CompletionChecker.isComplete(taskEnv)) {
       complete += ((task.name, task.realizationName))
     } else {
@@ -192,9 +106,10 @@ object PartialOutputRemover {
 
 class PartialOutputRemover(conf: Config,
                            dirs: DirectoryArchitect,
+                           versions: WorkflowVersioner,
                            partial: Set[(String,String)]) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, task)
+    val taskEnv = new TaskEnvironment(dirs, versions, task)
     if(partial( (task.name, task.realizationName) )) {
       err.println("Removing partial output at %s".format(taskEnv.where))
       Files.deleteDir(taskEnv.where)
@@ -202,9 +117,13 @@ class PartialOutputRemover(conf: Config,
   }  
 }
 
-class Builder(conf: Config, dirs: DirectoryArchitect, todo: Set[(String,String)]) extends UnpackedDagVisitor {
+class Builder(conf: Config,
+              dirs: DirectoryArchitect,
+              versions: WorkflowVersioner,
+              todo: Set[(String,String)]) extends UnpackedDagVisitor {
+
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, task)
+    val taskEnv = new TaskEnvironment(dirs, versions, task)
     if(todo( (task.name, task.realizationName) )) {
       println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
       // TODO: Rename the augment method
@@ -222,6 +141,7 @@ class Builder(conf: Config, dirs: DirectoryArchitect, todo: Set[(String,String)]
 // workflow used for viz
 class Executor(conf: Config,
                dirs: DirectoryArchitect,
+               versions: WorkflowVersioner,
                workflow: HyperWorkflow,
                alreadyDone: Set[(String,String)],
                todo: Set[(String,String)]) extends UnpackedDagVisitor {
@@ -233,17 +153,17 @@ class Executor(conf: Config,
   val failed = new mutable.HashSet[(String,String)]
   dirs.xdotFile.synchronized {
     completed ++= alreadyDone
-    Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+    Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
   }
 
   override def visit(task: RealTask) {
     if(todo((task.name, task.realizationName))) {
-      val taskEnv = new TaskEnvironment(dirs, task)
+      val taskEnv = new TaskEnvironment(dirs, versions, task)
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
       dirs.xdotFile.synchronized {
         running += ((task.name, task.realizationName))
-        Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+        Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
       }
 
       taskEnv.workDir.mkdirs
@@ -251,7 +171,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realizationName))
         running -= ((task.name, task.realizationName))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
@@ -266,7 +186,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realizationName))
         running -= ((task.name, task.realizationName))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
       }
@@ -274,14 +194,14 @@ class Executor(conf: Config,
     completed += ((task.name, task.realizationName))
     running -= ((task.name, task.realizationName))
     dirs.xdotFile.synchronized {
-      Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
+      Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
     }
   }
 }
 
 class Purger(conf: Config, dirs: DirectoryArchitect) extends PackedDagVisitor {
   override def visit(task: TaskTemplate) {
-    val where = dirs.assignPackedDir(task.taskDef)
+    val where = dirs.assignPackedDir(task.taskDef.name)
     println("Removing directory: %s".format(where.getAbsolutePath))
     if(where.exists) {
       Files.deleteDir(where)

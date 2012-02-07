@@ -28,14 +28,16 @@ object GraphViz {
 
 object WorkflowViz {
   import ducttape.Types._
+  import ducttape.versioner._
   import ducttape.workflow._
 
   def toGraphViz(workflow: HyperWorkflow,
+                 versions: WorkflowVersioner,
                  completed: Set[(String,String)] = Set.empty,
                  running: Set[(String,String)] = Set.empty,
                  failed: Set[(String,String)] = Set.empty) = {
-    val str = new StringBuilder(1000)
 
+    val str = new StringBuilder(1000)
     str ++= "digraph G {\n"
 
     def getName(t: String, r: String) = GraphViz.escape("%s/%s".format(t, r))
@@ -43,7 +45,7 @@ object WorkflowViz {
     // first, list vertices
     for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
       val taskT: TaskTemplate = v.packed.value
-      val task: RealTask = taskT.realize(v)
+      val task: RealTask = taskT.realize(v, versions)
       val color = (task.name, task.realizationName) match {
         case t if completed(t) => "dodgerblue1"
         case t if running(t) => "darkolivegreen4"
@@ -56,7 +58,7 @@ object WorkflowViz {
     // now list edges
     for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
       val taskT: TaskTemplate = v.packed.value
-      val task: RealTask = taskT.realize(v)
+      val task: RealTask = taskT.realize(v, versions)
       val child = getName(task.name, task.realizationName)
       task.inputVals.map{ case (_, _, srcTaskDef, srcRealization) => {
         getName(srcTaskDef.name, Task.realizationName(Task.branchesToMap(srcRealization)))

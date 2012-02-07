@@ -5,11 +5,12 @@ import collection._
 import ducttape.hyperdag._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
+import ducttape.versioner._
 import ducttape.Types._
 
-object Task {
-  val NO_BRANCH_POINT = new BranchPoint("Baseline")
-  val NO_BRANCH = new Branch("baseline", NO_BRANCH_POINT)
+// TODO: Move into HyperDAG?
+class Realization {
+ // TODO: Keep string branch point names?
 
   // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
   // and don't include our default branch "baseline"
@@ -22,6 +23,7 @@ object Task {
       case _ => names.mkString("-")
     }
   }
+
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
   def branchesToMap(real: Seq[Branch]) = {
     val result = new mutable.HashMap[String,Branch]
@@ -30,17 +32,23 @@ object Task {
       result += branch.branchPoint.name -> branch
     }
     result
-  }
+  }  
+}
+
+object Task {
+  val NO_BRANCH_POINT = new BranchPoint("Baseline")
+  val NO_BRANCH = new Branch("baseline", NO_BRANCH_POINT)
 }
 
 // short for "realized task"
 // we might shorten this to Task
 class RealTask(val taskT: TaskTemplate,
-               val activeBranches: Map[String,Branch], // TODO: Keep string branch point names?
+               val realization: Realization,
+               // TODO: Change inputVals and paramVals over to Realization?
                val inputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
-               val paramVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])]) { // (mySpec,srcSpec,srcTaskDef,srcRealization)
+               val paramVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
+               val version: Int) { // workflow version
    def name = taskT.name
-   def realizationName = Task.realizationName(activeBranches)
    def taskDef = taskT.taskDef
    def comments = taskT.comments
    def inputs = taskT.inputs
@@ -69,7 +77,7 @@ class RealTask(val taskT: TaskTemplate,
    // realize this task by specifying one branch per branch point
    // activeBranches should contain only the hyperedges encountered up until this vertex
    // with the key being the branchPointNames
-   def realize(v: UnpackedWorkVert): RealTask = {
+   def realize(v: UnpackedWorkVert, versions: WorkflowVersioner): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
      val activeBranchMap = Task.branchesToMap(v.realization)
@@ -122,7 +130,9 @@ class RealTask(val taskT: TaskTemplate,
      val realInputVals = mapVals(inputVals)
      val realParamVals = mapVals(paramVals)
 
-     new RealTask(this, activeBranchMap, realInputVals, realParamVals)
+     val realName = Task.realizationName(activeBranchMap) // only for retrieving version
+     val version = versions(taskDef.name, realName)
+     new RealTask(this, activeBranchMap, realInputVals, realParamVals, version)
    }
  }
 
