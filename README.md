@@ -18,7 +18,8 @@ TODO: Move this section to a separate file once we move out of alpha...
 Assuming you have Scala 2.9.0+ installed, just run:
 
 ```bash
-sbt compile
+#sbt compile
+./build.sh
 ```
 
 To continuously recompile whenever source files change:
@@ -90,21 +91,3 @@ Perform File..Import..General..Existing Projects into Workspace.
 Select workspace as the root directory of the project to import, make sure that the ducttape project is selected, then click Finish.
 Eclipse should now compile the code. Once Eclipse has completed building the workspace, exit Eclipse.
 Re-open Eclipse, and you should be good to go. To verify, open ducttape.scala in the scala directory, and select Run As..Scala Application.
-
-Setting Up Connections to Remote Machines (Not Yet Implemented)
-===============================================================
-
-You will constantly have a SSH tunnel active to the remote machine
-```
-local.com$ ssh -L3333:localhost:4444 -N remote.com
-```
-
-Start the remote server on the remote machine (e.g. a cluster head node)
-```
-remote.com$ scala ducttape.remote.RemoteServer 4444
-```
-
-Now the remote client can control what happens on the remote machines
-```
-local.com$ scala ducttape.remote.RemoteClient 3333
-```

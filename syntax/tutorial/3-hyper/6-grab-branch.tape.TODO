@@ -5,5 +5,5 @@
 # significance of several simulations as compared to a baseline.
 
 # ! is the unpack operator
-[g2.unpack] a=$g2.doStuff/a!whichThing(choiceA) > x
+[g2.unpack] a=$a@g2.doStuff[whichThing:choiceA] > x
    cat < $a > $x
