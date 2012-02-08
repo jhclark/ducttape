@@ -103,9 +103,9 @@ object DuctTapeDoc {
 
     f.header()
 
-    for(dir <- new File(docRoot).listFiles.toList.sort((e1,e2) => (e1.getName < e2.getName))) {
+    for(dir <- new File(docRoot).listFiles.toList.sortWith((e1,e2) => (e1.getName < e2.getName))) {
       if(dir.isDirectory) {
-        val docFiles = dir.listFiles.toList.filter(_.getName.endsWith(".tape")).sort((e1,e2) => (e1.getName < e2.getName))
+        val docFiles = dir.listFiles.toList.filter(_.getName.endsWith(".tape")).sortWith((e1,e2) => (e1.getName < e2.getName))
         if(docFiles.size > 0) {
           f.section(dir.getName)
           for(file <- docFiles) {
