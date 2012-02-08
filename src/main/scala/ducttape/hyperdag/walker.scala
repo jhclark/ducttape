@@ -37,8 +37,12 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
   // TODO: Add a .par(j) method that returns a parallel walker
   // j = numCores (as in make -j)
   def foreach[U](j: Int, f: A => U) {
-    val threads: Seq[Thread] = (0 until j).map(_ => new Thread {
-      override def run {
+    import java.util.concurrent._
+    import collection.JavaConversions._
+
+    val pool = Executors.newFixedThreadPool(j)
+    val tasks: Seq[Callable[Unit]] = (0 until j).map(_ => new Callable[Unit] {
+      override def call {
         var running = true
         while(running) {
           take match {
@@ -56,7 +60,11 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
         }
       }
     })
-    threads.foreach(_.start)
-    threads.foreach(_.join)
+    // start running tasks in thread pool
+    // wait a few years or until all tasks complete
+    val futures = pool.invokeAll(tasks, Long.MaxValue, TimeUnit.MILLISECONDS)
+    pool.shutdown
+    // call get on each future so that we propagate any exceptions
+    futures.foreach(_.get)
   }
 }
