@@ -9,30 +9,37 @@ import ducttape.versioner._
 import ducttape.Types._
 
 // TODO: Move into HyperDAG?
-class Realization {
+class Realization(val branches: Seq[Branch]) {
  // TODO: Keep string branch point names?
 
   // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
   // and don't include our default branch "baseline"
-  def realizationName(real: Map[String,Branch]): String = {
+  private def realizationName(real: Map[String,Branch]): String = {
     val branches = real.toSeq.sortBy(_._1).map(_._2)
-    val names = branches.map(_.name).filter(_ != NO_BRANCH.name)
+    val names = branches.map(_.name).filter(_ != Task.NO_BRANCH.name)
     // TODO: Can we get rid of some of these cases now?
     names.size match {
-      case 0 => NO_BRANCH.name // make sure we have at least baseline in the name
+      case 0 => Task.NO_BRANCH.name // make sure we have at least baseline in the name
       case _ => names.mkString("-")
     }
   }
 
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
-  def branchesToMap(real: Seq[Branch]) = {
+  private def branchesToMap(real: Seq[Branch]) = {
     val result = new mutable.HashMap[String,Branch]
-    result += NO_BRANCH_POINT.name -> NO_BRANCH // TODO: XXX: Should we enforce this elsewhere?
+    result += Task.NO_BRANCH_POINT.name -> Task.NO_BRANCH // TODO: XXX: Should we enforce this elsewhere?
     for(branch <- real) {
       result += branch.branchPoint.name -> branch
     }
     result
-  }  
+  }
+
+  lazy val activeBranchMap = branchesToMap(branches)
+  lazy val str = realizationName(activeBranchMap)
+
+  override def hashCode = str.hashCode // TODO: More efficient?
+  override def equals(obj: Any) = obj match { case that: Realization => this.str == that.str } // TODO: More efficient?
+  override def toString = str
 }
 
 object Task {
@@ -56,7 +63,7 @@ class RealTask(val taskT: TaskTemplate,
    def params = taskT.params
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
 
-   override def toString = name + "/" + activeBranches.values.mkString("-")
+   override def toString = "%s/%s".format(name, realization.toString)
  }
 
  // a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
@@ -80,7 +87,8 @@ class RealTask(val taskT: TaskTemplate,
    def realize(v: UnpackedWorkVert, versions: WorkflowVersioner): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
-     val activeBranchMap = Task.branchesToMap(v.realization)
+     val realization = new Realization(v.realization)
+     val activeBranchMap = realization.activeBranchMap
 
      // do a bit of sanity checking
      for(branchPoint <- branchPoints) {
@@ -130,9 +138,8 @@ class RealTask(val taskT: TaskTemplate,
      val realInputVals = mapVals(inputVals)
      val realParamVals = mapVals(paramVals)
 
-     val realName = Task.realizationName(activeBranchMap) // only for retrieving version
-     val version = versions(taskDef.name, realName)
-     new RealTask(this, activeBranchMap, realInputVals, realParamVals, version)
+     val version = versions(taskDef.name, realization)
+     new RealTask(this, realization, realInputVals, realParamVals, version)
    }
  }
 
@@ -233,7 +240,9 @@ class RealTask(val taskT: TaskTemplate,
 
    // create dependency pointers based on workflow definition
    // TODO: This method has become morbidly obese -- break it out into several methods
-   def build(wd: WorkflowDefinition): HyperWorkflow = {
+   // Nil plan has a special meaning -- use everything
+   def build(wd: WorkflowDefinition,
+             plan: Seq[Map[BranchPoint, Set[Branch]]] = Nil): HyperWorkflow = {
 
      val defMap = new mutable.HashMap[String,TaskDef]
      for(t <- wd.tasks) {
@@ -407,6 +416,6 @@ class RealTask(val taskT: TaskTemplate,
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build)
+    new HyperWorkflow(dag.build, plan)
   }
 }

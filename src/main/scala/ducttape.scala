@@ -43,13 +43,15 @@ object Ducttape {
     // TODO: Do some reflection magic on modes to enable automatic subtask names
     val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
       val jobs = IntOpt(desc="Number of concurrent jobs to run")
+      val plan = StrOpt(desc="Plan file to read")
     }
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
     val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
     val debug_viz = new Mode("debug_viz", desc="Output a GraphViz dot visualization of the packed MetaHyperDAG");
     val mark_done = new Mode("mark_done", desc="Mark a specific task/realization as complete (useful if some manual recovery or resumption was necessary)");
-    val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as complete");
+    val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
+    val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
 
     val modes = Seq(exec, list, env, viz, debug_viz, mark_done, invalidate)
 
@@ -141,7 +143,17 @@ object Ducttape {
     //println("Reading workflow from %s".format(file.getAbsolutePath))
     val wd: WorkflowDefinition = ex2err(GrammarParser.read(opts.workflowFile))
     //println("Building workflow...")
-    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd))
+
+    // TODO: Not always exec...
+    val plan: Seq[Map[BranchPoint,Set[Branch]]] = opts.exec.plan.value match {
+      case Some(planFile) => {
+        err.println("Reading plan file: %s".format(planFile))
+        RealizationPlan.read(planFile)
+      }
+      case None => Nil
+    }
+
+    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, plan))
     //println("Workflow contains %d tasks".format(workflow.dag.size))
     
     // TODO: Check that all input files exist
@@ -149,11 +161,13 @@ object Ducttape {
     val baseDir = opts.workflowFile.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
 
-    def colorizeDirs(list: Traversable[(String,String)]): Seq[String] = {
+    def colorizeDirs(list: Traversable[(String,Realization)], versions: WorkflowVersioner): Seq[String] = {
       list.toSeq.map{case (name, real) => {
-        "%s/%s%s%s/%s%s%s".format(baseDir.getAbsolutePath,
-                                  conf.taskNameColor, name, conf.resetColor,
-                                  conf.realNameColor, real, conf.resetColor)
+        val ver = versions(name, real)
+        "%s/%s%s%s/%s%s%s/%d".format(baseDir.getAbsolutePath,
+                                     conf.taskNameColor, name, conf.resetColor,
+                                     conf.realNameColor, real.toString, conf.resetColor,
+                                     ver)
       }}
     }
 
@@ -177,7 +191,7 @@ object Ducttape {
       for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
-        println("%s %s".format(task.name, task.realizationName))
+        println("%s %s".format(task.name, task.realization))
         //println("Actual realization: " + v.realization)
       }
     }
@@ -196,7 +210,7 @@ object Ducttape {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v, versions)
-          if(task.realizationName == goalRealName) {
+          if(task.realization.toString == goalRealName) { // TODO: Better realization string comparator?
             val env = new TaskEnvironment(dirs, versions, task)
 
             for( (k,v) <- env.env) {
@@ -222,13 +236,13 @@ object Ducttape {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v, versions)
-          if(goalRealNames(task.realizationName)) {
+          if(goalRealNames(task.realization.toString)) {
             val env = new TaskEnvironment(dirs, versions, task)
             if(CompletionChecker.isComplete(env)) {
-              err.println("Task already complete: " + task.name + "/" + task.realizationName)
+              err.println("Task already complete: " + task.name + "/" + task.realization)
             } else {
               CompletionChecker.forceCompletion(env)
-              err.println("Forced completion of task: " + task.name + "/" + task.realizationName)
+              err.println("Forced completion of task: " + task.name + "/" + task.realization)
             }
           }
         }
@@ -237,12 +251,12 @@ object Ducttape {
 
     def exec {
       err.println("About to run the following tasks:")
-      err.println(colorizeDirs(cc.todo).mkString("\n"))
+      err.println(colorizeDirs(cc.todo, versions).mkString("\n"))
       
       if(cc.partial.size > 0) {
         err.println("About to permenantly delete the partial output in the following directories:")
-        err.println(colorizeDirs(cc.partial).mkString("\n"))
-        err.print("Are you sure you want to DELETE all these? [y/n] ") // user must still press enter
+        err.println(colorizeDirs(cc.partial, versions).mkString("\n"))
+        err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
       } else {
         err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
       }
@@ -273,6 +287,37 @@ object Ducttape {
       println(workflow.dag.toGraphVizDebug)
     }
 
+    def getVictims(taskToKill: String, realsToKill: Set[String]): Seq[RealTask] = {
+      val victims = new mutable.HashSet[(String,Realization)]
+      val victimList = new mutable.ListBuffer[RealTask]
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+        val taskT: TaskTemplate = v.packed.value
+        val task: RealTask = taskT.realize(v, versions)
+        if(taskT.name == taskToKill) {
+          if(realsToKill(task.realization.toString)) {
+            //err.println("Found victim %s/%s".format(taskT.name, task.realizationName))
+            // TODO: Store seqs instead?
+            victims += ((task.name, task.realization))
+            victimList += task
+          }
+        } else {
+          // was this task invalidated by its parent?
+          // TODO: Can we propagate this in a more natural way
+          val isVictim = task.inputVals.exists{ case (_, _, srcTaskDef, srcRealization) => {
+            val srcReal = new Realization(srcRealization) // TODO: More efficient?
+            val parent = (srcTaskDef.name, srcReal)
+              victims(parent)
+          }}
+          if(isVictim) {
+            //err.println("Found indirect victim %s/%s".format(task.name, task.realizationName))
+            victims += ((task.name, task.realization))
+            victimList += task
+          }
+        }
+      }
+      victimList
+    }
+
     def invalidate {
       if(opts.taskName == None) {
         err.println("ERROR: invalidate requires a taskName")
@@ -284,44 +329,46 @@ object Ducttape {
       val realsToKill = opts.realNames.toSet
       err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
 
-      throw new Error("Be more careful about how invalidation happens")
-      
       // 1) Accumulate the set of changes
-      // we'll have to keep a map of parents and use
-      // the dag to keep state
-      val victims = new mutable.HashSet[(String,String)]
-      val victimList = new mutable.ListBuffer[(String,String)]
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
-        val taskT: TaskTemplate = v.packed.value
-        val task: RealTask = taskT.realize(v, versions)
-        if(taskT.name == taskToKill) {
-          if(realsToKill(task.realizationName)) {
-            //err.println("Found victim %s/%s".format(taskT.name, task.realizationName))
-            // TODO: Store seqs instead?
-            victims += ((task.name, task.realizationName))
-            victimList += ((task.name, task.realizationName))
-          }
-        } else {
-          // was this task invalidated by its parent?
-          // TODO: Can we propagate this in a more natural way
-          val isVictim = task.inputVals.exists{ case (_, _, srcTaskDef, srcRealization) => {
-            val parent = (srcTaskDef.name, Task.realizationName(Task.branchesToMap(srcRealization)))
-              victims(parent)
-          }}
-          if(isVictim) {
-            //err.println("Found indirect victim %s/%s".format(task.name, task.realizationName))
-            victims += ((task.name, task.realizationName))
-            victimList += ((task.name, task.realizationName))
-          }
-        }
-      }
+      val victims = getVictims(taskToKill, realsToKill)
+      val victimList = victims.map{ task => (task.name, task.realization) }
       
       // 2) prompt the user
-      // TODO: Increment version instead of deleting?
+      err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
+      err.println(colorizeDirs(victimList, versions).mkString("\n"))
+      
+      err.print("Are you sure you want to invalidate all these? [y/n] ") // user must still press enter
+      Console.readChar match {
+        case 'y' | 'Y' => victims.foreach(task => {
+          err.println("Invalidating %s/%s/%s".format(task.name, task.realization.toString, task.version))
+          CompletionChecker.invalidate(new TaskEnvironment(dirs, versions, task))
+        })
+        case _ => err.println("Doing nothing")
+      }
+    }
+
+    def purge {
+      if(opts.taskName == None) {
+        err.println("ERROR: purge requires a taskName")
+      }
+      if(opts.realNames.size < 1) {
+        err.println("ERROR: purge requires realization names")
+      }
+      val taskToKill = opts.taskName.get
+      val realsToKill = opts.realNames.toSet
+      err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
+
+      // 1) Accumulate the set of changes
+      val victimList = getVictims(taskToKill, realsToKill).map{ task => (task.name, task.realization) }
+      
+      // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
       // TODO: Use directory architect here
-      val absDirs = victimList.map{case (name, real) => new File(baseDir, "%s/%s".format(name,real))}
-      err.println(colorizeDirs(victimList).mkString("\n"))
+      val absDirs = victimList.map{case (name, real) => {
+        val ver = versions(name, real)
+        new File(baseDir, "%s/%s/%d".format(name,real,ver))
+      }}
+      err.println(colorizeDirs(victimList, versions).mkString("\n"))
       
       err.print("Are you sure you want to delete all these? [y/n] ") // user must still press enter
       Console.readChar match {
@@ -338,6 +385,7 @@ object Ducttape {
       case "viz" => viz
       case "debug_viz" => debugViz
       case "invalidate" => invalidate
+      case "purge" => purge
       case _ => exec
     }
   }

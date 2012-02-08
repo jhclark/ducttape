@@ -28,6 +28,7 @@ class MultiSet[A] {
   def ++=(xs: TraversableOnce[A]) = for(x <- xs) this += x
   def --=(xs: TraversableOnce[A]) = for(x <- xs) this -= x
   def apply(a: A) = map.contains(a)
+  def view = map.keys.view
   def toList(): List[A] = map.keys.toList
   override def toString() = map.toString
 }

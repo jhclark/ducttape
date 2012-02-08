@@ -15,18 +15,18 @@ class DirectoryArchitect(val baseDir: File) {
     new File(baseDir, taskName).getAbsoluteFile
   }
 
-  def assignUnversionedDir(taskName: String, realization: Map[String,Branch]): File = {
+  def assignUnversionedDir(taskName: String, realization: Realization): File = {
     val packedDir = assignPackedDir(taskName)
-    new File(packedDir, Task.realizationName(realization)).getAbsoluteFile
+    new File(packedDir, realization.toString).getAbsoluteFile
   }
 
   // version: workflow version
-  def assignDir(taskDef: TaskDef, realization: Map[String,Branch], version: Int): File = {
+  def assignDir(taskDef: TaskDef, realization: Realization, version: Int): File = {
     val unversionedDir = assignUnversionedDir(taskDef.name, realization)
     new File(unversionedDir, version.toString)
   }
 
-  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Map[String,Branch], version: Int): File = {
+  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, version: Int): File = {
     //println("Assigning outfile for " + spec)
     val taskDir = assignDir(taskDef, realization, version)
     assert(!spec.isInstanceOf[BranchPointDef])
@@ -44,11 +44,11 @@ class DirectoryArchitect(val baseDir: File) {
   def isAbsolute(path: String) = new File(path).isAbsolute
 
   def getInFile(mySpec: Spec,
-                realization: Map[String,Branch],
+                realization: Realization,
                 version: Int,
                 srcSpec: Spec,
                 srcTaskDef: TaskDef,
-                srcRealization: Map[String,Branch],
+                srcRealization: Realization,
                 srcVersion: Int): File = {
 
     // first, resolve the realization, if necessary
@@ -89,10 +89,10 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
   val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- task.inputVals) yield {
-    val srcRealName = Task.realizationName(Task.branchesToMap(srcRealization)) // TODO: Hacky
-    val srcVersion: Int = versions(srcTaskDef.name, srcRealName)
-    val inFile = dirs.getInFile(inSpec, task.activeBranches, task.version,
-                                srcSpec, srcTaskDef, Task.branchesToMap(srcRealization), srcVersion)
+    val srcReal = new Realization(srcRealization) // TODO: Hacky
+    val srcVersion: Int = versions(srcTaskDef.name, srcReal)
+    val inFile = dirs.getInFile(inSpec, task.realization, task.version,
+                                srcSpec, srcTaskDef, srcReal, srcVersion)
     //err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
     (inSpec.name, inFile.getAbsolutePath)
   }
@@ -106,14 +106,14 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
 
   // assign output paths
   val outputs: Seq[(String, String)] = for(outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.activeBranches, task.version)
+    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
     //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
 
   lazy val env = inputs ++ outputs ++ params
   
-  val where = dirs.assignDir(task.taskDef, task.activeBranches, task.version)
+  val where = dirs.assignDir(task.taskDef, task.realization, task.version)
   val buildStdoutFile = new File(where, "gimme_stdout.txt")
   val buildStderrFile = new File(where, "gimme_stderr.txt")
   val stdoutFile = new File(where, "stdout.txt")

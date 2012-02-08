@@ -37,17 +37,19 @@ object CompletionChecker {
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
       taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist")} ++
-      Seq(( () => isInvalidated(taskEnv), "Previous version is complete, but invalidated"))
+      Seq(( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated"))
 
     )
     for( (cond, msg) <- conditions; if(!cond())) {
-      System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realizationName, msg))
+      System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
       return false
     }
     return true
   }
 
   def isInvalidated(taskEnv: TaskEnvironment): Boolean = taskEnv.invalidatedFile.exists
+
+  def invalidate(taskEnv: TaskEnvironment): Boolean = taskEnv.invalidatedFile.createNewFile
 
   // not recommended -- but sometimes manual intervention is required
   // and the user just wants the workflow to continue
@@ -70,31 +72,36 @@ object CompletionChecker {
 class CompletionChecker(conf: Config, dirs: DirectoryArchitect, initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
-  private val complete = new OrderedSet[(String,String)] // TODO: Change datatype of realization?
-  private val partialOutput = new OrderedSet[(String,String)] // not complete, but has partial output
-  private val invalid = new OrderedSet[(String,String)] // invalidated by user (whether complete or not)
-  private val todoList = new OrderedSet[(String,String)]
+  private val complete = new OrderedSet[(String,Realization)] // TODO: Change datatype of realization?
+  private val partialOutput = new OrderedSet[(String,Realization)] // not complete, but has partial output
+  private val invalid = new OrderedSet[(String,Realization)] // invalidated by user (whether complete or not)
+  private val todoList = new OrderedSet[(String,Realization)]
 
   // what is the workflow version of the completed version that we'll be reusing?
-  private val foundVersions = new mutable.HashMap[(String,String), Int]
+  private val foundVersions = new mutable.HashMap[(String,Realization), Int]
 
   // return immutable views:
-  def completed: Set[(String,String)] = complete
-  def partial: Set[(String,String)] = partialOutput
-  def invalidated: Set[(String,String)] = invalid
-  def todo: Set[(String,String)] = todoList
+  def completed: Set[(String,Realization)] = complete
+  def partial: Set[(String,Realization)] = partialOutput
+  def invalidated: Set[(String,Realization)] = invalid
+  def todo: Set[(String,Realization)] = todoList
 
   // the workflow versions of each completed unpacked task
-  def completedVersions: Map[(String,String),Int] = foundVersions
+  def completedVersions: Map[(String,Realization),Int] = foundVersions
 
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
     if(CompletionChecker.isComplete(taskEnv)) {
-      complete += ((task.name, task.realizationName))
+      complete += ((task.name, task.realization))
+      foundVersions += (task.name, task.realization) -> task.version
     } else {
-      todoList += ((task.name, task.realizationName))
-      if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
-        partialOutput += ((task.name, task.realizationName))
+      todoList += ((task.name, task.realization))
+      if(CompletionChecker.isInvalidated(taskEnv)) {
+        invalid += ((task.name, task.realization))
+      } else {
+        if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
+          partialOutput += ((task.name, task.realization))
+        }
       }
     }
   }  
@@ -107,10 +114,10 @@ object PartialOutputRemover {
 class PartialOutputRemover(conf: Config,
                            dirs: DirectoryArchitect,
                            versions: WorkflowVersioner,
-                           partial: Set[(String,String)]) extends UnpackedDagVisitor {
+                           partial: Set[(String,Realization)]) extends UnpackedDagVisitor {
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, versions, task)
-    if(partial( (task.name, task.realizationName) )) {
+    if(partial( (task.name, task.realization) )) {
       err.println("Removing partial output at %s".format(taskEnv.where))
       Files.deleteDir(taskEnv.where)
     }
@@ -120,18 +127,18 @@ class PartialOutputRemover(conf: Config,
 class Builder(conf: Config,
               dirs: DirectoryArchitect,
               versions: WorkflowVersioner,
-              todo: Set[(String,String)]) extends UnpackedDagVisitor {
+              todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
 
   override def visit(task: RealTask) {
     val taskEnv = new TaskEnvironment(dirs, versions, task)
-    if(todo( (task.name, task.realizationName) )) {
-      println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realizationName, Console.RESET))
+    if(todo( (task.name, task.realization) )) {
+      println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realization.toString, Console.RESET))
       // TODO: Rename the augment method
       taskEnv.workDir.mkdirs
       val gimmeCmds = Gimme.augment(dirs.baseDir, taskEnv.params, Seq.empty)
       val exitCode = Shell.run(gimmeCmds, taskEnv.workDir, taskEnv.env, taskEnv.buildStdoutFile, taskEnv.buildStderrFile)
       if(exitCode != 0) {
-        println("%sBuild task %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))
+        println("%sBuild task %s/%s returned %s%s".format(conf.errorColor, task.name, task.realization.toString, exitCode, Console.RESET))
         exit(1)
       }
     }
@@ -143,33 +150,33 @@ class Executor(conf: Config,
                dirs: DirectoryArchitect,
                versions: WorkflowVersioner,
                workflow: HyperWorkflow,
-               alreadyDone: Set[(String,String)],
-               todo: Set[(String,String)]) extends UnpackedDagVisitor {
+               alreadyDone: Set[(String,Realization)],
+               todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
   import ducttape.viz._
 
   // TODO: Construct set elsewhere?
-  val completed = new mutable.HashSet[(String,String)]
-  val running = new mutable.HashSet[(String,String)]
-  val failed = new mutable.HashSet[(String,String)]
+  val completed = new mutable.HashSet[(String,Realization)]
+  val running = new mutable.HashSet[(String,Realization)]
+  val failed = new mutable.HashSet[(String,Realization)]
   dirs.xdotFile.synchronized {
     completed ++= alreadyDone
     Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
   }
 
   override def visit(task: RealTask) {
-    if(todo((task.name, task.realizationName))) {
+    if(todo((task.name, task.realization))) {
       val taskEnv = new TaskEnvironment(dirs, versions, task)
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
       dirs.xdotFile.synchronized {
-        running += ((task.name, task.realizationName))
+        running += ((task.name, task.realization))
         Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
       }
 
       taskEnv.workDir.mkdirs
       if(!taskEnv.workDir.exists) {
-        failed += ((task.name, task.realizationName))
-        running -= ((task.name, task.realizationName))
+        failed += ((task.name, task.realization))
+        running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
           Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
         }
@@ -178,21 +185,21 @@ class Executor(conf: Config,
       
       // there's so many parameters here in case we want to "augment" the commands in some way
       val submitCommands = Submitter.prepare(dirs.baseDir, taskEnv.where, taskEnv.params,
-                                             task.commands, task.name, task.realizationName)
+                                             task.commands, task.name, task.realization)
       val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
       if(exitCode != 0) {
-        println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realizationName, exitCode, Console.RESET))
-        failed += ((task.name, task.realizationName))
-        running -= ((task.name, task.realizationName))
+        println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realization.toString, exitCode, Console.RESET))
+        failed += ((task.name, task.realization))
+        running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
           Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
       }
     }
-    completed += ((task.name, task.realizationName))
-    running -= ((task.name, task.realizationName))
+    completed += ((task.name, task.realization))
+    running -= ((task.name, task.realization))
     dirs.xdotFile.synchronized {
       Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
     }

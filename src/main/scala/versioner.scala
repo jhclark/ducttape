@@ -3,7 +3,7 @@ package ducttape.versioner
 import collection._
 
 import ducttape.environment.DirectoryArchitect
-import ducttape.workflow.Branch
+import ducttape.workflow._
 
 trait WorkflowVersioner {
   def apply(taskName: String, realization: Realization): Int
@@ -29,11 +29,11 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
 // during the current execution cycle (always the atomic workflow version
 // number for new or incomplete tasks, but may be different for previously
 // completed tasks/realizations)
-class ExecutionVersioner(completedVersions: Map[(String,String), Int],
+class ExecutionVersioner(completedVersions: Map[(String,Realization), Int],
                          workflowVersion: Int) extends WorkflowVersioner {
 
   def apply(taskName: String, realization: Realization): Int = {
-    completedVersions.get((taskName, realName)) match {
+    completedVersions.get((taskName, realization)) match {
       case Some(prevVer) => prevVer
       case None => workflowVersion
     }

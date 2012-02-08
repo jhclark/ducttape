@@ -17,7 +17,7 @@ object Submitter {
               params: Seq[(String,String)],
               commands: Seq[String],
               taskName: String,
-              realizationName: String
+              realization: Realization
               ): Seq[String] = {
 
     // use "shell" as default if none specified
@@ -32,7 +32,7 @@ object Submitter {
     val env: Seq[(String,String)] = (for( (k,v) <- params; if k.startsWith(".") ) yield {
       val name = k.substring(1) // remove leading dot
       ("RESOURCE_%s".format(name), v)
-    }) ++ Seq( ("TASK_NAME", taskName), ("REALIZATION", realizationName) )
+    }) ++ Seq( ("TASK_NAME", taskName), ("REALIZATION", realization.toString) )
 
     // 3) Invoke script as subprocess and receive lines of stdout back
     //    as the new commands
