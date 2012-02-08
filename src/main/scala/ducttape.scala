@@ -163,12 +163,12 @@ Usage: ducctape workflow.tape
         }
       }
       case "execute" => {
-        def visitAll(visitor: UnpackedDagVisitor) {
-          for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+        def visitAll(visitor: UnpackedDagVisitor, numCores: Int = 1) {
+          workflow.unpackedWalker.foreach(numCores, { v: UnpackedWorkVert => {
             val taskT: TaskTemplate = v.packed.value
             val task: RealTask = taskT.realize(v)
             visitor.visit(task)
-          }
+          }})
         }
 
         err.println("Checking for completed steps...")
@@ -193,7 +193,8 @@ Usage: ducctape workflow.tape
             err.println("Retreiving code and building...")
             visitAll(new Builder(conf, dirs, cc.todo))
             err.println("Executing tasks...")
-            visitAll(new Executor(conf, dirs, workflow, cc.completed, cc.todo))
+            val numCores = 2 // j=2 for testing
+            visitAll(new Executor(conf, dirs, workflow, cc.completed, cc.todo), numCores)
           }
           case _ => err.println("Doing nothing")
         }

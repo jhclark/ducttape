@@ -1,9 +1,11 @@
 # 6) Using package versioning with SVN
-[use-svn] cmdutils < in=/etc/passwd > out :: N=5
-  loonybin -version
+[use-svn] loonybin < in=/etc/passwd > out :: N=5
+  $loonybin -version
 
-[PACKAGE:loonybin] @versioner=svn @url=http://loonybin.svn.sourceforge.net/svnroot/loonybin
+[PACKAGE:loonybin] .versioner=svn .url=http://loonybin.svn.sourceforge.net/svnroot/loonybin .rev=HEAD
   ant
+
+# TODO: What commands will ducttape use to exactly reproduce a workflow given some export file?
 
 #############################################################################
 # The following implementation of a git versioner is actually built-in and

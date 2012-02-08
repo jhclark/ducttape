@@ -25,6 +25,7 @@ object Task {
   //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
   def branchesToMap(real: Seq[Branch]) = {
     val result = new mutable.HashMap[String,Branch]
+    result += NO_BRANCH_POINT.name -> NO_BRANCH // TODO: XXX: Should we enforce this elsewhere?
     for(branch <- real) {
       result += branch.branchPoint.name -> branch
     }
@@ -329,6 +330,11 @@ class RealTask(val taskT: TaskTemplate,
              resolveVar(wd, taskDef, defMap, inSpec, InputMode())
          }
          resolveBranchPoint(inSpec, inputVals, recordParentsFunc, resolveVarFunc)
+       }
+
+       if(paramVals.size == 0 && inputVals.size == 0) {
+         // we MUST inherit from at least the baseline branch point
+         branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT
        }
 
        val task = new TaskTemplate(taskDef, branchPointsByTask(taskDef).toSeq, inputVals, paramVals)

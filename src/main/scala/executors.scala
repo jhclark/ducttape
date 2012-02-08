@@ -251,7 +251,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realizationName))
         running -= ((task.name, task.realizationName))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
@@ -266,7 +266,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realizationName))
         running -= ((task.name, task.realizationName))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
       }
@@ -274,7 +274,7 @@ class Executor(conf: Config,
     completed += ((task.name, task.realizationName))
     running -= ((task.name, task.realizationName))
     dirs.xdotFile.synchronized {
-      Files.write(WorkflowViz.toGraphViz(workflow, completed, failed), dirs.xdotFile)
+      Files.write(WorkflowViz.toGraphViz(workflow, completed, running, failed), dirs.xdotFile)
     }
   }
 }
