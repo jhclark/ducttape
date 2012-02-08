@@ -24,7 +24,10 @@ object Types {
                       val planFilter: Seq[Map[BranchPoint,Set[Branch]]]) {
 
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    def unpackFilter(seen: UnpackState, real: MultiSet[Branch], parentReal: Seq[Branch]): Option[UnpackState] = {
+    def unpackFilter(v: PackedVertex[TaskTemplate],
+                     seen: UnpackState,
+                     real: MultiSet[Branch],
+                     parentReal: Seq[Branch]): Option[UnpackState] = {
       assert(seen != null)
       assert(parentReal != null)
       assert(!parentReal.exists(_ == null))
@@ -38,19 +41,31 @@ object Types {
       // violated yet in the state?
       // TODO: This could be much more efficient if we only
       // checked which 
-      def violatesPlan(myReal: Traversable[Branch]): Boolean = {
+      def violatesPlans(myReal: Traversable[Branch]): Boolean = {
         // there must be at least one element in the plan...
-        planFilter.exists{ planElement: Map[BranchPoint, Set[Branch]] => {
+        val inSomePlan = planFilter.exists{ planElement: Map[BranchPoint, Set[Branch]] => {
           // ...that covers all of the branches in the proposed realization...
-          myReal.forall{realBranch => planElement.get(realBranch.branchPoint) match {
+          val planOk = myReal.forall{ realBranch => planElement.get(realBranch.branchPoint) match {
             // ...by explicitly mentioning it...
             case Some(planBranches: Set[Branch]) => planBranches.contains(realBranch)
             // or implying the baseline branch
             case None => realBranch == Task.NO_BRANCH
           }}
+          //System.err.println("Plan okay? "+planOk+" :: plan is " + planElement + " :: for realization " + myReal.toList)
+          planOk
         }}
+        if(!inSomePlan) {
+          // TODO: XXX: Hack move to MetaHyperDAG
+          val taskT: TaskTemplate = if(v.value == null) {
+            dag.children(v).head.value
+          } else {
+            v.value
+          }
+          System.err.println("Realization plan does not include realization "+myReal.toList+ " at " + taskT)
+        }
+        !inSomePlan
       }
-      if(parentReal.exists(violatesChosenBranch) || violatesPlan(real.view ++ parentReal.view)) {
+      if(parentReal.exists(violatesChosenBranch) || violatesPlans(real.view ++ parentReal.view)) {
         None // we've already seen this branch point before -- and we just chose the wrong branch
       } else {
         //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)

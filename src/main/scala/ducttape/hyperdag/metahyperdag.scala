@@ -55,6 +55,7 @@ class UnpackedMetaVertex[V,H,E](val packed: PackedVertex[V],
 class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
   extends Walker[PackedVertex[V]] {
   
+
   val delegate = new PackedDagWalker[V](dag.delegate)
 
   // TODO: Filter epsilons and phantoms from completed
@@ -85,7 +86,7 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
         val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
         val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_,
         val initState: F,
-        val constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F])
+        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F])
   extends Walker[UnpackedMetaVertex[V,H,E]] {
 
   private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter, initState, constraintFilter)
@@ -166,10 +167,12 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
   def unpackedWalker[F](initFilterState: F, 
-                     constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F]) = {
+                        constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F]) = {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
+    // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
+    // the burden on the filter
     def selectionFilter(selection: MultiSet[H]) = true
     def hedgeFilter(h: HyperEdge[H,E]) = !isEpsilon(h)
 

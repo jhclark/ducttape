@@ -23,13 +23,13 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
         val selectionFilter: MultiSet[H] => Boolean = (_:MultiSet[H]) => true,
         val hedgeFilter: HyperEdge[H,E] => Boolean = (_:HyperEdge[H,E]) => true,
         val initState: F = null, // shouldn't be null if we specify a constraintFilter
-        val constraintFilter: (F, MultiSet[H], Seq[H]) => Option[F]
-                              = (prevState:F,_:MultiSet[H],_:Seq[H]) => Some(prevState))
+        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F]
+                              = (_:PackedVertex[V], prevState:F,_:MultiSet[H],_:Seq[H]) => Some(prevState))
   extends Walker[UnpackedVertex[V,H,E]] {
 
   type SelectionFilter = MultiSet[H] => Boolean
   type HyperEdgeFilter = HyperEdge[H,E] => Boolean
-  type ConstraintFilter[F] = (F, MultiSet[H], Seq[H]) => Option[F]
+  type ConstraintFilter = (V, F, MultiSet[H], Seq[H]) => Option[F]
     
   class ActiveVertex(val v: PackedVertex[V],
                      val he: Option[HyperEdge[H,E]]) {
@@ -72,7 +72,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
         for(parentRealization: Seq[H] <- myParentReals) {
           // TODO: Get prevState
           // check if we meet external semantic constraints
-          constraintFilter(prevState, combo, parentRealization) match {
+          constraintFilter(v, prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
               //System.err.println(i + " pre-add combo=" + combo)
@@ -191,7 +191,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
               agenda.synchronized {
                 // TODO: This agenda membership test could be slow O(n)
                 //assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
-                agenda.offer(unpackedV)
+                agenda.put(unpackedV)
                 // TODO: We could sort the agenda here to impose different objectives...
               }
             })

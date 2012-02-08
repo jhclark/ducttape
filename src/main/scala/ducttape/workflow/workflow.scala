@@ -43,8 +43,8 @@ class Realization(val branches: Seq[Branch]) {
 }
 
 object Task {
-  val NO_BRANCH_POINT = new BranchPoint("Baseline")
-  val NO_BRANCH = new Branch("baseline", NO_BRANCH_POINT)
+  val NO_BRANCH_POINT = BranchPoint("Baseline")
+  val NO_BRANCH = Branch("baseline", NO_BRANCH_POINT)
 }
 
 // short for "realized task"
@@ -144,23 +144,49 @@ class RealTask(val taskT: TaskTemplate,
  }
 
  // TODO: Add Option[BranchPointDef] for line no info
- class BranchPoint(val name: String) {
+ class BranchPoint private(_name: String) {
+   val name = _name
    override def hashCode = name.hashCode
+   // TODO: Take advantage of pooling
    override def equals(obj: Any) = obj match { case that: BranchPoint => this.name == that.name }
    override def toString = name
  }
 
+ // pool branch points to make comparison easier
+ object BranchPoint {
+   private val pool = new mutable.HashMap[String,BranchPoint]
+   def apply(name: String): BranchPoint = {
+     pool.get(name) match {
+       case Some(cached) => cached
+       case None => new BranchPoint(name)
+     }
+   }
+ }
+
  // TODO: Branch manager to remove bi-directional dependency?
  // TODO: Add Option[BranchPointDef] for line no info
- class Branch(val name: String,
-              val branchPoint: BranchPoint) {
+ class Branch private(_name: String, _branchPoint: BranchPoint) {
+   val name = _name
+   val branchPoint = _branchPoint
    override def hashCode = name.hashCode
-   override def equals(obj: Any) = obj match {
+   override def equals(obj: Any) = obj match { // TODO: Take advantage of pooling
      case that: Branch => this.name == that.name && this.branchPoint == that.branchPoint
    }
    override def toString = name + "@" + branchPoint
  }
 
+ // pool branch points to make comparison easier
+ object Branch {
+   private val pool = new mutable.HashMap[(String,BranchPoint),Branch]
+   def apply(name: String, branchPoint: BranchPoint): Branch = {
+     pool.getOrElseUpdate( (name, branchPoint), new Branch(name, branchPoint) )
+   }
+   def apply(name: String, branchPoint: String): Branch = {
+     apply(name, BranchPoint(branchPoint))
+   }
+ }
+
+ // TODO: ???
  class UnpackState {
    
  }
@@ -284,10 +310,10 @@ class RealTask(val taskT: TaskTemplate,
              // else die
              // This must be done for the paramSpecs above as well
 
-             val branchPoint = new BranchPoint(branchPointName)
+             val branchPoint = BranchPoint(branchPointName)
              val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
              for(branchSpec <- branchSpecs) {
-               val branch = new Branch(branchSpec.name, branchPoint)
+               val branch = Branch(branchSpec.name, branchPoint)
                val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, branchSpec)
                branchMap.put(branch, (srcSpec, srcTaskDef) )
                if(srcTaskDef != taskDef) { // don't create cycles

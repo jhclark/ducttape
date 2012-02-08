@@ -72,19 +72,20 @@ object CompletionChecker {
 class CompletionChecker(conf: Config, dirs: DirectoryArchitect, initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
-  private val complete = new OrderedSet[(String,Realization)] // TODO: Change datatype of realization?
-  private val partialOutput = new OrderedSet[(String,Realization)] // not complete, but has partial output
-  private val invalid = new OrderedSet[(String,Realization)] // invalidated by user (whether complete or not)
-  private val todoList = new OrderedSet[(String,Realization)]
+  import ducttape.ccollection._
+  private val complete = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
+  private val partialOutput = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
+  private val invalid = new MutableOrderedSet[(String,Realization)] // invalidated by user (whether complete or not)
+  private val todoList = new MutableOrderedSet[(String,Realization)]
 
   // what is the workflow version of the completed version that we'll be reusing?
   private val foundVersions = new mutable.HashMap[(String,Realization), Int]
 
-  // return immutable views:
-  def completed: Set[(String,Realization)] = complete
-  def partial: Set[(String,Realization)] = partialOutput
-  def invalidated: Set[(String,Realization)] = invalid
-  def todo: Set[(String,Realization)] = todoList
+  // TODO: return immutable views:
+  def completed: OrderedSet[(String,Realization)] = complete
+  def partial: OrderedSet[(String,Realization)] = partialOutput
+  def invalidated: OrderedSet[(String,Realization)] = invalid
+  def todo: OrderedSet[(String,Realization)] = todoList
 
   // the workflow versions of each completed unpacked task
   def completedVersions: Map[(String,Realization),Int] = foundVersions

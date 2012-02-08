@@ -14,6 +14,10 @@ object Environment {
   def getJarDir = getJarFile.getParentFile
 }
 
+object Optional {
+  def toOption[A](a: A): Option[A] = if(a == null) None else Some(a)
+}
+
 object Files {
   def write(str: String, file: File) {
     val fw = new FileWriter(file)
@@ -45,6 +49,14 @@ object Files {
     if(code != 0) {
       throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
     }
+  }
+
+  def ls(dir: File): Seq[File] = {
+    val listing = dir.listFiles
+    if(listing == null)
+      Nil
+    else
+      listing.toSeq
   }
 }
 

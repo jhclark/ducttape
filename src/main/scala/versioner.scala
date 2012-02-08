@@ -4,6 +4,7 @@ import collection._
 
 import ducttape.environment.DirectoryArchitect
 import ducttape.workflow._
+import ducttape.util._
 
 trait WorkflowVersioner {
   def apply(taskName: String, realization: Realization): Int
@@ -17,7 +18,13 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
 
   def apply(taskName: String, realization: Realization): Int = {
     val dir = dirs.assignUnversionedDir(taskName, realization)
-    val mostRecent = dir.listFiles.toList.filter(_.isDirectory).map(_.getName.toInt).max
+    val mostRecent = {
+      val candidates: Seq[Int] = Files.ls(dir).filter(_.isDirectory).map(_.getName.toInt)
+      candidates match {
+        case Seq() => 0 // this task has never been run before
+        case _ => candidates.max // use the most recent
+      }
+    }
     greatestVersionSeen = max(greatestVersionSeen, mostRecent)
     mostRecent
   }

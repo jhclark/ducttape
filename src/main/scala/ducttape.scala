@@ -13,6 +13,8 @@ import ducttape.workflow._
 import ducttape.util._
 import ducttape.versioner._
 
+import ducttape.ccollection._
+
 package ducttape {
   class Config {
     var headerColor = Console.BLUE
@@ -40,11 +42,14 @@ object Ducttape {
   }
 
   class Opts(conf: Config, args: Array[String]) extends OptParse {
-    // TODO: Do some reflection magic on modes to enable automatic subtask names
+    //override val optParseDebug = true
+
+    // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
     val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
-      val jobs = IntOpt(desc="Number of concurrent jobs to run")
-      val plan = StrOpt(desc="Plan file to read")
     }
+    val jobs = IntOpt(desc="Number of concurrent jobs to run")
+    val plan = StrOpt(desc="Plan file to read")
+
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
     val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
@@ -69,6 +74,7 @@ object Ducttape {
     def realNames: Seq[String] = _realNames
 
     // TODO: Can we define help as an option?
+    // TODO: Rewrite arg parsing as a custom module?
     override def help {
       err.println("Usage: ducttape workflow.tape [mode] [taskName [realizationNames...]] [--options]")
       err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
@@ -145,7 +151,7 @@ object Ducttape {
     //println("Building workflow...")
 
     // TODO: Not always exec...
-    val plan: Seq[Map[BranchPoint,Set[Branch]]] = opts.exec.plan.value match {
+    val plan: Seq[Map[BranchPoint,Set[Branch]]] = opts.plan.value match {
       case Some(planFile) => {
         err.println("Reading plan file: %s".format(planFile))
         RealizationPlan.read(planFile)
@@ -161,7 +167,7 @@ object Ducttape {
     val baseDir = opts.workflowFile.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
 
-    def colorizeDirs(list: Traversable[(String,Realization)], versions: WorkflowVersioner): Seq[String] = {
+    def colorizeDirs(list: Iterable[(String,Realization)], versions: WorkflowVersioner): Seq[String] = {
       list.toSeq.map{case (name, real) => {
         val ver = versions(name, real)
         "%s/%s%s%s/%s%s%s/%d".format(baseDir.getAbsolutePath,
@@ -250,28 +256,32 @@ object Ducttape {
     }
 
     def exec {
-      err.println("About to run the following tasks:")
-      err.println(colorizeDirs(cc.todo, versions).mkString("\n"))
-      
-      if(cc.partial.size > 0) {
-        err.println("About to permenantly delete the partial output in the following directories:")
-        err.println(colorizeDirs(cc.partial, versions).mkString("\n"))
-        err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
+      if(cc.todo.isEmpty) {
+        err.println("All tasks to complete -- nothing to do")
       } else {
-        err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
-      }
-      
-      Console.readChar match {
-        case 'y' | 'Y' => {
-          err.println("Removing partial output...")
-          throw new Error("TODO: Be careful about removing output")
-          visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions)
-          err.println("Retreiving code and building...")
-          visitAll(new Builder(conf, dirs, versions, cc.todo), versions)
-          err.println("Executing tasks...")
-          visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, opts.exec.jobs())
+        err.println("About to run the following tasks:")
+        err.println(colorizeDirs(cc.todo, versions).mkString("\n"))
+        
+        if(cc.partial.size > 0) {
+          err.println("About to permenantly delete the partial output in the following directories:")
+          err.println(colorizeDirs(cc.partial, versions).mkString("\n"))
+          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
+        } else {
+          err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
         }
-        case _ => err.println("Doing nothing")
+        
+        Console.readChar match {
+          case 'y' | 'Y' => {
+            err.println("Removing partial output...")
+            throw new Error("TODO: Be careful about removing output")
+            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions)
+            err.println("Retreiving code and building...")
+            visitAll(new Builder(conf, dirs, versions, cc.todo), versions)
+            err.println("Executing tasks...")
+            visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, opts.jobs())
+          }
+          case _ => err.println("Doing nothing")
+        }
       }
     }
 
@@ -287,9 +297,9 @@ object Ducttape {
       println(workflow.dag.toGraphVizDebug)
     }
 
-    def getVictims(taskToKill: String, realsToKill: Set[String]): Seq[RealTask] = {
+    def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
       val victims = new mutable.HashSet[(String,Realization)]
-      val victimList = new mutable.ListBuffer[RealTask]
+      val victimList = new MutableOrderedSet[RealTask]
       for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
@@ -330,8 +340,8 @@ object Ducttape {
       err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victims = getVictims(taskToKill, realsToKill)
-      val victimList = victims.map{ task => (task.name, task.realization) }
+      val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill)
+      val victimList: Seq[(String,Realization)] = victims.toSeq.map{ task => (task.name, task.realization) }
       
       // 2) prompt the user
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
@@ -359,7 +369,7 @@ object Ducttape {
       err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victimList = getVictims(taskToKill, realsToKill).map{ task => (task.name, task.realization) }
+      val victimList: Seq[(String,Realization)] = getVictims(taskToKill, realsToKill).toSeq.map{ task => (task.name, task.realization) }
       
       // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
