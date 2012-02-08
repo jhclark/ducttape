@@ -273,7 +273,6 @@ object Ducttape {
         Console.readChar match {
           case 'y' | 'Y' => {
             err.println("Removing partial output...")
-            throw new Error("TODO: Be careful about removing output")
             visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions)
             err.println("Retreiving code and building...")
             visitAll(new Builder(conf, dirs, versions, cc.todo), versions)
