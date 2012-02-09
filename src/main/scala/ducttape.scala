@@ -202,6 +202,7 @@ object Ducttape {
         //println("Actual realization: " + v.realization)
       }
     }
+
     def env {
       if(opts.taskName == None) {
         err.println("ERROR: env requires a taskName")
@@ -215,17 +216,26 @@ object Ducttape {
       val goalRealName = opts.realNames.head
 
       // TODO: Apply filters so that we do much less work to get here
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
-        val taskT: TaskTemplate = v.packed.value
-        if(taskT.name == goalTaskName) {
+      var matchingTasks: Iterable[UnpackedWorkVert] = {
+        workflow.unpackedWalker.iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
+      }.toIterable
+      err.println("Found %d vertices with matching task name".format(matchingTasks.size))
+      var matchingReals: Iterable[RealTask] = {
+        matchingTasks.map{v: UnpackedWorkVert => {
+          val taskT: TaskTemplate = v.packed.value
           val task: RealTask = taskT.realize(v, versions)
-          if(task.realization.toString == goalRealName) { // TODO: Better realization string comparator?
-            val env = new TaskEnvironment(dirs, versions, task)
-
-            for( (k,v) <- env.env) {
-              println("%s=%s".format(k,v))
-            }
+          if(task.realization.toString == goalRealName) {
+            Some(task)
+          } else {
+            None
           }
+        }}.filter(_ != None).map(_.get)
+      }
+      err.println("Found %d vertices with matching realizations".format(matchingReals.size))
+      for(task: RealTask <- matchingReals) {
+        val env = new TaskEnvironment(dirs, versions, task)
+        for( (k,v) <- env.env) {
+          println("%s=%s".format(k,v))
         }
       }
     }
@@ -338,7 +348,17 @@ object Ducttape {
           }
         }
       }
-      victimList
+      //  TODO: Fix OrderedSet with a companion object so that we can use filter
+      val extantVictims = new MutableOrderedSet[RealTask]
+      for(task <- victimList) {
+        val taskEnv = new TaskEnvironment(dirs, versions, task)
+        if(taskEnv.where.exists) {
+          extantVictims += task
+        } else {
+          err.println("No previous output for: %s/%s/%s".format(task.name, task.realization, task.version))
+        }
+      }
+      extantVictims
     }
 
     def invalidate {
