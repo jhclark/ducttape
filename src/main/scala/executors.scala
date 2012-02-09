@@ -125,23 +125,40 @@ class PartialOutputRemover(conf: Config,
   }  
 }
 
-class Builder(conf: Config,
-              dirs: DirectoryArchitect,
-              versions: WorkflowVersioner,
-              todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
-
+// dirs and versions are unimportant other than being required to generate the TaskEnvironment
+class PackageFinder(conf: Config,
+                    dirs: DirectoryArchitect,
+                    versions: WorkflowVersioner,
+                    todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
+  val packages = new mutable.HashSet[String]
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, versions, task)
-    if(todo( (task.name, task.realization) )) {
-      println("%sBuilding tools for: %s/%s%s".format(conf.taskColor, task.name, task.realization.toString, Console.RESET))
-      // TODO: Rename the augment method
-      taskEnv.workDir.mkdirs
-      val gimmeCmds = Gimme.augment(dirs.baseDir, taskEnv.params, Seq.empty)
-      val exitCode = Shell.run(gimmeCmds, taskEnv.workDir, taskEnv.env, taskEnv.buildStdoutFile, taskEnv.buildStderrFile)
+    if(todo((task.name, task.realization))) {
+      val taskEnv = new TaskEnvironment(dirs, versions, task)
+      packages ++= taskEnv.packageNames
+    }
+  }
+}
+
+class PackageBuilder(conf: Config, dirs: DirectoryArchitect, workflowVersion: Int) {
+  def build(packageNames: Iterable[String]) {
+    for(packageName <- packageNames) {
+      val buildEnv = new BuildEnvironment(dirs, workflowVersion, packageName)
+      println("%sBuilding tools for: %s in %s%s".format(conf.taskColor, packageName, buildEnv.buildDir, Console.RESET))
+      // TODO: XXX: Can build ever interfere with another running workflow?
+      println("Removing: %s".format(buildEnv.buildDir.toString))
+      if(buildEnv.buildDir.exists) {
+        Files.deleteDir(buildEnv.buildDir)
+      }
+      buildEnv.buildDir.mkdirs
+
+      val gimmeCmds = Seq(Gimme.getCommand(dirs.baseDir, packageName))
+      val env = Seq()
+      val exitCode = Shell.run(gimmeCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if(exitCode != 0) {
-        println("%sBuild task %s/%s returned %s%s".format(conf.errorColor, task.name, task.realization.toString, exitCode, Console.RESET))
+        println("%sBuild task %s returned %s%s".format(conf.errorColor, packageName, exitCode, Console.RESET))
         exit(1)
       }
+
     }
   }
 }
@@ -159,6 +176,8 @@ class Executor(conf: Config,
   val completed = new mutable.HashSet[(String,Realization)]
   val running = new mutable.HashSet[(String,Realization)]
   val failed = new mutable.HashSet[(String,Realization)]
+
+  // TODO: Move all dot-related things to an instrumentation class
   dirs.xdotFile.synchronized {
     completed ++= alreadyDone
     Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
@@ -183,7 +202,7 @@ class Executor(conf: Config,
         }
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
-      
+
       // there's so many parameters here in case we want to "augment" the commands in some way
       val submitCommands = Submitter.prepare(dirs.baseDir, taskEnv.where, taskEnv.params,
                                              task.commands, task.name, task.realization)

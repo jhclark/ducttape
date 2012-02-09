@@ -3,6 +3,7 @@ package ducttape.environment
 import collection._
 import java.io._
 
+import ducttape._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.versioner._
 import ducttape.workflow._
@@ -20,10 +21,15 @@ class DirectoryArchitect(val baseDir: File) {
     new File(packedDir, realization.toString).getAbsoluteFile
   }
 
+  // TODO: Rename to assignRealTaskDir
   // version: workflow version
   def assignDir(taskDef: TaskDef, realization: Realization, version: Int): File = {
     val unversionedDir = assignUnversionedDir(taskDef.name, realization)
     new File(unversionedDir, version.toString)
+  }
+
+  def assignBuildDir(packageName: String): File = {
+    new File(baseDir, ".packages/%s".format(packageName))
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, version: Int): File = {
@@ -73,6 +79,12 @@ class DirectoryArchitect(val baseDir: File) {
   }
 }
 
+class BuildEnvironment(val dirs: DirectoryArchitect, val workflowVersion: Int, val packageName: String) {
+  val buildDir = new File(dirs.assignBuildDir(packageName), workflowVersion.toString)
+  val buildStdoutFile = new File(buildDir, "gimme_stdout.txt")
+  val buildStderrFile = new File(buildDir, "gimme_stderr.txt")  
+}
+
 class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersioner, val task: RealTask) {
   
   // grab input paths -- how are these to be resolved?
@@ -111,11 +123,18 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
     (outSpec.name, outFile.getAbsolutePath)
   }
 
-  lazy val env = inputs ++ outputs ++ params
+  val packageNames: Seq[String] = Gimme.getPackagesFromParams(params)
+  val packageBuilds: Seq[BuildEnvironment] = {
+    packageNames.map(name => new BuildEnvironment(dirs, versions.workflowVersion, name))
+  }
+  val packageEnvs: Seq[(String,String)] = {
+    packageBuilds.map(build => (build.packageName, new File(build.buildDir, build.packageName).getAbsolutePath) )
+  }
+
+  // TODO: Add correct build paths to task env
+  lazy val env = inputs ++ outputs ++ params ++ packageEnvs
   
   val where = dirs.assignDir(task.taskDef, task.realization, task.version)
-  val buildStdoutFile = new File(where, "gimme_stdout.txt")
-  val buildStderrFile = new File(where, "gimme_stderr.txt")
   val stdoutFile = new File(where, "stdout.txt")
   val stderrFile = new File(where, "stderr.txt")
   val workDir = new File(where, "work")

@@ -61,7 +61,9 @@ object Types {
           } else {
             v.value
           }
-          System.err.println("Realization plan does not include realization "+myReal.toList+ " at " + taskT)
+          // TODO: Store such messages somewhere to optionally give a verbose
+          // description of why some tasks don't run?
+          //System.err.println("Realization plan does not include realization "+myReal.toList+ " at " + taskT)
         }
         !inSomePlan
       }

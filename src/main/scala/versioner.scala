@@ -8,6 +8,7 @@ import ducttape.util._
 
 trait WorkflowVersioner {
   def apply(taskName: String, realization: Realization): Int
+  def workflowVersion: Int
 }
 
 // for use by completion checker
@@ -16,7 +17,7 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
 
   private var greatestVersionSeen = 0
 
-  def apply(taskName: String, realization: Realization): Int = {
+  override def apply(taskName: String, realization: Realization): Int = {
     val dir = dirs.assignUnversionedDir(taskName, realization)
     val mostRecent = {
       val candidates: Seq[Int] = Files.ls(dir).filter(_.isDirectory).map(_.getName.toInt)
@@ -30,6 +31,7 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
   }
 
   def nextVersion = greatestVersionSeen + 1
+  override def workflowVersion = nextVersion
 }
 
 // for use by all others -- returns the version that should be used
@@ -37,7 +39,7 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
 // number for new or incomplete tasks, but may be different for previously
 // completed tasks/realizations)
 class ExecutionVersioner(completedVersions: Map[(String,Realization), Int],
-                         workflowVersion: Int) extends WorkflowVersioner {
+                         val workflowVersion: Int) extends WorkflowVersioner {
 
   def apply(taskName: String, realization: Realization): Int = {
     completedVersions.get((taskName, realization)) match {
