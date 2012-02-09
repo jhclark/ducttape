@@ -17,6 +17,7 @@ import ducttape.ccollection._
 
 package ducttape {
   class Config {
+    // TODO: Use Map for color sot that we can remove all of them easily?
     var headerColor = Console.BLUE
     var byColor = Console.BLUE
     var taskColor = Console.GREEN
@@ -204,9 +205,11 @@ object Ducttape {
     def env {
       if(opts.taskName == None) {
         err.println("ERROR: env requires a taskName")
+        exit(1)
       }
       if(opts.realNames.size != 1) {
         err.println("ERROR: env requires one realization name")
+        exit(1)
       }
       val goalTaskName = opts.taskName.get
       val goalRealName = opts.realNames.head
@@ -230,9 +233,11 @@ object Ducttape {
     def markDone {
       if(opts.taskName == None) {
         err.println("ERROR: mark_done requires a taskName")
+        exit(1)
       }
       if(opts.realNames.size < 1) {
         err.println("ERROR: mark_done requires realization names")
+        exit(1)
       }
       val goalTaskName = opts.taskName.get
       val goalRealNames = opts.realNames.toSet
@@ -259,6 +264,13 @@ object Ducttape {
       if(cc.todo.isEmpty) {
         err.println("All tasks to complete -- nothing to do")
       } else {
+        err.println("Finding packages...")
+        val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo)
+        visitAll(packageFinder, versions)
+
+        err.println("About to build the following packages:")
+        err.println(packageFinder.packages.mkString("\n"))
+
         err.println("About to run the following tasks:")
         err.println(colorizeDirs(cc.todo, versions).mkString("\n"))
         
@@ -272,10 +284,12 @@ object Ducttape {
         
         Console.readChar match {
           case 'y' | 'Y' => {
+            err.println("Retreiving code and building...")
+            val builder = new PackageBuilder(conf, dirs, versions.workflowVersion)
+            builder.build(packageFinder.packages)
+
             err.println("Removing partial output...")
             visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions)
-            err.println("Retreiving code and building...")
-            visitAll(new Builder(conf, dirs, versions, cc.todo), versions)
             err.println("Executing tasks...")
             visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, opts.jobs())
           }
