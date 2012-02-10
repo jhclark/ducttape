@@ -199,66 +199,69 @@ object Ducttape {
     // to generate vertices whose realizations are part of the plan
     // so we need to make a second reverse pass on the unpacked DAG
     // to make sure all of the vertices contribute to a goal vertex
-    err.println("Finding hyperpaths contained in plan...")
-    val plannedVertices: Set[(String,Realization)] = {
-
-      def getCandidates(branchFilter: Map[BranchPoint, Set[Branch]]) = {
-        val numCores = 1
-        val initVersioner = new MostRecentWorkflowVersioner(dirs)
-        // tasks only know about their parents in the form of (taskName, realization)
-        // not as references to their realized tasks. this lets them get garbage collected
-        // and reduces memory usage. however, we need all the candidate realized tasks on hand
-        // (pre-filtered by realization, but not by goal vertex) so that we can make
-        // a backward pass over the unpacked DAG
-        val candidates = new mutable.HashMap[(String,Realization), RealTask]
+    val initVersioner = new MostRecentWorkflowVersioner(dirs)
+    val plannedVertices: Set[(String,Realization)] = plans match {
+      case Nil => Set.empty
+      case _ => {
+        err.println("Finding hyperpaths contained in plan...")
         
-        // this is the most important place for us to pass the filter to unpackedWalker!
-        workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
-          val taskT: TaskTemplate = v.packed.value
-          val task: RealTask = taskT.realize(v, initVersioner)
-          candidates += (task.name, task.realization) -> task
-        }})
-        candidates
-      }
-
-      val vertexFilter = new mutable.HashSet[(String,Realization)]
-      for(plan: RealizationPlan <- plans) {
-        err.println("Finding vertices for plan: %s".format(plan.name))
-
-        val candidates = getCandidates(plan.realizations)
-        val fronteir = new mutable.Queue[RealTask]
-
-        // initialize with all valid realizations of the goal vertex
-        // (realizations have already been filtered during HyperDAG traversal)
-        for(goalTask <- plan.goalTasks) {
-          val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
-          err.println("Found %d realizations of goal task %s".format(goalRealTasks.size, goalTask))
-          fronteir ++= goalRealTasks
+        def getCandidates(branchFilter: Map[BranchPoint, Set[Branch]]) = {
+          val numCores = 1
+          // tasks only know about their parents in the form of (taskName, realization)
+          // not as references to their realized tasks. this lets them get garbage collected
+          // and reduces memory usage. however, we need all the candidate realized tasks on hand
+          // (pre-filtered by realization, but not by goal vertex) so that we can make
+          // a backward pass over the unpacked DAG
+          val candidates = new mutable.HashMap[(String,Realization), RealTask]
+          
+          // this is the most important place for us to pass the filter to unpackedWalker!
+          workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
+            val taskT: TaskTemplate = v.packed.value
+            val task: RealTask = taskT.realize(v, initVersioner)
+            candidates += (task.name, task.realization) -> task
+          }})
+          candidates
         }
-
-        val seen = new mutable.HashSet[RealTask]
-        while(fronteir.size > 0) {
-          val task: RealTask = fronteir.dequeue
-          // add all parents (aka antecedents) to frontier
-          if(!seen(task)) {
-            val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
-            fronteir ++= antTasks
+        
+        val vertexFilter = new mutable.HashSet[(String,Realization)]
+        for(plan: RealizationPlan <- plans) {
+          err.println("Finding vertices for plan: %s".format(plan.name))
+          
+          val candidates = getCandidates(plan.realizations)
+          val fronteir = new mutable.Queue[RealTask]
+          
+          // initialize with all valid realizations of the goal vertex
+          // (realizations have already been filtered during HyperDAG traversal)
+          for(goalTask <- plan.goalTasks) {
+            val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
+            err.println("Found %d realizations of goal task %s".format(goalRealTasks.size, goalTask))
+            fronteir ++= goalRealTasks
           }
-          // mark this task as seen
-          seen += task
+          
+          val seen = new mutable.HashSet[RealTask]
+          while(fronteir.size > 0) {
+            val task: RealTask = fronteir.dequeue
+            // add all parents (aka antecedents) to frontier
+            if(!seen(task)) {
+              val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
+              fronteir ++= antTasks
+            }
+            // mark this task as seen
+            seen += task
+          }
+          
+          // everything we saw is required to execute this realization plan to its goal vertices
+          err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
+          vertexFilter ++= seen.map{task => (task.name, task.realization)}
         }
-        
-        // everything we saw is required to execute this realization plan to its goal vertices
-        err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
-        vertexFilter ++= seen.map{task => (task.name, task.realization)}
+        err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
+        vertexFilter
       }
-      vertexFilter
     }
-    err.println("Union of all planned vertices has size %d".format(plannedVertices.size))
-
+      
     err.println("Checking for completed steps...")
+    // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
     val (cc: CompletionChecker, versions: ExecutionVersioner) = {
-      val initVersioner = new MostRecentWorkflowVersioner(dirs)
       // TODO: Insert planned vertices directly into unpackedWalker as a filter...
       val cc = new CompletionChecker(conf, dirs, initVersioner, plannedVertices)
       visitAll(cc, initVersioner)
@@ -327,7 +330,7 @@ object Ducttape {
       for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
-          val task: RealTask = taskT.realize(v, versions)
+          val task: RealTask = taskT.realize(v, initVersioner)
           if(goalRealNames(task.realization.toString)) {
             val env = new TaskEnvironment(dirs, versions, task)
             if(CompletionChecker.isComplete(env)) {
@@ -385,7 +388,7 @@ object Ducttape {
     def viz {
       err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
-      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, versions)))
+      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, initVersioner)))
     }
 
     def debugViz {
@@ -399,7 +402,7 @@ object Ducttape {
       val victimList = new MutableOrderedSet[RealTask]
       for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
         val taskT: TaskTemplate = v.packed.value
-        val task: RealTask = taskT.realize(v, versions)
+        val task: RealTask = taskT.realize(v, initVersioner)
         if(taskT.name == taskToKill) {
           if(realsToKill(task.realization.toString)) {
             //err.println("Found victim %s/%s".format(taskT.name, task.realizationName))
@@ -425,7 +428,7 @@ object Ducttape {
       //  TODO: Fix OrderedSet with a companion object so that we can use filter
       val extantVictims = new MutableOrderedSet[RealTask]
       for(task <- victimList) {
-        val taskEnv = new TaskEnvironment(dirs, versions, task)
+        val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
         if(taskEnv.where.exists) {
           extantVictims += task
         } else {
@@ -452,13 +455,13 @@ object Ducttape {
       
       // 2) prompt the user
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
-      err.println(colorizeDirs(victimList, versions).mkString("\n"))
+      err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
       
       err.print("Are you sure you want to invalidate all these? [y/n] ") // user must still press enter
       Console.readChar match {
         case 'y' | 'Y' => victims.foreach(task => {
           err.println("Invalidating %s/%s/%s".format(task.name, task.realization.toString, task.version))
-          CompletionChecker.invalidate(new TaskEnvironment(dirs, versions, task))
+          CompletionChecker.invalidate(new TaskEnvironment(dirs, initVersioner, task))
         })
         case _ => err.println("Doing nothing")
       }
@@ -482,10 +485,10 @@ object Ducttape {
       err.println("About to permenantly delete the following directories:")
       // TODO: Use directory architect here
       val absDirs = victimList.map{case (name, real) => {
-        val ver = versions(name, real)
+        val ver = initVersioner(name, real)
         new File(baseDir, "%s/%s/%d".format(name,real,ver))
       }}
-      err.println(colorizeDirs(victimList, versions).mkString("\n"))
+      err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
       
       err.print("Are you sure you want to delete all these? [y/n] ") // user must still press enter
       Console.readChar match {

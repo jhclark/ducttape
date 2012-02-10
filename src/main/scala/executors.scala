@@ -82,7 +82,8 @@ class CompletionChecker(conf: Config,
   private val todoList = new MutableOrderedSet[(String,Realization)]
 
   // what is the workflow version of the completed version that we'll be reusing?
-  private val foundVersions = new mutable.HashMap[(String,Realization), Int]
+  private val _foundVersions = new mutable.HashMap[(String,Realization), Int]
+  private val completeVersions = new mutable.HashMap[(String,Realization), Int]
 
   // TODO: return immutable views:
   def completed: OrderedSet[(String,Realization)] = complete
@@ -91,14 +92,18 @@ class CompletionChecker(conf: Config,
   def todo: OrderedSet[(String,Realization)] = todoList
 
   // the workflow versions of each completed unpacked task
-  def completedVersions: Map[(String,Realization),Int] = foundVersions
+  def completedVersions: Map[(String,Realization),Int] = completeVersions
+  def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
   override def visit(task: RealTask) {
     if(planned( (task.name, task.realization) )) {
       val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
+      if(taskEnv.where.exists) {
+        _foundVersions += (task.name, task.realization) -> task.version
+      }
       if(CompletionChecker.isComplete(taskEnv)) {
         complete += ((task.name, task.realization))
-        foundVersions += (task.name, task.realization) -> task.version
+        completeVersions += (task.name, task.realization) -> task.version
       } else {
         todoList += ((task.name, task.realization))
         if(CompletionChecker.isInvalidated(taskEnv)) {
