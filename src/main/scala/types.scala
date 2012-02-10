@@ -21,66 +21,67 @@ object Types {
   // - not specifying a branch point indicates that any value is acceptable
   // TODO: Multimap (just use typedef?)
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
-                      val planFilter: Seq[Map[BranchPoint,Set[Branch]]]) {
-
-    // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    def unpackFilter(v: PackedVertex[TaskTemplate],
-                     seen: UnpackState,
-                     real: MultiSet[Branch],
-                     parentReal: Seq[Branch]): Option[UnpackState] = {
-      assert(seen != null)
-      assert(parentReal != null)
-      assert(!parentReal.exists(_ == null))
-      // enforce that each branch point should atomically select one branch per hyperpath
-      // through the (Meta)HyperDAG
-      def violatesChosenBranch(newBranch: Branch) = seen.get(newBranch.branchPoint) match {
-        case None => false // no branch chosen yet
-        case Some(prevChosenBranch) => newBranch != prevChosenBranch
-      }
-      // TODO: Save a copy of which planFilters we haven't
-      // violated yet in the state?
-      // TODO: This could be much more efficient if we only
-      // checked which 
-      def violatesPlans(myReal: Traversable[Branch]): Boolean = {
-        // there must be at least one element in the plan...
-        val inSomePlan = planFilter.exists{ planElement: Map[BranchPoint, Set[Branch]] => {
-          // ...that covers all of the branches in the proposed realization...
-          val planOk = myReal.forall{ realBranch => planElement.get(realBranch.branchPoint) match {
-            // ...by explicitly mentioning it...
-            case Some(planBranches: Set[Branch]) => planBranches.contains(realBranch)
-            // or implying the baseline branch
-            case None => realBranch == Task.NO_BRANCH
-          }}
-          //System.err.println("Plan okay? "+planOk+" :: plan is " + planElement + " :: for realization " + myReal.toList)
-          planOk
-        }}
-        if(!inSomePlan) {
-          // TODO: XXX: Hack move to MetaHyperDAG
-          val taskT: TaskTemplate = if(v.value == null) {
-            dag.children(v).head.value
-          } else {
-            v.value
-          }
-          // TODO: Store such messages somewhere to optionally give a verbose
-          // description of why some tasks don't run?
-          //System.err.println("Realization plan does not include realization "+myReal.toList+ " at " + taskT)
-        }
-        !inSomePlan
-      }
-      if(parentReal.exists(violatesChosenBranch) || violatesPlans(real.view ++ parentReal.view)) {
-        None // we've already seen this branch point before -- and we just chose the wrong branch
-      } else {
-        //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
-        Some(seen ++ parentReal.map(b => (b.branchPoint, b))) // left operand determines return type
-      }
-    }
-
+                      val branchPointFactory: BranchPointFactory,
+                      val branchFactory: BranchFactory) {
     def packedWalker = dag.packedWalker
-    def unpackedWalker = dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter)
+    // TODO: Currently only used by initial pass to find goals
+    def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty) = {
+      // TODO: Should we allow access to "real" in this function -- that seems inefficient
+      def unpackFilter(v: PackedVertex[TaskTemplate],
+                       seen: UnpackState,
+                       real: MultiSet[Branch],
+                       parentReal: Seq[Branch]): Option[UnpackState] = {
+        
+        assert(seen != null)
+        assert(parentReal != null)
+        assert(!parentReal.exists(_ == null))
+        
+        // enforce that each branch point should atomically select one branch per hyperpath
+        // through the (Meta)HyperDAG
+        def violatesChosenBranch(newBranch: Branch) = seen.get(newBranch.branchPoint) match {
+          case None => false // no branch chosen yet
+          case Some(prevChosenBranch) => newBranch != prevChosenBranch
+        }
+        
+        // TODO: Save a copy of which planFilters we haven't
+        // violated yet in the state?
+        // TODO: This could be much more efficient if we only
+        // checked which 
+        def inPlan(myReal: Traversable[Branch]): Boolean = {
+          if(planFilter.size == 0) {
+            true // size zero plan has special meaning
+          } else {
+            val ok = myReal.forall{ realBranch => planFilter.get(realBranch.branchPoint) match {
+              // planFilter must explicitly mention a branch point
+              case Some(planBranches: Set[Branch]) => planBranches.contains(realBranch)
+              // otherwise it implies the baseline branch
+              case None => realBranch.name == Task.NO_BRANCH.name // compare *name*, not actual Baseline:baseline
+            }}
+            // TODO: Store such messages somewhere to optionally give a verbose
+            // description of why some tasks don't run?
+            if(!ok) {
+              // TODO: XXX: Hack move to MetaHyperDAG
+              val taskT: TaskTemplate = if(v.value == null) {
+                dag.children(v).head.value
+              } else {
+                v.value
+              }
+              //Console.err.println("Plan excludes: "+myReal.mkString(" ")+ " at " + taskT)
+            }
+            ok
+          }
+        }
+        if(parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
+          None // we've already seen this branch point before -- and we just chose the wrong branch
+        } else {
+          //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
+          Some(seen ++ parentReal.map(b => (b.branchPoint, b))) // left operand determines return type
+        }
+      }
+      
+      dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter)
+    }
   }
   type PackedWorkVert = PackedVertex[TaskTemplate]
   type UnpackedWorkVert = UnpackedMetaVertex[TaskTemplate,Branch,Seq[Spec]]
-//
-//  type LiteralSpec = SpecT[Literal]
-//  type Spec = SpecT[RValue]
 }

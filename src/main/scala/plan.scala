@@ -1,6 +1,5 @@
 package ducttape.workflow
 
-import java.io._
 import collection._
 
 // TODO: Move filter here, but thoroughly describe the context
@@ -8,14 +7,12 @@ import collection._
 
 object RealizationPlan {
   // read from file format for now, until we syntax-ify it
-  def read(file: String): Seq[Map[BranchPoint, Set[Branch]]] = {
+  def read(file: String, branchPointFactory: BranchPointFactory, branchFactory: BranchFactory): Seq[RealizationPlan] = {
     val in = io.Source.fromFile(file)
     try {
-      val list = new mutable.ArrayBuffer[Map[BranchPoint, Set[Branch]]]
+      val list = new mutable.ArrayBuffer[RealizationPlan]
       for(line <- in.getLines.toSeq) {
         val Seq(planName, goalTask, realInfo) = line.split(" : ").toSeq
-        System.err.println("Ignoring plan name: " + planName)
-        System.err.println("Ignoring goal task: " + goalTask)
         
         val mapping = {
           for(branchPointPlan <- realInfo.split("""\*""").toSeq.map(_.trim)) yield {
@@ -23,12 +20,24 @@ object RealizationPlan {
             assert(branchPointPlan.endsWith(")"))
             val inner = branchPointPlan.drop(1).dropRight(1)
             val toks = inner.split(" ").toSeq
-            val branchPoint = BranchPoint(toks(0).dropRight(1))
-            val branches = toks.drop(1).map(name => Branch(name, branchPoint))
-            (branchPoint, branches.toSet)
+            try {
+              val branchPoint = branchPointFactory(toks(0).dropRight(1))
+              val branches = toks.drop(1).map(name => branchFactory(name, branchPoint))
+              (branchPoint, branches.toSet)
+            } catch {
+              // TODO: Move to err2exception
+              case e: NoSuchBranchPointException => {
+                Console.err.println("ERROR: No such branch point: %s".format(e.msg))
+                sys.exit(1)
+              }
+              case e: NoSuchBranchException => {
+                Console.err.println("ERROR: No such branch: %s".format(e.msg))
+                sys.exit(1)
+              }
+            }
           }
         }.toMap
-        list += mapping
+        list += new RealizationPlan(planName, Seq(goalTask), mapping)
       }
       list
     } finally {
@@ -36,3 +45,5 @@ object RealizationPlan {
     }
   }
 }
+
+class RealizationPlan(val name: String, val goalTasks: Seq[String], val realizations: Map[BranchPoint, Set[Branch]]);

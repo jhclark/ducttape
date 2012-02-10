@@ -43,7 +43,7 @@ object WorkflowViz {
     def getName(t: String, r: Realization) = GraphViz.escape("%s/%s".format(t, r.toString))
 
     // first, list vertices
-    for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+    for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
       val taskT: TaskTemplate = v.packed.value
       val task: RealTask = taskT.realize(v, versions)
       val color = (task.name, task.realization) match {
@@ -56,7 +56,7 @@ object WorkflowViz {
     }
 
     // now list edges
-    for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+    for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
       val taskT: TaskTemplate = v.packed.value
       val task: RealTask = taskT.realize(v, versions)
       val child = getName(task.name, task.realization)

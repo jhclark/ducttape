@@ -42,11 +42,6 @@ class Realization(val branches: Seq[Branch]) {
   override def toString = str
 }
 
-object Task {
-  val NO_BRANCH_POINT = BranchPoint("Baseline")
-  val NO_BRANCH = Branch("baseline", NO_BRANCH_POINT)
-}
-
 // short for "realized task"
 // we might shorten this to Task
 class RealTask(val taskT: TaskTemplate,
@@ -62,6 +57,19 @@ class RealTask(val taskT: TaskTemplate,
    def outputs = taskT.outputs
    def params = taskT.params
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
+
+  // the tasks and realizations that must temporally precede this task (due to having required input files)
+   lazy val antecedents: Set[(String, Realization)] = {
+     for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- inputVals) yield {
+       (srcTaskDef.name, new Realization(srcRealization)) // TODO: change seq[branch] to realization?
+     }
+   }.toSet
+
+  // TODO: Smear hash code better
+   override def hashCode = name.hashCode ^ realization.hashCode ^ version
+   override def equals(obj: Any) = obj match {
+     case that: RealTask => this.name == that.name && this.realization == that.realization && this.version == that.version
+   }
 
    override def toString = "%s/%s".format(name, realization.toString)
  }
@@ -140,49 +148,6 @@ class RealTask(val taskT: TaskTemplate,
 
      val version = versions(taskDef.name, realization)
      new RealTask(this, realization, realInputVals, realParamVals, version)
-   }
- }
-
- // TODO: Add Option[BranchPointDef] for line no info
- class BranchPoint private(_name: String) {
-   val name = _name
-   override def hashCode = name.hashCode
-   // TODO: Take advantage of pooling
-   override def equals(obj: Any) = obj match { case that: BranchPoint => this.name == that.name }
-   override def toString = name
- }
-
- // pool branch points to make comparison easier
- object BranchPoint {
-   private val pool = new mutable.HashMap[String,BranchPoint]
-   def apply(name: String): BranchPoint = {
-     pool.get(name) match {
-       case Some(cached) => cached
-       case None => new BranchPoint(name)
-     }
-   }
- }
-
- // TODO: Branch manager to remove bi-directional dependency?
- // TODO: Add Option[BranchPointDef] for line no info
- class Branch private(_name: String, _branchPoint: BranchPoint) {
-   val name = _name
-   val branchPoint = _branchPoint
-   override def hashCode = name.hashCode
-   override def equals(obj: Any) = obj match { // TODO: Take advantage of pooling
-     case that: Branch => this.name == that.name && this.branchPoint == that.branchPoint
-   }
-   override def toString = name + "@" + branchPoint
- }
-
- // pool branch points to make comparison easier
- object Branch {
-   private val pool = new mutable.HashMap[(String,BranchPoint),Branch]
-   def apply(name: String, branchPoint: BranchPoint): Branch = {
-     pool.getOrElseUpdate( (name, branchPoint), new Branch(name, branchPoint) )
-   }
-   def apply(name: String, branchPoint: String): Branch = {
-     apply(name, BranchPoint(branchPoint))
    }
  }
 
@@ -267,8 +232,7 @@ class RealTask(val taskT: TaskTemplate,
    // create dependency pointers based on workflow definition
    // TODO: This method has become morbidly obese -- break it out into several methods
    // Nil plan has a special meaning -- use everything
-   def build(wd: WorkflowDefinition,
-             plan: Seq[Map[BranchPoint, Set[Branch]]] = Nil): HyperWorkflow = {
+   def build(wd: WorkflowDefinition): HyperWorkflow = {
 
      val defMap = new mutable.HashMap[String,TaskDef]
      for(t <- wd.tasks) {
@@ -281,6 +245,9 @@ class RealTask(val taskT: TaskTemplate,
      val parents = new mutable.HashMap[TaskTemplate, Map[Branch,mutable.Set[Option[TaskDef]]]] // TODO: Multimap
      val vertices = new mutable.HashMap[String,PackedVertex[TaskTemplate]]
      val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Seq[Spec]]
+
+     val branchPointFactory = new BranchPointFactory
+     val branchFactory = new BranchFactory(branchPointFactory)
      val branchPoints = new mutable.ArrayBuffer[BranchPoint]
      val branchPointsByTask = new mutable.HashMap[TaskDef,mutable.Set[BranchPoint]] // TODO: Multimap
 
@@ -310,10 +277,10 @@ class RealTask(val taskT: TaskTemplate,
              // else die
              // This must be done for the paramSpecs above as well
 
-             val branchPoint = BranchPoint(branchPointName)
+             val branchPoint = branchPointFactory.get(branchPointName)
              val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
              for(branchSpec <- branchSpecs) {
-               val branch = Branch(branchSpec.name, branchPoint)
+               val branch = branchFactory.get(branchSpec.name, branchPoint)
                val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, branchSpec)
                branchMap.put(branch, (srcSpec, srcTaskDef) )
                if(srcTaskDef != taskDef) { // don't create cycles
@@ -442,6 +409,6 @@ class RealTask(val taskT: TaskTemplate,
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build, plan)
+    new HyperWorkflow(dag.build, branchPointFactory, branchFactory)
   }
 }

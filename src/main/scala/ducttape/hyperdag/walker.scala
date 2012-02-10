@@ -9,22 +9,22 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
   private val self = this
 
   /** Get the next traversable item. Returns None when there are no more elements */
-  def take(): Option[A]
+  private[hyperdag] def take: Option[A]
 
   /** Callers must use this method to notify walker that caller is done with each
    *  item so that walker can traverse its dependends */
-  def complete(item: A)
+  private[hyperdag] def complete(item: A)
 
   /** Get a synchronous iterator (not appropriate for multi-threaded consumers) */
-  def iterator() = new Iterator[A] {
+  def iterator = new Iterator[A] {
     var nextItem: Option[A] = None
 
-    override def hasNext(): Boolean = {
+    override def hasNext: Boolean = {
       if(nextItem == None) nextItem = self.take
       nextItem != None
     }
 
-    override def next(): A = {
+    override def next: A = {
       val hazNext = hasNext
       require(hazNext, "No more items. Call hasNext() first.")
       val result: A = nextItem.get
@@ -32,7 +32,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
       self.complete(result)
       result
     }
-  }
+  }  
 
   // TODO: Add a .par(j) method that returns a parallel walker
   // j = numCores (as in make -j)

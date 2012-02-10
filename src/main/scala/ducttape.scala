@@ -20,7 +20,7 @@ package ducttape {
     // TODO: Use Map for color sot that we can remove all of them easily?
     var headerColor = Console.BLUE
     var byColor = Console.BLUE
-    var taskColor = Console.GREEN
+    var taskColor = Console.CYAN
     var errorColor = Console.RED
     var resetColor = Console.RESET
 
@@ -29,8 +29,11 @@ package ducttape {
     var errorLineColor = Console.BLUE // file and line number of error
     var errorScriptColor = Console.WHITE // quote from file
 
-    var taskNameColor = Console.GREEN
+    var taskNameColor = Console.CYAN
     var realNameColor = Console.BLUE
+
+    var greenColor = Console.GREEN
+    var redColor = Console.RED
   }
 }
 
@@ -132,7 +135,7 @@ object Ducttape {
             err.println(conf.errorScriptColor + badLines.mkString("\n"))
             err.println(" " * (col-2) + "^")
           }
-          exit(1)
+          sys.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
 /*
@@ -151,51 +154,119 @@ object Ducttape {
     val wd: WorkflowDefinition = ex2err(GrammarParser.read(opts.workflowFile))
     //println("Building workflow...")
 
+    // TODO
+    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd))
+    //println("Workflow contains %d tasks".format(workflow.dag.size))
+
     // TODO: Not always exec...
-    val plan: Seq[Map[BranchPoint,Set[Branch]]] = opts.plan.value match {
+    // TODO: Check against hyperworkflow to make sure we didn't name any
+    // undefined branches or branch points
+    val plans: Seq[RealizationPlan] = opts.plan.value match {
       case Some(planFile) => {
         err.println("Reading plan file: %s".format(planFile))
-        RealizationPlan.read(planFile)
+        RealizationPlan.read(planFile, workflow.branchPointFactory, workflow.branchFactory)
       }
       case None => Nil
     }
-
-    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, plan))
-    //println("Workflow contains %d tasks".format(workflow.dag.size))
     
     // TODO: Check that all input files exist
 
     val baseDir = opts.workflowFile.getAbsoluteFile.getParentFile
     val dirs = new DirectoryArchitect(baseDir)
 
+    def colorizeDir(taskName: String, real: Realization, versions: WorkflowVersioner): String = {
+      val ver = versions(taskName, real)
+      "%s/%s%s%s/%s%s%s/%d".format(baseDir.getAbsolutePath,
+                                   conf.taskNameColor, taskName, conf.resetColor,
+                                   conf.realNameColor, real.toString, conf.resetColor,
+                                   ver)
+    }
+
     def colorizeDirs(list: Iterable[(String,Realization)], versions: WorkflowVersioner): Seq[String] = {
-      list.toSeq.map{case (name, real) => {
-        val ver = versions(name, real)
-        "%s/%s%s%s/%s%s%s/%d".format(baseDir.getAbsolutePath,
-                                     conf.taskNameColor, name, conf.resetColor,
-                                     conf.realNameColor, real.toString, conf.resetColor,
-                                     ver)
-      }}
+      list.toSeq.map{ case (name, real) => colorizeDir(name, real, versions) }
     }
 
     def visitAll(visitor: UnpackedDagVisitor, versions: WorkflowVersioner, numCores: Int = 1) {
-      workflow.unpackedWalker.foreach(numCores, { v: UnpackedWorkVert => {
+      workflow.unpackedWalker().foreach(numCores, { v: UnpackedWorkVert => {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
         visitor.visit(task)
       }})
     }
 
+    // Our dag is directed from antecedents toward their consequents
+    // After an initial forward pass that uses a realization filter
+    // to generate vertices whose realizations are part of the plan
+    // so we need to make a second reverse pass on the unpacked DAG
+    // to make sure all of the vertices contribute to a goal vertex
+    err.println("Finding hyperpaths contained in plan...")
+    val plannedVertices: Set[(String,Realization)] = {
+
+      def getCandidates(branchFilter: Map[BranchPoint, Set[Branch]]) = {
+        val numCores = 1
+        val initVersioner = new MostRecentWorkflowVersioner(dirs)
+        // tasks only know about their parents in the form of (taskName, realization)
+        // not as references to their realized tasks. this lets them get garbage collected
+        // and reduces memory usage. however, we need all the candidate realized tasks on hand
+        // (pre-filtered by realization, but not by goal vertex) so that we can make
+        // a backward pass over the unpacked DAG
+        val candidates = new mutable.HashMap[(String,Realization), RealTask]
+        
+        // this is the most important place for us to pass the filter to unpackedWalker!
+        workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
+          val taskT: TaskTemplate = v.packed.value
+          val task: RealTask = taskT.realize(v, initVersioner)
+          candidates += (task.name, task.realization) -> task
+        }})
+        candidates
+      }
+
+      val vertexFilter = new mutable.HashSet[(String,Realization)]
+      for(plan: RealizationPlan <- plans) {
+        err.println("Finding vertices for plan: %s".format(plan.name))
+
+        val candidates = getCandidates(plan.realizations)
+        val fronteir = new mutable.Queue[RealTask]
+
+        // initialize with all valid realizations of the goal vertex
+        // (realizations have already been filtered during HyperDAG traversal)
+        for(goalTask <- plan.goalTasks) {
+          val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
+          err.println("Found %d realizations of goal task %s".format(goalRealTasks.size, goalTask))
+          fronteir ++= goalRealTasks
+        }
+
+        val seen = new mutable.HashSet[RealTask]
+        while(fronteir.size > 0) {
+          val task: RealTask = fronteir.dequeue
+          // add all parents (aka antecedents) to frontier
+          if(!seen(task)) {
+            val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
+            fronteir ++= antTasks
+          }
+          // mark this task as seen
+          seen += task
+        }
+        
+        // everything we saw is required to execute this realization plan to its goal vertices
+        err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
+        vertexFilter ++= seen.map{task => (task.name, task.realization)}
+      }
+      vertexFilter
+    }
+    err.println("Union of all planned vertices has size %d".format(plannedVertices.size))
+
     err.println("Checking for completed steps...")
     val (cc: CompletionChecker, versions: ExecutionVersioner) = {
       val initVersioner = new MostRecentWorkflowVersioner(dirs)
-      val cc = new CompletionChecker(conf, dirs, initVersioner)
+      // TODO: Insert planned vertices directly into unpackedWalker as a filter...
+      val cc = new CompletionChecker(conf, dirs, initVersioner, plannedVertices)
       visitAll(cc, initVersioner)
       (cc, new ExecutionVersioner(cc.completedVersions, initVersioner.nextVersion))
     }
 
     def list {
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
         println("%s %s".format(task.name, task.realization))
@@ -217,7 +288,7 @@ object Ducttape {
 
       // TODO: Apply filters so that we do much less work to get here
       var matchingTasks: Iterable[UnpackedWorkVert] = {
-        workflow.unpackedWalker.iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
+        workflow.unpackedWalker().iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
       }.toIterable
       err.println("Found %d vertices with matching task name".format(matchingTasks.size))
       var matchingReals: Iterable[RealTask] = {
@@ -253,7 +324,7 @@ object Ducttape {
       val goalRealNames = opts.realNames.toSet
 
       // TODO: Apply filters so that we do much less work to get here
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v, versions)
@@ -278,15 +349,18 @@ object Ducttape {
         val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo)
         visitAll(packageFinder, versions)
 
-        err.println("About to build the following packages:")
-        err.println(packageFinder.packages.mkString("\n"))
-
-        err.println("About to run the following tasks:")
-        err.println(colorizeDirs(cc.todo, versions).mkString("\n"))
+        err.println("Work plan:")
+        for(packageName <- packageFinder.packages) {
+          err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
+        }
+        for( (task, real) <- cc.partial) {
+          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, versions)))
+        }
+        for( (task, real) <- cc.todo) {
+          err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
+        }
         
         if(cc.partial.size > 0) {
-          err.println("About to permenantly delete the partial output in the following directories:")
-          err.println(colorizeDirs(cc.partial, versions).mkString("\n"))
           err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
         } else {
           err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
@@ -323,7 +397,7 @@ object Ducttape {
     def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker.iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
         if(taskT.name == taskToKill) {

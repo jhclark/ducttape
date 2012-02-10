@@ -69,7 +69,10 @@ object CompletionChecker {
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
 // the most recent result is untouched, invalid, partial, or complete
-class CompletionChecker(conf: Config, dirs: DirectoryArchitect, initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
+class CompletionChecker(conf: Config,
+                        dirs: DirectoryArchitect,
+                        initVersioner: WorkflowVersioner,
+                        planned: Set[(String,Realization)]) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   import ducttape.ccollection._
@@ -91,21 +94,23 @@ class CompletionChecker(conf: Config, dirs: DirectoryArchitect, initVersioner: W
   def completedVersions: Map[(String,Realization),Int] = foundVersions
 
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
-    if(CompletionChecker.isComplete(taskEnv)) {
-      complete += ((task.name, task.realization))
-      foundVersions += (task.name, task.realization) -> task.version
-    } else {
-      todoList += ((task.name, task.realization))
-      if(CompletionChecker.isInvalidated(taskEnv)) {
-        invalid += ((task.name, task.realization))
+    if(planned( (task.name, task.realization) )) {
+      val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
+      if(CompletionChecker.isComplete(taskEnv)) {
+        complete += ((task.name, task.realization))
+        foundVersions += (task.name, task.realization) -> task.version
       } else {
-        if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
-          partialOutput += ((task.name, task.realization))
+        todoList += ((task.name, task.realization))
+        if(CompletionChecker.isInvalidated(taskEnv)) {
+          invalid += ((task.name, task.realization))
+        } else {
+          if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
+            partialOutput += ((task.name, task.realization))
+          }
         }
       }
     }
-  }  
+  }
 }
 
 object PartialOutputRemover {

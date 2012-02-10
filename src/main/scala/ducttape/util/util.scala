@@ -68,7 +68,6 @@ object NullWriter extends Writer {
 }
 
 object IO {
-
   def read(input: Any, encoding: String) = input match {
     case bytes: Array[Byte]    => new InputStreamReader(new ByteArrayInputStream(bytes),encoding)
     case chars: Array[Char]    => new CharArrayReader(chars)

@@ -128,29 +128,33 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     activeRoots += root -> actRoot
   }
 
-  // TODO: XXX: may never return if complete() is not called as expected!!!
+  val waitingToTakeLock: AnyRef = new Object
+  val agendaTakenLock: AnyRef = new Object
+
+  // WARNING: may never return if complete() is not called as expected
+  // this is why take/compelte are protected and only foreach and iterator are exposed
   // (use foreach to prevent this)
-  // TODO: Make take and complete private?
-  override def take(): Option[UnpackedVertex[V,H,E]] = {
-    // TODO: XXX: If agenda.size is zero, do we have to wait if taken.size == 0?
-    // always synchronize on agenda for any agenda/taken operations
-    while(agenda.size == 0 && taken.size > 0) {
-      agenda.synchronized {
+  override def take: Option[UnpackedVertex[V,H,E]] = {
+    var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = agendaTakenLock.synchronized {
+      // polling the agenda can return null if nothing is available
+      (Optional.toOption(agenda.poll), taken.size)
+    }
+    while(key == None && takenSize > 0) {
+      waitingToTakeLock.synchronized {
+        // wait, releasing our lock until we're notified of changes
+        // in state of agenda and taken
         agenda.wait
       }
-    }
-
-    if(agenda.size == 0) {
-      assert(taken.size == 0)
-      return None
-    } else {
-      // take MUST be outside synchronized block to avoid deadlock!
-      val key: UnpackedVertex[V,H,E] = agenda.take
-      agenda.synchronized {
-        taken += key
-        return Some(key)
+      agendaTakenLock.synchronized {
+        key = Optional.toOption(agenda.poll)
+        takenSize = taken.size
       }
     }
+    key match {
+      case Some(v) => taken += v
+      case None => ;
+    }
+    key
   }
 
   override def complete(item: UnpackedVertex[V,H,E]) = {
@@ -159,51 +163,57 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
 
     // we always lock agenda & completed & taken jointly
-    agenda.synchronized {
+    // we must hold on to our lock until all possible consequents
+    // of "taken" have been added to the agenda. otherwise, we
+    // might terminate early since there will appear to be zero
+    // agenda items and zero taken items, even though had
+    // we kept take() waiting a bit longer, it would discover
+    // new agenda items
+    agendaTakenLock.synchronized {
       taken -= item
-    }
-
-    // first, match fronteir vertices
-    // note: consequent is an edge unlike the packed walker
-    for(consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
-      val consequentV = dag.sink(consequentE)
-      def newActiveVertex = { // thunk
-        // get() will throw if we don't get a valid state -- we should be guaranteed a valid state
-        // TODO: Can the following line be written prettier? Also, consequentE should never be null
-        val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
-        new ActiveVertex(consequentV, Some(consequentE))
-      }
-      val activeCon = activeEdges.getOrElseUpdate(consequentE, newActiveVertex)
-
-      val antecedents = dag.sources(consequentE)
-      for(iEdge <- 0 until activeCon.filled.size) {
-        // save a backpointer to the realizations (hyperedge derivation)
-        // as of this parent antecedent vertex
-        if(item.packed == antecedents(iEdge)) {
-          // before adding backpointer, take cross-product
-          // of unpackings possible when holding this realization fixed.
-          // if no complete unpacked vertex exists (i.e. the dependencies for
-          // any single realization are not satisfied), the below callback
-          // function will not be called during this invocation
-          activeCon.unpack(iEdge, item.realization,
-            // callback function:
-            (unpackedV: UnpackedVertex[V,H,E]) => {
-              agenda.synchronized {
+      
+      // first, match fronteir vertices
+      // note: consequent is an edge unlike the packed walker
+      for(consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
+        val consequentV = dag.sink(consequentE)
+        def newActiveVertex = { // thunk
+          // get() will throw if we don't get a valid state -- we should be guaranteed a valid state
+          // TODO: Can the following line be written prettier? Also, consequentE should never be null
+          val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
+          new ActiveVertex(consequentV, Some(consequentE))
+        }
+        val activeCon = activeEdges.getOrElseUpdate(consequentE, newActiveVertex)
+        
+        val antecedents = dag.sources(consequentE)
+        for(iEdge <- 0 until activeCon.filled.size) {
+          // save a backpointer to the realizations (hyperedge derivation)
+          // as of this parent antecedent vertex
+          if(item.packed == antecedents(iEdge)) {
+            // before adding backpointer, take cross-product
+            // of unpackings possible when holding this realization fixed.
+            // if no complete unpacked vertex exists (i.e. the dependencies for
+            // any single realization are not satisfied), the below callback
+            // function will not be called during this invocation
+            activeCon.unpack(iEdge, item.realization,
+              // callback function:
+              (unpackedV: UnpackedVertex[V,H,E]) => {
+                // still have the lock on agenda...
                 // TODO: This agenda membership test could be slow O(n)
                 //assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
                 agenda.put(unpackedV)
                 // TODO: We could sort the agenda here to impose different objectives...
-              }
-            })
-          activeCon.filled(iEdge) += item.realization
+              })
+            activeCon.filled(iEdge) += item.realization
+          }
         }
       }
-    }
 
-    // finally visit this vertex
-    agenda.synchronized {
+      // finally visit this vertex
+      // still holding on to our lock...
       completed += item
-      agenda.notifyAll
+    } // and... unlock the agenda and taken buffers
+    waitingToTakeLock.synchronized {
+      waitingToTakeLock.notifyAll
     }
   }
 }
