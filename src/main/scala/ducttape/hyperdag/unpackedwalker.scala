@@ -143,7 +143,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       waitingToTakeLock.synchronized {
         // wait, releasing our lock until we're notified of changes
         // in state of agenda and taken
-        agenda.wait
+        waitingToTakeLock.wait
       }
       agendaTakenLock.synchronized {
         key = Optional.toOption(agenda.poll)
