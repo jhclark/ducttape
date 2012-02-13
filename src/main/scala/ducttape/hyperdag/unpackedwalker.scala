@@ -146,13 +146,20 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
         waitingToTakeLock.wait
       }
       agendaTakenLock.synchronized {
+        // after polling the agenda, we must update taken
+        // before releasing our lock
         key = Optional.toOption(agenda.poll)
         takenSize = taken.size
+        key match {
+          case Some(v) => {
+            taken += v
+            waitingToTakeLock.synchronized {
+              waitingToTakeLock.notifyAll
+            }
+          }
+          case None => ;
+        }
       }
-    }
-    key match {
-      case Some(v) => taken += v
-      case None => ;
     }
     key
   }
