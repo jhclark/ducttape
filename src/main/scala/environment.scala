@@ -73,6 +73,11 @@ class DirectoryArchitect(val baseDir: File) {
         case true => new File(path)
         case false => new File(baseDir, path) // resolve relative paths relative to the workflow file (baseDir)
       }
+      /*
+      case ConfigVariable(varName) => {
+        System.err.println("Source config specified as " + srcSpec)
+      }
+      */
       // branches, variables, etc get matched on the src, which we already resolved
       case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
     }
