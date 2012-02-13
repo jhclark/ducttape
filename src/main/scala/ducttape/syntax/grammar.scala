@@ -26,10 +26,25 @@ object GrammarParser extends RegexParsers {
   override val skipWhitespace = false
   // use file over reader to provide more informative error messages
   // file must be UTF-8 encoded
-  def read(file: File): WorkflowDefinition = {
+  def readWorkflow(file: File): WorkflowDefinition = {
 
     val grammar = new Grammar(file)
     val result: ParseResult[WorkflowDefinition] = parseAll(grammar.workflow, IO.read(file, "UTF-8"))
+    val pos = result.next.pos
+    return result match {
+      case Success(res, _) => res
+      case Failure(msg, _) =>
+  	throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
+      case Error(msg, _) =>
+  	throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
+    }
+  }
+
+  // TODO: Less copy-pasting
+  def readConfig(file: File): Seq[Spec] = {
+
+    val grammar = new Grammar(file)
+    val result: ParseResult[Seq[Spec]] = parseAll(grammar.configDef, IO.read(file, "UTF-8"))
     val pos = result.next.pos
     return result match {
       case Success(res, _) => res
@@ -201,7 +216,8 @@ class Grammar(val workflowFile: File) {
   def variableRef: Parser[Variable] = { positioned(
     taskRef ~ literal("/") ~
     (
-    
+      // TODO: Lane: Why not just call variableName here? -Jon
+      
       // If the name starts with an illegal character, bail out and don't backtrack
       """[^A-Za-z_-]""".r <~ failure("Illegal character at start of variable name")
 
@@ -213,6 +229,13 @@ class Grammar(val workflowFile: File) {
       | """[A-Za-z_-][A-Za-z0-9_-]*""".r
     ) ^^ {
       case taskRefString~slash~nonSpaceString => new Variable(taskRefString,nonSpaceString)
+    }
+  )}
+
+  def configVariableRef: Parser[ConfigVariable] = { positioned(
+    // TODO: Working here
+    literal("$") ~> variableName(allowLeadingDot=false) ^^ {
+      case varName: String => ConfigVariable(varName)
     }
   )}
 	  								
@@ -233,13 +256,14 @@ class Grammar(val workflowFile: File) {
     /** Branch declaration */
     def branchPoint: Parser[BranchPointDef] = positioned(
       (((literal("(") ~! ((space) | err("Looks like you forgot to leave a space after your opening parenthesis. Yeah, we know that's a pain - sorry."))) ~> branchPointName <~ literal(":")) ~  
-       (rep(space) ~> repsep(assignment(false), space)) <~ ((space ~ literal(")") | err("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
+       (rep(space) ~> repsep(assignment(allowLeadingDot=false), space)) <~ ((space ~ literal(")") | err("Looks like you forgot to leave a space before your closing parenthesis. Yeah, we know that's a pain - sorry.")))) ^^ {
          case strVar ~ seq => new BranchPointDef(strVar,seq)
        })
 
     /** Right hand side of a variable declaration. */
-    def rvalue: Parser[RValue] = positioned((variableRef | branchPoint | rvalueLiteral) ^^ {
+    def rvalue: Parser[RValue] = positioned((variableRef | configVariableRef | branchPoint | rvalueLiteral) ^^ {
       case varRef: Variable => varRef;
+      case configVarRef: ConfigVariable => configVarRef;
       case branchPoint: BranchPointDef => branchPoint;
       case lit: Literal => lit;
     })
@@ -264,28 +288,29 @@ class Grammar(val workflowFile: File) {
      * Sequence of <code>assignment</code>s representing input files.
      * This sequence must be preceded by "<".
      */
-    def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment(false), space)) ^^ {
-      case Some(list) => list
-      case None => List.empty
-    } 
-
-    /**
-     * Sequence of <code>assignment</code>s representing input files.
-     * This sequence must be preceded by ">".
-     */
-    def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment(false), space)) ^^ {
+    def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(assignment(allowLeadingDot=false), space)) ^^ {
       case Some(list) => list
       case None => List.empty
     }
 
     /**
      * Sequence of <code>assignment</code>s representing input files.
+     * This sequence must be preceded by ">".
+     *
+     */
+     def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(assignment(allowLeadingDot=false), space)) ^^ {
+      case Some(list) => list
+      case None => List.empty
+     }
+
+    /**
+     * Sequence of <code>assignment</code>s representing input files.
      * This sequence must be preceded by "::".
-     */	
-    def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment(true), space)) ^^ {
+  */
+    def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(assignment(allowLeadingDot=true), space)) ^^ {
         case Some(params) => params
         case None => List.empty
-      }
+    }
     
     /** Shell command. */
     def command: Parser[String] =
@@ -302,12 +327,18 @@ class Grammar(val workflowFile: File) {
     
     /** Complete declaration of a task, including command(s) and optional comments. */
     def taskBlock: Parser[TaskDef] =  positioned(comments ~ taskHeader ~! commands <~ emptyLines ^^ {
-    	case ((com:CommentBlock) ~ (head:TaskHeader) ~ (cmds:Seq[String])) => 
-    	  new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds, head.pos)
+      case ((com:CommentBlock) ~ (head:TaskHeader) ~ (cmds:Seq[String])) => 
+        new TaskDef(head.name, com, head.inputs, head.outputs, head.params, cmds, head.pos)
     })
     
     /** Complete declaration of a hyperworkflow of tasks. */
     def workflow: Parser[WorkflowDefinition] = positioned(repsep(taskBlock,eol) ^^ {
-    	case w => new WorkflowDefinition(workflowFile, w)
+      case w => new WorkflowDefinition(workflowFile, w)
     })
+
+  // Lane: I hastily inserted this, you might want to give it a once-over. -Jon
+  // TODO: ConfigurationDefinition
+  // TODO: Allow comments in config file
+  // TODO: Allow realization plan definition in config file
+  def configDef: Parser[Seq[Spec]] = repsep(assignment(allowLeadingDot=false), eol)
 }

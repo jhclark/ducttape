@@ -63,7 +63,7 @@ class RealTask(val taskT: TaskTemplate,
      for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- inputVals) yield {
        (srcTaskDef.name, new Realization(srcRealization)) // TODO: change seq[branch] to realization?
      }
-   }.toSet
+   }.filter{case (srcTaskDefName, _) => srcTaskDefName != WorkflowBuilder.CONFIG_TASK_DEF.name }.toSet
 
   // TODO: Smear hash code better
    override def hashCode = name.hashCode ^ realization.hashCode ^ version
@@ -120,27 +120,37 @@ class RealTask(val taskT: TaskTemplate,
      }
 
      // TODO: So how on earth are all these things parallel to meta edges etc?
+     // TODO: XXX: What about a branch point that internally points to a config line that also has a branch point?
 
-     // resolve the source spec/task for the selected branch
-     def mapVals[T](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
-       values.map{ case (mySpec, branchMap) => mySpec.rval match {
+     def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): (Spec,T,TaskDef,Seq[Branch]) = {
+       curSpec.rval match {
          case BranchPointDef(branchPointName, _) => {
            val activeBranch: Branch = activeBranchMap(branchPointName)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
            // TODO: Borken for params
-           val parentReal = spec2reals(mySpec)
-           (mySpec, srcSpec, srcTaskDef, parentReal)
+           val parentReal = spec2reals(origSpec)
+           (origSpec, srcSpec, srcTaskDef, parentReal)
+         }
+         case ConfigVariable(_) => {
+           val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           // config variables can, in turn, define branch points, so we must be recursive
+           mapVal(origSpec, srcSpec, branchMap)
          }
          case Variable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           val parentReal = spec2reals(mySpec)
-           (mySpec, srcSpec, srcTaskDef, parentReal)
+           val parentReal = spec2reals(origSpec)
+           (origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case _ => { // not a branch point, but either a literal or unbound
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           (mySpec, srcSpec, srcTaskDef, v.realization)
+           (origSpec, srcSpec, srcTaskDef, v.realization)
          }
-       }}
+       }
+     }
+     
+     // resolve the source spec/task for the selected branch
+     def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
+       values.map{ case (mySpec: Spec, branchMap: Map[Branch, (T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
      }
 
      val realInputVals = mapVals(inputVals)
@@ -158,6 +168,9 @@ class RealTask(val taskT: TaskTemplate,
 
  object WorkflowBuilder {
 
+   // TODO: Better error reporting here?
+   val CONFIG_TASK_DEF = new TaskDef("CONFIGURATION_FILE", new CommentBlock(Nil), Nil, Nil, Nil, Nil, scala.util.parsing.input.NoPosition)
+
    class ResolveMode();
    case class InputMode() extends ResolveMode;
    case class ParamMode() extends ResolveMode;
@@ -165,14 +178,17 @@ class RealTask(val taskT: TaskTemplate,
 
    // the resolved Spec is guaranteed to be a literal for params
    private def resolveParam(wd: WorkflowDefinition,
+                            confSpecs: Map[String,Spec],
                             taskDef: TaskDef,
                             map: Map[String,TaskDef],
                             spec: Spec)
    : (LiteralSpec, TaskDef) = {
-     resolveVar(wd, taskDef, map, spec, ParamMode()).asInstanceOf[(LiteralSpec,TaskDef)]
+     resolveVar(wd, confSpecs, taskDef, map, spec, ParamMode()).asInstanceOf[(LiteralSpec,TaskDef)]
    }
 
+   // TODO: document what's going on here -- maybe move elsewhere
    private def resolveVar(wd: WorkflowDefinition,
+                          confSpecs: Map[String,Spec],
                           taskDef: TaskDef,
                           map: Map[String,TaskDef],
                           spec: Spec,
@@ -184,8 +200,22 @@ class RealTask(val taskT: TaskTemplate,
      while(true) {
        curSpec.rval match {
          case Literal(litValue) => {
+           // TODO: can we enforce this as part of the match instead of using a cast?
            val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
            return (litSpec, src)
+         }
+         case ConfigVariable(varName) => {
+           confSpecs.get(varName) match {
+             // TODO: Does this TaskDef break line numbering for error reporting?
+             // TODO: Should we return? Or do we allow config files to point back into workflows?
+             case Some(confSpec: Spec) => return (confSpec, CONFIG_TASK_DEF)
+             case None => {
+               throw new FileFormatException(
+                 "Config variable %s required by input %s at task %s not found in config file.".format(
+                   varName, spec.name, taskDef.name),
+                 List( (wd.file, spec.pos, spec.pos.line), (wd.file, src.pos, src.lastHeaderLine) ))
+             }
+           }
          }
          case Variable(srcTaskName, srcOutName) => {
            map.get(srcTaskName) match {
@@ -220,7 +250,16 @@ class RealTask(val taskT: TaskTemplate,
          }
          case Unbound() => {
            mode match {
-             case InputMode() => return (curSpec, src)
+             case InputMode() => {
+               // make sure we didn't just refer to ourselves -- 
+               // referring to an unbound output is fine though (and usual)
+               if(src != taskDef || spec != curSpec) {
+                 return (curSpec, src)
+               } else {
+                 throw new FileFormatException("Unbound input variable: %s".format(curSpec.name),
+                                               List((wd.file, taskDef.pos), (wd.file, src.pos)))
+               }
+             }
              case _ => throw new RuntimeException("Unsupported unbound variable: %s".format(curSpec.name))
            }
          }
@@ -231,9 +270,9 @@ class RealTask(val taskT: TaskTemplate,
 
    // create dependency pointers based on workflow definition
    // TODO: This method has become morbidly obese -- break it out into several methods
-   // Nil plan has a special meaning -- use everything
-   def build(wd: WorkflowDefinition): HyperWorkflow = {
+   def build(wd: WorkflowDefinition, configSpecs: Seq[Spec]): HyperWorkflow = {
 
+     val confSpecs: Map[String, Spec] = configSpecs.map{spec => (spec.name, spec)}.toMap
      val defMap = new mutable.HashMap[String,TaskDef]
      for(t <- wd.tasks) {
        defMap += t.name -> t
@@ -266,15 +305,15 @@ class RealTask(val taskT: TaskTemplate,
        // but it behaves slightly different for each (parameters don't
        // imply a temporal ordering between vertices)
        def resolveBranchPoint[SpecT](inSpec: Spec,
+                         confSpecs: Map[String, Spec],
                          resolvedVars: mutable.ArrayBuffer[(Spec,Map[Branch,(SpecT,TaskDef)])],
                          recordParentsFunc: (Branch,Option[TaskDef]) => Unit,
                          resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, TaskDef) ) = {
-         inSpec.rval match {
-           case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
 
+         def handleBranchPoint(branchPointName: String, branchSpecs: Seq[Spec]) = {
              // TODO: If a branch point is *REDECLARED* in a workflow
              // assert that it has exactly the same branches in all locations
-             // else die
+             // else die (and that the baseline is the same -- i.e. in the same position)
              // This must be done for the paramSpecs above as well
 
              val branchPoint = branchPointFactory.get(branchPointName)
@@ -295,18 +334,52 @@ class RealTask(val taskT: TaskTemplate,
              branchPoints += branchPoint
              branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += branchPoint
              resolvedVars.append( (inSpec, branchMap) )
+         }
+
+         def handleNonBranchPoint {
+           val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
+           resolvedVars.append( (inSpec, Map(Task.NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
+           
+           if(srcTaskDef != taskDef) { // don't create cycles
+             recordParentsFunc(Task.NO_BRANCH, Some(srcTaskDef))
+           } else {
+             recordParentsFunc(Task.NO_BRANCH, None)
+           }
+           branchPoints += Task.NO_BRANCH_POINT
+           branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT  
+         }
+
+         inSpec.rval match {
+           case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
+             handleBranchPoint(branchPointName, branchSpecs)
+           }
+           case ConfigVariable(varName) => {
+             // config variables can also introduce branch points...
+             // TODO: Can config variables be recursive?
+             confSpecs.get(varName) match {
+               case Some(confSpec) => {
+                 confSpec.rval match {
+                   case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
+                     handleBranchPoint(branchPointName, branchSpecs)
+                   }
+                   case ConfigVariable(_) => {
+                     throw new FileFormatException(
+                       "Recursive config variable %s required by input %s at task %s is not yet supported by ducttape".format(
+                         varName, inSpec.name, taskDef.name),
+                       List( (wd.file, inSpec.pos, inSpec.pos.line), (wd.file, confSpec.pos, confSpec.pos.line) ))
+                   }
+                   case _ => {
+                   }
+                 }
+               }
+               case None => throw new FileFormatException(
+                 "Config variable %s required by input %s at task %s not found in config file.".format(
+                   varName, inSpec.name, taskDef.name),
+                 List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+             }
            }
            case _ => {
-             val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
-             resolvedVars.append( (inSpec, Map(Task.NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
-
-             if(srcTaskDef != taskDef) { // don't create cycles
-               recordParentsFunc(Task.NO_BRANCH, Some(srcTaskDef))
-             } else {
-               recordParentsFunc(Task.NO_BRANCH, None)
-             }
-             branchPoints += Task.NO_BRANCH_POINT
-             branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT
+             handleNonBranchPoint
            }
          }
        }
@@ -325,9 +398,9 @@ class RealTask(val taskT: TaskTemplate,
          }
          def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], paramSpec: Spec)
            : (LiteralSpec, TaskDef) = {
-             resolveParam(wd, taskDef, defMap, paramSpec)
+             resolveParam(wd, confSpecs, taskDef, defMap, paramSpec)
          }
-         resolveBranchPoint(paramSpec, paramVals, recordParentsFunc, resolveVarFunc)
+         resolveBranchPoint(paramSpec, confSpecs, paramVals, recordParentsFunc, resolveVarFunc)
        }
 
        val inputVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(Spec,TaskDef)])](taskDef.inputs.size)
@@ -339,9 +412,9 @@ class RealTask(val taskT: TaskTemplate,
          }
          def resolveVarFunc(taskDef: TaskDef, defMap: Map[String,TaskDef], inSpec: Spec)
            : (Spec, TaskDef) = {
-             resolveVar(wd, taskDef, defMap, inSpec, InputMode())
+             resolveVar(wd, confSpecs, taskDef, defMap, inSpec, InputMode())
          }
-         resolveBranchPoint(inSpec, inputVals, recordParentsFunc, resolveVarFunc)
+         resolveBranchPoint(inSpec, confSpecs, inputVals, recordParentsFunc, resolveVarFunc)
        }
 
        if(paramVals.size == 0 && inputVals.size == 0) {
@@ -383,6 +456,7 @@ class RealTask(val taskT: TaskTemplate,
 
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
            for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
+             case Some(CONFIG_TASK_DEF) => ; // no edge implied here
              case Some(parentTaskDef) => {
                val parentVert = vertices(parentTaskDef.name)
                val ipSpecs = findInputParamSpecs(parentTaskDef)

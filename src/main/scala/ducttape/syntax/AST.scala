@@ -49,9 +49,14 @@ object AbstractSyntaxTree {
     override def toString = "'%s'".format(value)
   }
 
+  // TODO: Rename now that we have 2 kinds of variables
   /** Type of a variable reference right hand side in a variable declaration. */
   case class Variable(task: String, value: String) extends RValue {
     override def toString = "${%s}/%s".format(task,value)
+  }
+
+  case class ConfigVariable(value: String) extends RValue {
+    override def toString = value
   }
 
   /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
@@ -78,6 +83,8 @@ object AbstractSyntaxTree {
       System.err.println("lazy header line... " + (inputs ++ outputs ++ params).map(spec => spec.pos.line) )
       (inputs ++ outputs ++ params).map(spec=>spec.pos.line).max
     }
+    override def hashCode = name.hashCode
+    override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
     override def toString = name
 /*
       "Task name: " + name + 

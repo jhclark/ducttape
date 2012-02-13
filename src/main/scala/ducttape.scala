@@ -53,6 +53,7 @@ object Ducttape {
     }
     val jobs = IntOpt(desc="Number of concurrent jobs to run")
     val plan = StrOpt(desc="Plan file to read")
+    val config = StrOpt(desc="Workflow configuration file to read")
 
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
@@ -151,11 +152,18 @@ object Ducttape {
 
     // make these messages optional with verbosity levels?
     //println("Reading workflow from %s".format(file.getAbsolutePath))
-    val wd: WorkflowDefinition = ex2err(GrammarParser.read(opts.workflowFile))
+    val confSpecs: Seq[Spec] = opts.config.value match {
+      case Some(confFile) => {
+        err.println("Reading workflow configuration: %s".format(confFile))
+        ex2err(GrammarParser.readConfig(new File(confFile)))
+      }
+      case None => Nil
+    }
+    val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
     //println("Building workflow...")
 
     // TODO
-    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd))
+    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, confSpecs))
     //println("Workflow contains %d tasks".format(workflow.dag.size))
 
     // TODO: Not always exec...
