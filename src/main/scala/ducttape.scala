@@ -243,6 +243,9 @@ object Ducttape {
           
           val candidates = getCandidates(plan.realizations)
           val fronteir = new mutable.Queue[RealTask]
+
+          err.println("%d candidates".format(candidates.size))
+          err.println(candidates)
           
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
@@ -375,7 +378,7 @@ object Ducttape {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
         for( (task, real) <- cc.partial) {
-          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, versions)))
+          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, initVersioner)))
         }
         for( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
@@ -394,7 +397,7 @@ object Ducttape {
             builder.build(packageFinder.packages)
 
             err.println("Removing partial output...")
-            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions, plannedVertices)
+            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
             visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
           }
