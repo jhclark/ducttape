@@ -12,8 +12,9 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
   private[hyperdag] def take: Option[A]
 
   /** Callers must use this method to notify walker that caller is done with each
-   *  item so that walker can traverse its dependends */
-  private[hyperdag] def complete(item: A)
+   *  item so that walker can traverse its dependends
+   *  continue: False indicates that no dependents of the specified item should be traversed */
+  private[hyperdag] def complete(item: A, continue:Boolean = true)
 
   /** Get a synchronous iterator (not appropriate for multi-threaded consumers) */
   def iterator = new Iterator[A] {
@@ -32,7 +33,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
       self.complete(result)
       result
     }
-  }  
+  }
 
   // TODO: Add a .par(j) method that returns a parallel walker
   // j = numCores (as in make -j)
@@ -41,7 +42,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
     import collection.JavaConversions._
 
     val pool = Executors.newFixedThreadPool(j)
-    val tasks: Seq[Callable[Unit]] = (0 until j).map(_ => new Callable[Unit] {
+    val tasks: Seq[Callable[Unit]] = (0 until j).map(i => new Callable[Unit] {
       override def call {
         var running = true
         while(running) {
@@ -50,7 +51,9 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
               try {
                 f(a)
               } finally {
-                complete(a)
+                // mark as complete, but don't run any dependencies
+                // TODO: Keep a list of tasks that failed?
+                complete(a, continue=false)
               }
             }
             case None => {
@@ -58,6 +61,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
             }
           }
         }
+        System.err.println("Worker thread %d of %d joined".format(i, j))
       }
     })
     // start running tasks in thread pool

@@ -41,10 +41,16 @@ class MostRecentWorkflowVersioner(dirs: DirectoryArchitect) extends WorkflowVers
 class ExecutionVersioner(completedVersions: Map[(String,Realization), Int],
                          val workflowVersion: Int) extends WorkflowVersioner {
 
-  def apply(taskName: String, realization: Realization): Int = {
+  override def apply(taskName: String, realization: Realization): Int = {
     completedVersions.get((taskName, realization)) match {
       case Some(prevVer) => prevVer
       case None => workflowVersion
     }
   }
+}
+
+// XXX: HACK: Used by workflow vertex filter
+object NullVersioner extends WorkflowVersioner {
+  override def apply(taskName: String, realization: Realization): Int = -1
+  override def workflowVersion = -1
 }

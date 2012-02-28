@@ -23,9 +23,14 @@ object Types {
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
                       val branchPointFactory: BranchPointFactory,
                       val branchFactory: BranchFactory) {
+
     def packedWalker = dag.packedWalker
+
     // TODO: Currently only used by initial pass to find goals
-    def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty) = {
+    // TODO: Document different use cases of planFilter vs plannedVertices
+    // TODO: Return type
+    def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty,
+                       plannedVertices: Set[(String,Realization)] = Set.empty) = {
       // TODO: Should we allow access to "real" in this function -- that seems inefficient
       def unpackFilter(v: PackedVertex[TaskTemplate],
                        seen: UnpackState,
@@ -78,8 +83,13 @@ object Types {
           Some(seen ++ parentReal.map(b => (b.branchPoint, b))) // left operand determines return type
         }
       }
-      
-      dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter)
+
+      def vertexFilter(v: UnpackedWorkVert): Boolean = {
+        // TODO: Less extra work?
+        val task = v.packed.value.realize(v, ducttape.versioner.NullVersioner)
+        plannedVertices.contains( (task.name, task.realization) ) || plannedVertices.isEmpty
+      }
+      dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter, vertexFilter)
     }
   }
   type PackedWorkVert = PackedVertex[TaskTemplate]

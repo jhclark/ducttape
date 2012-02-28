@@ -48,37 +48,37 @@ class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
     }
   }
 
-  override def complete(item: PackedVertex[V]) = {
+  override def complete(item: PackedVertex[V], continue: Boolean = true) {
     require(active.contains(item), "Cannot find active vertex for %s in %s".format(item, active))
     val key: ActiveVertex = active(item)
 
     // we always lock agenda & completed jointly
     agenda.synchronized {
       taken -= key
-    }
 
-    // first, match fronteir vertices
-    for(consequent <- dag.children(key.v)) {
-      val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex(consequent))
-      var allFilled = true
-      val antecedents = dag.parents(consequent)
-      for(i <- 0 until activeCon.filled.size) {
-        if(key.v == antecedents(i)) {
-          activeCon.filled(i) = key
-        } else if(activeCon.filled(i) == null) {
-          allFilled = false
+      if(continue) {
+        // first, match fronteir vertices
+        for(consequent <- dag.children(key.v)) {
+          val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex(consequent))
+          var allFilled = true
+          val antecedents = dag.parents(consequent)
+          for(i <- 0 until activeCon.filled.size) {
+            if(key.v == antecedents(i)) {
+              activeCon.filled(i) = key
+            } else if(activeCon.filled(i) == null) {
+              allFilled = false
+            }
+          }
+          // this consequent has all its dependencies fulfilled
+          if(allFilled) {
+            agenda.offer(activeCon)
+            // TODO: We could sort the agenda here to impose different objectives...
+          }
         }
       }
-      // this consequent has all its dependencies fulfilled
-      if(allFilled) {
-        agenda.synchronized {
-          agenda.offer(activeCon)
-        }
-        // TODO: We could sort the agenda here to impose different objectives...
-      }
-    }
 
-    // finally visit this vertex
-    completed += key
+      // finally visit this vertex
+      completed += key
+    }
   }
 }

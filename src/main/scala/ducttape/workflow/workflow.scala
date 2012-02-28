@@ -63,7 +63,7 @@ class RealTask(val taskT: TaskTemplate,
      for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- inputVals) yield {
        (srcTaskDef.name, new Realization(srcRealization)) // TODO: change seq[branch] to realization?
      }
-   }.filter{case (srcTaskDefName, _) => srcTaskDefName != WorkflowBuilder.CONFIG_TASK_DEF.name }.toSet
+   }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet
 
   // TODO: Smear hash code better
    override def hashCode = name.hashCode ^ realization.hashCode ^ version
@@ -132,9 +132,15 @@ class RealTask(val taskT: TaskTemplate,
            (origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case ConfigVariable(_) => {
-           val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           // config variables can, in turn, define branch points, so we must be recursive
-           mapVal(origSpec, srcSpec, branchMap)
+           // config variables can, in turn, define branch points, so we must be careful
+           // TODO: Borken for nested branch points
+           val whichBranchPoint: BranchPoint = branchMap.keys.head.branchPoint
+           val activeBranch: Branch = activeBranchMap(whichBranchPoint.name)
+           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
+           val parentReal = spec2reals(origSpec)
+           //mapVal(origSpec, srcSpec, branchMap)
+           //System.err.println("Mapping config var with active branch %s to srcSpec %s at srcTask %s with parent real %s".format(activeBranch, srcSpec, srcTaskDef, parentReal))
+           (origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case Variable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
@@ -310,7 +316,11 @@ class RealTask(val taskT: TaskTemplate,
                          recordParentsFunc: (Branch,Option[TaskDef]) => Unit,
                          resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, TaskDef) ) = {
 
-         def handleBranchPoint(branchPointName: String, branchSpecs: Seq[Spec]) = {
+         def handleBranchPoint(branchPointName: String,
+                               branchSpecs: Seq[Spec],
+                               // TODO: XXX: Nasty hack for config branch points:
+                               // TODO: We should really be creating some sort of phantom vertices/tasks for config lines
+                               confForcedSrc: Option[TaskDef] = None) = {
              // TODO: If a branch point is *REDECLARED* in a workflow
              // assert that it has exactly the same branches in all locations
              // else die (and that the baseline is the same -- i.e. in the same position)
@@ -322,7 +332,10 @@ class RealTask(val taskT: TaskTemplate,
                val branch = branchFactory.get(branchSpec.name, branchPoint)
                val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, branchSpec)
                branchMap.put(branch, (srcSpec, srcTaskDef) )
-               if(srcTaskDef != taskDef) { // don't create cycles
+               if(confForcedSrc != None) {
+                 // XXX: Yes, we link this to 2 branches
+                 recordParentsFunc(branch, confForcedSrc)
+               } else if(srcTaskDef != taskDef) { // don't create cycles
                  recordParentsFunc(branch, Some(srcTaskDef))
                } else {
                  recordParentsFunc(branch, None)
@@ -360,7 +373,8 @@ class RealTask(val taskT: TaskTemplate,
                case Some(confSpec) => {
                  confSpec.rval match {
                    case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
-                     handleBranchPoint(branchPointName, branchSpecs)
+                     // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
+                     handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                    }
                    case ConfigVariable(_) => {
                      throw new FileFormatException(
@@ -435,10 +449,15 @@ class RealTask(val taskT: TaskTemplate,
 
        // add one metaedge per branch point
        for(branchPoint <- branchPointsByTask(task.taskDef)) {
-         // create a hyperedge list in the format expected by the HyperDAG API
 
+         // create a hyperedge list in the format expected by the HyperDAG API
          val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
          for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
+
+           // create an edge within each hyperedge for each input associated with a task
+           // so that we will know which realization to use at the source of each edge.
+           // parameters may also be subject to branching, but will never point at a task directly
+           // since parameters do not imply a temporal ordering among task vertices.
            val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
 
            // find which inputs and parameters are attached to this branch point
@@ -448,7 +467,10 @@ class RealTask(val taskT: TaskTemplate,
                  case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
                    specBranches.get(branch) match {
                      case None => false
-                     case Some( (spec: Spec, specParent: TaskDef) ) => specParent == parentTaskDef
+                     case Some( (spec: Spec, specParent: TaskDef) ) => {
+                       //System.err.println("Comparing: %s %s".format(specParent, parentTaskDef))
+                       specParent == parentTaskDef
+                     }
                    }
                  }
                }.map{ case(ipSpec, specBranches) => ipSpec }
@@ -456,7 +478,15 @@ class RealTask(val taskT: TaskTemplate,
 
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
            for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
-             case Some(CONFIG_TASK_DEF) => ; // no edge implied here
+             case Some(CONFIG_TASK_DEF) => {
+               // config entries may in turn contain branches, which require
+               // edges to reconstruct which inputs/parameters each realized task should use
+               // the parent task *of the ConfigVariable* will be listed as the current task
+               val ipSpecs = findInputParamSpecs(task.taskDef)
+               //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branch, ipSpecs.toList))
+               //System.err.println("INPUT VALS: " + task.inputVals)
+               edges.append( (None, ipSpecs) )
+             }
              case Some(parentTaskDef) => {
                val parentVert = vertices(parentTaskDef.name)
                val ipSpecs = findInputParamSpecs(parentTaskDef)

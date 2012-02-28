@@ -36,13 +36,16 @@ object CompletionChecker {
           ( () => io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0", "Non-zero exit code"),
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
-      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist")} ++
+      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f))} ++
       Seq(( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated"))
 
     )
-    for( (cond, msg) <- conditions; if(!cond())) {
-      System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
-      return false
+    for( (cond, msg) <- conditions) {
+      System.err.println("Checking for %s".format(msg))
+      if(!cond()) {
+        System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
+        return false
+      }
     }
     return true
   }
@@ -71,8 +74,7 @@ object CompletionChecker {
 // the most recent result is untouched, invalid, partial, or complete
 class CompletionChecker(conf: Config,
                         dirs: DirectoryArchitect,
-                        initVersioner: WorkflowVersioner,
-                        planned: Set[(String,Realization)]) extends UnpackedDagVisitor {
+                        initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   import ducttape.ccollection._
@@ -96,22 +98,20 @@ class CompletionChecker(conf: Config,
   def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
   override def visit(task: RealTask) {
-    if(planned( (task.name, task.realization) )) {
-      val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
-      if(taskEnv.where.exists) {
-        _foundVersions += (task.name, task.realization) -> task.version
-      }
-      if(CompletionChecker.isComplete(taskEnv)) {
-        complete += ((task.name, task.realization))
-        completeVersions += (task.name, task.realization) -> task.version
+    val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
+    if(taskEnv.where.exists) {
+      _foundVersions += (task.name, task.realization) -> task.version
+    }
+    if(CompletionChecker.isComplete(taskEnv)) {
+      complete += ((task.name, task.realization))
+      completeVersions += (task.name, task.realization) -> task.version
+    } else {
+      todoList += ((task.name, task.realization))
+      if(CompletionChecker.isInvalidated(taskEnv)) {
+        invalid += ((task.name, task.realization))
       } else {
-        todoList += ((task.name, task.realization))
-        if(CompletionChecker.isInvalidated(taskEnv)) {
-          invalid += ((task.name, task.realization))
-        } else {
-          if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
-            partialOutput += ((task.name, task.realization))
-          }
+        if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
+          partialOutput += ((task.name, task.realization))
         }
       }
     }

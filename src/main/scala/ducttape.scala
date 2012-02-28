@@ -164,7 +164,7 @@ object Ducttape {
 
     // TODO
     val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, confSpecs))
-    //println("Workflow contains %d tasks".format(workflow.dag.size))
+    println("Workflow contains %d tasks".format(workflow.dag.size))
 
     // TODO: Not always exec...
     // TODO: Check against hyperworkflow to make sure we didn't name any
@@ -194,8 +194,11 @@ object Ducttape {
       list.toSeq.map{ case (name, real) => colorizeDir(name, real, versions) }
     }
 
-    def visitAll(visitor: UnpackedDagVisitor, versions: WorkflowVersioner, numCores: Int = 1) {
-      workflow.unpackedWalker().foreach(numCores, { v: UnpackedWorkVert => {
+    def visitAll(visitor: UnpackedDagVisitor,
+                 versions: WorkflowVersioner,
+                 plannedVertices: Set[(String,Realization)],
+                 numCores: Int = 1) {
+      workflow.unpackedWalker(plannedVertices=plannedVertices).foreach(numCores, { v: UnpackedWorkVert => {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
         visitor.visit(task)
@@ -209,7 +212,10 @@ object Ducttape {
     // to make sure all of the vertices contribute to a goal vertex
     val initVersioner = new MostRecentWorkflowVersioner(dirs)
     val plannedVertices: Set[(String,Realization)] = plans match {
-      case Nil => Set.empty
+      case Nil => {
+        err.println("Using default one-off realization plan")
+        Set.empty
+      }
       case _ => {
         err.println("Finding hyperpaths contained in plan...")
         
@@ -249,10 +255,15 @@ object Ducttape {
           val seen = new mutable.HashSet[RealTask]
           while(fronteir.size > 0) {
             val task: RealTask = fronteir.dequeue
+            //err.println("Tracing back from task " + task)
             // add all parents (aka antecedents) to frontier
             if(!seen(task)) {
-              val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
-              fronteir ++= antTasks
+              try {
+                val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
+                fronteir ++= antTasks
+              } catch {
+                case e: NoSuchElementException => throw new RuntimeException("Error while trying to find antecedent tasks of %s".format(task), e)
+              }
             }
             // mark this task as seen
             seen += task
@@ -270,9 +281,8 @@ object Ducttape {
     err.println("Checking for completed steps...")
     // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
     val (cc: CompletionChecker, versions: ExecutionVersioner) = {
-      // TODO: Insert planned vertices directly into unpackedWalker as a filter...
-      val cc = new CompletionChecker(conf, dirs, initVersioner, plannedVertices)
-      visitAll(cc, initVersioner)
+      val cc = new CompletionChecker(conf, dirs, initVersioner)
+      visitAll(cc, initVersioner, plannedVertices)
       (cc, new ExecutionVersioner(cc.completedVersions, initVersioner.nextVersion))
     }
 
@@ -358,7 +368,7 @@ object Ducttape {
       } else {
         err.println("Finding packages...")
         val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo)
-        visitAll(packageFinder, versions)
+        visitAll(packageFinder, versions, plannedVertices)
 
         err.println("Work plan:")
         for(packageName <- packageFinder.packages) {
@@ -384,9 +394,9 @@ object Ducttape {
             builder.build(packageFinder.packages)
 
             err.println("Removing partial output...")
-            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions)
+            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), versions, plannedVertices)
             err.println("Executing tasks...")
-            visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, opts.jobs())
+            visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
           }
           case _ => err.println("Doing nothing")
         }

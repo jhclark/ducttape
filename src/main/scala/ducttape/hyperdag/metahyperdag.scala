@@ -55,7 +55,6 @@ class UnpackedMetaVertex[V,H,E](val packed: PackedVertex[V],
 class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
   extends Walker[PackedVertex[V]] {
   
-
   val delegate = new PackedDagWalker[V](dag.delegate)
 
   // TODO: Filter epsilons and phantoms from completed
@@ -63,7 +62,7 @@ class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
   def getRunning(): Traversable[PackedVertex[V]] = delegate.getRunning
   def getReady(): Traversable[PackedVertex[V]] = delegate.getReady
 
-  override def complete(item: PackedVertex[V]) = delegate.complete(item)
+  override def complete(item: PackedVertex[V], continue: Boolean = true) = delegate.complete(item, continue)
 
   override def take(): Option[PackedVertex[V]] = {
     var result = delegate.take
@@ -86,10 +85,12 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
         val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
         val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_,
         val initState: F,
-        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F])
+        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F],
+        val vertexFilter: UnpackedMetaVertex[V,H,E] => Boolean)
   extends Walker[UnpackedMetaVertex[V,H,E]] {
 
-  private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter, initState, constraintFilter)
+  private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter,
+                                                        initState, constraintFilter)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps
@@ -99,7 +100,10 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
   // been unpacked so that we can reclaim space. Could we refcount them?
   private val epsilons = new mutable.HashMap[(PackedVertex[V],Seq[H]), UnpackedVertex[V,H,E]]
 
-  override def complete(item: UnpackedMetaVertex[V,H,E]) = delegate.complete(item.dual)
+  override def complete(item: UnpackedMetaVertex[V,H,E], continue: Boolean = true) = {
+    val delegateContinue = continue && vertexFilter(item)
+    delegate.complete(item.dual, delegateContinue)
+  }
 
   override def take(): Option[UnpackedMetaVertex[V,H,E]] = {
     var result: Option[UnpackedVertex[V,H,E]] = delegate.take
@@ -121,6 +125,8 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
     return result match {
       case None => None
       case Some(raw: UnpackedVertex[V,H,E]) => {
+
+        // TODO: CAN WE STOP UNPACKING EARLY?
         
         val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
         val metaParentReals = new mutable.ListBuffer[Seq[Seq[H]]]
@@ -167,7 +173,9 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
   def unpackedWalker[F](initFilterState: F, 
-                        constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F]) = {
+                        constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F],
+                        vertexFilter: UnpackedMetaVertex[V,H,E] => Boolean
+                          = (_:UnpackedMetaVertex[V,H,E]) => true) = {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
@@ -176,7 +184,8 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
     def selectionFilter(selection: MultiSet[H]) = true
     def hedgeFilter(h: HyperEdge[H,E]) = !isEpsilon(h)
 
-    new UnpackedMetaDagWalker[V,M,H,E,F](this, selectionFilter, hedgeFilter, initFilterState, constraintFilter)
+    new UnpackedMetaDagWalker[V,M,H,E,F](this, selectionFilter, hedgeFilter, initFilterState,
+                                         constraintFilter, vertexFilter)
   }
 
   def inMetaEdges(v: PackedVertex[V]): Seq[MetaEdge[M,H,E]]
