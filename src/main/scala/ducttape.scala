@@ -227,7 +227,7 @@ object Ducttape {
           // (pre-filtered by realization, but not by goal vertex) so that we can make
           // a backward pass over the unpacked DAG
           val candidates = new mutable.HashMap[(String,Realization), RealTask]
-          
+
           // this is the most important place for us to pass the filter to unpackedWalker!
           workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
             val taskT: TaskTemplate = v.packed.value
@@ -243,9 +243,6 @@ object Ducttape {
           
           val candidates = getCandidates(plan.realizations)
           val fronteir = new mutable.Queue[RealTask]
-
-          err.println("%d candidates".format(candidates.size))
-          err.println(candidates)
           
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
@@ -262,7 +259,9 @@ object Ducttape {
             // add all parents (aka antecedents) to frontier
             if(!seen(task)) {
               try {
-                val antTasks: Set[RealTask] = task.antecedents.map{case (taskName, real) => candidates(taskName, real)}
+                val antTasks: Set[RealTask] = task.antecedents
+                  .filter{ case (taskName, _) => taskName != WorkflowBuilder.CONFIG_TASK_DEF.name }
+                  .map{case (taskName, real) => candidates(taskName, real)}
                 fronteir ++= antTasks
               } catch {
                 case e: NoSuchElementException => throw new RuntimeException("Error while trying to find antecedent tasks of %s".format(task), e)

@@ -48,12 +48,15 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
         while(running) {
           take match {
             case Some(a: A) => {
+              var success = true
               try {
                 f(a)
+              } catch {
+                case _ => success = false
               } finally {
                 // mark as complete, but don't run any dependencies
                 // TODO: Keep a list of tasks that failed?
-                complete(a, continue=false)
+                complete(a, continue=success)
               }
             }
             case None => {
@@ -61,7 +64,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
             }
           }
         }
-        System.err.println("Worker thread %d of %d joined".format(i, j))
+        if(j>1) System.err.println("Worker thread %d of %d joined".format(i+1, j))
       }
     })
     // start running tasks in thread pool

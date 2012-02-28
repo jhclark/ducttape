@@ -101,54 +101,63 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
   private val epsilons = new mutable.HashMap[(PackedVertex[V],Seq[H]), UnpackedVertex[V,H,E]]
 
   override def complete(item: UnpackedMetaVertex[V,H,E], continue: Boolean = true) = {
-    val delegateContinue = continue && vertexFilter(item)
-    delegate.complete(item.dual, delegateContinue)
+    delegate.complete(item.dual, continue)
   }
 
   override def take(): Option[UnpackedMetaVertex[V,H,E]] = {
-    var result: Option[UnpackedVertex[V,H,E]] = delegate.take
-    // never return epsilon vertices nor phantom verties
-    // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
-    // but phantom vertices break this
-    while(!result.isEmpty && dag.shouldSkip(result.get.packed)) {
-      //println("TAKE SKIPPING: " + result)
-      val uv = result.get
-      delegate.complete(uv)
-      if(dag.isEpsilon(uv.packed)) {
-        // TODO: We'd really prefer not to store these...
-        epsilons += (uv.packed, uv.realization) -> uv
+
+    def getNext: Option[UnpackedMetaVertex[V,H,E]] = {
+      var result: Option[UnpackedVertex[V,H,E]] = delegate.take
+      // never return epsilon vertices nor phantom verties
+      // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
+      // but phantom vertices break this
+      while(!result.isEmpty && dag.shouldSkip(result.get.packed)) {
+        //println("TAKE SKIPPING: " + result)
+        val uv = result.get
+        delegate.complete(uv)
+        if(dag.isEpsilon(uv.packed)) {
+          // TODO: We'd really prefer not to store these...
+          epsilons += (uv.packed, uv.realization) -> uv
+        }
+        result = delegate.take
       }
-      result = delegate.take
-    }
-    //println("TAKING: " + result)
-
-    return result match {
-      case None => None
-      case Some(raw: UnpackedVertex[V,H,E]) => {
-
-        // TODO: CAN WE STOP UNPACKING EARLY?
-        
-        val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
-        val metaParentReals = new mutable.ListBuffer[Seq[Seq[H]]]
-
-        dag.delegate.parents(raw.packed) match {
-          // skip the case of phantom parents
-          case Seq(singleParent) if(dag.isPhantom(singleParent)) => ;
-          case parents => {
-            assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
-            // for parallel to number of incoming meta edges
-            for((parentEpsilonV: PackedVertex[V], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
-              val parentEpsilonUV: UnpackedVertex[V,H,E] = epsilons( (parentEpsilonV, parentEpsilonReals) )
-              // use this Seq[Seq[H]], which is parallel to the active hyperedge
-              activeEdges += parentEpsilonUV.edge.get
-              metaParentReals += parentEpsilonUV.parentRealizations
+      //println("TAKING: " + result)
+      
+      return result match {
+        case None => None
+        case Some(raw: UnpackedVertex[V,H,E]) => {
+          
+          // TODO: CAN WE STOP UNPACKING EARLY?
+          
+          val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
+          val metaParentReals = new mutable.ListBuffer[Seq[Seq[H]]]
+          
+          dag.delegate.parents(raw.packed) match {
+            // skip the case of phantom parents
+            case Seq(singleParent) if(dag.isPhantom(singleParent)) => ;
+            case parents => {
+              assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
+              // for parallel to number of incoming meta edges
+              for((parentEpsilonV: PackedVertex[V], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
+                val parentEpsilonUV: UnpackedVertex[V,H,E] = epsilons( (parentEpsilonV, parentEpsilonReals) )
+                // use this Seq[Seq[H]], which is parallel to the active hyperedge
+                activeEdges += parentEpsilonUV.edge.get
+                metaParentReals += parentEpsilonUV.parentRealizations
+              }
             }
           }
+          Some(new UnpackedMetaVertex[V,H,E](raw.packed, activeEdges, raw.realization, metaParentReals, raw))
         }
-        Some(new UnpackedMetaVertex[V,H,E](raw.packed, activeEdges, raw.realization, metaParentReals, raw))
       }
+    } // getNext
+      
+    var result = getNext
+    while(result != None && !vertexFilter(result.get)) {
+      complete(result.get, continue=false)
+      result = getNext
     }
-  }
+    result
+  } // take
 }
 
 // immutable

@@ -41,7 +41,6 @@ object CompletionChecker {
 
     )
     for( (cond, msg) <- conditions) {
-      System.err.println("Checking for %s".format(msg))
       if(!cond()) {
         System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
         return false

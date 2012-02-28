@@ -137,7 +137,10 @@ class RealTask(val taskT: TaskTemplate,
            val whichBranchPoint: BranchPoint = branchMap.keys.head.branchPoint
            val activeBranch: Branch = activeBranchMap(whichBranchPoint.name)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
-           val parentReal = spec2reals(origSpec)
+           val parentReal = spec2reals.get(origSpec) match {
+             case Some(r) => r // config has branch point
+             case None => v.realization // config has no branch point
+           }
            //mapVal(origSpec, srcSpec, branchMap)
            //System.err.println("Mapping config var with active branch %s to srcSpec %s at srcTask %s with parent real %s".format(activeBranch, srcSpec, srcTaskDef, parentReal))
            (origSpec, srcSpec, srcTaskDef, parentReal)
@@ -383,6 +386,7 @@ class RealTask(val taskT: TaskTemplate,
                        List( (wd.file, inSpec.pos, inSpec.pos.line), (wd.file, confSpec.pos, confSpec.pos.line) ))
                    }
                    case _ => {
+                     handleNonBranchPoint
                    }
                  }
                }

@@ -184,6 +184,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     
     var result = getNext
     while(result != None && !vertexFilter(result.get)) {
+      complete(result.get, continue=false)
       result = getNext
     }
     result
@@ -203,7 +204,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     // new agenda items
     agendaTakenLock.synchronized {
       taken -= item
-      
+
       if(continue) {
         // first, match fronteir vertices
         // note: consequent is an edge unlike the packed walker

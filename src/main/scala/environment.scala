@@ -107,7 +107,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
     val srcVersion: Int = versions(srcTaskDef.name, srcReal)
     val inFile = dirs.getInFile(inSpec, task.realization, task.version,
                                 srcSpec, srcTaskDef, srcReal, srcVersion)
-    System.err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
+    //System.err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
     (inSpec.name, inFile.getAbsolutePath)
   }
     
