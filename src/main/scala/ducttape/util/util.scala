@@ -58,6 +58,14 @@ object Files {
     else
       listing.toSeq
   }
+
+  def basename(filename: String, suffix: String) = {
+    if(filename.endsWith(suffix)) {
+      filename.substring(0, filename.length - suffix.length)
+    } else {
+      filename
+    }
+  }
 }
 
 object NullWriter extends Writer {

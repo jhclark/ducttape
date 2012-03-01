@@ -160,7 +160,7 @@ class PackageBuilder(conf: Config, dirs: DirectoryArchitect, workflowVersion: In
       }
       buildEnv.buildDir.mkdirs
 
-      val gimmeCmds = Seq(Gimme.getCommand(dirs.baseDir, packageName))
+      val gimmeCmds = Seq(Gimme.getCommand(dirs.workflowBaseDir, packageName))
       val env = Seq()
       val exitCode = Shell.run(gimmeCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if(exitCode != 0) {
@@ -213,7 +213,7 @@ class Executor(conf: Config,
       }
 
       // there's so many parameters here in case we want to "augment" the commands in some way
-      val submitCommands = Submitter.prepare(dirs.baseDir, taskEnv.where, taskEnv.params,
+      val submitCommands = Submitter.prepare(dirs.workflowBaseDir, taskEnv.where, taskEnv.params,
                                              task.commands, task.name, task.realization)
       val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)

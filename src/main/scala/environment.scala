@@ -8,12 +8,12 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.versioner._
 import ducttape.workflow._
 
-class DirectoryArchitect(val baseDir: File) {
+class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
 
-  val xdotFile = new File(baseDir, ".xdot")
+  val xdotFile = new File(confBaseDir, ".xdot")
 
   def assignPackedDir(taskName: String): File = {
-    new File(baseDir, taskName).getAbsoluteFile
+    new File(confBaseDir, taskName).getAbsoluteFile
   }
 
   def assignUnversionedDir(taskName: String, realization: Realization): File = {
@@ -29,7 +29,7 @@ class DirectoryArchitect(val baseDir: File) {
   }
 
   def assignBuildDir(packageName: String): File = {
-    new File(baseDir, ".packages/%s".format(packageName))
+    new File(confBaseDir, ".packages/%s".format(packageName))
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, version: Int): File = {
@@ -73,7 +73,7 @@ class DirectoryArchitect(val baseDir: File) {
     realizedRval match {
       case Literal(path) => isAbsolute(path) match {
         case true => new File(path)
-        case false => new File(baseDir, path) // resolve relative paths relative to the workflow file (baseDir)
+        case false => new File(confBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
       }
       // branches, variables, etc get matched on the src, which we already resolved
       case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)

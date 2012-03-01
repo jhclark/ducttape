@@ -35,6 +35,14 @@ package ducttape {
     var greenColor = Console.GREEN
     var redColor = Console.RED
   }
+  
+  object ProcessInfo {
+    import java.lang.management._
+    // vmName looks like 11411@mymachine.org
+    lazy val vmName = ManagementFactory.getRuntimeMXBean.getName
+    lazy val pid = vmName.split("@")(0).toInt
+    lazy val hostname = vmName.split("@")(1)
+  }
 }
 
 object Ducttape {
@@ -178,13 +186,18 @@ object Ducttape {
     }
     
     // TODO: Check that all input files exist
-
-    val baseDir = opts.workflowFile.getAbsoluteFile.getParentFile
-    val dirs = new DirectoryArchitect(baseDir)
+    val dirs = {
+      val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
+      val confBaseDir = opts.config.value match {
+        case Some(confFile) => new File(workflowBaseDir, Files.basename(confFile, ".conf"))
+        case None => new File(workflowBaseDir, Files.basename(opts.workflowFile.getName, ".tape"))
+      }
+      new DirectoryArchitect(workflowBaseDir, confBaseDir)
+    }
 
     def colorizeDir(taskName: String, real: Realization, versions: WorkflowVersioner): String = {
       val ver = versions(taskName, real)
-      "%s/%s%s%s/%s%s%s/%d".format(baseDir.getAbsolutePath,
+      "%s/%s%s%s/%s%s%s/%d".format(dirs.confBaseDir.getAbsolutePath,
                                    conf.taskNameColor, taskName, conf.resetColor,
                                    conf.realNameColor, real.toString, conf.resetColor,
                                    ver)
@@ -248,7 +261,7 @@ object Ducttape {
           // (realizations have already been filtered during HyperDAG traversal)
           for(goalTask <- plan.goalTasks) {
             val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
-            err.println("Found %d realizations of goal task %s".format(goalRealTasks.size, goalTask))
+            err.println("Found %d realizations of goal task %s: %s".format(goalRealTasks.size, goalTask, goalRealTasks.map{_.realization}.mkString(" ")))
             fronteir ++= goalRealTasks
           }
           
@@ -376,18 +389,20 @@ object Ducttape {
         for(packageName <- packageFinder.packages) {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
-        for( (task, real) <- cc.partial) {
-          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, initVersioner)))
-        }
+
+//        for( (task, real) <- cc.partial) {
+//          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, initVersioner)))
+//        }
         for( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
         }
-        
-        if(cc.partial.size > 0) {
-          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
-        } else {
+  
+      
+//        if(cc.partial.size > 0) {
+//          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
+//        } else {
           err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
-        }
+//        }
         
         Console.readChar match {
           case 'y' | 'Y' => {
@@ -395,8 +410,8 @@ object Ducttape {
             val builder = new PackageBuilder(conf, dirs, versions.workflowVersion)
             builder.build(packageFinder.packages)
 
-            err.println("Removing partial output...")
-            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
+//            err.println("Removing partial output...")
+//            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
             visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
           }
@@ -506,7 +521,7 @@ object Ducttape {
       // TODO: Use directory architect here
       val absDirs = victimList.map{case (name, real) => {
         val ver = initVersioner(name, real)
-        new File(baseDir, "%s/%s/%d".format(name,real,ver))
+        new File(dirs.confBaseDir, "%s/%s/%d".format(name,real,ver))
       }}
       err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
       
