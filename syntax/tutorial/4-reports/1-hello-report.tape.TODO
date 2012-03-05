@@ -8,7 +8,7 @@
 # for debugging, status checking, or publication.
 
 # what about a simple step with only a report?  
-[g2.simpleReport] a > x
+[g2.simpleReport] < a > x
   cat $a > $x
   +report reportA
     echo "Line1=$(fgrep error $x)"
