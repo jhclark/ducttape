@@ -1,0 +1,14 @@
+# Sometimes you might want your workflow to just be a template
+# and specify different sets of input files later as a config
+# file
+
+# Given a step like this:
+[step1] a=/etc/shadow > x :: X=5
+   cat < $a > $x
+   echo $X >> $x
+
+# You can specify inputs and parameters in a separate config file, like this:
+step1/a = /etc/passwd
+
+# QUESTION: Must override w/ absolute path?
+# QUESTION: Allow overriding things that were already specified (with warning)? Or require unbound?

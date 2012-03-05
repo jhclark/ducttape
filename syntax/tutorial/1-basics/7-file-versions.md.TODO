@@ -1,0 +1,6 @@
+File Versions
+=============
+
+File versions will be implemented by storing MD5 hashes of files in either a standoff file or the workflow's sqlite DB. These won't be re-checked during every workflow startup for efficiency reasons, but can be re-checked on demand to ensure consistency.
+
+Note to self: Recruit Matt Post to implement this cachepipe style.
