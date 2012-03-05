@@ -401,8 +401,9 @@ object Ducttape {
 //        if(cc.partial.size > 0) {
 //          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
 //        } else {
-          err.print("Are you sure you want to run all these? [y/n] ") // user must still press enter
 //        }
+
+        err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size)) // user must still press enter
         
         Console.readChar match {
           case 'y' | 'Y' => {
@@ -413,7 +414,7 @@ object Ducttape {
 //            err.println("Removing partial output...")
 //            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
-            visitAll(new Executor(conf, dirs, versions, workflow, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
+            visitAll(new Executor(conf, dirs, versions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
           }
           case _ => err.println("Doing nothing")
         }
@@ -423,7 +424,7 @@ object Ducttape {
     def viz {
       err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
-      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, initVersioner)))
+      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, plannedVertices, initVersioner)))
     }
 
     def debugViz {

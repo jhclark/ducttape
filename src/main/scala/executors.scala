@@ -177,6 +177,7 @@ class Executor(conf: Config,
                dirs: DirectoryArchitect,
                versions: WorkflowVersioner,
                workflow: HyperWorkflow,
+               plannedVertices: Set[(String,Realization)],
                alreadyDone: Set[(String,Realization)],
                todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
   import ducttape.viz._
@@ -189,7 +190,7 @@ class Executor(conf: Config,
   // TODO: Move all dot-related things to an instrumentation class
   dirs.xdotFile.synchronized {
     completed ++= alreadyDone
-    Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
+    Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
   }
 
   override def visit(task: RealTask) {
@@ -199,7 +200,7 @@ class Executor(conf: Config,
 
       dirs.xdotFile.synchronized {
         running += ((task.name, task.realization))
-        Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
+        Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
       }
 
       taskEnv.workDir.mkdirs
@@ -207,7 +208,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
@@ -222,7 +223,7 @@ class Executor(conf: Config,
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
         }
         throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
       }
@@ -230,7 +231,7 @@ class Executor(conf: Config,
     completed += ((task.name, task.realization))
     running -= ((task.name, task.realization))
     dirs.xdotFile.synchronized {
-      Files.write(WorkflowViz.toGraphViz(workflow, versions, completed, running, failed), dirs.xdotFile)
+      Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
     }
   }
 }
