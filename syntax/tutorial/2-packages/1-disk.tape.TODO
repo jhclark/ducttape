@@ -1,17 +1,24 @@
-# TODO: Copy boilerplate from git
+# 1) Using package versioning without any source code control / versioning system
 # Use this only if git and svn are completely foreign
 # concepts to you. Beyond just getting started with ducttape,
 # use of this versioner is discouraged.
 
+[experiment_task] moses < in=/etc/passwd > out :: N=5
+  $moses -version
+
+[PACKAGE:moses] .versioner=disk .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=NULL
+  ./configure
+  make -j16
+
 # TODO: Use proper rsync args
 # TODO: Disk versioner cannot support updating to a particular revision...
 [VERSIONER:disk] :: url rev
-  +checkout > $dir
+  +checkout > dir
     rsync $url $dir
   +update
     rsync $url $dir
-  +head-version > version
+  +repo-version > version
     find $url -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $version
-  +cur-version > version date
+  +local-version > version date
     find . -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $date
     cp $date $version
