@@ -215,7 +215,7 @@ class Executor(conf: Config,
 
       // there's so many parameters here in case we want to "augment" the commands in some way
       val submitCommands = Submitter.prepare(dirs.workflowBaseDir, taskEnv.where, taskEnv.params,
-                                             task.commands, task.name, task.realization)
+                                             task.commands, task.name, task.realization, dirs.confBaseDir.getName)
       val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
       if(exitCode != 0) {
