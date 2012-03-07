@@ -12,7 +12,9 @@
     ln -s $a $aOut
   +report reportA # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
     echo "Line1=$(head -n1 $a)"
-  +report reportA!(choiceA) # Specializations listed after ! inside () -- node not necessary, since it it always this one
+
+  # TODO: XXX: This syntax might be overly confusing due to similarity of grafting and task name syntax
+  +report reportA[choiceA] # Specializations listed using grafting syntax
     echo "Line1=$(head -n1 $a)"
     echo "Line1B=$(head -n1 $b)"
 

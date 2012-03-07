@@ -4,11 +4,11 @@
 # "one off" experiments.
 
 # We start with a task much like the previous example
-[one-off-1] in=( whichSize: smaller=small.txt bigger=big.txt ) > out
+[one-off-1] < in=( whichSize: smaller=small.txt bigger=big.txt ) > out
   cat < $in > $out
 
 # And now add a child task that also has a packed parameter with multiple branches
-[one-off-2] in=$one-off-1/out :: N=(N: one=1, two=2)
+[one-off-2] < in=$one-off-1/out :: N=(N: one=1, two=2)
   head -n $N < $in
 
 # By default, ducttape will run each of these as "one off" experiments: Ducttape
