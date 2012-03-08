@@ -53,8 +53,23 @@ object Grammar {
    * In the string returned by the parser, any such escaped sequences will be expanded.
    */
   val quotedLiteral : Parser[String] = {
-    regex(""""([^\\"]|\\.)*"""".r) | 
-    regex("""'([^\\']|\\.)*'""".r) 
+    ( regex(""""([^\\"]|\\.)*"""".r) | 
+      regex("""'([^\\']|\\.)*'""".r) 
+    ) ^^ {
+      case string:String => 
+         // Remove initial and final quotation marks
+         string.substring(1,string.length()-1)
+         //     expand escaped form feed characters
+               .replace("""\f""","\f")
+         //     expand escaped newline characters      
+               .replace("""\n""","\n")
+         //     expand escaped carriage return characters               
+               .replace("""\r""","\r")
+         //     expand escaped tab characters                
+               .replace("""\t""","\t")
+         //     expand escaped slash characters               
+               .replace("""\\""","\\")               
+    }  
   }
   
   
