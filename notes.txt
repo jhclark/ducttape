@@ -1,0 +1,25 @@
+[taskName] packageName 
+	< inputVariable=rValue 
+	> outputVariable 
+	:: taskParameter=rValue 
+	
+
+rValue can be:
+ * a literal
+ * branch point definition, that is
+ 	(branchPointName: branchName1=rValue branchName2=rValue)
+ * branch point definition with a sequence, that is
+ 	(branchPointName: number1..number2) 	
+ * config variable (a reference to something in a config file)
+ * reference to a variable, that is $taskParameter
+ * reference to a task output, that is $outputVariable@taskName
+ * reference to a task output with a branch graft, that is 
+ 	$outputVariable@taskName[branchPointName:branchNameOrGlob] or
+ 	$outputVariable@taskName[branchPointName1:branchName1OrGlob,branchPointName2:branchName2OrGlob,branchPointName3:branchName3OrGlob]
+ * unbound is the absence of an rValue
+ 
+ 
+ branchNameOrGlob can either be a branchName or *
+ 
+
+ 
