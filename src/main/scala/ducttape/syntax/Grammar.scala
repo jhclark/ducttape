@@ -12,7 +12,52 @@ import scala.util.matching.Regex
 
 
 object Grammar {
+  
+  /** End of line characters, including end of file. */
+  val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
+  
+  /** Non-end of line white space characters */
+  val space: Parser[String] = regex("""[ \t]+""".r)
+  
+  /**
+   * Parser for a literal value that is not wrapped in quotes.
+   * <p>
+   * An unquoted literal is defined as a string 
+   * whose first character is neither whitespace nor a (double or single) quotation mark.
+   * 
+   * If the unquoted literal is more than one character long,
+   * any subsequent characters may be any character except whitespace.
+   */
+  val unquotedLiteral : Parser[String] = {
+    regex("""[^"'\s]\S*""".r) | failure("An unquoted literal may not begin with whitespace or a quotation mark")
+  }
 
+  /**
+   * Parser for a literal value that is wrapped in quotes.
+   * <p>
+   * An quoted literal is defined as a string 
+   * whose first character is a quotation mark
+   * and whose last character is an unescaped quotation mark.
+   * 
+   * Either single (') or double (") quotation marks may be used,
+   * but the opening and closing quotation marks must match.
+   * <p>
+   * If there are any characters between the opening and closing quotation marks,
+   * these characters may be any character except the type of quotation mark being used.
+   *  
+   * Note that the last character between the quotation marks 
+   * may not be an unescaped slash (\), 
+   * as this would cause the final quotation mark to be escaped.
+   * <p>
+   * The quoted text may contain escaped sequences.
+   * In the string returned by the parser, any such escaped sequences will be expanded.
+   */
+  val quotedLiteral : Parser[String] = {
+    regex(""""([^\\"]|\\.)*"""".r) | 
+    regex("""'([^\\']|\\.)*'""".r) 
+  }
+  
+  
   /**
    * Parser for a name, defined as an ASCII alphanumeric identifier.
    * <p>
@@ -42,6 +87,9 @@ object Grammar {
   def taskName: Parser[String] = {
     "[" ~> name("""\]""".r) <~ "]"
   }
+  
+  
+  
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)
