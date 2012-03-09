@@ -28,8 +28,8 @@ object AbstractSyntaxTree {
    * in the right-hand side context of an assignment. 
    */
   case class SequentialBranchPoint(val branchPointName:String, 
-                                   val start:Int, 
-                                   val end:Int) extends RValue {
+                                   val start:BigDecimal, 
+                                   val end:BigDecimal) extends RValue {
     override def toString = "(%s: %d..%d".format(branchPointName,start,end)
   }  
   

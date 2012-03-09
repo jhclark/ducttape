@@ -1,14 +1,16 @@
 package ducttape.syntax
 
 import java.io.File
+import java.math.BigDecimal
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
+import scala.util.matching.Regex
 import ducttape.syntax.GrammarParser._
 import ducttape.syntax.AbstractSyntaxTree._
-import scala.util.matching.Regex
+import java.math.BigInteger
 
 
 object Grammar {
@@ -19,6 +21,30 @@ object Grammar {
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
 
+//  /** An signed integer. */
+//  val integer: Parser[BigInteger] = regex("""[-]?\d+""".r) ^^ {
+//    case string:String => new BigInteger(string)
+//  }
+//  
+//  /** A signed floating point number. */
+//  val floatingPointNumber: Parser[BigDecimal] =  
+//    ( // Recognize a number with no digits left of the decimal
+//      regex("""[+-]?\.\d+([eE][-+]?\d+(\.\d+)?)""".r) 
+//    ) ^^ {
+//    case string:String => new BigDecimal(string)
+//  }
+  
+  /** A signed, arbitrary precision number. */
+  val number: Parser[BigDecimal] = 
+    ( // Recognize a number with no digits left of the decimal
+      // but at least one digit to the right of the decimal
+      // regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r) |
+      // Recognize a number with at least one digit left of the decimal
+      // and optionally, one or more digits to the right of the decimal
+      regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  
+    ) ^^ {
+    case s:String => new BigDecimal(s)
+  }
   
   /**
    * Parser for a literal value that is not wrapped in quotes.
@@ -192,6 +218,17 @@ object Grammar {
           new BranchGraft(variable,task,seq)
       } 
   )
+  
+  def sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
+      ( regex("""\(\s*""".r) ~>
+          (branchPointName<~regex("""\s*""".r)) ~
+          (number<~literal("..")) ~ (number<~regex("""\s*\)""".r))
+      ) ^^ {
+        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)) =>
+          new SequentialBranchPoint(bpName,start,end)
+      }
+  )
+  
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)

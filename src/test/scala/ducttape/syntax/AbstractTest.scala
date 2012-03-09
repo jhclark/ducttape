@@ -36,8 +36,12 @@ abstract class AbstractTest(val description:String, val parser:Parser[Any]) exte
     
     for (value <- errorCases) {   
       "fail for \""+value+"\"" in {
-        val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
-        Tests.verifyError(this,result)
+        try {
+          val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
+          Tests.verifyError(this,result)
+        } catch {
+          case e:Exception => ()
+        }
       }
     }    
     
