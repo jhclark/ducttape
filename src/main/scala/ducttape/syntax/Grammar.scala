@@ -18,18 +18,7 @@ object Grammar {
   
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
-  
-  /**
-   * Parser for a literal value.
-   * <p>
-   * The literal value may be quoted or unquoted.
-   * 
-   * @see quotedLiteral
-   * @see unquotedLiteral
-   */
-  val literalValue : Parser[String] = {
-    unquotedLiteral | quotedLiteral
-  }
+
   
   /**
    * Parser for a literal value that is not wrapped in quotes.
@@ -84,6 +73,18 @@ object Grammar {
     }  
   }
   
+    
+  /**
+   * Parser for a literal value.
+   * <p>
+   * The literal value may be quoted or unquoted.
+   * 
+   * @see quotedLiteral
+   * @see unquotedLiteral
+   */
+  val literalValue : Parser[String] = {
+    unquotedLiteral | quotedLiteral
+  }
   
   /**
    * Parser for a name, defined as an ASCII alphanumeric identifier.
