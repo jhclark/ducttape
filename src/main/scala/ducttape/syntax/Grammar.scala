@@ -20,26 +20,10 @@ object Grammar {
   
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
-
-//  /** An signed integer. */
-//  val integer: Parser[BigInteger] = regex("""[-]?\d+""".r) ^^ {
-//    case string:String => new BigInteger(string)
-//  }
-//  
-//  /** A signed floating point number. */
-//  val floatingPointNumber: Parser[BigDecimal] =  
-//    ( // Recognize a number with no digits left of the decimal
-//      regex("""[+-]?\.\d+([eE][-+]?\d+(\.\d+)?)""".r) 
-//    ) ^^ {
-//    case string:String => new BigDecimal(string)
-//  }
   
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
-    ( // Recognize a number with no digits left of the decimal
-      // but at least one digit to the right of the decimal
-      // regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r) |
-      // Recognize a number with at least one digit left of the decimal
+    ( // Recognize a number with at least one digit left of the decimal
       // and optionally, one or more digits to the right of the decimal
       regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  
     ) ^^ {
