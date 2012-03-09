@@ -13,17 +13,20 @@ object AbstractSyntaxTree {
   /** Type of the right hand side in an assignment. */
   abstract class RValue extends ASTType;
   
-  /** Type of a literal string value in the right-hand side context of an assignment. */
+  /** Type of a literal string value, in the right-hand side context of an assignment. */
   case class Literal(val value: String) extends RValue {
     override def toString = "Literal='%s'".format(value)
   }  
   
-  /** Type of a variable reference in the right-hand side context of an assignment. */
+  /** Type of a variable reference, in the right-hand side context of an assignment. */
   case class VariableReference(val value: String) extends RValue {
     override def toString = "$%s".format(value)
   }
 
-  /** Type of a variable reference in the right-hand side context of an assignment. */
+  /** 
+   * Type of a branch point that defines a sequence, 
+   * in the right-hand side context of an assignment. 
+   */
   case class SequentialBranchPoint(val branchPointName:String, 
                                    val start:Int, 
                                    val end:Int) extends RValue {
@@ -36,7 +39,7 @@ object AbstractSyntaxTree {
     override def toString = "%s:%s".format(branchPointName,branchName)
   }
   
-  /** Type of a branch graft in the right-hand side context of an assignment. */
+  /** Type of a branch graft, in the right-hand side context of an assignment. */
   case class BranchGraft(val variableName:String,
                          val taskName:String,
                          val branchGraftElements:Seq[BranchGraftElement]) extends RValue {
