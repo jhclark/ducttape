@@ -125,7 +125,21 @@ object Grammar {
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
    */
   def taskName: Parser[String] = {
-    "[" ~> name("task","""\]""".r) <~ literal("]")
+    ( // Fail if we have opening and closing brackets, but no task name
+      (regex("""\[\s*\]""".r)~!err("Missing task name. Task name must be enclosed in square brackets.")) |
+      // Fail if we have whitespace following opening bracket
+      (regex("""\[\s+""".r)~!err("Illegal whitespace following opening bracket. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+      // Fail if we have no opening bracket 
+      (literal("[") | err("Missing opening bracket. Task name must be enclosed in square brackets."))
+      // Recognize a name
+    ) ~> name("task","""[\s\]]""".r) <~ 
+    ( // Fail if we have whitespace following task name
+      (regex("""\s+]""".r)~!err("Illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+      // Fail if we have whitespace and no closing bracket
+      (regex("""\s+""".r)~!err("Missing closing bracket; illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+      // Fail if we have opening bracket and task name, but not closing bracket
+      literal("]") | err("Missing closing bracket. Task name must be enclosed in square brackets.") 
+    )
   }
   
   /**
