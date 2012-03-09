@@ -2,15 +2,17 @@ package ducttape.syntax
 
 import java.io.File
 import java.math.BigDecimal
+import java.math.BigInteger
+
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
+
 import ducttape.syntax.GrammarParser._
 import ducttape.syntax.AbstractSyntaxTree._
-import java.math.BigInteger
 
 
 object Grammar {
@@ -215,11 +217,6 @@ object Grammar {
           new SequentialBranchPoint(bpName,start,end,increment)
         case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
           new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
-        
-//          new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
-//          
-//        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(increment:BigDecimal)) =>
-//          new SequentialBranchPoint(bpName,start,end,increment)
       }
   )
   
