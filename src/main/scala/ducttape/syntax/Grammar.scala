@@ -20,6 +20,18 @@ object Grammar {
   val space: Parser[String] = regex("""[ \t]+""".r)
   
   /**
+   * Parser for a literal value.
+   * <p>
+   * The literal value may be quoted or unquoted.
+   * 
+   * @see quotedLiteral
+   * @see unquotedLiteral
+   */
+  val literalValue : Parser[String] = {
+    unquotedLiteral | quotedLiteral
+  }
+  
+  /**
    * Parser for a literal value that is not wrapped in quotes.
    * <p>
    * An unquoted literal is defined as a string 
