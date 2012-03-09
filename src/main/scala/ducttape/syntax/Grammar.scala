@@ -103,15 +103,15 @@ object Grammar {
    * 
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    */
-  def name(whatCanComeNext:Regex): Parser[String] = {
+  def name(title:String,whatCanComeNext:Regex): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      """[^A-Za-z_]""".r<~err("Illegal character at start of task name")
+      regex("""[^A-Za-z_]""".r)<~err("Illegal character at start of " + title + " name")
 
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | """[A-Za-z_][A-Za-z0-9_]*""".r<~guard(not(regex(whatCanComeNext)))~!err("Illegal character in task name")
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~!err("Illegal character in " + title + " name")
 
       // Finally, if the name contains only legal characters, then parse it!
-      | """[A-Za-z_][A-Za-z0-9_]*""".r // | failure("")
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r) // | failure("")
     )
   }
   
@@ -121,10 +121,18 @@ object Grammar {
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
    */
   def taskName: Parser[String] = {
-    "[" ~> name("""\]""".r) <~ "]"
+    "[" ~> name("task","""\]""".r) <~ literal("]")
   }
   
-  
+  /**
+   * Name of a branch point, followed by a colon.
+   * <p>
+   * Whitespace may optionally separate the name and the colon.
+   */
+  def branchPointName: Parser[String] = {
+    val whatComesNext = """\s*:""".r
+    name("branch point",whatComesNext) <~ regex(whatComesNext)
+  }
   
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
