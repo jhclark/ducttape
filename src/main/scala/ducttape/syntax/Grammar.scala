@@ -107,11 +107,15 @@ object Grammar {
     ( // If the name starts with an illegal character, bail out and don't backtrack
       regex("""[^A-Za-z_]""".r)<~err("Illegal character at start of " + title + " name")
 
+      // Else if the name contains only legal characters and the input ends, then parse it
+      | regex("""[A-Za-z_][A-Za-z0-9_]*$""".r)
+      
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
       | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~!err("Illegal character in " + title + " name")
 
-      // Finally, if the name contains only legal characters, then parse it!
-      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r) // | failure("")
+      // Finally, if the name contains only legal characters, 
+      //          and is followed by something that's allowed to follow it, then parse it!
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)
     )
   }
   
@@ -131,7 +135,7 @@ object Grammar {
    */
   def branchPointName: Parser[String] = {
     val whatComesNext = """\s*:""".r
-    name("branch point",whatComesNext) <~ regex(whatComesNext)
+    name("branch point",whatComesNext) <~ (regex(whatComesNext) | err("Missing colon after branch point name"))
   }
   
   /**
@@ -142,6 +146,37 @@ object Grammar {
     literal("$")~>name("variable","""\s*""".r) ^^ {
       case string:String => new VariableReference(string)
     }
+  )
+  
+  /**
+   * Reference to a branch name or a branch glob (*)
+   */
+  def branchReference: Parser[String] = {
+    literal("*") | name("branch reference","""[\]\s,]""".r)
+  }
+  
+  /**
+   * Branch graft element, 
+   * representing a branch point name 
+   * and an associated branch reference.
+   */
+  def branchGraftElement: Parser[BranchGraftElement] = positioned(
+      branchPointName~branchReference ^^ {
+        case ((a:String) ~ (b:String)) => new BranchGraftElement(a,b)
+      }
+  )
+  
+  /**
+   * Branch graft, representing a variable name, 
+   * a task name, and a list of branch graft elements.
+   */
+  def branchGraft: Parser[BranchGraft] = positioned(
+      (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
+      name("task","""\[""".r) ~
+      (literal("[")~>rep1sep(branchGraftElement,literal(","))<~literal("]")) ^^ {
+        case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
+          new BranchGraft(variable,task,seq)
+      } 
   )
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {

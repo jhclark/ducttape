@@ -23,6 +23,19 @@ object AbstractSyntaxTree {
     override def toString = "$%s".format(value)
   }
   
+  /** Pair containing a branch point name and a branch name. */
+  class BranchGraftElement(branchPointName:String,branchName:String) extends ASTType {
+    override def toString = "%s:%s".format(branchPointName,branchName)
+  }
+  
+  /** Type of a branch graft in the right-hand side context of an assignment. */
+  case class BranchGraft(variableName:String,
+                    taskName:String,
+                    branchGraftElements:Seq[BranchGraftElement]) extends RValue {
+    override def toString = 
+      "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
+  }
+  
   /** Ducttape file. */
   class Tape(val tasks: Seq[Block]) extends ASTType {
     override def toString = tasks.mkString("\n\n")
