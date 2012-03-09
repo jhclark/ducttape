@@ -12,7 +12,7 @@ object DemoParser extends Application {
   }
   
   {
-    val result: ParseResult[String] = parseAll(Grammar.quotedLiteral,"""'hi\tthere\nc:\\world'""")   
+    val result: ParseResult[String] = parseAll(Grammar.quotedLiteral,"""'hi\tthere\nc:\\\r\nworld'""")   
     println(result.get)    
   }
 }
