@@ -14,24 +14,32 @@ object AbstractSyntaxTree {
   abstract class RValue extends ASTType;
   
   /** Type of a literal string value in the right-hand side context of an assignment. */
-  case class Literal(value: String) extends RValue {
+  case class Literal(val value: String) extends RValue {
     override def toString = "Literal='%s'".format(value)
   }  
   
   /** Type of a variable reference in the right-hand side context of an assignment. */
-  case class VariableReference(value: String) extends RValue {
+  case class VariableReference(val value: String) extends RValue {
     override def toString = "$%s".format(value)
   }
+
+  /** Type of a variable reference in the right-hand side context of an assignment. */
+  case class SequentialBranchPoint(val branchPointName:String, 
+                                   val start:Int, 
+                                   val end:Int) extends RValue {
+    override def toString = "(%s: %d..%d".format(branchPointName,start,end)
+  }  
   
   /** Pair containing a branch point name and a branch name. */
-  class BranchGraftElement(branchPointName:String,branchName:String) extends ASTType {
+  class BranchGraftElement(val branchPointName:String, 
+                           val branchName:String) extends ASTType {
     override def toString = "%s:%s".format(branchPointName,branchName)
   }
   
   /** Type of a branch graft in the right-hand side context of an assignment. */
-  case class BranchGraft(variableName:String,
-                    taskName:String,
-                    branchGraftElements:Seq[BranchGraftElement]) extends RValue {
+  case class BranchGraft(val variableName:String,
+                         val taskName:String,
+                         val branchGraftElements:Seq[BranchGraftElement]) extends RValue {
     override def toString = 
       "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
   }
