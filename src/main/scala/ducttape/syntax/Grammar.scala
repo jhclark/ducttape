@@ -29,8 +29,12 @@ object Grammar {
    * If the unquoted literal is more than one character long,
    * any subsequent characters may be any character except whitespace.
    */
-  val unquotedLiteral : Parser[String] = {
-    regex("""[^"'\s]\S*""".r) | failure("An unquoted literal may not begin with whitespace or a quotation mark")
+  val unquotedLiteral : Parser[Literal] = {
+    ( regex("""[^"'\s]\S*""".r) | 
+      failure("An unquoted literal may not begin with whitespace or a quotation mark") 
+    ) ^^ {
+      case string:String => new Literal(string)
+    }
   }
 
   /**
@@ -53,11 +57,12 @@ object Grammar {
    * The quoted text may contain escaped sequences.
    * In the string returned by the parser, any such escaped sequences will be expanded.
    */
-  val quotedLiteral : Parser[String] = {
+  val quotedLiteral : Parser[Literal] = {
     ( regex(""""([^\\"]|\\.)*"""".r) | 
       regex("""'([^\\']|\\.)*'""".r) 
     ) ^^ {
-      case string:String => 
+      case string:String => {
+        val s = 
          // Remove initial and final quotation marks
          string.substring(1,string.length()-1)
          //     expand escaped form feed characters
@@ -69,7 +74,10 @@ object Grammar {
          //     expand escaped tab characters                
                .replace("""\t""","\t")
          //     expand escaped slash characters               
-               .replace("""\\""","\\")               
+               .replace("""\\""","\\")   
+               
+         new Literal(s)
+      }
     }  
   }
   
@@ -82,7 +90,7 @@ object Grammar {
    * @see quotedLiteral
    * @see unquotedLiteral
    */
-  val literalValue : Parser[String] = {
+  val literalValue : Parser[Literal] = {
     unquotedLiteral | quotedLiteral
   }
   
