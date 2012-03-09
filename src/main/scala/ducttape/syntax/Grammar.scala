@@ -166,9 +166,9 @@ object Grammar {
    * Reference to a variable, 
    * defined as a literal dollar sign ($) followed by a name.
    */
-  def variableReference: Parser[VariableReference] = positioned(
+  def variableReference: Parser[Variable] = positioned(
     literal("$")~>name("variable","""\s*""".r) ^^ {
-      case string:String => new VariableReference(string)
+      case string:String => new Variable(string)
     }
   )
   

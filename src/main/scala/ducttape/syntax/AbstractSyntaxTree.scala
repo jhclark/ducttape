@@ -27,7 +27,7 @@ object AbstractSyntaxTree {
   }  
   
   /** Type of a variable reference, in the right-hand side context of an assignment. */
-  case class VariableReference(val value: String) extends RValue {
+  case class Variable(val value: String) extends RValue {
     override def toString = "$%s".format(value)
   }
 

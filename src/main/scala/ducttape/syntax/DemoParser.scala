@@ -17,7 +17,7 @@ object DemoParser extends Application {
   }
 
   {
-    val result: ParseResult[VariableReference] = parseAll(Grammar.variableReference,"""$abc""")   
+    val result: ParseResult[Variable] = parseAll(Grammar.variableReference,"""$abc""")   
     println(result.get)
   }
 
