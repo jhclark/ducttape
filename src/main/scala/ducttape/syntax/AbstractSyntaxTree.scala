@@ -13,6 +13,14 @@ object AbstractSyntaxTree {
   /** Type of the right hand side in an assignment. */
   abstract class RValue extends ASTType;
   
+  /** Unbound is the right hand side type in an underspecified variable declaration.
+   *  
+   *  Conceptually, Unbound can be thought of as the None case if one were to define Option[+RValue].  
+   */
+  case class Unbound() extends RValue {
+    override def toString = ""
+  }
+  
   /** Type of a literal string value, in the right-hand side context of an assignment. */
   case class Literal(val value: String) extends RValue {
     override def toString = "Literal='%s'".format(value)
