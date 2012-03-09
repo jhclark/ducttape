@@ -29,8 +29,9 @@ object AbstractSyntaxTree {
    */
   case class SequentialBranchPoint(val branchPointName:String, 
                                    val start:BigDecimal, 
-                                   val end:BigDecimal) extends RValue {
-    override def toString = "(%s: %d..%d".format(branchPointName,start,end)
+                                   val end:BigDecimal,
+                                   val increment:BigDecimal) extends RValue {
+    override def toString = "(%s: %d..%d..%d".format(branchPointName,start,end,increment)
   }  
   
   /** Pair containing a branch point name and a branch name. */

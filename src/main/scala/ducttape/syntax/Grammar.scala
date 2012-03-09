@@ -220,12 +220,22 @@ object Grammar {
   )
   
   def sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
-      ( regex("""\(\s*""".r) ~>
+      ( regex("""\(\s*""".r) ~> (
           (branchPointName<~regex("""\s*""".r)) ~
-          (number<~literal("..")) ~ (number<~regex("""\s*\)""".r))
+          (number<~literal("..")) ~ 
+          (number) ~
+          opt(literal("..")~>number)) <~
+        regex("""\s*\)""".r)
       ) ^^ {
-        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)) =>
-          new SequentialBranchPoint(bpName,start,end)
+        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
+          new SequentialBranchPoint(bpName,start,end,increment)
+        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
+          new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
+        
+//          new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
+//          
+//        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(increment:BigDecimal)) =>
+//          new SequentialBranchPoint(bpName,start,end,increment)
       }
   )
   
