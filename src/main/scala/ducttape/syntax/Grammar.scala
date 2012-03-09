@@ -134,6 +134,15 @@ object Grammar {
     name("branch point",whatComesNext) <~ regex(whatComesNext)
   }
   
+  /**
+   * Reference to a variable, 
+   * defined as a literal dollar sign ($) followed by a name.
+   */
+  def variableReference: Parser[VariableReference] = positioned(
+    literal("$")~>name("variable","""\s*""".r) ^^ {
+      case string:String => new VariableReference(string)
+    }
+  )
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)
