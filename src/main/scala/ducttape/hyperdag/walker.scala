@@ -52,10 +52,14 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
               try {
                 f(a)
               } catch {
-                case _ => success = false
+                case t: Throwable => {
+                  success = false
+                  throw t
+                }
               } finally {
                 // mark as complete, but don't run any dependencies
                 // TODO: Keep a list of tasks that failed?
+                //System.err.println("UNSUCCESSFUL, NOT CONTINUING: " + a)
                 complete(a, continue=success)
               }
             }

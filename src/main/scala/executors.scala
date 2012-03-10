@@ -33,7 +33,7 @@ object CompletionChecker {
     val conditions: Seq[(() => Boolean, String)] = (
       Seq(( () => taskEnv.where.exists, "No previous output"),
           ( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
-          ( () => io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0", "Non-zero exit code"),
+          ( () => try { io.Source.fromFile(taskEnv.exitCodeFile).getLines.next.trim == "0" } catch { case _ => false}, "Non-zero exit code"),
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
       taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f))} ++
@@ -97,6 +97,7 @@ class CompletionChecker(conf: Config,
   def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
   override def visit(task: RealTask) {
+    System.err.println("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
     if(taskEnv.where.exists) {
       _foundVersions += (task.name, task.realization) -> task.version

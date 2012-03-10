@@ -153,6 +153,7 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
       
     var result = getNext
     while(result != None && !vertexFilter(result.get)) {
+      //System.err.println("MEAT Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
       result = getNext
     }

@@ -184,6 +184,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     
     var result = getNext
     while(result != None && !vertexFilter(result.get)) {
+      //System.err.println("U Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
       result = getNext
     }

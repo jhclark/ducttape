@@ -294,6 +294,7 @@ object Ducttape {
     }
       
     err.println("Checking for completed steps...")
+    err.println("Planned: " + plannedVertices)
     // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
     val (cc: CompletionChecker, versions: ExecutionVersioner) = {
       val cc = new CompletionChecker(conf, dirs, initVersioner)
