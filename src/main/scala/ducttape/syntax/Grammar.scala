@@ -27,7 +27,9 @@ object Grammar {
   val number: Parser[BigDecimal] = 
     ( // Recognize a number with at least one digit left of the decimal
       // and optionally, one or more digits to the right of the decimal
-      regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  
+      regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  |
+      // Do NOT recognize a number with no digits left of the decimal
+      (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!failure("A number must have at least one digit left of the decimal point.") )
     ) ^^ {
     case s:String => new BigDecimal(s)
   }
