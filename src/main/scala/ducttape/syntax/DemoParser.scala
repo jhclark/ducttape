@@ -9,8 +9,8 @@ object DemoParser extends Application {
   def print(r:ParseResult[_]) = {
     r match {
       case success:Success[_] => println(success.get)
-      case failure:Failure          => println(failure.msg)
-      case error:Error              => println(error.msg)
+      case failure:Failure    => println(failure.msg)
+      case error:Error        => println(error.msg)
     }
   }
 
