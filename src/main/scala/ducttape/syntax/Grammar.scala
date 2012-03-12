@@ -138,7 +138,7 @@ object Grammar {
    *  The name must conform to Bash variable name requirements: 
    *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
    */
-  def taskName: Parser[String] = {
+  val taskName: Parser[String] = {
     ( // Fail if we have opening and closing brackets, but no task name
       (regex("""\[\s*\]""".r)~!err("Missing task name. Task name must be enclosed in square brackets.")) |
       // Fail if we have whitespace following opening bracket
@@ -161,7 +161,7 @@ object Grammar {
    * <p>
    * Whitespace may optionally separate the name and the colon.
    */
-  def branchPointName: Parser[String] = {
+  val branchPointName: Parser[String] = {
     val whatComesNext = """\s*:""".r
     name("branch point",whatComesNext) <~ (regex(whatComesNext) | err("Missing colon after branch point name"))
   }
@@ -170,7 +170,7 @@ object Grammar {
    * Reference to a variable, 
    * defined as a literal dollar sign ($) followed by a name.
    */
-  def variableReference: Parser[Variable] = positioned(
+  val variableReference: Parser[Variable] = positioned(
     literal("$")~>(name("variable","""\s*""".r)|error("Missing variable name")) ^^ {
       case string:String => new Variable(string)
     }
@@ -180,7 +180,7 @@ object Grammar {
    * Reference to a variable attached to a specific task, 
    * defined as a literal dollar sign ($) followed by a name.
    */
-  def taskVariableReference: Parser[TaskVariable] = positioned(
+  val taskVariableReference: Parser[TaskVariable] = positioned(
     literal("$")~>name("variable","""\s*""".r)~(literal("@")~>name("task name","""\s*""".r)) ^^ {
       case (string:String) ~ (taskName:String) => new TaskVariable(taskName,string)
     }
@@ -189,7 +189,7 @@ object Grammar {
   /**
    * Reference to a branch name or a branch glob (*)
    */
-  def branchReference: Parser[String] = {
+  val branchReference: Parser[String] = {
     literal("*") | name("branch reference","""[\]\s,]""".r)
   }
   
@@ -198,7 +198,7 @@ object Grammar {
    * representing a branch point name 
    * and an associated branch reference.
    */
-  def branchGraftElement: Parser[BranchGraftElement] = positioned(
+  val branchGraftElement: Parser[BranchGraftElement] = positioned(
       branchPointName~branchReference ^^ {
         case ((a:String) ~ (b:String)) => new BranchGraftElement(a,b)
       }
@@ -208,7 +208,7 @@ object Grammar {
    * Branch graft, representing a variable name, 
    * a task name, and a list of branch graft elements.
    */
-  def branchGraft: Parser[BranchGraft] = positioned(
+  val branchGraft: Parser[BranchGraft] = positioned(
       (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
       name("task","""\[""".r) ~
       (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
@@ -217,7 +217,7 @@ object Grammar {
       } 
   )
   
-  def sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
+  val sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
       ( regex("""\(\s*""".r) ~> (
           (branchPointName<~regex("""\s*""".r)) ~
           (number<~literal("..")) ~ 
@@ -232,7 +232,7 @@ object Grammar {
       }
   )
   
-  def rvalue : Parser[RValue] = {
+  val rvalue : Parser[RValue] = {
     sequentialBranchPoint |
     branchGraft           |
     taskVariableReference |
@@ -241,11 +241,20 @@ object Grammar {
     (regex("""(\s*\z)|\s+""".r)~>err("An rvalue may not be empty"))
   }
   
-  def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
+  /** Variable declaration */
+  val assignment: Parser[Spec] = positioned(
+      name("variable","""[=\s]|\z""".r) ~ opt("=" ~! rvalue) ^^ {
+    case variableName ~ Some(e ~ value) => new Spec(variableName, value)
+    case variableName ~ None => new Spec(variableName, Unbound())
+  })
+    
+  //def branchPoint : Parser
+  
+  val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)
   })
   
-  def tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
+  val tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
     case sequence => new Tape(sequence)
   })
 
