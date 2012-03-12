@@ -17,7 +17,6 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
   def failureCases = Set(
     "",
     " ",
-    "$variableName@taskName[",
     "$A_variable_Name__",
     "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "$abc",
@@ -43,6 +42,7 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
   ) 
   
   def errorCases = Set(
+    "$variableName@taskName[",      
     "$A-variable_Name__",
     "$ "    
   )

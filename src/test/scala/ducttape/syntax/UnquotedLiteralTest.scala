@@ -14,11 +14,11 @@ class UnquotedLiteralTest extends AbstractTest("unquoted literal",Grammar.unquot
   ) 
   
   def failureCases = Set(
-    "\"This is a quoted string\"",
-    " "
   ) 
   
   def errorCases = Set(
+    "\"This is a quoted string\"",
+    " "      
   )
   
 }

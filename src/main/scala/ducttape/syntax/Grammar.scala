@@ -29,7 +29,7 @@ object Grammar {
       // and optionally, one or more digits to the right of the decimal
       regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  |
       // Do NOT recognize a number with no digits left of the decimal
-      (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!failure("A number must have at least one digit left of the decimal point.") )
+      (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!err("A number must have at least one digit left of the decimal point.") )
     ) ^^ {
     case s:String => new BigDecimal(s)
   }
@@ -45,7 +45,7 @@ object Grammar {
    */
   val unquotedLiteral : Parser[Literal] = {
     ( regex("""[^"'\s]\S*""".r) | 
-      failure("An unquoted literal may not begin with whitespace or a quotation mark") 
+      (regex("""["'\s]""".r)~!err("An unquoted literal may not begin with whitespace or a quotation mark")) 
     ) ^^ {
       case string:String => new Literal(string)
     }
@@ -105,7 +105,7 @@ object Grammar {
    * @see unquotedLiteral
    */
   val literalValue : Parser[Literal] = {
-    unquotedLiteral | quotedLiteral
+    quotedLiteral | unquotedLiteral 
   }
   
   /**
@@ -171,10 +171,20 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   def variableReference: Parser[Variable] = positioned(
-    literal("$")~>name("variable","""\s*""".r) ^^ {
+    literal("$")~>(name("variable","""\s*""".r)|error("Missing variable name")) ^^ {
       case string:String => new Variable(string)
     }
   )
+
+  /**
+   * Reference to a variable attached to a specific task, 
+   * defined as a literal dollar sign ($) followed by a name.
+   */
+  def taskVariableReference: Parser[TaskVariable] = positioned(
+    literal("$")~>name("variable","""\s*""".r)~(literal("@")~>name("task name","""\s*""".r)) ^^ {
+      case (string:String) ~ (taskName:String) => new TaskVariable(taskName,string)
+    }
+  )  
   
   /**
    * Reference to a branch name or a branch glob (*)
@@ -201,7 +211,7 @@ object Grammar {
   def branchGraft: Parser[BranchGraft] = positioned(
       (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
       name("task","""\[""".r) ~
-      (literal("[")~>rep1sep(branchGraftElement,literal(","))<~literal("]")) ^^ {
+      (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
         case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
       } 
@@ -222,6 +232,14 @@ object Grammar {
       }
   )
   
+  def rvalue : Parser[RValue] = {
+    sequentialBranchPoint |
+    branchGraft           |
+    taskVariableReference |
+    variableReference     |
+    literalValue          |
+    (regex("""(\s*\z)|\s+""".r)~>err("An rvalue may not be empty"))
+  }
   
   def taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)

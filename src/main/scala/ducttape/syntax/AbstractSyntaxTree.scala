@@ -31,6 +31,12 @@ object AbstractSyntaxTree {
     override def toString = "$%s".format(value)
   }
 
+  /** Type of a variable reference attached to a specific task, 
+   * in the right-hand side context of an assignment. */
+  case class TaskVariable(val taskName:String, val value: String) extends RValue {
+    override def toString = "$%s@%s".format(value,taskName)
+  }  
+  
   /** 
    * Type of a branch point that defines a sequence, 
    * in the right-hand side context of an assignment. 
