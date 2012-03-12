@@ -14,6 +14,7 @@ class UnquotedLiteralTest extends AbstractTest("unquoted literal",Grammar.unquot
   ) 
   
   def failureCases = Set(
+      "Ends_with_paren)"
   ) 
   
   def errorCases = Set(

@@ -44,7 +44,7 @@ object Grammar {
    * any subsequent characters may be any character except whitespace.
    */
   val unquotedLiteral : Parser[Literal] = {
-    ( regex("""[^"'\s]\S*""".r) | 
+    ( regex("""[^"'\s]\S*""".r)<~(literal(")")~err("An unquoted literal may not end with a closing parenthesis")) | 
       (regex("""["'\s]""".r)~!err("An unquoted literal may not begin with whitespace or a quotation mark")) 
     ) ^^ {
       case string:String => new Literal(string)
@@ -241,15 +241,20 @@ object Grammar {
     (regex("""(\s*\z)|\s+""".r)~>err("An rvalue may not be empty"))
   }
 
-  /** Input variable declaration. */
-  val inputAssignment: Parser[Spec] = positioned(
-      ( (name("input variable","""[=\s]|\z""".r) <~ "=") ~ 
+
+  def basicAssignment(variableType:String): Parser[Spec] = positioned(
+      ( (name(variableType + " variable","""[=\s]|\z""".r) <~ "=") ~ 
         (rvalue | err("Error in input variable assignment"))
       ) ^^ {
         case (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
       }      
   )
 
+  val branchAssignment = basicAssignment("branch")
+
+  /** Input variable declaration. */  
+  val inputAssignment = basicAssignment("input")
+  
   /** Output variable declaration. */
   val outputAssignment: Parser[Spec] = positioned(
       ( name("output variable","""[=\s]|\z""".r) ~ 
@@ -271,6 +276,8 @@ object Grammar {
   )
   
   
+  val taskVariableAssignments = repsep((taskInputs | taskOutputs | taskParams),space)
+  
   /**
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
@@ -281,7 +288,7 @@ object Grammar {
   }
 
   /**
-   * Sequence of <code>assignment</code>s representing input files.
+   * Sequence of <code>assignment</code>s representing output files.
    * This sequence must be preceded by ">".
    *
    */
@@ -291,7 +298,7 @@ object Grammar {
   }
 
   /**
-   * Sequence of <code>assignment</code>s representing input files.
+   * Sequence of <code>assignment</code>s representing parameter values.
    * This sequence must be preceded by "::".
    */
   def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
@@ -299,7 +306,16 @@ object Grammar {
     case None => List.empty
   }  
   
-  //def branchPoint : Parser
+  /** Branch point declaration. */
+  def branchPoint : Parser[BranchPointDef] = positioned(
+    ((literal("(")~opt(space))~>
+      (name("branch point name",""":""".r)<~(literal(":")~opt(space)))~
+      rep1sep(branchAssignment,space)<~
+      (opt(space)~literal(")"))
+    ) ^^ {
+      case branchPointName ~ seq => new BranchPointDef(branchPointName,seq)
+    }
+  )
   
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)

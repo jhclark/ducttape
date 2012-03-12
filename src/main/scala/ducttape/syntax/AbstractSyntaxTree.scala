@@ -79,6 +79,12 @@ object AbstractSyntaxTree {
     override def toString = tasks.mkString("\n\n")
   }
   
+
+  /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
+  case class BranchPointDef(val name: String, val specs: Seq[Spec]) extends RValue {
+    override def toString = "(%s: %s)".format(name, specs.mkString(" "))
+  }  
+  
   /** Defines a block of ducttape code, such as a task definition. */
   class Block extends ASTType
   
