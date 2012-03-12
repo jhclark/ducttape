@@ -44,8 +44,9 @@ object Grammar {
    * any subsequent characters may be any character except whitespace.
    */
   val unquotedLiteral : Parser[Literal] = {
-    ( regex("""[^"'\s]\S*""".r)<~(literal(")")~err("An unquoted literal may not end with a closing parenthesis")) | 
-      (regex("""["'\s]""".r)~!err("An unquoted literal may not begin with whitespace or a quotation mark")) 
+    ( (regex("""[^"'\s]\S*\)""".r)<~(failure("An unquoted literal may not end with a closing parenthesis"))) |        
+      (regex("""["'\s]""".r)~!err("An unquoted literal may not begin with whitespace or a quotation mark"))         |
+      regex("""[^"'\s][^\s)]*""".r)
     ) ^^ {
       case string:String => new Literal(string)
     }
