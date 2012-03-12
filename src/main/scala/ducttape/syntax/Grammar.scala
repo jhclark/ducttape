@@ -240,14 +240,65 @@ object Grammar {
     literalValue          |
     (regex("""(\s*\z)|\s+""".r)~>err("An rvalue may not be empty"))
   }
-  
-  /** Variable declaration */
-  val assignment: Parser[Spec] = positioned(
-      name("variable","""[=\s]|\z""".r) ~ opt("=" ~! rvalue) ^^ {
-    case variableName ~ Some(e ~ value) => new Spec(variableName, value)
-    case variableName ~ None => new Spec(variableName, Unbound())
-  })
+
+  /** Input variable declaration. */
+  val inputAssignment: Parser[Spec] = positioned(
+      ( (name("input variable","""[=\s]|\z""".r) <~ "=") ~ 
+        (rvalue | err("Error in input variable assignment"))
+      ) ^^ {
+        case (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
+      }      
+  )
+
+  /** Output variable declaration. */
+  val outputAssignment: Parser[Spec] = positioned(
+      ( name("output variable","""[=\s]|\z""".r) ~ 
+        opt("=" ~> (rvalue | err("Error in output variable assignment")))
+      ) ^^ {
+        case (variableName:String) ~ Some(rhs:RValue) => new Spec(variableName,rhs,false)
+        case (variableName:String) ~ None             => new Spec(variableName,Unbound(),false)
+      }      
+  )
     
+  /** Parameter variable declaration. */
+  val paramAssignment: Parser[Spec] = positioned(
+      ( opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r) <~ "=") ~ 
+        (rvalue | err("Error in parameter variable assignment"))
+      ) ^^ {
+        case Some(_:String) ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,true)
+        case None           ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
+      }      
+  )
+  
+  
+  /**
+   * Sequence of <code>assignment</code>s representing input files.
+   * This sequence must be preceded by "<".
+   */
+  def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(inputAssignment, space)) ^^ {
+    case Some(list) => list
+    case None => List.empty
+  }
+
+  /**
+   * Sequence of <code>assignment</code>s representing input files.
+   * This sequence must be preceded by ">".
+   *
+   */
+  def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(outputAssignment, space)) ^^ {
+    case Some(list) => list
+    case None => List.empty
+  }
+
+  /**
+   * Sequence of <code>assignment</code>s representing input files.
+   * This sequence must be preceded by "::".
+   */
+  def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
+    case Some(params) => params
+    case None => List.empty
+  }  
+  
   //def branchPoint : Parser
   
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
