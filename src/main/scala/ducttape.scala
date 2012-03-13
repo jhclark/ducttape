@@ -303,7 +303,7 @@ object Ducttape {
     }
 
     def list {
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)
         println("%s %s".format(task.name, task.realization))
@@ -323,9 +323,10 @@ object Ducttape {
       val goalTaskName = opts.taskName.get
       val goalRealName = opts.realNames.head
 
+      // TODO: Dont' apply plan filter?
       // TODO: Apply filters so that we do much less work to get here
       var matchingTasks: Iterable[UnpackedWorkVert] = {
-        workflow.unpackedWalker().iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
+        workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
       }.toIterable
       err.println("Found %d vertices with matching task name".format(matchingTasks.size))
       var matchingReals: Iterable[RealTask] = {
@@ -361,7 +362,7 @@ object Ducttape {
       val goalRealNames = opts.realNames.toSet
 
       // TODO: Apply filters so that we do much less work to get here
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v, initVersioner)
@@ -437,7 +438,7 @@ object Ducttape {
     def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker().iterator) {
+      for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, initVersioner)
         if(taskT.name == taskToKill) {
@@ -475,6 +476,7 @@ object Ducttape {
       extantVictims
     }
 
+    // TODO: Don't apply plan filtering to invalidation? More generally, we should let the user choose baseline-only, baseline-one-offs, cross product, or plan
     def invalidate {
       if(opts.taskName == None) {
         err.println("ERROR: invalidate requires a taskName")
