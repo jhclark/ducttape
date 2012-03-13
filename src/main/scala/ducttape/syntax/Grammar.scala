@@ -124,6 +124,16 @@ object Grammar {
     }  
   }
   
+  val tripleQuotedLiteral : Parser[Literal] = {
+    ( ( // A valid triple-quoted string
+        regex("""["]["]["][^"]*["]["]["]""".r) |
+        // Or, if missing closing quote, an error
+        regex("""["]["]["][^"]*["]?["]?""".r)~err("Missing closing triple quotation marks")
+      ) <~ (regex("$".r)|guard(regex("""[\s)]""".r))|err("A quoted literal may not continue after the closing quotation mark"))
+    ) ^^ {
+      case string:String => new Literal(string.substring(3,string.length()-3))
+    }
+  }
     
   /**
    * Parser for a literal value.

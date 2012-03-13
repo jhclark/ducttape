@@ -35,4 +35,9 @@ object DemoParser extends Application {
     print(result)
   }  
   
+  {
+    val result: ParseResult[Literal] = parseAll(Grammar.tripleQuotedLiteral,"\"\"\"" + "This has line breaks in\nit!" + "\"\"\"")   
+    print(result)
+  }  
+  
 }
