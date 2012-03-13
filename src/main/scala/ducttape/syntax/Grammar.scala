@@ -88,8 +88,16 @@ object Grammar {
                .replace("""\r""","\r")
          //     expand escaped tab characters                
                .replace("""\t""","\t")
+         //     expand escaped backspace characters
+                .replace("""\b""","\b")
+         //     expand escaped single quote characters                
+               .replace("""\'""","'")
+         //     expand escaped double quote characters                
+               .replace("""\"""","\"")               
          //     expand escaped slash characters               
-               .replace("""\\""","\\")   
+               .replace("""\\""","\\")             
+         //TODO expand escaped unicode escapes 
+         //     .replaceAll("\\\\u([0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f])","$1")
                
          new Literal(s)
       }
@@ -251,7 +259,7 @@ object Grammar {
       }      
   )
 
-  val branchAssignment = basicAssignment("branch")
+  val branchAssignment = basicAssignment("branch") //| literalValue
 
   /** Input variable declaration. */  
   val inputAssignment = basicAssignment("input")
