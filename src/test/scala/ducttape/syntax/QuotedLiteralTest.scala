@@ -22,14 +22,14 @@ class QuotedLiteralTest extends AbstractTest("quoted literal",Grammar.quotedLite
     "A_variable_Name__",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "/path/to/something/cool",
-    " ",
-    """"This is a badly quoted string\"""",
-    """"This one is, too"it seems"""",
-    """'Starting with a single and ending with a double"""",
-    """"Starting with a double and ending with a single'"""
+    " "
   ) 
   
   def errorCases = Set(
+    """"This is a badly quoted string\"""",
+    """'Starting with a single and ending with a double"""",
+    """"Starting with a double and ending with a single'""",      
+    """"This one is, too"it seems""""   
   )
   
 }

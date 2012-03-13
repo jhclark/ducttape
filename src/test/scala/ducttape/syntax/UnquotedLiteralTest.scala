@@ -14,12 +14,24 @@ class UnquotedLiteralTest extends AbstractTest("unquoted literal",Grammar.unquot
   ) 
   
   def failureCases = Set(
-      "Ends_with_paren)"
+      " ",      
+      "Ends_with_paren)",
+      ")",
+      " starts_with_space",
+      "contains spaces",
+      "\"This is a quoted string\""
   ) 
   
-  def errorCases = Set(
-    "\"This is a quoted string\"",
-    " "      
+  def errorCases = Set( 
+      "(",
+      "[",
+      "]",
+      "*",
+      ":",
+       "$",
+      "@","@*(","foo*","bar@baz"
+    
+   
   )
   
 }

@@ -17,6 +17,7 @@ abstract class AbstractTest(val description:String, val parser:Parser[Any]) exte
   
   def errorCases : Set[String]
   
+  def exceptionCases : Set[String] = Set()
   
   "Parsing "+description should {
     
@@ -35,16 +36,26 @@ abstract class AbstractTest(val description:String, val parser:Parser[Any]) exte
     }       
     
     for (value <- errorCases) {   
-      "fail for \""+value+"\"" in {
+      "error for \""+value+"\"" in {
+//        try {
+          val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
+          Tests.verifyError(this,result)
+//        } catch {
+//         case e:Exception => ()
+//        }
+      }
+    }    
+    
+        for (value <- exceptionCases) {   
+      "error for \""+value+"\"" in {
         try {
           val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
           Tests.verifyError(this,result)
         } catch {
-          case e:Exception => ()
+         case e:Exception => ()
         }
       }
-    }    
-    
+    }  
   }
   
 }

@@ -41,9 +41,7 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     "A_variable_Name__",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "/path/to/something/cool",
-    "abc",
-    "A_variable_Name__:",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
+    "abc",    
     "A-variable_Name__",
     "A_variable_Name__",
     
@@ -57,19 +55,21 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
   
   def failureCases = Set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :" 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :"
   ) 
   
   def errorCases = Set(
-    "",      
-    " ",      
+    "$variableName@taskName[",
+    "$A-variable_Name__",
+    "$",
+    "A_variable_Name__:",      
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
     """"Starting with a double and ending with a single'""",    
-    "$variableName@taskName[",
-    "$A-variable_Name__",
-    "$"
+    " ",
+    ""    
   )
   
 }

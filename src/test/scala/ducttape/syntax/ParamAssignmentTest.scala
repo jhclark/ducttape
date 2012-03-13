@@ -44,8 +44,8 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
     "a=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "dee=/path/to/something/cool",
     "doo=abc",
-    "dah=A_variable_Name__:",
-    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
+    "dah=A_variable_Name__",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "a=A-variable_Name__",
     "dee=A_variable_Name__",
     
@@ -92,8 +92,8 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
     ".a=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     ".dee=/path/to/something/cool",
     ".doo=abc",
-    ".dah=A_variable_Name__:",
-    ".zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
+    ".dah=A_variable_Name__",
+    ".zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     ".a=A-variable_Name__",
     ".dee=A_variable_Name__",
     
@@ -107,12 +107,17 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
   ) 
   
   def failureCases = Set(
+    "", 
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :" 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
+    "a",
+    "b_1",
+    "_z"      
   ) 
   
   def errorCases = Set(
-    "",      
+    "daz=A_variable_Name__:",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",     
     " ",      
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
@@ -120,10 +125,8 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
     """"Starting with a double and ending with a single'""",    
     "$variableName@taskName[",
     "$A-variable_Name__",
-    "$",
-    "a",
-    "b_1",
-    "_z"    
+    "$"
+  
   )
   
 }

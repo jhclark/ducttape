@@ -54,7 +54,10 @@ class NumberTest extends AbstractTest("number",Grammar.number) {
   def errorCases = Set(
     ".05",
     "-.9",
-    "+.8",      
+    "+.8"
+    )
+    
+   override def exceptionCases = Set( 
     "10e-2147483648",
     "10e2147483648",
     "123456789012345678901234567890123456789012345678901234567890e123456789012345678901234567890123456789012345678901234567890"

@@ -25,14 +25,27 @@ object Grammar {
   
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
-    ( // Recognize a number with at least one digit left of the decimal
-      // and optionally, one or more digits to the right of the decimal
-      regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  |
-      // Do NOT recognize a number with no digits left of the decimal
-      (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!err("A number must have at least one digit left of the decimal point.") )
-    ) ^^ {
-    case s:String => new BigDecimal(s)
-  }
+//    try {
+      ( // Recognize a number with at least one digit left of the decimal
+          // and optionally, one or more digits to the right of the decimal
+          regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  |
+          // Do NOT recognize a number with no digits left of the decimal
+          (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!err("A number must have at least one digit left of the decimal point.") )
+      ) ^^ 
+//      ((x:java.io.Serializable)=>
+//        try {new BigDecimal(1.0) 
+//        
+//        }
+//        catch {
+//          case e:Exception => ()
+//        }
+//      )
+          {case s:String => new BigDecimal(s)}
+      
+//    } catch { 
+//    case e:java.lang.NumberFormatException => err("Malformed number")
+//    }
+  
   
   /**
    * Parser for a literal value that is not wrapped in quotes.
@@ -44,9 +57,26 @@ object Grammar {
    * any subsequent characters may be any character except whitespace.
    */
   val unquotedLiteral : Parser[Literal] = {
-    ( (regex("""[^"'\s]\S*\)""".r)<~(failure("An unquoted literal may not end with a closing parenthesis"))) |        
-      (regex("""["'\s]""".r)~!err("An unquoted literal may not begin with whitespace or a quotation mark"))         |
-      regex("""[^"'\s][^\s)]*""".r)
+    ( 
+      // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
+      (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace")) |
+      (regex("""[^"\s]*["]""".r)~err("An unquoted literal may not contain a double quotation mark")) |
+      (regex("""[^'\s]*[']""".r)~err("An unquoted literal may not contain a single quotation mark")) |      
+      (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
+      // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
+      (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |  
+      (regex("""[^\[\s]*[\[]""".r)~err("An unquoted literal may not contain an opening square bracket")) |      
+      (regex("""[^\]\s]*[\]]""".r)~err("An unquoted literal may not contain a closing square bracket")) |  
+      (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol")) |      
+      (regex("""[^:\s]*:""".r)~err("An unquoted literal may not contain a colon")) |      
+      (regex("""[^\*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
+      (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
+//      (regex("""[^"'\s]\S*\)""".r)<~(err("An unquoted literal may not end with a closing parenthesis"))) |        
+//      (regex("""["'\s]""".r)~err("An unquoted literal may not begin with whitespace or a quotation mark"))         |
+//        regex("""[^"')(\]\[\*:@=\s]*["')(\]\[\*:@=\s]""".r)~err("An unquoted literal may not contain whitespace, double quotation marks, single quotation marks, opening or closing parentheses, opening or closing square brackets, colons, @ symbols, or * symbols.") | 
+        regex("""[^"')(\]\[\*\$:@=\s]+""".r)
+//        <~ (regex("$".r)|err("Expected the string representing this unquoted literal to end, but it continued")) //| regex(""".*""".r) 
+//      success()~!err("An unquoted literal may not contain whitespace, double quotation marks, single quotation marks, opening or closing parentheses, opening or closing square brackets, colons, @ symbols, or * symbols.")
     ) ^^ {
       case string:String => new Literal(string)
     }
@@ -73,8 +103,15 @@ object Grammar {
    * In the string returned by the parser, any such escaped sequences will be expanded.
    */
   val quotedLiteral : Parser[Literal] = {
-    ( regex(""""([^\\"]|\\.)*"""".r) | 
-      regex("""'([^\\']|\\.)*'""".r) 
+    ( ( // A valid double-quoted string
+        regex(""""([^\\"]|\\.)*"""".r) |
+        // Or, if missing closing quote, an error
+        regex(""""([^\\"]|\\.)*""".r)~err("Missing closing quotation mark") |
+        // A valid single-quoted string
+        regex("""'([^\\']|\\.)*'""".r) |
+        // Or, if missing closing quote, an error
+        regex("""'([^\\']|\\.)*""".r)~err("Missing closing quotation mark") 
+      ) <~ (regex("$".r)|guard(regex("""[\s)]""".r))|err("A quoted literal may not continue after the closing quotation mark"))
     ) ^^ {
       case string:String => {
         val s = 
@@ -180,7 +217,7 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val variableReference: Parser[Variable] = positioned(
-    literal("$")~>(name("variable","""\s*""".r)|error("Missing variable name")) ^^ {
+    literal("$")~>(name("variable","""\s*""".r)|err("Missing variable name")) ^^ {
       case string:String => new Variable(string)
     }
   )
@@ -252,14 +289,30 @@ object Grammar {
 
 
   def basicAssignment(variableType:String): Parser[Spec] = positioned(
-      ( (name(variableType + " variable","""[=\s]|\z""".r) <~ "=") ~ 
-        (rvalue | err("Error in input variable assignment"))
+      ( ( // First, a variable name
+          name(variableType + " variable","""[=\s]|\z""".r) <~ 
+          ( // Next, the equals sign
+            literal("=") | 
+            // Or an error if the equals sign is missing
+            err(variableType + " variable assignment is missing equals sign and right-hand side")
+          )
+        ) ~
+        ( // Next, the right-hand side
+          rvalue | 
+          // Or an error
+          err("Error in input variable assignment")
+        )
       ) ^^ {
         case (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
       }      
   )
 
-  val branchAssignment = basicAssignment("branch") //| literalValue
+  val branchAssignment:Parser[Spec] = positioned(
+      (basicAssignment("branch") | err("Bad!") | rvalue) ^^ {
+        case assignment:Spec => assignment
+        case rhs:RValue      => new Spec(null,rhs,false)
+      }
+  )
 
   /** Input variable declaration. */  
   val inputAssignment = basicAssignment("input")
@@ -317,9 +370,16 @@ object Grammar {
   
   /** Branch point declaration. */
   def branchPoint : Parser[BranchPointDef] = positioned(
-    ((literal("(")~opt(space))~>
-      (name("branch point name",""":""".r)<~(literal(":")~opt(space)))~
+    ( // Must start with an opening parenthesis, then optionally whitespace
+      (literal("(")~opt(space))~>
+      (   // Then the branch point name
+          name("branch point name",""":""".r)<~
+          // Then the colon, and optionally whitespace
+          (literal(":")~opt(space))
+      )~
+      // Then the branch assignments or rvalues
       rep1sep(branchAssignment,space)<~
+      // Finally optional space, then the closing parenthesis
       (opt(space)~literal(")"))
     ) ^^ {
       case branchPointName ~ seq => new BranchPointDef(branchPointName,seq)

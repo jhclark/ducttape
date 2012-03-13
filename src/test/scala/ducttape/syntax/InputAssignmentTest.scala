@@ -42,8 +42,8 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
     "a=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "dee=/path/to/something/cool",
     "doo=abc",
-    "dah=A_variable_Name__:",
-    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
+    "dah=A_variable_Name__",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "a=A-variable_Name__",
     "dee=A_variable_Name__",
     
@@ -56,13 +56,14 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
   ) 
   
   def failureCases = Set(
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :" 
+      ""
   ) 
   
   def errorCases = Set(
-    "",      
-    " ",      
+          
+    " ",
+    "dah=A_variable_Name__:",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
@@ -73,7 +74,9 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
     "a",
     "b_1",
     "_z",
-
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
+    
 // Variables with dots
     
     // Sequential branch point
