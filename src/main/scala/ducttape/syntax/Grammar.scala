@@ -25,26 +25,14 @@ object Grammar {
   
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
-//    try {
       ( // Recognize a number with at least one digit left of the decimal
           // and optionally, one or more digits to the right of the decimal
           regex("""[+-]?\d+(\.\d+)?([eE][-+]?\d+)?""".r)  |
           // Do NOT recognize a number with no digits left of the decimal
           (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!err("A number must have at least one digit left of the decimal point.") )
-      ) ^^ 
-//      ((x:java.io.Serializable)=>
-//        try {new BigDecimal(1.0) 
-//        
-//        }
-//        catch {
-//          case e:Exception => ()
-//        }
-//      )
-          {case s:String => new BigDecimal(s)}
-      
-//    } catch { 
-//    case e:java.lang.NumberFormatException => err("Malformed number")
-//    }
+      ) ^^ {
+        case s:String => new BigDecimal(s)
+      }
   
   
   /**
@@ -71,12 +59,7 @@ object Grammar {
       (regex("""[^:\s]*:""".r)~err("An unquoted literal may not contain a colon")) |      
       (regex("""[^\*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
       (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
-//      (regex("""[^"'\s]\S*\)""".r)<~(err("An unquoted literal may not end with a closing parenthesis"))) |        
-//      (regex("""["'\s]""".r)~err("An unquoted literal may not begin with whitespace or a quotation mark"))         |
-//        regex("""[^"')(\]\[\*:@=\s]*["')(\]\[\*:@=\s]""".r)~err("An unquoted literal may not contain whitespace, double quotation marks, single quotation marks, opening or closing parentheses, opening or closing square brackets, colons, @ symbols, or * symbols.") | 
-        regex("""[^"')(\]\[\*\$:@=\s]+""".r)
-//        <~ (regex("$".r)|err("Expected the string representing this unquoted literal to end, but it continued")) //| regex(""".*""".r) 
-//      success()~!err("An unquoted literal may not contain whitespace, double quotation marks, single quotation marks, opening or closing parentheses, opening or closing square brackets, colons, @ symbols, or * symbols.")
+      regex("""[^"')(\]\[\*\$:@=\s]+""".r)
     ) ^^ {
       case string:String => new Literal(string)
     }
