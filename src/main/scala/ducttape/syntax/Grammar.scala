@@ -277,17 +277,39 @@ object Grammar {
   )
   
   val sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
-      ( regex("""\(\s*""".r) ~> (
-          ((name("branch point",""":""".r,failure(_),failure(_))<~literal(":"))<~regex("""\s*""".r)) ~
-          (number<~literal("..")) ~ 
-          (number) ~
-          opt(literal("..")~>number)) <~
-        regex("""\s*\)""".r)
+      ( // Must start with an opening parenthesis, then optionally whitespace
+        (literal("(")~opt(whitespace))~>
+        (  opt( // Then (optionally) the branch point name
+             name("branch point",""":""".r,failure(_),failure(_))<~
+             // and the colon
+             literal(":")
+           )<~
+           // Then optionally whitespace
+           opt(whitespace)
+        )~
+//          regex("""\(\s*""".r) ~> (
+//          ((name("branch point",""":""".r,failure(_),failure(_))<~literal(":"))<~regex("""\s*""".r)) ~
+          // First number then dots
+           (number<~literal("..")) ~
+           // Second number
+           (number)~
+        
+        // Optionally dots then third number
+        opt(literal("..")~>number)) <~
+        (opt(whitespace)~literal(")")
+//        regex("""\s*\)""".r)
       ) ^^ {
-        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
+//        case ((Some(bpName:String))~(start:BigDecimal)~(end:BigDecimal)~(Some(i:BigDecimal))) => 
+//          new SequentialBranchPoint(null,null,null,null)
+        case ((Some(bpName:String))~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
           new SequentialBranchPoint(bpName,start,end,increment)
-        case ((bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
+        case (None~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
+          new SequentialBranchPoint(null,start,end,increment)          
+        case (Some(bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
           new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
+        case (None~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
+          new SequentialBranchPoint(null,start,end,new BigDecimal("1"))
+
       }
   )
   

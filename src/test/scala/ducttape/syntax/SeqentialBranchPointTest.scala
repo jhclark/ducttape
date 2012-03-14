@@ -17,7 +17,19 @@ class SequentialBranchPointTest extends AbstractTest("sequential branch point",G
       """(branchPointName: 1..5.0..0.5)""",
       """(branchPointName: 1.0..5.0..2)""",
       """(branchPointName: 10e1..10e999..1)""",
-      """(branchPointName: 9.9e256..7.7e1024..5.4e3)"""      
+      """(branchPointName: 9.9e256..7.7e1024..5.4e3)""",
+      
+      // Anonymous sequential branch point
+      """(1..5)""",   
+      """(1..5.0)""",
+      """(1.0..5.0)""",
+      """(10e1..10e999)""",
+      """(9.9e256..7.7e1024)""",
+      """(1..6..2)""",   
+      """(1..5.0..0.5)""",
+      """(1.0..5.0..2)""",
+      """(10e1..10e999..1)""",
+      """(9.9e256..7.7e1024..5.4e3)"""      
   ) 
   
   def failureCases = Set(
