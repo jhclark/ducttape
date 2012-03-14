@@ -71,8 +71,16 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     "(a: a1=(b: f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",      
     "(a: a1=(b: c=$d@taskE) a2=5 a3=(k: 8..12) a4=7)",      
     "(a: a1=(b: c=$d@taskE f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",
-    "(a: a1=(b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)"    
-    
+    "(a: a1=(b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",    
+
+    // Anonymous branch point (no branch point name)
+    "(foo=bar)"
+//    "(a=1 b=2)",
+//    
+//    // Anonymous branch point with bare rvalues
+//    "(foo)",
+//    "(1 2)",
+//    "((k: 1..10) 7 42 (z:100..1000..100))"
   ) 
   
   def failureCases = Set(

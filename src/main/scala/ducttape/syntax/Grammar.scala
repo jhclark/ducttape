@@ -275,7 +275,7 @@ object Grammar {
   
   val sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
       ( regex("""\(\s*""".r) ~> (
-          (branchPointName<~regex("""\s*""".r)) ~
+          ((name("branch point",""":""".r,failure(_),failure(_))<~literal(":"))<~regex("""\s*""".r)) ~
           (number<~literal("..")) ~ 
           (number) ~
           opt(literal("..")~>number)) <~
@@ -388,17 +388,21 @@ object Grammar {
   def branchPoint : Parser[BranchPointDef] = positioned(
     ( // Must start with an opening parenthesis, then optionally whitespace
       (literal("(")~opt(space))~>
-      (   // Then the branch point name
-          name("branch point name",""":""".r)<~
-          // Then the colon, and optionally whitespace
-          (literal(":")~opt(space))
+      (  opt( // Then (optionally) the branch point name
+           name("branch point",""":""".r,failure(_),failure(_))<~
+           // and the colon
+           literal(":")
+         )<~
+         // Then optionally whitespace
+         opt(space)
       )~
       // Then the branch assignments or rvalues
       rep1sep(branchAssignment,space)<~
       // Finally optional space, then the closing parenthesis
       (opt(space)~literal(")"))
     ) ^^ {
-      case branchPointName ~ seq => new BranchPointDef(branchPointName,seq)
+      case Some(branchPointName) ~ seq => new BranchPointDef(branchPointName,seq)
+      case None                  ~ seq => new BranchPointDef(null,seq)
     }
   )
   
