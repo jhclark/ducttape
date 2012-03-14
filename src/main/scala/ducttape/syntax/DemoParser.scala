@@ -45,8 +45,24 @@ object DemoParser extends Application {
     print(result)
   }  
   
-    {
+  {
     val result: ParseResult[SequentialBranchPoint] = parseAll(Grammar.sequentialBranchPoint,"(a: 8..12)")   
     print(result)
   }  
+    
+  {
+    // Complex example with line breaks
+    val s:String =     
+    """(taskName:
+                 a=(1..20)
+                 b=(
+                   "The end of times"
+                   "Hello, world"
+                   "My goodness dear"
+                   )
+        )"""
+    val result: ParseResult[BranchPointDef] = parseAll(Grammar.branchPoint,s)   
+    print(result)
+  }
+    
 }

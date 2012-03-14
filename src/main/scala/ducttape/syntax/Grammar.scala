@@ -23,6 +23,9 @@ object Grammar {
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
   
+  /** One or more whitespace characters */
+  val whitespace: Parser[String] = regex("""\s+""".r)
+  
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
       ( // Recognize a number with at least one digit left of the decimal
@@ -288,6 +291,29 @@ object Grammar {
       }
   )
   
+  
+  /** Branch point declaration. */
+  val branchPoint : Parser[BranchPointDef] = positioned(
+    ( // Must start with an opening parenthesis, then optionally whitespace
+      (literal("(")~opt(whitespace))~>
+      (  opt( // Then (optionally) the branch point name
+           name("branch point",""":""".r,failure(_),failure(_))<~
+           // and the colon
+           literal(":")
+         )<~
+         // Then optionally whitespace
+         opt(whitespace)
+      )~
+      // Then the branch assignments or rvalues
+      rep1sep(branchAssignment,whitespace)<~
+      // Finally optional space, then the closing parenthesis
+      (opt(whitespace)~literal(")"))
+    ) ^^ {
+      case Some(branchPointName) ~ seq => new BranchPointDef(branchPointName,seq)
+      case None                  ~ seq => new BranchPointDef(null,seq)
+    }
+  )  
+  
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |
     branchPoint           |    
@@ -383,28 +409,7 @@ object Grammar {
     case Some(params) => params
     case None => List.empty
   }  
-  
-  /** Branch point declaration. */
-  def branchPoint : Parser[BranchPointDef] = positioned(
-    ( // Must start with an opening parenthesis, then optionally whitespace
-      (literal("(")~opt(space))~>
-      (  opt( // Then (optionally) the branch point name
-           name("branch point",""":""".r,failure(_),failure(_))<~
-           // and the colon
-           literal(":")
-         )<~
-         // Then optionally whitespace
-         opt(space)
-      )~
-      // Then the branch assignments or rvalues
-      rep1sep(branchAssignment,space)<~
-      // Finally optional space, then the closing parenthesis
-      (opt(space)~literal(")"))
-    ) ^^ {
-      case Some(branchPointName) ~ seq => new BranchPointDef(branchPointName,seq)
-      case None                  ~ seq => new BranchPointDef(null,seq)
-    }
-  )
+
   
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)
