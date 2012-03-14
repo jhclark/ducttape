@@ -155,9 +155,10 @@ object Grammar {
    * must be an upper-case letter, a lower-case letter, a numeric digit, or an underscore.
    * 
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
-   * @param howToFail Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  def name(title:String,whatCanComeNext:Regex): Parser[String] = name(title,whatCanComeNext,err(_))
+  def name(title:String,whatCanComeNext:Regex): Parser[String] = {
+    name(title,whatCanComeNext,err(_),err(_))
+  }
 
   /**
    * Parser for a name, defined as an ASCII alphanumeric identifier.
@@ -167,17 +168,20 @@ object Grammar {
    * must be an upper-case letter, a lower-case letter, a numeric digit, or an underscore.
    * 
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
-   * @param howToFail Function that defines error or failure behavior to follow when an illegal expression follows the name
+   * @param howToFailAtEnd Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  def name(title:String,whatCanComeNext:Regex,howToFail:(String)=>Parser[Nothing]): Parser[String] = {
+  def name(title:String,
+      whatCanComeNext:Regex,
+      howToFailAtStart:(String)=>Parser[Nothing],
+      howToFailAtEnd:(String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      regex("""[^A-Za-z_]""".r)<~err("Illegal character at start of " + title + " name")
+      regex("""[^A-Za-z_]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
       // Else if the name contains only legal characters and the input ends, then parse it
       | regex("""[A-Za-z_][A-Za-z0-9_]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFail("Illegal character in " + title + " name")
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
@@ -262,7 +266,7 @@ object Grammar {
    */
   val branchGraft: Parser[BranchGraft] = positioned(
       (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
-      name("reference to task","""\[""".r,failure(_)) ~
+      name("reference to task","""\[""".r,err(_),failure(_)) ~
       (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
         case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
@@ -290,18 +294,23 @@ object Grammar {
     branchGraft           |
     taskVariableReference |
     variableReference     |
+    // Order is important here. 
+    // Only try parsing as a literal if it's definitely not something else. 
     literalValue          |
     (regex("""(\s*\z)|\s+""".r)~>err("An rvalue may not be empty"))
   }
 
 
-  def basicAssignment(variableType:String): Parser[Spec] = positioned(
+  def basicAssignment(variableType:String,
+                      howToFailAtStart:(String)=>Parser[Nothing],
+                      howToFailAtEnd:(String)=>Parser[Nothing],
+                      howToFailAtEquals:(String)=>Parser[Nothing]): Parser[Spec] = positioned(
       ( ( // First, a variable name
-          name(variableType + " variable","""[=\s]|\z""".r) <~ 
+          name(variableType + " variable","""[=\s]|\z""".r,howToFailAtStart,howToFailAtEnd) <~ 
           ( // Next, the equals sign
             literal("=") | 
             // Or an error if the equals sign is missing
-            err(variableType + " variable assignment is missing equals sign and right-hand side")
+            howToFailAtEquals(variableType + " variable assignment is missing equals sign and right-hand side")
           )
         ) ~
         ( // Next, the right-hand side
@@ -315,14 +324,14 @@ object Grammar {
   )
 
   val branchAssignment:Parser[Spec] = positioned(
-      (basicAssignment("branch") | err("Bad!") | rvalue) ^^ {
+      (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
         case assignment:Spec => assignment
         case rhs:RValue      => new Spec(null,rhs,false)
       }
   )
 
   /** Input variable declaration. */  
-  val inputAssignment = basicAssignment("input")
+  val inputAssignment = basicAssignment("input",err(_),err(_),err(_))
   
   /** Output variable declaration. */
   val outputAssignment: Parser[Spec] = positioned(
