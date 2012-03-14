@@ -287,20 +287,25 @@ object Grammar {
            // Then optionally whitespace
            opt(whitespace)
         )~
-//          regex("""\(\s*""".r) ~> (
-//          ((name("branch point",""":""".r,failure(_),failure(_))<~literal(":"))<~regex("""\s*""".r)) ~
-          // First number then dots
-           (number<~literal("..")) ~
-           // Second number
-           (number)~
-        
-        // Optionally dots then third number
-        opt(literal("..")~>number)) <~
-        (opt(whitespace)~literal(")")
-//        regex("""\s*\)""".r)
+        ( // First number
+          number<~
+          // Then dots
+          literal("..")
+        ) ~
+        // Second number
+        (number)~
+        // Optionally
+        opt( // dots
+            literal("..")~>
+            // then third number
+            number)
+        ) <~
+        ( // Optionally whitespace
+            opt(whitespace)~
+            // Then closing parenthesis
+            literal(")"
+        )
       ) ^^ {
-//        case ((Some(bpName:String))~(start:BigDecimal)~(end:BigDecimal)~(Some(i:BigDecimal))) => 
-//          new SequentialBranchPoint(null,null,null,null)
         case ((Some(bpName:String))~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
           new SequentialBranchPoint(bpName,start,end,increment)
         case (None~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
@@ -328,8 +333,11 @@ object Grammar {
       )~
       // Then the branch assignments or rvalues
       rep1sep(branchAssignment,whitespace)<~
-      // Finally optional space, then the closing parenthesis
-      (opt(whitespace)~literal(")"))
+      ( // Optionally whitespace
+          opt(whitespace)~
+          // Then closing parenthesis
+          literal(")")
+      )
     ) ^^ {
       case Some(branchPointName) ~ seq => new BranchPointDef(branchPointName,seq)
       case None                  ~ seq => new BranchPointDef(null,seq)
