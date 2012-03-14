@@ -41,11 +41,16 @@ object AbstractSyntaxTree {
    * Type of a branch point that defines a sequence, 
    * in the right-hand side context of an assignment. 
    */
-  case class SequentialBranchPoint(val branchPointName:String, 
+  case class SequentialBranchPoint(val branchPointName:Option[String], 
                                    val start:BigDecimal, 
                                    val end:BigDecimal,
                                    val increment:BigDecimal) extends RValue {
-    override def toString = "(%s: %s..%s..%s)".format(branchPointName,start,end,increment)
+    override def toString = {
+        branchPointName match {
+          case Some(s) => "(%s: %s..%s..%s)".format(s,start,end,increment)
+          case None    => "(%s..%s..%s)".format(start,end,increment)
+        }
+    }
   }  
   
   /** Pair containing a branch point name and a branch name. */
@@ -81,8 +86,13 @@ object AbstractSyntaxTree {
   
 
   /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
-  case class BranchPointDef(val name: String, val specs: Seq[Spec]) extends RValue {
-    override def toString = "(%s: %s)".format(name, specs.mkString(" "))
+  case class BranchPointDef(val name: Option[String], val specs: Seq[Spec]) extends RValue {
+    override def toString = {
+      name match {
+        case Some(s) => "(%s: %s)".format(s, specs.mkString(" "))
+        case None    => "(%s)".format(specs.mkString(" "))
+      } 
+    }
   }  
   
   /** Defines a block of ducttape code, such as a task definition. */

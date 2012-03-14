@@ -306,15 +306,10 @@ object Grammar {
             literal(")"
         )
       ) ^^ {
-        case ((Some(bpName:String))~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
-          new SequentialBranchPoint(bpName,start,end,increment)
-        case (None~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
-          new SequentialBranchPoint(null,start,end,increment)          
-        case (Some(bpName:String)~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
+        case ((bpName:Option[String])~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
+          new SequentialBranchPoint(bpName,start,end,increment)      
+        case ((bpName:Option[String])~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
           new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
-        case (None~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
-          new SequentialBranchPoint(null,start,end,new BigDecimal("1"))
-
       }
   )
   
@@ -339,8 +334,7 @@ object Grammar {
           literal(")")
       )
     ) ^^ {
-      case Some(branchPointName) ~ seq => new BranchPointDef(branchPointName,seq)
-      case None                  ~ seq => new BranchPointDef(null,seq)
+      case branchPointName ~ seq => new BranchPointDef(branchPointName,seq)
     }
   )  
   
