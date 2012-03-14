@@ -52,7 +52,11 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
     """my='This one uses single quotes '""",
     """oh=' Escape\tsequences\nare\rallowed! '""",
     "my=\"Unicode sequences should be fine \u21AF too\"",
-    "what=\'Unicode sequences should be fine \u2231 too\'"    
+    "what=\'Unicode sequences should be fine \u2231 too\'",
+    
+    // Triple quoted literal
+    "foo=\"\"\"" + "This is a quoted string" + "\"\"\"",
+    "bar=\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
   ) 
   
   def failureCases = Set(

@@ -15,7 +15,9 @@ class LiteralValueTest extends AbstractTest("literal value",Grammar.literalValue
     "\'Unicode sequences should be fine \u2231 too\'",
     "A_variable_Name__",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
-    "/path/to/something/cool"
+    "/path/to/something/cool",
+    "\"\"\"" + "This is a quoted string" + "\"\"\"",
+    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
   ) 
   
   def failureCases = Set(
@@ -26,7 +28,13 @@ class LiteralValueTest extends AbstractTest("literal value",Grammar.literalValue
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
-    """"Starting with a double and ending with a single'"""       
+    """"Starting with a double and ending with a single'""",
+    "\"\"\"This is a badly quoted string",
+    "\"\"\"This is a badly quoted string\"",
+    "\"\"\"This is a badly quoted string\"\"",
+    "\"\"\"This is a badly quoted string'",
+    "\"\"\"This is a badly quoted string''",
+    "\"\"\"This is a badly quoted string'''"     
   )
   
 }

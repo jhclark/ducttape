@@ -11,7 +11,10 @@ class BranchPointTest extends AbstractTest("branch point",Grammar.branchPoint) {
       """(branchPointName: a=1)""",
       """(branchPointName: a=1 b=5)""",   
       """(greeting: y="welcome home" z="bugger off")""",
-      """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")"""
+      """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")""",
+      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\" )",
+      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\")",
+      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)"      
   ) 
   
   def failureCases = Set(

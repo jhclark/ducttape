@@ -50,7 +50,11 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     """'This one uses single quotes '""",
     """' Escape\tsequences\nare\rallowed! '""",
     "\"Unicode sequences should be fine \u21AF too\"",
-    "\'Unicode sequences should be fine \u2231 too\'"    
+    "\'Unicode sequences should be fine \u2231 too\'",   
+    
+    // Triple quoted literal
+    "\"\"\"" + "This is a quoted string" + "\"\"\"",
+    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
   ) 
   
   def failureCases = Set(
@@ -69,7 +73,13 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     """'Starting with a single and ending with a double"""",
     """"Starting with a double and ending with a single'""",    
     " ",
-    ""    
+    "",
+    "\"\"\"This is a badly quoted string",
+    "\"\"\"This is a badly quoted string\"",
+    "\"\"\"This is a badly quoted string\"\"",
+    "\"\"\"This is a badly quoted string'",
+    "\"\"\"This is a badly quoted string''",
+    "\"\"\"This is a badly quoted string'''"    
   )
   
 }

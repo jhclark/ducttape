@@ -10,7 +10,9 @@ class TripleQuotedLiteralTest extends AbstractTest("triple quoted literal",Gramm
   def successCases = Set(
     "\"\"\"" + "This is a quoted string" + "\"\"\"",
     "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\"",    
-    "\"\"\"This has line breaks in\nit!\"\"\""
+//    "\"\"\"This has line breaks in\nit!\"\"\"",
+    "\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\"",
+    "\"\"\"This string ends with two closing quotes\"\"\"\"\""
   ) 
   
   def failureCases = Set(
@@ -30,7 +32,8 @@ class TripleQuotedLiteralTest extends AbstractTest("triple quoted literal",Gramm
     "\"\"\"This is a badly quoted string\"\"",
     "\"\"\"This is a badly quoted string'",
     "\"\"\"This is a badly quoted string''",
-    "\"\"\"This is a badly quoted string'''" 
+    "\"\"\"This is a badly quoted string'''",
+    "\"\"\"This has too many closing quotes\"\"\"\"\"\""
   )
   
 }
