@@ -8,6 +8,15 @@ import org.scalatest.junit.JUnitRunner
 class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
  
   def successCases = Set(
+
+    // Branch point
+    """(branchPointName: a=1)""",
+    """(branchPointName: a=1 b=5)""",   
+    """(greeting: y="welcome home" z="bugger off")""",
+    """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")""",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\" )",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\")",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)",      
       
     // Sequential branch point
     """(branchPointName: 1..5)""",   
@@ -55,6 +64,10 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     // Triple quoted literal
     "\"\"\"" + "This is a quoted string" + "\"\"\"",
     "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
+    
+    // Complex nesting
+//    "(a: (b: c=$d@taskE f=g@taskH[i:j]) 5 (k: 8..12) 7)"
+    
   ) 
   
   def failureCases = Set(

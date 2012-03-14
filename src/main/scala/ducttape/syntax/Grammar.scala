@@ -273,6 +273,7 @@ object Grammar {
   
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |
+    branchPoint           |    
     branchGraft           |
     taskVariableReference |
     variableReference     |
