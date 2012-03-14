@@ -45,7 +45,7 @@ object AbstractSyntaxTree {
                                    val start:BigDecimal, 
                                    val end:BigDecimal,
                                    val increment:BigDecimal) extends RValue {
-    override def toString = "(%s: %d..%d..%d".format(branchPointName,start,end,increment)
+    override def toString = "(%s: %s..%s..%s)".format(branchPointName,start,end,increment)
   }  
   
   /** Pair containing a branch point name and a branch name. */

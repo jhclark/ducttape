@@ -40,4 +40,13 @@ object DemoParser extends Application {
     print(result)
   }  
   
+  {
+    val result: ParseResult[BranchPointDef] = parseAll(Grammar.branchPoint,"(a: (b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)")   
+    print(result)
+  }  
+  
+    {
+    val result: ParseResult[SequentialBranchPoint] = parseAll(Grammar.sequentialBranchPoint,"(a: 8..12)")   
+    print(result)
+  }  
 }
