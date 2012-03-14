@@ -8,13 +8,21 @@ import org.scalatest.junit.JUnitRunner
 class BranchPointTest extends AbstractTest("branch point",Grammar.branchPoint) {
  
   def successCases = Set(
-      """(branchPointName: a=1)""",
-      """(branchPointName: a=1 b=5)""",   
-      """(greeting: y="welcome home" z="bugger off")""",
-      """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")""",
-      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\" )",
-      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\")",
-      "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)"      
+    """(branchPointName: a=1)""",
+    """(branchPointName: a=1 b=5)""",   
+    """(greeting: y="welcome home" z="bugger off")""",
+    """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")""",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\" )",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\")",
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)",
+      
+    // Complex nesting
+    "(a: a1=(k: 8..12) a4=7)",
+    "(a: a1=$g@taskH[i:j])",
+    "(a: a1=(b: f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",      
+    "(a: a1=(b: c=$d@taskE) a2=5 a3=(k: 8..12) a4=7)",      
+    "(a: a1=(b: c=$d@taskE f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",
+    "(a: a1=(b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)"    
   ) 
   
   def failureCases = Set(
@@ -57,6 +65,7 @@ class BranchPointTest extends AbstractTest("branch point",Grammar.branchPoint) {
   ) 
   
   def errorCases = Set(
+    "(a: a1=g@taskH[i:j])",  
     """(branchPointName: .1..5)""",   
     """(branchPointName: 1..-.05)""",
     """(branchPointName: 1.0...5)""",

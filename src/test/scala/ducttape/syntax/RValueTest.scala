@@ -63,10 +63,15 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     
     // Triple quoted literal
     "\"\"\"" + "This is a quoted string" + "\"\"\"",
-    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
+    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\"",    
     
     // Complex nesting
-//    "(a: (b: c=$d@taskE f=g@taskH[i:j]) 5 (k: 8..12) 7)"
+    "(a: a1=(k: 8..12) a4=7)",
+    "(a: a1=$g@taskH[i:j])",
+    "(a: a1=(b: f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",      
+    "(a: a1=(b: c=$d@taskE) a2=5 a3=(k: 8..12) a4=7)",      
+    "(a: a1=(b: c=$d@taskE f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",
+    "(a: a1=(b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)"    
     
   ) 
   

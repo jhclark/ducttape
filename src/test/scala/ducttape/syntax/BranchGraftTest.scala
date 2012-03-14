@@ -17,6 +17,7 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
   def failureCases = Set(
     "",
     " ",
+    "var@taskName[a1:b2]",
     "$A_variable_Name__",
     "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "$abc",
@@ -41,7 +42,7 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
     """"Starting with a double and ending with a single'"""    
   ) 
   
-  def errorCases = Set(
+  def errorCases = Set(  
     "$variableName@taskName[",      
     "$A-variable_Name__",
     "$ "    

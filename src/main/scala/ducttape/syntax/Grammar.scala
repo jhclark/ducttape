@@ -48,17 +48,17 @@ object Grammar {
     ( 
       // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
       (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace")) |
+      (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol. If this was meant to be a variable reference instead of an unquoted literal, then you probably forgot the $ sign.")) |      
       (regex("""[^"\s]*["]""".r)~err("An unquoted literal may not contain a double quotation mark")) |
       (regex("""[^'\s]*[']""".r)~err("An unquoted literal may not contain a single quotation mark")) |      
-      (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
-      // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
-      (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |  
       (regex("""[^\[\s]*[\[]""".r)~err("An unquoted literal may not contain an opening square bracket")) |      
-      (regex("""[^\]\s]*[\]]""".r)~err("An unquoted literal may not contain a closing square bracket")) |  
-      (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol")) |      
+      (regex("""[^\]\s]*[\]]""".r)~err("An unquoted literal may not contain a closing square bracket")) |        
       (regex("""[^:\s]*:""".r)~err("An unquoted literal may not contain a colon")) |      
       (regex("""[^\*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
       (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
+      (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
+      // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
+      (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |  
       regex("""[^"')(\]\[\*\$:@=\s]+""".r)
     ) ^^ {
       case string:String => new Literal(string)
@@ -146,7 +146,19 @@ object Grammar {
   val literalValue : Parser[Literal] = {
     tripleQuotedLiteral | quotedLiteral | unquotedLiteral 
   }
-  
+
+    /**
+   * Parser for a name, defined as an ASCII alphanumeric identifier.
+   * <p>
+   * The first character must be an upper-case letter, an lower-case letter, or an underscore.
+   * Each subsequent character in the name (if any exist) 
+   * must be an upper-case letter, a lower-case letter, a numeric digit, or an underscore.
+   * 
+   * @param whatCanComeNext Regular expression that specifies what may legally follow the name
+   * @param howToFail Function that defines error or failure behavior to follow when an illegal expression follows the name
+   */
+  def name(title:String,whatCanComeNext:Regex): Parser[String] = name(title,whatCanComeNext,err(_))
+
   /**
    * Parser for a name, defined as an ASCII alphanumeric identifier.
    * <p>
@@ -155,8 +167,9 @@ object Grammar {
    * must be an upper-case letter, a lower-case letter, a numeric digit, or an underscore.
    * 
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
+   * @param howToFail Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  def name(title:String,whatCanComeNext:Regex): Parser[String] = {
+  def name(title:String,whatCanComeNext:Regex,howToFail:(String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
       regex("""[^A-Za-z_]""".r)<~err("Illegal character at start of " + title + " name")
 
@@ -164,7 +177,7 @@ object Grammar {
       | regex("""[A-Za-z_][A-Za-z0-9_]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~!err("Illegal character in " + title + " name")
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFail("Illegal character in " + title + " name")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
@@ -249,7 +262,7 @@ object Grammar {
    */
   val branchGraft: Parser[BranchGraft] = positioned(
       (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
-      name("task","""\[""".r) ~
+      name("reference to task","""\[""".r,failure(_)) ~
       (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
         case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
