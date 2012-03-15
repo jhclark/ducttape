@@ -19,24 +19,28 @@ abstract class AbstractTest(val description:String, val parser:Parser[Any]) exte
   
   def exceptionCases : Set[String] = Set()
   
+  def quote(string:String) : String = {
+    return string.replaceAll("\n","""\n""")
+  }
+  
   "Parsing "+description should {
     
     for (value <- successCases) {   
-      "succeed for \""+value+"\"" in {
+      "succeed for \""+quote(value)+"\"" in {
         val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
         Tests.verify(this,result)
       }
     }
 
     for (value <- failureCases) {   
-      "fail for \""+value+"\"" in {
+      "fail for \""+quote(value)+"\"" in {
         val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
         Tests.verifyFailure(this,result)
       }
     }       
     
     for (value <- errorCases) {   
-      "error for \""+value+"\"" in {
+      "error for \""+quote(value)+"\"" in {
 //        try {
           val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
           Tests.verifyError(this,result)
@@ -47,7 +51,7 @@ abstract class AbstractTest(val description:String, val parser:Parser[Any]) exte
     }    
     
         for (value <- exceptionCases) {   
-      "error for \""+value+"\"" in {
+      "error for \""+quote(value)+"\"" in {
         try {
           val result: ParseResult[Any] = GrammarParser.parseAll(parser, value);
           Tests.verifyError(this,result)
