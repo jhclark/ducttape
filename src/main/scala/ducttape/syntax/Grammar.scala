@@ -247,7 +247,7 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val variableReference: Parser[Variable] = positioned(
-    literal("$")~>(name("variable","""\s*""".r)|err("Missing variable name")) ^^ {
+    literal("$")~>(name("variable","""\s|$""".r)|err("Missing variable name")) ^^ {
       case string:String => new Variable(string)
     }
   )
@@ -257,7 +257,7 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val taskVariableReference: Parser[TaskVariable] = positioned(
-    literal("$")~>name("variable","""\s*""".r)~(literal("@")~>name("task name","""\s*""".r)) ^^ {
+    literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s*""".r)) ^^ {
       case (string:String) ~ (taskName:String) => new TaskVariable(taskName,string)
     }
   )  
@@ -285,7 +285,7 @@ object Grammar {
    * a task name, and a list of branch graft elements.
    */
   val branchGraft: Parser[BranchGraft] = positioned(
-      (literal("$")~>name("variable","""@""".r)<~literal("@")) ~
+      (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
       name("reference to task","""\[""".r,err(_),failure(_)) ~
       (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
         case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>

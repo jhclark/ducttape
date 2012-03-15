@@ -39,12 +39,13 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
-    """"Starting with a double and ending with a single'"""    
+    """"Starting with a double and ending with a single'""" ,
+    "$A-variable_Name__"
   ) 
   
   def errorCases = Set(  
     "$variableName@taskName[",      
-    "$A-variable_Name__",
+    
     "$ "    
   )
   

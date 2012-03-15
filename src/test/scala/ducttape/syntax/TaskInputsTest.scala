@@ -63,6 +63,7 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
     
     // Multiple input items
     "< source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en",
+    "< source=$a target=/path/to/train.en dev_src=$b1 dev_tgt=/path/to/dev.en",
 
     // With initial comments
     """# These are some cool comments

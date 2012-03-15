@@ -17,11 +17,11 @@ class VariableReferenceTest extends AbstractTest("variable name",Grammar.variabl
     "",
     " ",
     "A-variable_Name__",
-    "$A-variable_Name__",
     "abc"
   ) 
   
   def errorCases = Set(
+    "$A-variable_Name__",      
     "$ "
   )
   
