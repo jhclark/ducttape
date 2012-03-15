@@ -247,7 +247,7 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val variableReference: Parser[Variable] = positioned(
-    literal("$")~>(name("variable","""\s|$""".r)|err("Missing variable name")) ^^ {
+    literal("$")~>(name("variable","""\s|\)|$""".r)|err("Missing variable name")) ^^ {
       case string:String => new Variable(string)
     }
   )
@@ -257,7 +257,7 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val taskVariableReference: Parser[TaskVariable] = positioned(
-    literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s*""".r)) ^^ {
+    literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s|\)|$""".r)) ^^ {
       case (string:String) ~ (taskName:String) => new TaskVariable(taskName,string)
     }
   )  
