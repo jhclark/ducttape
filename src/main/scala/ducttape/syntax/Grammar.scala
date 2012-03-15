@@ -454,7 +454,7 @@ object Grammar {
     ) 
   } ^^ {
     case Some(comments~list) => new TaskInputs(list,comments)
-    case None => new TaskInputs(List.empty)
+    case None => new TaskInputs(List.empty,new Comments(None))
   }
 
   /**
@@ -484,7 +484,7 @@ object Grammar {
     ) 
   } ^^ {
     case Some(comments~list) => new TaskOutputs(list,comments)
-    case None => new TaskOutputs(List.empty)
+    case None => new TaskOutputs(List.empty,new Comments(None))
   }
 
   /**
@@ -513,7 +513,7 @@ object Grammar {
     ) 
   } ^^ {
     case Some(comments~params) => new TaskParams(params,comments)
-    case None => new TaskParams(List.empty)
+    case None => new TaskParams(List.empty,new Comments(None))
   }  
 
   

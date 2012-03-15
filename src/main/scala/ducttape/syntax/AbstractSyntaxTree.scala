@@ -91,17 +91,9 @@ object AbstractSyntaxTree {
     val comments:Comments
   }
   
-  case class TaskInputs(val specs:Seq[Spec], val comments:Comments) extends Specs {
-    def this(s:Seq[Spec]) = this(s,new Comments(None))
-  }
-
-  case class TaskOutputs(val specs:Seq[Spec], val comments:Comments) extends Specs {
-    def this(s:Seq[Spec]) = this(s,new Comments(None))
-  }
-  
-  case class TaskParams(val specs:Seq[Spec], val comments:Comments) extends Specs {
-    def this(s:Seq[Spec]) = this(s,new Comments(None))
-  }  
+  case class TaskInputs(val specs:Seq[Spec], val comments:Comments) extends Specs
+  case class TaskOutputs(val specs:Seq[Spec], val comments:Comments) extends Specs  
+  case class TaskParams(val specs:Seq[Spec], val comments:Comments) extends Specs
   
   /** Ducttape file. */
   class Tape(val tasks: Seq[Block]) extends ASTType {
