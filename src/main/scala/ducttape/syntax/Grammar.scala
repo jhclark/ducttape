@@ -462,8 +462,28 @@ object Grammar {
    * This sequence must be preceded by ">".
    *
    */
-  def taskOutputs: Parser[TaskOutputs] = opt(">" ~ rep(space) ~> repsep(outputAssignment, space)) ^^ {
-    case Some(list) => new TaskOutputs(list)
+  def taskOutputs: Parser[TaskOutputs] = {
+    // A list of task outputs may be empty, 
+    //   so everything below is wrapped in opt 
+    //   to mark it as optional
+    opt(
+      // Comments describe the output block
+      //   There may not be any comments,
+      //   in which case the comments object
+      //   will contain an empty string
+        ( comments<~
+          // there may be whitespace after the comments    
+          opt(whitespace)~
+          // then there must be a > character  
+          literal(">") ~ 
+          // then one or more spaces or tabs
+          space
+         ) ~ 
+         // Finally the list of input assignments
+         repsep(outputAssignment, space)
+    ) 
+  } ^^ {
+    case Some(comments~list) => new TaskOutputs(list,comments)
     case None => new TaskOutputs(List.empty)
   }
 
@@ -471,8 +491,28 @@ object Grammar {
    * Sequence of <code>assignment</code>s representing parameter values.
    * This sequence must be preceded by "::".
    */
-  def taskParams: Parser[TaskParams] = opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
-    case Some(params) => new TaskParams(params)
+  def taskParams: Parser[TaskParams] = { //opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
+    // A list of task parameters may be empty, 
+    //   so everything below is wrapped in opt 
+    //   to mark it as optional
+    opt(
+      // Comments describe the parameter block
+      //   There may not be any comments,
+      //   in which case the comments object
+      //   will contain an empty string
+        ( comments<~
+          // there may be whitespace after the comments    
+          opt(whitespace)~
+          // then there must be :: characters  
+          literal("::") ~ 
+          // then one or more spaces or tabs
+          space
+         ) ~ 
+         // Finally the list of input assignments
+         repsep(paramAssignment, space)
+    ) 
+  } ^^ {
+    case Some(comments~params) => new TaskParams(params,comments)
     case None => new TaskParams(List.empty)
   }  
 
