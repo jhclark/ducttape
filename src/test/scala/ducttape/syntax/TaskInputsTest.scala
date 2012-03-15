@@ -60,7 +60,31 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
     
     // Triple quoted literal
     "< foo=\"\"\"" + "This is a quoted string" + "\"\"\"",
-    "< bar=\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\""    
+    "< bar=\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\"",
+    
+    // Multiple input items
+    "< source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en",
+
+    // With initial comments
+    """# These are some cool comments
+       < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
+ 
+    // With multiline comments
+   """# These are some cool comments
+      # These are some more
+      # I should say something meaningful
+       < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
+   """# These are some cool comments
+      # These are some more
+      # I should say something meaningful
+       
+      # Perhaps even profound
+       
+      # Or not
+       
+       < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
+  
+    
   ) 
   
   def failureCases = Set(

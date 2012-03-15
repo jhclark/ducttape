@@ -27,7 +27,7 @@ object Grammar {
   val whitespace: Parser[String] = regex("""\s+""".r)
   
   /** One line of comments */
-  val comment: Parser[String] = literal("#")~>regex("""[^\r\n\z]*""".r)<~eol
+  val comment: Parser[String] = literal("#")~>regex("""[^\r\n]*""".r)<~guard(eol)
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
@@ -432,7 +432,27 @@ object Grammar {
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
    */
-  def taskInputs: Parser[TaskInputs] = opt((comments<~literal("<") ~ rep(space)) ~ repsep(inputAssignment, space)) ^^ {
+  def taskInputs: Parser[TaskInputs] = {
+    // A list of task inputs may be empty, 
+    //   so everything below is wrapped in opt 
+    //   to mark it as optional
+    opt(
+      // Comments describe the input block
+      //   There may not be any comments,
+      //   in which case the comments object
+      //   will contain an empty string
+        ( comments<~
+          // there may be whitespace after the comments    
+          opt(whitespace)~
+          // then there must be a < character  
+          literal("<") ~ 
+          // then one or more spaces or tabs
+          space
+         ) ~ 
+         // Finally the list of input assignments
+         repsep(inputAssignment, space)
+    ) 
+  } ^^ {
     case Some(comments~list) => new TaskInputs(list,comments)
     case None => new TaskInputs(List.empty)
   }
