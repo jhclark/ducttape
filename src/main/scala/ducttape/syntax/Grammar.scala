@@ -26,6 +26,23 @@ object Grammar {
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r)
   
+  /** One line of comments */
+  val comment: Parser[String] = literal("#")~>regex("""[^\r\n\z]*""".r)<~eol
+  
+  /** One or more lines of comments */
+  val comments: Parser[Comments] = {
+    repsep(comment,whitespace)
+  } ^^ {
+    case list:List[String] => {
+      if (list.isEmpty) {
+        new Comments(None)
+      } else {
+        new Comments(Some(list.mkString("\n")))
+      } 
+    }
+  }
+  
+  
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
       ( // Recognize a number with at least one digit left of the decimal
@@ -404,15 +421,20 @@ object Grammar {
   )
   
   
-  val taskVariableAssignments = repsep((taskInputs | taskOutputs | taskParams),space)
+  val taskVariableAssignments:Parser[List[Specs]] = {
+    repsep((taskInputs | taskOutputs | taskParams),whitespace)
+  }
+//  ^^ {
+//    
+//  }
   
   /**
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
    */
-  def taskInputs: Parser[Seq[Spec]] = opt("<" ~ rep(space) ~> repsep(inputAssignment, space)) ^^ {
-    case Some(list) => list
-    case None => List.empty
+  def taskInputs: Parser[TaskInputs] = opt((comments<~literal("<") ~ rep(space)) ~ repsep(inputAssignment, space)) ^^ {
+    case Some(comments~list) => new TaskInputs(list,comments)
+    case None => new TaskInputs(List.empty)
   }
 
   /**
@@ -420,18 +442,18 @@ object Grammar {
    * This sequence must be preceded by ">".
    *
    */
-  def taskOutputs: Parser[Seq[Spec]] = opt(">" ~ rep(space) ~> repsep(outputAssignment, space)) ^^ {
-    case Some(list) => list
-    case None => List.empty
+  def taskOutputs: Parser[TaskOutputs] = opt(">" ~ rep(space) ~> repsep(outputAssignment, space)) ^^ {
+    case Some(list) => new TaskOutputs(list)
+    case None => new TaskOutputs(List.empty)
   }
 
   /**
    * Sequence of <code>assignment</code>s representing parameter values.
    * This sequence must be preceded by "::".
    */
-  def taskParams: Parser[Seq[Spec]] = opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
-    case Some(params) => params
-    case None => List.empty
+  def taskParams: Parser[TaskParams] = opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
+    case Some(params) => new TaskParams(params)
+    case None => new TaskParams(List.empty)
   }  
 
   

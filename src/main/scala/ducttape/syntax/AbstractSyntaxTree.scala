@@ -8,7 +8,14 @@ object AbstractSyntaxTree {
   /** Parent class of all types representing elements in an abstract syntax tree. */
   abstract class ASTType extends Positional {}
 
-  
+  class Comments(val value:Option[String]) extends ASTType {
+    override def toString = {
+        value match {
+        case Some(s:String) => s
+        case None           => ""
+        }
+    }  
+  }
   
   /** Type of the right hand side in an assignment. */
   abstract class RValue extends ASTType;
@@ -78,7 +85,24 @@ object AbstractSyntaxTree {
   } 
   
   type Spec = AbstractSpec[RValue]
-    
+  
+  abstract class Specs extends ASTType {
+    val specs:Seq[Spec]
+    val comments:Comments
+  }
+  
+  case class TaskInputs(val specs:Seq[Spec], val comments:Comments) extends Specs {
+    def this(s:Seq[Spec]) = this(s,new Comments(None))
+  }
+
+  case class TaskOutputs(val specs:Seq[Spec], val comments:Comments) extends Specs {
+    def this(s:Seq[Spec]) = this(s,new Comments(None))
+  }
+  
+  case class TaskParams(val specs:Seq[Spec], val comments:Comments) extends Specs {
+    def this(s:Seq[Spec]) = this(s,new Comments(None))
+  }  
+  
   /** Ducttape file. */
   class Tape(val tasks: Seq[Block]) extends ASTType {
     override def toString = tasks.mkString("\n\n")
