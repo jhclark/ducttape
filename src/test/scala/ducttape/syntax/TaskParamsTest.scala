@@ -10,7 +10,6 @@ class TaskParamsTest extends AbstractTest("task params",Grammar.taskParams) {
   def successCases = Set(
 
     // Empty task params  
-    "",
     ":: ",      
       
 // Variables without dots      
@@ -133,6 +132,7 @@ class TaskParamsTest extends AbstractTest("task params",Grammar.taskParams) {
   ) 
   
   def failureCases = Set(
+    "",      
     ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
     ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
     ":: a",

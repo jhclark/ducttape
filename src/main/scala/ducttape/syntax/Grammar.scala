@@ -420,24 +420,14 @@ object Grammar {
       }      
   )
   
-  
-  val taskVariableAssignments:Parser[List[Specs]] = {
-    repsep((taskInputs | taskOutputs | taskParams),whitespace)
-  }
-//  ^^ {
-//    
-//  }
-  
+
+
   /**
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
    */
   def taskInputs: Parser[TaskInputs] = {
-    // A list of task inputs may be empty, 
-    //   so everything below is wrapped in opt 
-    //   to mark it as optional
-    opt(
-      // Comments describe the input block
+    ( // Comments describe the input block
       //   There may not be any comments,
       //   in which case the comments object
       //   will contain an empty string
@@ -451,10 +441,9 @@ object Grammar {
          ) ~ 
          // Finally the list of input assignments
          repsep(inputAssignment, space)
-    ) 
+    ) | failure("Failed to parse task inputs")
   } ^^ {
-    case Some(comments~list) => new TaskInputs(list,comments)
-    case None => new TaskInputs(List.empty,new Comments(None))
+    case comments~list => new TaskInputs(list,comments)
   }
 
   /**
@@ -463,11 +452,7 @@ object Grammar {
    *
    */
   def taskOutputs: Parser[TaskOutputs] = {
-    // A list of task outputs may be empty, 
-    //   so everything below is wrapped in opt 
-    //   to mark it as optional
-    opt(
-      // Comments describe the output block
+    ( // Comments describe the output block
       //   There may not be any comments,
       //   in which case the comments object
       //   will contain an empty string
@@ -481,10 +466,9 @@ object Grammar {
          ) ~ 
          // Finally the list of input assignments
          repsep(outputAssignment, space)
-    ) 
+    ) | failure("Failed to parse task outputs")
   } ^^ {
-    case Some(comments~list) => new TaskOutputs(list,comments)
-    case None => new TaskOutputs(List.empty,new Comments(None))
+    case comments~list => new TaskOutputs(list,comments)    
   }
 
   /**
@@ -492,11 +476,7 @@ object Grammar {
    * This sequence must be preceded by "::".
    */
   def taskParams: Parser[TaskParams] = { //opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
-    // A list of task parameters may be empty, 
-    //   so everything below is wrapped in opt 
-    //   to mark it as optional
-    opt(
-      // Comments describe the parameter block
+    ( // Comments describe the parameter block
       //   There may not be any comments,
       //   in which case the comments object
       //   will contain an empty string
@@ -510,12 +490,19 @@ object Grammar {
          ) ~ 
          // Finally the list of input assignments
          repsep(paramAssignment, space)
-    ) 
+    ) | failure("Failed to parse task parameters")
   } ^^ {
-    case Some(comments~params) => new TaskParams(params,comments)
-    case None => new TaskParams(List.empty,new Comments(None))
+    case comments~list => new TaskParams(list,comments)
   }  
 
+
+  val taskSpec:Parser[Specs] = {
+    taskInputs | taskOutputs | taskParams
+  }
+    
+  val taskSpecs:Parser[List[Specs]] = {
+    repsep(taskSpec,whitespace)
+  }  
   
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)

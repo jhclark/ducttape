@@ -10,7 +10,6 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
   def successCases = Set(
     
     // Empty task inputs  
-    "",
     "< ",
       
     // Sequential branch point
@@ -88,7 +87,7 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
   ) 
   
   def failureCases = Set(
-      
+    ""      
   ) 
   
   def errorCases = Set(
