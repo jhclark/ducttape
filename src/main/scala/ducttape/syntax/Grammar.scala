@@ -426,7 +426,7 @@ object Grammar {
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
    */
-  def taskInputs: Parser[TaskInputs] = {
+  val taskInputs: Parser[TaskInputs] = {
     ( // Comments describe the input block
       //   There may not be any comments,
       //   in which case the comments object
@@ -451,7 +451,7 @@ object Grammar {
    * This sequence must be preceded by ">".
    *
    */
-  def taskOutputs: Parser[TaskOutputs] = {
+  val taskOutputs: Parser[TaskOutputs] = {
     ( // Comments describe the output block
       //   There may not be any comments,
       //   in which case the comments object
@@ -475,7 +475,7 @@ object Grammar {
    * Sequence of <code>assignment</code>s representing parameter values.
    * This sequence must be preceded by "::".
    */
-  def taskParams: Parser[TaskParams] = { //opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
+  val taskParams: Parser[TaskParams] = { //opt("::" ~ rep(space) ~> repsep(paramAssignment, space)) ^^ {
     ( // Comments describe the parameter block
       //   There may not be any comments,
       //   in which case the comments object
