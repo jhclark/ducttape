@@ -530,7 +530,34 @@ object Grammar {
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
     case string => new TaskDefinition(string)
   })
+
+  def firstCommand : Parser[String] = 
+    ( // A command must be preceded by whitespace. Fail if it doesn't.
+      (regex("""[^ \t]""".r) <~ err("Command must be preceded by at least one space or tab")) |
+      ( // If a command is preceded by one or more spaces and/or tabs, try to parse it!
+          space ~> 
+          ( // Fail if the line starts with a reserved character
+              (literal("<") <~ err("First line in a command may not start with <")) |
+              (literal(">") <~ err("First line in a command may not start with <")) |
+              (literal(":") <~ err("First line in a command may not start with :")) |
+            // Otherwise succeed
+              regex("""[^\r\n]+""".r)
+          )
+      )
+    )  
+    
+  /** Shell command. */
+  def command: Parser[String] =
+    ( // A command must be preceded by whitespace. Fail if it doesn't.
+      (regex("""[^ \t]""".r) <~ err("Command must be preceded by whitespace")) |
+      // If a command is preceded by one or more spaces and/or tabs, parse it!
+      (space ~> regex("""[^\r\n]+""".r))          
+    )  
   
+  def commands: Parser[String] = {
+    firstCommand
+  } 
+    
   val tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
     case sequence => new Tape(sequence)
   })
