@@ -505,43 +505,14 @@ object Grammar {
   }  
   
   val packageNames:Parser[PackageNames] = {
-    //(comments <~ opt(eol ~ space))~ 
     repsep(name("package","""\s""".r,failure(_),err(_)),space)
   } ^^ {
-//    case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
     case (packageNames:List[String]) => new PackageNames(new Comments(None),packageNames)    
   }
   
   val taskHeader:Parser[TaskHeader] = {
     (packageNames <~ (opt(space)~opt(eol)~opt(space)))~ taskSpecs
-    // Name of task, in square brackets
-    //taskName ~ 
-//(    
-//    // Optionally,
-//    opt( 
-//      // Space(s) and/or tab(s)
-//      space~>          
-//      // List of package names, separated by space(s) and/or tab(s)
-//            
-//    ) ~
-//    // Optionally,
-//    opt( // Space(s) and/or tab(s)
-//      space~>
-//      // List of task specifications
-//      taskSpecs
-//    )
-//    ) 
-    //| ((regex("""[ \t]*""".r)~guard(eol))~>success(None))~success(None) 
-
   } ^^ {
-//    case (taskName:String) ~ Some(packageNames:List[String]) ~ Some(specs:List[Specs]) => 
-//      new TaskHeader(taskName,packageNames,specs)
-//    case (taskName:String) ~ Some(packageNames:List[String]) ~ (None) => 
-//      new TaskHeader(taskName,packageNames,List.empty)
-//    case (taskName:String) ~ (None) ~ (specs:List[Specs]) => 
-//      new TaskHeader(taskName,List.empty,specs) 
-//    case (list:Option[List[String]]) ~ (specs:Option[List[Specs]]) => 
-//      new TaskHeader(List.empty,List.empty)  
     case (packageNames:PackageNames) ~ (specs:List[Specs]) =>
       new TaskHeader(packageNames,specs) 
   }
