@@ -110,6 +110,11 @@ object AbstractSyntaxTree {
       } 
     }
   }  
+
+  class TaskHeader(val packageNames: List[String],
+                   val specs: List[Specs]) extends ASTType {
+    override def toString = List(packageNames).mkString(" ") + "; " + List(specs).mkString(" ")
+  } 
   
   /** Defines a block of ducttape code, such as a task definition. */
   class Block extends ASTType
