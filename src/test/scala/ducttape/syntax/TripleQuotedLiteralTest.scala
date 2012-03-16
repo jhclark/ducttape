@@ -9,7 +9,8 @@ class TripleQuotedLiteralTest extends AbstractTest("triple quoted literal",Gramm
 
   def successCases = Set(
     "\"\"\"" + "This is a quoted string" + "\"\"\"",
-    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\"",    
+    "\"\"\"" + """This is a quoted string with \r lots of \"""+"""u21AF garbage! \b in it!""" + "\"\"\"",
+    "\"\"\"" + """This is a quoted string with \r lots of \\u garbage! \b in it!""" + "\"\"\"",
     "\"\"\"This has line breaks in\nit!\"\"\"",
     "\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\"",
     "\"\"\"This string ends with two closing quotes\"\"\"\"\""

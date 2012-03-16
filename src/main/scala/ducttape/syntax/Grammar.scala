@@ -98,7 +98,9 @@ object Grammar {
    * but the opening and closing quotation marks must match.
    * <p>
    * If there are any characters between the opening and closing quotation marks,
-   * these characters may be any character except the type of quotation mark being used.
+   * these characters may be any character except 
+   * line break (\n), carriage return (\r), or
+   * the type of quotation mark being used.
    *  
    * Note that the last character between the quotation marks 
    * may not be an unescaped slash (\), 
@@ -135,6 +137,23 @@ object Grammar {
     }  
   }
   
+  /**
+   * Parser for a literal value that is wrapped in triple quotes.
+   * <p>
+   * An triple quoted literal is defined as a string 
+   * whose first 3 characters are double quotation marks
+   * and whose last 3 characters are double quotation marks.
+   * 
+   * <p>
+   * If there are any characters between the opening and closing sets of quotation marks,
+   * these characters may be any character except the type of quotation mark being used,
+   * with the caveat that no more than two double quotation mark characters 
+   * may immediately precede the closing three double quotation marks.
+   * <p>
+   * If the quoted text contain any escaped sequences,
+   * the literal values of sequences are used.
+   * In other words, escape sequences are not expanded. 
+   */  
   val tripleQuotedLiteral : Parser[Literal] = {
     ( ( // A valid triple-quoted string
         regex("""["]["]["]([^"]["]?["]?)*["]["]["]""".r) |
