@@ -4,6 +4,8 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.BigInteger
 
+import org.apache.commons.lang3.StringEscapeUtils;
+
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
@@ -103,7 +105,11 @@ object Grammar {
    * as this would cause the final quotation mark to be escaped.
    * <p>
    * The quoted text may contain escaped sequences.
-   * In the string returned by the parser, any such escaped sequences will be expanded.
+   * In the string returned by the parser, any such escaped sequences will be expanded
+   * according to the rules for unescaping Java String literals.
+   * This is currently implemented using 
+   * <code>org.apache.commons.lang3.StringEscapeUtils.unescapeJava</code>
+   * from the Apache Commons Lang package.
    */
   val quotedLiteral : Parser[Literal] = {
     ( ( // A valid double-quoted string
@@ -117,29 +123,14 @@ object Grammar {
       ) <~ (regex("$".r)|guard(regex("""[\s)]""".r))|err("A quoted literal may not continue after the closing quotation mark"))
     ) ^^ {
       case string:String => {
-        val s = 
-         // Remove initial and final quotation marks
-         string.substring(1,string.length()-1)
-         //     expand escaped form feed characters
-               .replace("""\f""","\f")
-         //     expand escaped newline characters      
-               .replace("""\n""","\n")
-         //     expand escaped carriage return characters               
-               .replace("""\r""","\r")
-         //     expand escaped tab characters                
-               .replace("""\t""","\t")
-         //     expand escaped backspace characters
-                .replace("""\b""","\b")
-         //     expand escaped single quote characters                
-               .replace("""\'""","'")
-         //     expand escaped double quote characters                
-               .replace("""\"""","\"")               
-         //     expand escaped slash characters               
-               .replace("""\\""","\\")             
-         //TODO expand escaped unicode escapes 
-         //     .replaceAll("\\\\u([0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f][0-9A-Fa-f])","$1")
+        val s =
+          // Unescape escape codes according to Java rules
+          // as implemented in the Apache Commons Lang package
+          StringEscapeUtils.unescapeJava(
+            string.substring(1,string.length()-1)
+          )
                
-         new Literal(s)
+        new Literal(s)
       }
     }  
   }

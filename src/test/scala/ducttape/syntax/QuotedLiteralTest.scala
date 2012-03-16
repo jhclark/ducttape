@@ -15,6 +15,8 @@ class QuotedLiteralTest extends AbstractTest("quoted literal",Grammar.quotedLite
     """'I say that she\'s the best.'""",
     "\"Unicode sequences should be fine \u21AF too\"",
     "\'Unicode sequences should be fine \u2231 too\'",
+    """"Unicode sequences should be fine \"""+"""u21AF too"""",
+    """'Unicode sequences should be fine \"""+"""u2231 too'""",
     """'It\'s a bad idea to use it, but a backspace literal \b is allowed'"""
   ) 
   

@@ -24,6 +24,12 @@ object DemoParser extends Application {
     val result: ParseResult[Literal] = parseAll(Grammar.quotedLiteral,"""'hi\tthere\nc:\\\r\nworld'""")   
     print(result)    
   }
+  
+  {
+    val result: ParseResult[Literal] = parseAll(Grammar.quotedLiteral,""""Unicode sequences should be fine \""" + """u21AF too"""")   
+    print(result)    
+  }
+  
 
   {
     val result: ParseResult[Variable] = parseAll(Grammar.variableReference,"""$abc""")   

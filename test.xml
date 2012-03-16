@@ -7,6 +7,7 @@
 		<pathelement location="${lib}/junit-4.10.jar"/>
 		<pathelement location="${lib}/scalatest-1.6.1.jar"/>
 		<pathelement location="${lib}/scala-library.jar"/>
+		<pathelement location="${lib}/commons-lang3-3.1.jar"/>
 		<pathelement location="${bin}"/>
 	</path>
 
