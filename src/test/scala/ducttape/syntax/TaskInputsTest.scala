@@ -88,26 +88,10 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
   ) 
   
   def failureCases = Set(
-    ""      
-  ) 
-  
-  def errorCases = Set(
+    "" ,
           
     
-    "< dah=A_variable_Name__:",
-    "< zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
-    """< "This is a badly quoted string\"""",
-    """< "This one is, too"it seems"""",
-    """< 'Starting with a single and ending with a double"""",
-    """< "Starting with a double and ending with a single'""",    
-    "< $variableName@taskName[",
-    "< $A-variable_Name__",
-    "< $",
-    "< a",
-    "< b_1",
-    "< _z",
-    "< ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "< ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
+
     
 // Variables with dots
     
@@ -154,7 +138,27 @@ class TaskInputsTest extends AbstractTest("task inputs",Grammar.taskInputs) {
     """< .my='This one uses single quotes '""",
     """< .oh=' Escape\tsequences\nare\rallowed! '""",
     "< .my=\"Unicode sequences should be fine \u21AF too\"",
-    "< .what=\'Unicode sequences should be fine \u2231 too\'"        
+    "< .what=\'Unicode sequences should be fine \u2231 too\'"    ,
+    
+    """< "This is a badly quoted string\"""",
+    """< "This one is, too"it seems"""",
+    """< 'Starting with a single and ending with a double"""",
+    """< "Starting with a double and ending with a single'""",
+    "< $variableName@taskName[",
+    "< $A-variable_Name__",
+    "< $"
+    
+  ) 
+  
+  def errorCases = Set(
+    "< dah=A_variable_Name__:",
+    "< zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
+   
+    "< a",
+    "< b_1",
+    "< _z",
+    "< ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
+    "< ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :"      
   )
   
 }

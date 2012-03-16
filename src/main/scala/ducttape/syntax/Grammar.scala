@@ -504,12 +504,14 @@ object Grammar {
     repsep(taskSpec,whitespace)
   }  
   
-  val packageNames:Parser[List[String]] = {
-    repsep(name("package","""\s""".r,failure(_),err(_)),space)
+  val packageNames:Parser[PackageNames] = {
+    (comments <~ opt(eol ~ space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)
+  } ^^ {
+    case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
   }
   
   val taskHeader:Parser[TaskHeader] = {
-    (packageNames <~ opt(space)) ~ taskSpecs
+    (packageNames <~ (opt(space)~opt(eol)~opt(space)))~ taskSpecs
     // Name of task, in square brackets
     //taskName ~ 
 //(    
@@ -538,8 +540,8 @@ object Grammar {
 //      new TaskHeader(taskName,List.empty,specs) 
 //    case (list:Option[List[String]]) ~ (specs:Option[List[Specs]]) => 
 //      new TaskHeader(List.empty,List.empty)  
-    case (list:List[String]) ~ (specs:List[Specs]) =>
-      new TaskHeader(List.empty,List.empty) 
+    case (packageNames:PackageNames) ~ (specs:List[Specs]) =>
+      new TaskHeader(packageNames,specs) 
   }
   
   val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {

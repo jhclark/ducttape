@@ -111,9 +111,13 @@ object AbstractSyntaxTree {
     }
   }  
 
-  class TaskHeader(val packageNames: List[String],
+  class PackageNames(val comments:Comments, val packageNames: List[String]) extends ASTType {
+    override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
+  }
+  
+  class TaskHeader(val packageNames: PackageNames,
                    val specs: List[Specs]) extends ASTType {
-    override def toString = List(packageNames).mkString(" ") + "; " + List(specs).mkString(" ")
+    override def toString = packageNames.toString() + "; " + specs.mkString(" ")
   } 
   
   /** Defines a block of ducttape code, such as a task definition. */

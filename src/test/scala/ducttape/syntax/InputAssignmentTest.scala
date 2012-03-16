@@ -60,14 +60,9 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
   ) 
   
   def failureCases = Set(
-      ""
-  ) 
-  
-  def errorCases = Set(
-          
+      "",
+         
     " ",
-    "dah=A_variable_Name__:",
-    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
@@ -75,11 +70,6 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
     "$variableName@taskName[",
     "$A-variable_Name__",
     "$",
-    "a",
-    "b_1",
-    "_z",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
     
 // Variables with dots
     
@@ -127,6 +117,16 @@ class InputAssignmentTest extends AbstractTest("input assignment",Grammar.inputA
     """.oh=' Escape\tsequences\nare\rallowed! '""",
     ".my=\"Unicode sequences should be fine \u21AF too\"",
     ".what=\'Unicode sequences should be fine \u2231 too\'"        
+  ) 
+  
+  def errorCases = Set(
+    "a",
+    "b_1",  
+    "_z",    
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",    
+    "dah=A_variable_Name__:",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:"       
   )
   
 }

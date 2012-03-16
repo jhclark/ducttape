@@ -26,11 +26,24 @@ class TaskHeaderTest extends AbstractTest("task header",Grammar.taskHeader) {
     "tokenizer < in=(DataSet: train=a.txt tune=b.txt test=c.txt) > out",
     "< in=$out@tokenize[DataSet:train] > model",
     "< in=$out@tokenize[DataSet:tune] > weights",
-    "< in=$out@tokenize[DataSet:test] > hyps"      
+    "moses tokenizerr giza < in=$out@tokenize[DataSet:test] > hyps",
+    """moses tokenizerr giza
+    < in=$out@tokenize[DataSet:test] > hyps""",
+    """moses tokenizerr giza
+    # Do some inputs
+    < in=$out@tokenize[DataSet:test] 
+    # Here's the result
+    > hyps""",
+    """# Package comments
+      moses tokenizerr giza
+    # Do some inputs
+    < in=$out@tokenize[DataSet:test] 
+    # Here's the result
+    > hyps"""     
   ) 
   
   def failureCases = Set(
-   
+  
   ) 
   
   def errorCases = Set(

@@ -64,5 +64,13 @@ object DemoParser extends Application {
     val result: ParseResult[BranchPointDef] = parseAll(Grammar.branchPoint,s)   
     print(result)
   }
+  
+  {
+    val s:String =
+          """moses tokenizerr giza
+    < in=$out@tokenize[DataSet:test] > hyps"""
+    val result: ParseResult[TaskHeader] = parseAll(Grammar.taskHeader,s)   
+    print(result)   
+  }
     
 }
