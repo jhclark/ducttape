@@ -68,21 +68,21 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
     "< source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en",
 
     // With initial comments
-    """# These are some cool comments
+    """// These are some cool comments
        < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
  
     // With multiline comments
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        
-      # Perhaps even profound
+      // Perhaps even profound
        
-      # Or not
+      // Or not
        
        < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
   
@@ -143,21 +143,21 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
 
     
     // With initial comments
-    """# These are some cool comments
+    """// These are some cool comments
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
  
     // With multiline comments
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        
-      # Perhaps even profound
+      // Perhaps even profound
        
-      # Or not
+      // Or not
        
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
 
@@ -263,21 +263,21 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
     ":: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en",
     
     // With initial comments
-    """# These are some cool comments
+    """// These are some cool comments
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
  
     // With multiline comments
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        
-      # Perhaps even profound
+      // Perhaps even profound
        
-      # Or not
+      // Or not
        
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
 
@@ -297,19 +297,19 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
           > c d 
          :: e=7 f=8""",
        
-       """# Task inputs
+       """// Task inputs
           < a=/path/to/a b=(7..10) c=$baz@snarfTask[q:z] d=$f@bar
-          # Task outputs
+          // Task outputs
           > d e f
-          # Task params
+          // Task params
           :: g=hello .h=10 i=(d: "hi" "there" "world")""",
 
-       """# Task inputs
+       """// Task inputs
           < a=/path/to/a b=(7..10) c=$baz@snarfTask[q:z] d=$f@bar
           < z=7 y=$foo_yo5_
-          # Task outputs
+          // Task outputs
           > d e f
-          # Task params
+          // Task params
           :: g=hello .h=10 i=(d: "hi" "there" "world")""",
           
        """ < in=foo > out :: p=7 < j=$f"""

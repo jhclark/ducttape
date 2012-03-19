@@ -69,11 +69,11 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   die()
 }""",
 """[funky]
-    # input
+    // input
     < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -85,9 +85,9 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   die()
 }""",
 """[funky] < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -99,9 +99,9 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   die()
 }""",
 """[funky] moses < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -112,11 +112,11 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] # moses
+"""[funky] // moses
     moses < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -127,11 +127,11 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] # moses
+"""[funky] // moses
 moses < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -143,11 +143,11 @@ moses < in=foo x=73
   die()
 }""",
 """[funky] 
-# moses
+// moses
 moses < in=foo x=73
-    # out
+    // out
     > out
-    # parameters
+    // parameters
     :: p=param
 {
   function die () {
@@ -159,13 +159,13 @@ moses < in=foo x=73
   die()
 }""",
 """[funky]
-  # moses
+  // moses
   moses 
-  # input
+  // input
   < in=foo x=73
-  # out
+  // out
   > out
-  # parameters
+  // parameters
   :: p=param
 {
   function die () {
@@ -177,13 +177,13 @@ moses < in=foo x=73
   die()
 }""",
 """[funky]
-  # moses
+  // moses
   moses 
-  # input
+  // input
   < in=foo x=73
-  # out
+  // out
   > out
-  # parameters
+  // parameters
   :: p=param {
   function die () {
     echo "$@" >&2
@@ -200,7 +200,7 @@ moses < in=foo x=73
 
   ) 
   
-  def errorCases = Set(
+  def errorCases = Set(      
 """[funky] < in=foo > out  
  bar {
   function die () {
@@ -216,7 +216,13 @@ moses < in=foo x=73
       }""",      
 """[hello] {
       echo "hello, world!"
-} yay""",      
+} yay""",
+"""[hello] { // Comments are not allowed after opening { braces
+      echo "hello, world!"
+}""",
+"""[hello] { # Comments are not allowed after opening { braces
+      echo "hello, world!"
+}""",
     "A-variable_Name__",
     "",
     " ",      
@@ -231,15 +237,15 @@ moses < in=foo x=73
     """moses tokenizerr giza
     < in=$out@tokenize[DataSet:test] > hyps""",
     """moses tokenizerr giza
-    # Do some inputs
+    // Do some inputs
     < in=$out@tokenize[DataSet:test] 
-    # Here's the result
+    // Here's the result
     > hyps""",
-    """# Package comments
+    """// Package comments
       moses tokenizerr giza
-    # Do some inputs
+    // Do some inputs
     < in=$out@tokenize[DataSet:test] 
-    # Here's the result
+    // Here's the result
     > hyps"""     
   )
   

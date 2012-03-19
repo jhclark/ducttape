@@ -30,15 +30,15 @@ class TaskHeaderTest extends AbstractTest("task header",Grammar.taskHeader) {
     """moses tokenizerr giza
     < in=$out@tokenize[DataSet:test] > hyps""",
     """moses tokenizerr giza
-    # Do some inputs
+    // Do some inputs
     < in=$out@tokenize[DataSet:test] 
-    # Here's the result
+    // Here's the result
     > hyps""",
-    """# Package comments
+    """// Package comments
       moses tokenizerr giza
-    # Do some inputs
+    // Do some inputs
     < in=$out@tokenize[DataSet:test] 
-    # Here's the result
+    // Here's the result
     > hyps"""  
   ) 
   

@@ -12,7 +12,7 @@ class PackageNamesTest extends AbstractTest("package naames",Grammar.packageName
     " ",
     "moses tokenizer giza",
     "moses",
-    """# Package comments
+    """// Package comments
       moses tokenizerr giza"""   
   ) 
   

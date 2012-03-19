@@ -29,7 +29,7 @@ object Grammar {
   val whitespace: Parser[String] = regex("""\s+""".r)
   
   /** One line of comments */
-  val comment: Parser[String] = literal("#")~>regex("""[^\r\n]*""".r)<~guard(eol)
+  val comment: Parser[String] = literal("//")~>regex("""[^\r\n]*""".r)<~guard(eol)
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {

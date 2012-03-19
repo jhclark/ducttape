@@ -69,21 +69,21 @@ class TaskOutputsTest extends AbstractTest("task outputs",Grammar.taskOutputs) {
 
     
     // With initial comments
-    """# These are some cool comments
+    """// These are some cool comments
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
  
     // With multiline comments
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
-   """# These are some cool comments
-      # These are some more
-      # I should say something meaningful
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
        
-      # Perhaps even profound
+      // Perhaps even profound
        
-      # Or not
+      // Or not
        
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
      
