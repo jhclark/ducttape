@@ -533,32 +533,47 @@ object Grammar {
     case string => new TaskDefinition(string)
   })
 
-  def firstCommand : Parser[String] = 
-    ( // A command must be preceded by whitespace. Fail if it doesn't.
-      (regex("""[^ \t]""".r) <~ err("Command must be preceded by at least one space or tab")) |
-      ( // If a command is preceded by one or more spaces and/or tabs, try to parse it!
-          space ~> 
-          ( // Fail if the line starts with a reserved character
-              (literal("<") <~ err("First line in a command may not start with <")) |
-              (literal(">") <~ err("First line in a command may not start with <")) |
-              (literal(":") <~ err("First line in a command may not start with :")) |
-            // Otherwise succeed
-              regex("""[^\r\n]+""".r)
-          )
-      )
-    )  
-    
-  /** Shell command. */
-  def command: Parser[String] =
-    ( // A command must be preceded by whitespace. Fail if it doesn't.
-      (regex("""[^ \t]""".r) <~ err("Command must be preceded by whitespace")) |
-      // If a command is preceded by one or more spaces and/or tabs, parse it!
-      (space ~> regex("""[^\r\n]+""".r))          
-    )  
+//  def firstCommand : Parser[String] = 
+//    ( // A command must be preceded by whitespace. Fail if it doesn't.
+//      (regex("""[^ \t]""".r) <~ err("Command must be preceded by at least one space or tab")) |
+//      ( // If a command is preceded by one or more spaces and/or tabs, try to parse it!
+//          space ~> 
+//          ( // Fail if the line starts with a reserved character
+//              (literal("<") <~ err("First line in a command may not start with <")) |
+//              (literal(">") <~ err("First line in a command may not start with <")) |
+//              (literal(":") <~ err("First line in a command may not start with :")) |
+//            // Otherwise succeed
+//              regex("""[^\r\n]+""".r)
+//          )
+//      )
+//    )  
+//
   
-  def commands: Parser[String] = {
-    firstCommand
-  } 
+  def shellCommands: Parser[ShellCommands] = positioned(
+    repsep(shellCommand,"""\n""".r) ^^ {
+      case list:List[String] => new ShellCommands(list.mkString("\n"))
+    }
+  )
+  
+  /** Shell command. */
+  def shellCommand: Parser[String] = {
+    (regex("""[^}\n\r][^\r\n]*""".r) <~ guard(eol)) |
+    guard(eol) |
+    failure("The first character of a shell script line may not be }. You can fix this error by preceding the } with one or more whitespace characters.")
+    
+//    regex("""$([\r\n]*)|([^}][^\r\n]*)""".r)
+  }
+//    try making all of this a single regex to recognize commands
+//    
+//    ( // A command must be preceded by whitespace. Fail if it doesn't.
+//      (regex("""[^ \t]""".r) <~ err("Command must be preceded by whitespace")) |
+//      // If a command is preceded by one or more spaces and/or tabs, parse it!
+//      (space ~> regex("""[^\r\n]+""".r))          
+//    )  
+  
+//  def commands: Parser[String] = {
+//    firstCommand
+//  } 
     
   val tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
     case sequence => new Tape(sequence)

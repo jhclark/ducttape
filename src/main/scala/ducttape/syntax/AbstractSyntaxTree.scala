@@ -111,6 +111,10 @@ object AbstractSyntaxTree {
     }
   }  
 
+  class ShellCommands(val value:String) extends ASTType {
+    override def toString = value
+  }
+  
   class PackageNames(val comments:Comments, val packageNames: List[String]) extends ASTType {
     override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
   }
