@@ -533,7 +533,7 @@ object Grammar {
 
   
   def shellCommands: Parser[ShellCommands] = positioned(
-    repsep(shellCommand,"""\n""".r) ^^ {
+    repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
       case list:List[String] => new ShellCommands(list.mkString("\n"))
     }
   )
