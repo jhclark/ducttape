@@ -11,12 +11,16 @@
 # Important: Inline alternative branches do NOT have the option of adding outputs
 # since all tasks must have exactly the same set of outputs
 
-[whichThing] < a > aOut :: paramA
+[+WhichThing] < a > aOut :: paramA {
   # TODO: Need a better way of specifying individual inputs to packed realizations
   # (later output references get too complicated otherwise)
-  +baseline [choiceA] < b :: param=$paramA
+  +baseline [branchA] < b :: param=$paramA {
     cat $a $b $aOut
-  +alt [choiceB] param=$x
+  }
+  +alt [branchB] param=$x {
     ln -s $a $aOut
-  +alt [choiceC] param=$x
+  }
+  +alt [branchC] param=$x {
     ln -s $a $aOut
+  }
+}

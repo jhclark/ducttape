@@ -3,17 +3,22 @@
 #   and contains the "payload" of this task
 # * This assumes that scheduler submission happens asynchronously
 #   and that we must poll the scheduler to learn when the job has completed
-[SUBMITTER:sge] :: cmds vmem walltime
-  +wrap > wrapper
+[SUBMITTER:sge] :: cmds vmem walltime {
+  [wrap] > wrapper {
     #$-l vmem=$vmem
     #$-l walltime=$walltime
     $cmds
-  +run < wrapper > id
+  }
+  [run] < wrapper > id {
     qsub $wrapper > $id
-  +poll > done exit_code
+  }
+  [poll] > done exit_code {
     TODO # insert the lengthy script needed to properly get the exit code here
-  +status > short_status long_status
+  }
+  [status] > short_status long_status {
     qstat -f $id | awk '/job_state = Q/{print "queued"} /job_state = R/{print "running"}' > $status
+  }
+}
 
 # NOTE: File transfers and decompression are handled by
 # a per-machine limit for each of these tasks and are

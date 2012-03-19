@@ -6,10 +6,20 @@
 #
 # You can give reports names to create reports
 # for debugging, status checking, or publication.
+#
+# For reports that can be reported incrementally as progress indiators,
+# use +status. Status can only be reported on a per-task basis and does not accept names like reports
 
 # what about a simple step with only a report?  
-[g2.simpleReport] < a > x
-  cat $a > $x
-  +report reportA
-    echo "Line1=$(fgrep error $x)"
-
+# TODO: Do we need a special marker on the task name so that we expect nested elements?
+[TaskGroup1.SomeTask] < a > x {
+  +code { # This is a bit odd...
+    cat $a > $x
+  }
+  +report [reportA] >> FileSize {
+    echo "FileSize=$(du -sh $x)"
+  }
+  +status >> LinesCompleted {
+   echo "LinesCompleted=$(wc -l < $x)"
+  }
+}

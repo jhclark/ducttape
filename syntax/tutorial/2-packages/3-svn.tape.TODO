@@ -1,10 +1,12 @@
 # 6) Using package versioning with SVN
-[experiment_task] moses < in=/etc/passwd > out :: N=5
+[experiment_task] moses < in=/etc/passwd > out :: N=5 {
   $moses -version
+}
 
-[PACKAGE:moses] .versioner=svn .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=HEAD
+[PACKAGE:moses] .versioner=svn .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=HEAD {
   ./configure
   make -j16
+}
 
 # TODO: Eventually, ducttape will support "bundling" a workflow to be shared and reproduced
 #       by other researchers. This package versioning system allows us to just include
@@ -23,14 +25,19 @@
 
 # * "checkout" is run in a sandbox directory
 # * All other commands are run inside $dir
-[VERSIONER:svn] :: url rev
-  +checkout > dir
+[VERSIONER:svn] :: url rev {
+  [checkout] > dir {
     svn co -r $rev $url .
-  +update
+  }
+  [update] {
     svn up -r $rev
-  +repo-version > version
+  }
+  [repo-version] > version {
     svn info $url | awk -F': ' '/Revision/{print $2}' > $version
     svn info $url | awk -F': ' '/Date/{print}' > $date
-  +local-version > version date             # Used to confirm version after update/install
+  }
+  [local-version] > version date { # Used to confirm version after update/install
     svn info | awk -F': ' '/Revision/{print $2}' > $version
     svn info | awk -F': ' '/Date/{print}' > $date
+  }
+}

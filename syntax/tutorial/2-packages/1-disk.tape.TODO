@@ -3,22 +3,29 @@
 # concepts to you. Beyond just getting started with ducttape,
 # use of this versioner is discouraged.
 
-[experiment_task] moses < in=/etc/passwd > out :: N=5
+[experiment_task] moses < in=/etc/passwd > out :: N=5 {
   $moses -version
+}
 
-[PACKAGE:moses] .versioner=disk .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=NULL
+[PACKAGE:moses] .versioner=disk .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=NULL {
   ./configure
   make -j16
+}
 
 # TODO: Use proper rsync args
 # TODO: Disk versioner cannot support updating to a particular revision...
-[VERSIONER:disk] :: url rev
-  +checkout > dir
+[VERSIONER:disk] :: url rev {
+  [checkout] > dir {
     rsync $url $dir
-  +update
+  }
+  [update] {
     rsync $url $dir
-  +repo-version > version
+  }
+  [repo-version] > version {
     find $url -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $version
-  +local-version > version date
+  }
+  [local-version] > version date {
     find . -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $date
     cp $date $version
+  }
+}

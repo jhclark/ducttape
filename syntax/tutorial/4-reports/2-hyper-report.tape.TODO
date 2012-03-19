@@ -2,20 +2,30 @@
 
 # - This does lead to confusion in reports:
 #   A report defaults to running for all hyperedges, unless some specializations are specified
-[whichThing] a > aOut :: paramA
+[+whichThing] a > aOut :: paramA {
   # TODO: Need a better way of specifying individual inputs to packed realizations
-  +baseline [choiceA] b :: param=$paramA
+  +baseline [choiceA] b :: param=$paramA {
     cat $a $b $aOut
-  +alt [choiceB] param=$x
+  }
+
+  +alt [choiceB] param=$x {
     ln -s $a $aOut
-  +alt [choiceC] param=$x
-    ln -s $a $aOut
-  +report reportA # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
+  }
+
+  # The default report will be run for choiceA and choiceB
+  +report [reportA] >> Line1 { # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
     echo "Line1=$(head -n1 $a)"
+  }
 
-  # TODO: XXX: This syntax might be overly confusing due to similarity of grafting and task name syntax
-  +report reportA[choiceA] # Specializations listed using grafting syntax
-    echo "Line1=$(head -n1 $a)"
-    echo "Line1B=$(head -n1 $b)"
-
-
+  +alt [choiceC] param=$x {
+    +code {
+      ln -s $a $aOut
+    }
+    # Specializations must be nested inside alternatives
+    # The following code will be run for reportA for choiceC
+    +report [reportA] >> Line1 MyParam {
+      echo "Line1=$(head -n1 $a)"
+      echo "MyParam=$param"
+    }
+  }
+}
