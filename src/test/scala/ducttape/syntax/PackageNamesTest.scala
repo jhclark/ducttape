@@ -10,13 +10,13 @@ class PackageNamesTest extends AbstractTest("package naames",Grammar.packageName
   def successCases = Set(
     "",
     "moses tokenizer giza",
-    "moses"
+    "moses",
+    """# Package comments
+      moses tokenizerr giza"""   
   ) 
   
   def failureCases = Set(
-      " ",
-    """# Package comments
-      moses tokenizerr giza"""        
+      " "     
   ) 
   
   def errorCases = Set(

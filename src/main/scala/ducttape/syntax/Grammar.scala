@@ -515,9 +515,11 @@ object Grammar {
   }  
   
   val packageNames:Parser[PackageNames] = {
-    repsep(name("package","""\s""".r,failure(_),err(_)),space)
+    (comments <~ opt(eol ~ space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)
+//    repsep(name("package","""\s""".r,failure(_),err(_)),space)
   } ^^ {
-    case (packageNames:List[String]) => new PackageNames(new Comments(None),packageNames)    
+    case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
+//    case (packageNames:List[String]) => new PackageNames(new Comments(None),packageNames)    
   }
   
   val taskHeader:Parser[TaskHeader] = {
