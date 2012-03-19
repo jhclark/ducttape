@@ -64,14 +64,8 @@ class OutputAssignmentTest extends AbstractTest("output assignment",Grammar.outp
   def failureCases = Set(
     ""  ,
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :"
-  ) 
-  
-  def errorCases = Set(
-          
-    " ",
-    "dah=A_variable_Name__:",
-    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",    
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
+    " ",   
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
     """'Starting with a single and ending with a double"""",
@@ -126,7 +120,12 @@ class OutputAssignmentTest extends AbstractTest("output assignment",Grammar.outp
     """.my='This one uses single quotes '""",
     """.oh=' Escape\tsequences\nare\rallowed! '""",
     ".my=\"Unicode sequences should be fine \u21AF too\"",
-    ".what=\'Unicode sequences should be fine \u2231 too\'"        
+    ".what=\'Unicode sequences should be fine \u2231 too\'"     
+  ) 
+  
+  def errorCases = Set(
+    "dah=A_variable_Name__:",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:"
   )
   
 }

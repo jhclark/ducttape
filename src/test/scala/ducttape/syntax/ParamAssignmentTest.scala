@@ -112,12 +112,7 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
     "a",
     "b_1",
-    "_z"      
-  ) 
-  
-  def errorCases = Set(
-    "daz=A_variable_Name__:",
-    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",     
+    "_z",     
     " ",      
     """"This is a badly quoted string\"""",
     """"This one is, too"it seems"""",
@@ -125,8 +120,12 @@ class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramA
     """"Starting with a double and ending with a single'""",    
     "$variableName@taskName[",
     "$A-variable_Name__",
-    "$"
+    "$"    
+  ) 
   
+  def errorCases = Set(
+    "daz=A_variable_Name__:",
+    "zip=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:"  
   )
   
 }

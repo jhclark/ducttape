@@ -412,7 +412,8 @@ object Grammar {
   
   /** Output variable declaration. */
   val outputAssignment: Parser[Spec] = positioned(
-      ( name("output variable","""[=\s]|\z""".r) ~ 
+      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
+          name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
         opt("=" ~> (rvalue | err("Error in output variable assignment")))
       ) ^^ {
         case (variableName:String) ~ Some(rhs:RValue) => new Spec(variableName,rhs,false)
@@ -422,7 +423,8 @@ object Grammar {
     
   /** Parameter variable declaration. */
   val paramAssignment: Parser[Spec] = positioned(
-      ( opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r) <~ "=") ~ 
+      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
+          opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
         (rvalue | err("Error in parameter variable assignment"))
       ) ^^ {
         case Some(_:String) ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,true)
@@ -507,15 +509,16 @@ object Grammar {
 
 
   val taskSpec:Parser[Specs] = {
-    taskInputs | taskOutputs | taskParams
+    taskInputs | taskOutputs | taskParams //| failure("Failed to parse task spec")
   }
     
   val taskSpecs:Parser[List[Specs]] = {
-    repsep(taskSpec,whitespace)
+    repsep(taskSpec,regex("""[ \n\r\t]+""".r)) //| failure("Dude")
   }  
   
   val packageNames:Parser[PackageNames] = {
-    (comments <~ opt(eol ~ space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)
+    (comments <~ opt(eol)~opt(space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)    
+//    (comments <~ opt(eol ~ space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)
   } ^^ {
     case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
   }
@@ -527,8 +530,41 @@ object Grammar {
       new TaskHeader(packageNames,specs) 
   }
   
-  val taskBlock: Parser[TaskDefinition] = positioned(taskName ^^ {
-    case string => new TaskDefinition(string)
+  val taskBlock: Parser[TaskDefinition] = positioned({
+    taskName ~ 
+    (
+        whitespace ~>
+        taskHeader
+    ) ~ 
+    (
+        (
+            opt(whitespace) ~
+            (
+                literal("{") |
+                err("Missing opening { brace.")
+            ) ~
+            opt(space) ~
+            (
+                eol |
+                err("Shell commands may not start on the same line as the opening { brace.")
+            )
+        ) ~> 
+        shellCommands <~
+        (
+            eol ~ 
+            (
+                literal("}") ~ 
+                (
+                    opt(space) ~
+                    guard(eol | err("Non-whitespace character found following closing } brace."))
+                ) |                
+                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
+                err("Missing closing } brace. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+            )
+        )
+    ) 
+  } ^^ {
+    case (name:String) ~ (header:TaskHeader) ~ (commands:ShellCommands) => new TaskDefinition(name)
   })
 
   
