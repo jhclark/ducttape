@@ -34,7 +34,6 @@ object Grammar {
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
     repsep(comment,opt(space))
-//    repsep(comment,opt(space)~eol~opt(space))<~eol
   } ^^ {
     case list:List[String] => {
       if (list.isEmpty) {
@@ -510,16 +509,15 @@ object Grammar {
 
 
   val taskSpec:Parser[Specs] = {
-    taskInputs | taskOutputs | taskParams //| failure("Failed to parse task spec")
+    taskInputs | taskOutputs | taskParams
   }
     
   val taskSpecs:Parser[List[Specs]] = {
-    repsep(taskSpec,regex("""[ \n\r\t]+""".r)) //| failure("Dude")
+    repsep(taskSpec,regex("""[ \n\r\t]+""".r))
   }  
   
   val packageNames:Parser[PackageNames] = {
     (comments <~ opt(eol)~opt(space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)    
-//    (comments <~ opt(eol ~ space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)
   } ^^ {
     case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
   }
@@ -532,13 +530,7 @@ object Grammar {
   }
   
   val taskBlock: Parser[TaskDefinition] = positioned({
-    (
-        comments //<~ 
-//        (
-//            opt(whitespace) ~
-//            opt(eol)
-//        )
-    ) ~
+    comments ~
     taskName ~ 
     (
         whitespace ~>
