@@ -1,0 +1,18 @@
+[PT] moses < train > pt {
+  $moses < $train > $pt
+}
+
+[RO] moses < train > ro {
+  $moses < $train > $ro
+}
+
+[LM] moses < train > lm {
+  $moses < $train > $lm
+}
+
+# This variant *does* make the syntax much more compact
+[reportA] < pt ro lm > PTFileSize ROFileSize LMFileSize {
+    echo "PTFileSize=$(du -sh $pt)"
+    echo "ROFileSize=$(du -sh $ro)"
+    echo "LMFileSize=$(du -sh $lm)"
+}
