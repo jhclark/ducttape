@@ -15,13 +15,13 @@ object GrammarParser extends RegexParsers {
 
   override val skipWhitespace = false;
 
-  def readTape(file: File): Tape = {
+  def readTape(file: File): WorkflowDefinition = {
     //val grammar = new Grammar(file)
-    val result: ParseResult[Tape] = parseAll(Grammar.tape, IO.read(file, "UTF-8"))    
+    val result: ParseResult[Seq[Block]] = parseAll(Grammar.blocks, IO.read(file, "UTF-8"))    
     val pos = result.next.pos
     
     return result match {
-      case Success(res, _) => res
+      case Success(blocks:Seq[Block], _) => new WorkflowDefinition(file,blocks)
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
       case Error(msg, _) =>

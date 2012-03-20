@@ -536,7 +536,21 @@ object Grammar {
       new TaskHeader(packageNames,specs) 
   }
   
+  val shellCommands: Parser[ShellCommands] = positioned(
+    repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
+      case list:List[String] => new ShellCommands(list.mkString("\n"))
+    }
+  )
+  
+  /** Shell command. */
+  val shellCommand: Parser[String] = {
+    (regex("""[^}\n\r][^\r\n]*""".r) <~ guard(eol)) |
+    guard(eol) |
+    failure("The first character of a shell script line may not be }. You can fix this error by preceding the } with one or more whitespace characters.")
+  }
+
   val taskBlock: Parser[TaskDefinition] = positioned({
+    opt(whitespace) ~>
     comments ~
     taskName ~ 
     (
@@ -563,7 +577,7 @@ object Grammar {
                 literal("}") ~ 
                 (
                     opt(space) ~
-                    guard(eol | err("Non-whitespace character found following closing } brace."))
+                    (eol | err("Non-whitespace character found following closing } brace."))
                 ) |                
                 space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
                 err("Missing closing } brace. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
@@ -582,22 +596,22 @@ object Grammar {
 //    case None                      ~ (taskDef:TaskDefinition) => (List.empty,taskDef)
 //  }
   
-  def shellCommands: Parser[ShellCommands] = positioned(
-    repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
-      case list:List[String] => new ShellCommands(list.mkString("\n"))
-    }
-  )
-  
-  /** Shell command. */
-  def shellCommand: Parser[String] = {
-    (regex("""[^}\n\r][^\r\n]*""".r) <~ guard(eol)) |
-    guard(eol) |
-    failure("The first character of a shell script line may not be }. You can fix this error by preceding the } with one or more whitespace characters.")
+  val block: Parser[Block] = {
+    taskBlock
   }
-
+  
+  val blocks: Parser[Seq[Block]] = {
+    opt(whitespace) ~> 
+    rep(block) <~ 
+    (
+        opt(whitespace)~
+        opt(comments)~
+        opt(whitespace)
+    )
+  }
     
-  val tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
-    case sequence => new Tape(sequence)
-  })
+//  val tape: Parser[Tape] = positioned(rep(taskBlock) ^^ {
+//    case sequence => new Tape(sequence)
+//  })
 
 }

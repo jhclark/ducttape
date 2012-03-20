@@ -95,13 +95,7 @@ object AbstractSyntaxTree {
   case class TaskOutputs(val specs:Seq[Spec], val comments:Comments) extends Specs  
   case class TaskParams(val specs:Seq[Spec], val comments:Comments) extends Specs
   
-  /** Ducttape file. */
-  class Tape(val tasks: Seq[Block]) extends ASTType {
-    override def toString = tasks.mkString("\n\n")
-  }
-  
-
-  /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
+ /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
   case class BranchPointDef(val name: Option[String], val specs: Seq[Spec]) extends RValue {
     override def toString = {
       name match {
@@ -133,5 +127,10 @@ object AbstractSyntaxTree {
                        val commands:ShellCommands) extends Block {
     override def toString = name
   }
+  
+  /** Ducttape hyperworkflow file. */
+  class WorkflowDefinition(val file: File, val tasks: Seq[Block]) extends ASTType {
+    override def toString = tasks.mkString("\n\n")
+  }  
   
 }

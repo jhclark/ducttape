@@ -14,12 +14,12 @@ object DemoParser extends Application {
     }
   }
 
-  
-  {
-    val result: ParseResult[Tape] = parseAll(Grammar.tape,"""[hello]""")   
-    print(result)
-  }
-  
+//  
+//  {
+//    val result: ParseResult[Block] = parseAll(Grammar.block,"""[hello]""")   
+//    print(result)
+//  }
+//  
   {
     val result: ParseResult[Literal] = parseAll(Grammar.quotedLiteral,"""'hi\tthere\nc:\\\r\nworld'""")   
     print(result)    

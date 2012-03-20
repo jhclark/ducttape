@@ -2,6 +2,7 @@ package ducttape.util
 
 import org.scalatest.WordSpec
 import scala.util.parsing.combinator.Parsers
+import scala.collection.Set
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.GrammarParser.ParseResult
 import ducttape.syntax.GrammarParser.Parser
