@@ -29,7 +29,7 @@ object Grammar {
   val whitespace: Parser[String] = regex("""\s+""".r)
   
   /** One line of comments */
-  val comment: Parser[String] = literal("//")~>regex("""[^\r\n]*""".r)<~guard(eol)
+  val comment: Parser[String] = opt(space)~>literal("//")~>regex("""[^\r\n]*""".r)<~guard(eol)
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
@@ -531,6 +531,13 @@ object Grammar {
   }
   
   val taskBlock: Parser[TaskDefinition] = positioned({
+    (
+        comments <~ 
+        (
+            opt(whitespace) ~
+            opt(eol)
+        )
+    ) ~
     taskName ~ 
     (
         whitespace ~>
@@ -564,7 +571,8 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (name:String) ~ (header:TaskHeader) ~ (commands:ShellCommands) => new TaskDefinition(name)
+    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:ShellCommands) => 
+      new TaskDefinition(comments,name,header,commands)
   })
 
   

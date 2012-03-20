@@ -127,7 +127,10 @@ object AbstractSyntaxTree {
   /** Defines a block of ducttape code, such as a task definition. */
   class Block extends ASTType
   
-  class TaskDefinition(val name: String) extends Block {
+  class TaskDefinition(val comments:Comments,
+                       val name: String, 
+                       val header:TaskHeader, 
+                       val commands:ShellCommands) extends Block {
     override def toString = name
   }
   

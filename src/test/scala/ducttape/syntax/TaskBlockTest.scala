@@ -11,6 +11,43 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
 """[hello] {
       echo "hello, world!"
 }""",
+"""// Hello, world
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+// some more
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+// some more
+
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+
+[hello] {
+      echo "hello, world!"
+}""",
 """[hello] 
 {
       echo "hello, world!"
