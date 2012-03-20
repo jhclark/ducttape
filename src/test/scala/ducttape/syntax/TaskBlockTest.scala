@@ -205,21 +205,39 @@ moses < in=foo x=73
   
   # Now do it!
   die()
-}"""
+}""",
+""" // Hello, world
 
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+// some more
+
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+
+[hello] {
+      echo "hello, world!"
+}"""  
   ) 
   
   def failureCases = Set(
-    " ",      
-    """// Package comments
-      moses tokenizerr giza
-    // Do some inputs
-    < in=$out@tokenize[DataSet:test] 
-    // Here's the result
-    > hyps"""
+
   ) 
   
-  def errorCases = Set(      
+  def errorCases = Set(   
+    " ",            
 """[funky] < in=foo > out  
  bar {
   function die () {
@@ -258,31 +276,13 @@ moses < in=foo x=73
     // Do some inputs
     < in=$out@tokenize[DataSet:test] 
     // Here's the result
-    > hyps""",
-""" // Hello, world
-
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-// some more
-
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-
-// some more
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-
-// some more
-
-[hello] {
-      echo "hello, world!"
-}"""    
+    > hyps""" ,
+    """// Package comments
+      moses tokenizerr giza
+    // Do some inputs
+    < in=$out@tokenize[DataSet:test] 
+    // Here's the result
+    > hyps"""    
   )
   
 }

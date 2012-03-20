@@ -303,25 +303,7 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
           // Task params
           :: g=hello .h=10 i=(d: "hi" "there" "world")""",
           
-       """ < in=foo > out :: p=7 < j=$f"""
-       
-  ) 
-  
-  def failureCases = Set(
-    ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
-    ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
-    ":: a",
-    ":: b_1",
-    ":: _z",
-    ":: source target dev_src dev_tgtn",
-    ":: source target=/path/to/train.en dev_src dev_tgt=/path/to/dev.en",
-    """:: "This is a badly quoted string\"""",
-    """:: "This one is, too"it seems"""",
-    """:: 'Starting with a single and ending with a double"""",
-    """:: "Starting with a double and ending with a single'""",    
-    ":: $variableName@taskName[",
-    ":: $A-variable_Name__",
-    ":: $",
+       """ < in=foo > out :: p=7 < j=$f""",
     
    """// These are some cool comments
       // These are some more
@@ -352,7 +334,25 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
       // Or not
        
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
+
        
+  ) 
+  
+  def failureCases = Set(
+    ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
+    ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
+    ":: a",
+    ":: b_1",
+    ":: _z",
+    ":: source target dev_src dev_tgtn",
+    ":: source target=/path/to/train.en dev_src dev_tgt=/path/to/dev.en",
+    """:: "This is a badly quoted string\"""",
+    """:: "This one is, too"it seems"""",
+    """:: 'Starting with a single and ending with a double"""",
+    """:: "Starting with a double and ending with a single'""",    
+    ":: $variableName@taskName[",
+    ":: $A-variable_Name__",
+    ":: $"       
   ) 
   
   def errorCases = Set(

@@ -82,7 +82,18 @@ class TaskOutputsTest extends AbstractTest("task outputs",Grammar.taskOutputs) {
       // I should say something meaningful       
       // Perhaps even profound       
       // Or not       
+       > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
+    
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
+       
+      // Perhaps even profound
+       
+      // Or not
+       
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
+
      
   ) 
   
@@ -144,18 +155,7 @@ class TaskOutputsTest extends AbstractTest("task outputs",Grammar.taskOutputs) {
     """> .my='This one uses single quotes '""",
     """> .oh=' Escape\tsequences\nare\rallowed! '""",
     "> .my=\"Unicode sequences should be fine \u21AF too\"",
-    "> .what=\'Unicode sequences should be fine \u2231 too\'",
-    
-   """// These are some cool comments
-      // These are some more
-      // I should say something meaningful
-       
-      // Perhaps even profound
-       
-      // Or not
-       
-       > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
-    
+    "> .what=\'Unicode sequences should be fine \u2231 too\'"    
   ) 
   
   def errorCases = Set(

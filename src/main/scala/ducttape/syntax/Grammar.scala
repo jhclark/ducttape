@@ -21,19 +21,22 @@ object Grammar {
   
   /** End of line characters, including end of file. */
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
-  
+ 
   /** Non-end of line white space characters */
   val space: Parser[String] = regex("""[ \t]+""".r)
   
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r)
+
+//  /** End of line character, optionally surrounded by other whitespace. */
+//  val atLeastOneEOL: Parser[String] = eol//opt(space) ~> eol <~ opt(whitespace)  
   
   /** One line of comments */
   val comment: Parser[String] = opt(space)~>literal("//")~>regex("""[^\r\n]*""".r)<~eol
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
-    repsep(comment,opt(space))
+    repsep(comment,opt(whitespace)) <~ opt(whitespace)
   } ^^ {
     case list:List[String] => {
       if (list.isEmpty) {
@@ -44,6 +47,10 @@ object Grammar {
     }
   }
   
+//  val floatingComments : Parser[List[String]] = {
+//    repsep(comment,(opt(space)~eol))
+//   // repsep(comments,atLeastOneEOL) <~ atLeastOneEOL
+//  }
   
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
@@ -568,6 +575,12 @@ object Grammar {
       new TaskDefinition(comments,name,header,commands)
   })
 
+//  val block : Parser[(List[Comments],TaskDefinition)] = {
+//    opt(floatingComments) ~ taskBlock
+//  } ^^ {
+//    case Some(list:List[Comments]) ~ (taskDef:TaskDefinition) => (list,      taskDef)
+//    case None                      ~ (taskDef:TaskDefinition) => (List.empty,taskDef)
+//  }
   
   def shellCommands: Parser[ShellCommands] = positioned(
     repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
