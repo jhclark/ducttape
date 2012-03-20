@@ -78,12 +78,9 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
        < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
    """// These are some cool comments
       // These are some more
-      // I should say something meaningful
-       
-      // Perhaps even profound
-       
-      // Or not
-       
+      // I should say something meaningful    
+      // Perhaps even profound       
+      // Or not       
        < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
   
     // Sequential branch point
@@ -153,12 +150,9 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
    """// These are some cool comments
       // These are some more
-      // I should say something meaningful
-       
-      // Perhaps even profound
-       
-      // Or not
-       
+      // I should say something meaningful       
+      // Perhaps even profound       
+      // Or not       
        > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
 
     // Empty task params  
@@ -273,12 +267,9 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
    """// These are some cool comments
       // These are some more
-      // I should say something meaningful
-       
-      // Perhaps even profound
-       
-      // Or not
-       
+      // I should say something meaningful       
+      // Perhaps even profound       
+      // Or not       
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
 
        
@@ -330,7 +321,38 @@ class TaskSpecsTest extends AbstractTest("task specs",Grammar.taskSpecs) {
     """:: "Starting with a double and ending with a single'""",    
     ":: $variableName@taskName[",
     ":: $A-variable_Name__",
-    ":: $"    
+    ":: $",
+    
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
+       
+      // Perhaps even profound
+       
+      // Or not
+       
+       < source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
+    
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
+       
+      // Perhaps even profound
+       
+      // Or not
+       
+       > source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
+
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
+       
+      // Perhaps even profound
+       
+      // Or not
+       
+       :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
+       
   ) 
   
   def errorCases = Set(

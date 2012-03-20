@@ -20,31 +20,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
       echo "hello, world!"
 }""",
 """ // Hello, world
-
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
 // some more
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-// some more
-
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-
-// some more
-[hello] {
-      echo "hello, world!"
-}""",
-""" // Hello, world
-
-// some more
-
 [hello] {
       echo "hello, world!"
 }""",
@@ -234,7 +210,13 @@ moses < in=foo x=73
   ) 
   
   def failureCases = Set(
-
+    " ",      
+    """// Package comments
+      moses tokenizerr giza
+    // Do some inputs
+    < in=$out@tokenize[DataSet:test] 
+    // Here's the result
+    > hyps"""
   ) 
   
   def errorCases = Set(      
@@ -261,8 +243,7 @@ moses < in=foo x=73
       echo "hello, world!"
 }""",
     "A-variable_Name__",
-    "",
-    " ",      
+    "",      
     "> x y_txt",
     "< a=/etc/passwd b=/etc/hosts",
     "> x",
@@ -278,12 +259,30 @@ moses < in=foo x=73
     < in=$out@tokenize[DataSet:test] 
     // Here's the result
     > hyps""",
-    """// Package comments
-      moses tokenizerr giza
-    // Do some inputs
-    < in=$out@tokenize[DataSet:test] 
-    // Here's the result
-    > hyps"""     
+""" // Hello, world
+
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+// some more
+
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+[hello] {
+      echo "hello, world!"
+}""",
+""" // Hello, world
+
+// some more
+
+[hello] {
+      echo "hello, world!"
+}"""    
   )
   
 }

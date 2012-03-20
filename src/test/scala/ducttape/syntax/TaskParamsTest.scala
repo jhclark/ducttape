@@ -121,12 +121,9 @@ class TaskParamsTest extends AbstractTest("task params",Grammar.taskParams) {
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en""",
    """// These are some cool comments
       // These are some more
-      // I should say something meaningful
-       
-      // Perhaps even profound
-       
-      // Or not
-       
+      // I should say something meaningful       
+      // Perhaps even profound       
+      // Or not      
        :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
     
   ) 
@@ -146,7 +143,17 @@ class TaskParamsTest extends AbstractTest("task params",Grammar.taskParams) {
     """:: "Starting with a double and ending with a single'""",    
     ":: $variableName@taskName[",
     ":: $A-variable_Name__",
-    ":: $"    
+    ":: $",
+   """// These are some cool comments
+      // These are some more
+      // I should say something meaningful
+       
+      // Perhaps even profound
+       
+      // Or not
+       
+       :: source=/path/to/train.de target=/path/to/train.en dev_src=/path/to/dev.de dev_tgt=/path/to/dev.en"""
+    
   ) 
   
   def errorCases = Set(

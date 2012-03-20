@@ -29,11 +29,12 @@ object Grammar {
   val whitespace: Parser[String] = regex("""\s+""".r)
   
   /** One line of comments */
-  val comment: Parser[String] = opt(space)~>literal("//")~>regex("""[^\r\n]*""".r)<~guard(eol)
+  val comment: Parser[String] = opt(space)~>literal("//")~>regex("""[^\r\n]*""".r)<~eol
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
-    repsep(comment,whitespace)
+    repsep(comment,opt(space))
+//    repsep(comment,opt(space)~eol~opt(space))<~eol
   } ^^ {
     case list:List[String] => {
       if (list.isEmpty) {
@@ -532,11 +533,11 @@ object Grammar {
   
   val taskBlock: Parser[TaskDefinition] = positioned({
     (
-        comments <~ 
-        (
-            opt(whitespace) ~
-            opt(eol)
-        )
+        comments //<~ 
+//        (
+//            opt(whitespace) ~
+//            opt(eol)
+//        )
     ) ~
     taskName ~ 
     (
