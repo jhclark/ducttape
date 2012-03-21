@@ -1,3 +1,5 @@
+package ducttape.db
+
 import java.sql._
 import collection._
 

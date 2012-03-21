@@ -4,8 +4,11 @@ import ducttape.util._
 object MyParseApp extends Application {
 
 	import ducttape.syntax.AbstractSyntaxTree._
-	import ducttape.syntax.Grammar._
 	import ducttape.syntax.GrammarParser._
+	
+	// grammar is a class, not an object
+	val grammar = new Grammar(null)
+	import grammar._
 	
 	val sampleComment = """# Welcome to make
 			# This is a sample
@@ -24,7 +27,7 @@ object MyParseApp extends Application {
 	val taskNameResult: ParseResult[Any] = parseAll(taskName,sampleTaskName);
 
 	val sampleAssignment = """foo=a"""
-	val assignmentResult: ParseResult[Spec] = parseAll(assignment,sampleAssignment);
+	val assignmentResult: ParseResult[Spec] = parseAll(assignment(allowLeadingDot=false),sampleAssignment);
 	
 	val sampleInputs = """< x1=/tmp/bar y=yow"""
 	val inputsResult: ParseResult[Seq[Spec]] = parseAll(taskInputs,sampleInputs)
@@ -93,7 +96,7 @@ object MyParseApp extends Application {
 			//commandsResult;
 	  		//branchResult;
 	  		//taskBlockResult;
-          GrammarParser.read(IO.read(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"), "UTF-8"))
+          GrammarParser.readWorkflow(new java.io.File("/home/lane/workspace/ducttape/syntax/tutorial/3-hyper/1-hello-hyper.tape"))
           //GrammarParser.read(IO.read(sampleWorkflow, "UTF-8"))
 
 	  println(result)
