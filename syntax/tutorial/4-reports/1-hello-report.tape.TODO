@@ -12,14 +12,19 @@
 
 # what about a simple step with only a report?  
 # TODO: Do we need a special marker on the task name so that we expect nested elements?
-[TaskGroup1.SomeTask] < a > x {
-  +code { # This is a bit odd...
-    cat $a > $x
-  }
-  +report [reportA] >> FileSize {
-    echo "FileSize=$(du -sh $x)"
-  }
-  +status >> LinesCompleted {
-   echo "LinesCompleted=$(wc -l < $x)"
+task some_task < a > x {
+  cat $a > $x
+}
+
+summary sizes {
+   using some_task > FileSize {
+    du -sh $x > $FileSize
   }
 }
+
+summary status {
+  using some_task > LinesCompleted {
+   wc -l < $x > $LinesCompleted
+  }
+}
+

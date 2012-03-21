@@ -1,19 +1,10 @@
 # To define a subworkflow in the same file:
-[SUB:TM] < in1=x.txt > out1=$Y/out {
-  [X] < in=$TM/in1 > out {
+# NOTE: Packages are not allowed following group definition
+group TM < in1=x.txt > out1=$out@Y {
+  task X < in=$TM/in1 > out {
     cat < $in >$out
   }
-  [Y] < in=$X/out > out {
+  task Y: package < in=$X/out > out {
     cat < $in > $out
   }
 }
-
-# To define a "task function" in the same file
-[FUNC:FILTER] < in > out {
-  cat < $in > $out
-}
-
-# Using that function or subworkflow later in the file:
-# (Require naming inputs and outputs again for clarity, but
-   omit commands)
-[X]=FILTER < in=x.txt > out

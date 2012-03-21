@@ -12,6 +12,8 @@
    ;( ,(regexp-opt '("::" "<" ">" "=" "(" ")" "@") 'word) . font-lock-function-name-face)
    ;
    ( ,(regexp-opt '("::" "<" ">") 'word) . font-lock-builtin-face)
+   ( ,(regexp-opt '("task" "func" "group" "action" "branchpoint" "branch" "submitter" "package" "versioner") 'word) . font-lock-keyword-face)
+   ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'word) . font-lock-keyword-face)
    ;( ,(regexp-opt '("Pi" "Infinity") 'word) . font-lock-constant-face)
 
    ;; see http://stackoverflow.com/questions/2970597/highlighting-correctly-in-an-emacs-major-mode

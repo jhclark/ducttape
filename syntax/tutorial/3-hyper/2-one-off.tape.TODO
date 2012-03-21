@@ -4,12 +4,12 @@
 # "one off" experiments.
 
 # We start with a task much like the previous example
-[one-off-1] < in=(WhichSize: smaller=small.txt bigger=big.txt) > out {
+task one-off-1 < in=(WhichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
 }
 
 # And now add a child task that also has a packed parameter with multiple branches
-[one-off-2] < in=$one-off-1/out :: N=(N: one=1 two=2) {
+task one-off-2 < in=$one-off-1/out :: N=(N: one=1 two=2) {
   head -n $N < $in
 }
 

@@ -1,8 +1,9 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.walker
 
 import collection._
 import java.util.concurrent._
 
+import ducttape.hyperdag._
 import ducttape.util._
 
 // hedge filter allows us to exclude certain hyperedges from

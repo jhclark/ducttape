@@ -10,46 +10,57 @@
 # there should be a separate "input def" block
 # for inputting files along with their settings (similar to a loonybin FILESYSTEM node)
 
-[tok_src] < src=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
-          > tok
-          :: lang=de sz=(size: small=small large=large)
-          :: .vmem=2gb .cpus=1
+task tok_src: cdec
+              < src=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
+              > tok
+              :: lang=de sz=(size: small=small large=large)
+              :: .vmem=2gb .cpus=1 {
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $src > $tok
+}
 
-[tok_tgt] < tgt=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
-          > tok
-          :: lang=en size=(size: small=small large=large)
-          :: .vmem=2gb .cpus=1
+task tok_tgt: cdec
+              < tgt=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
+              > tok
+              :: lang=en size=(size: small=small large=large)
+              :: .vmem=2gb .cpus=1 {
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $tgt > $tok
+}
 
 # TODO: Split so that it can be parallelized/resumed
-[align] < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] > symmetrized
-        :: .vmem=(size: small=2gb large=16gb) .cpus=8
-  TODO > $symmetrized
+task align: mgiza
+            < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] > symmetrized
+            :: .vmem=(size: small=2gb large=16gb) .cpus=8 {
+  $mgiza > $symmetrized
+}
 
 # Setup Adam Lopez's extractor.
 # Extract a grammar for both the tuning set and test set with the magic of realizations
-[extract_gra] < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] align=$symmetrized@align
-              < filteredTo=(filterSet: tune=$tok@tok_src[sets:tune] test=$tok@tok_src[sets:test])
-              > gra
-              :: .vmem=16gb .cpus=1
-  /home/jhclark/workspace/sa-extract TODO $filteredTo > $gra
+task extract_gra: sa_extract
+                  < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] align=$symmetrized@align
+                  < filteredTo=(filterSet: tune=$tok@tok_src[sets:tune] test=$tok@tok_src[sets:test])
+                  > gra
+                  :: .vmem=16gb .cpus=1 {
+  $sa_extract TODO $filteredTo > $gra
+}
 
-[tune] < src=$tok/tok_src[sets:tune] refs=$tok@tok_tgt[sets:tune] gra=$gra@extract_gra[filterSet:tune]
-       > hyps weights
-       :: .submitter=localhost # submits its own jobs
-  /home/jhclark/workspace/cdec/pro-trainer/dist-pro.pl TODO
+task tune: cdec < src=$tok/tok_src[sets:tune] refs=$tok@tok_tgt[sets:tune] gra=$gra@extract_gra[filterSet:tune]
+           > hyps weights
+           :: .submitter=localhost # submits its own jobs {
+  $cdec/pro-trainer/dist-pro.pl TODO
+}
 
-[decode] < src=$tok@tok_src[sets:test] gra=$gra@extract_gra[filterSet:test] weights=$weights@tune
-         > hyps
-         :: .vmem=16gb .cpus=8
-  /home/jhclark/workspace/cdec/decoder/cdec TODO -w $weights > $hyps
+task decode: cdec < src=$tok@tok_src[sets:test] gra=$gra@extract_gra[filterSet:test] weights=$weights@tune
+             > hyps
+             :: .vmem=16gb .cpus=8 {
+  $cdec/decoder/cdec TODO -w $weights > $hyps
+}
 
-[eval] < hyps=(scoreSet: tune=$hyps@tune test=$hyps@decode)
-       < refs=(scoreSet: tune=$tok@tok_tgt[sets:tune] test=$tok@tok_tgt[sets:test])
-       > scores
-       :: .vmem=4gb .cpus=1
-  /home/jhclark/workspace/multeval/multeval.sh TODO $hyps $refs > $scores
+task eval: multeval < hyps=(scoreSet: tune=$hyps@tune test=$hyps@decode)
+           < refs=(scoreSet: tune=$tok@tok_tgt[sets:tune] test=$tok@tok_tgt[sets:test])
+           > scores
+           :: .vmem=4gb .cpus=1 {
+  $multeval/multeval.sh TODO $hyps $refs > $scores
+}
 
 # NOTE: We could have multiple meanings of $ in the same input:
 # e.g. weights=$tune/weights/$lang

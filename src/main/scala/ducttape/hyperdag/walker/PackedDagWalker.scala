@@ -1,10 +1,11 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.walker
 
 import collection._
 import collection.JavaConversions._
 import java.util.concurrent._
 
 import ducttape.Types._
+import ducttape.hyperdag._
 
 // agenda-based DAG iterator that allows for parallelization
 class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {

@@ -1,4 +1,4 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.walker
 
 /** A generalization of the iterator concept to allow parallel traversal
  *  of structured collections (e.g. DAGs). Callers can use a producer-consumer

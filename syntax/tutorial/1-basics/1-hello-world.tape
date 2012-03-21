@@ -14,7 +14,7 @@
 # * To have ducttape write a bash script that runs this step to
 #      ./hello-world/baseline/commands.sh, use:
 #   $ ducttape --dry-run --write-scripts basic.tape
-[hello-world] {
+task hello-world {
   echo hi
   echo >&2 hello
 }

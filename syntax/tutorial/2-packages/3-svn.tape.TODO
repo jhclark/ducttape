@@ -1,9 +1,9 @@
 # 6) Using package versioning with SVN
-[experiment_task] moses < in=/etc/passwd > out :: N=5 {
+task experiment_task: moses < in=/etc/passwd > out :: N=5 {
   $moses -version
 }
 
-[PACKAGE:moses] .versioner=svn .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=HEAD {
+package moses :: .versioner=svn .url=http://moses.svn.sourceforge.net/svnroot/moses .rev=HEAD {
   ./configure
   make -j16
 }
@@ -25,18 +25,19 @@
 
 # * "checkout" is run in a sandbox directory
 # * All other commands are run inside $dir
-[VERSIONER:svn] :: url rev {
-  [checkout] > dir {
+versioner svn :: url rev {
+  action checkout > dir {
     svn co -r $rev $url .
   }
-  [update] {
+  action update {
     svn up -r $rev
   }
-  [repo-version] > version {
+  action repo_version > version {
     svn info $url | awk -F': ' '/Revision/{print $2}' > $version
     svn info $url | awk -F': ' '/Date/{print}' > $date
   }
-  [local-version] > version date { # Used to confirm version after update/install
+  # Used to confirm version after update/install
+  action local_version > version date {
     svn info | awk -F': ' '/Revision/{print $2}' > $version
     svn info | awk -F': ' '/Date/{print}' > $date
   }

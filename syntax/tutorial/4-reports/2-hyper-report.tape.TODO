@@ -2,30 +2,33 @@
 
 # - This does lead to confusion in reports:
 #   A report defaults to running for all hyperedges, unless some specializations are specified
-[+whichThing] a > aOut :: paramA {
-  # TODO: Need a better way of specifying individual inputs to packed realizations
-  +baseline [choiceA] b :: param=$paramA {
+branchpoint WhichThing < a > aOut :: paramA {
+
+  # NOTE: Branches inside a branchpoint task may *NOT* specify additional outputs
+  baseline task choiceA < b :: param=$paramA {
     cat $a $b $aOut
   }
 
-  +alt [choiceB] param=$x {
+  branch task choiceB :: param=$x {
     ln -s $a $aOut
   }
 
-  # The default report will be run for choiceA and choiceB
-  +report [reportA] >> Line1 { # Basic report, run for all non-specialized hyperedges (B/C), since only choiceA is specialized below
-    echo "Line1=$(head -n1 $a)"
+  branch task choiceC :: param=$x {
+    ln -s $a $aOut
+  }
+}
+
+summary summaryA {
+  using choiceA > Line1 {
+    head -n1 $a > $Line1
   }
 
-  +alt [choiceC] param=$x {
-    +code {
-      ln -s $a $aOut
-    }
-    # Specializations must be nested inside alternatives
-    # The following code will be run for reportA for choiceC
-    +report [reportA] >> Line1 MyParam {
-      echo "Line1=$(head -n1 $a)"
-      echo "MyParam=$param"
-    }
+  using choiceB > Line1 {
+    head -n1 $a > $Line1
+  }
+
+  using choiceC > Line1 MyParam {
+    head -n1 $a > $Line1
+    echo "$param" > $MyParam
   }
 }

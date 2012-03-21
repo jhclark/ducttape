@@ -3,13 +3,16 @@
 # Defining work plans to get more than just one-off experiments (this is intended primarily for config files)
 # ducttape can be called with "ducttape -P Basics" to run cross products of branches by adding lines
 # like the following to config files:
-++plan [Basics] 
+plan Basics {
+  # XXX: This is still a bit wonky
+
   # 4 experiments/realizations: all combinations of small and medium
   # The * operator indicates a cross-product
   # The "score" indicates that score is the goal task ("target" in GNU Make lingo)
   # and only dependencies of that task should be run
-  score: (whichTM: small medium) * (whichLM: small medium)
+  goal score: (whichTM: small medium) * (whichLM: small medium)
 
   # 1 experiment/realization: just the large model
   # "score viz" indicates that those 2 tasks are the goal tasks
-  score viz: (whichLM: large) * (whichLM: large)
+  goal score viz: (whichLM: large) * (whichLM: large)
+}
