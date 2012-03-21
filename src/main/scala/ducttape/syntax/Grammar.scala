@@ -32,7 +32,12 @@ object Grammar {
 //  val atLeastOneEOL: Parser[String] = eol//opt(space) ~> eol <~ opt(whitespace)  
   
   /** One line of comments */
-  val comment: Parser[String] = opt(space)~>literal("//")~>regex("""[^\r\n]*""".r)<~eol
+  val comment: Parser[String] = {
+      opt(space) ~>
+      literal("//") ~>
+      regex("""[^\r\n]*""".r) <~
+      eol
+  }
   
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
