@@ -19,6 +19,7 @@ import ducttape.syntax.AbstractSyntaxTree._
 
 object Grammar {
   
+  
   /** End of line characters, including end of file. */
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
  
@@ -28,6 +29,25 @@ object Grammar {
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r)
 
+  
+
+  object Keyword {
+    
+    private def keyword(word:String):Parser[String] = {
+      (
+          literal(word) |
+          err("""The keyword """"+word+"""" is required but missing.""")
+      ) <~ 
+      (
+          space |
+          err("""At least one space or tab must immediately follow the """"+word+"""" keyword.""")
+      )
+    }
+       
+    val task:Parser[String] = keyword("task")
+    
+  }
+  
 //  /** End of line character, optionally surrounded by other whitespace. */
 //  val atLeastOneEOL: Parser[String] = eol//opt(space) ~> eol <~ opt(whitespace)  
   
@@ -231,26 +251,38 @@ object Grammar {
     )
   }
   
-  /** Name of a task, enclosed in square brackets. 
-   *  <p>
-   *  The name must conform to Bash variable name requirements: 
-   *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
-   */
-  val taskName: Parser[String] = {
-    ( // Fail if we have opening and closing brackets, but no task name
-      (regex("""\[\s*\]""".r)~!err("Missing task name. Task name must be enclosed in square brackets.")) |
-      // Fail if we have whitespace following opening bracket
-      (regex("""\[\s+""".r)~!err("Illegal whitespace following opening bracket. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
-      // Fail if we have no opening bracket 
-      (literal("[") | err("Missing opening bracket. Task name must be enclosed in square brackets."))
-      // Recognize a name
-    ) ~> name("task","""[\s\]]""".r) <~ 
-    ( // Fail if we have whitespace following task name
-      (regex("""\s+]""".r)~!err("Illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
-      // Fail if we have whitespace and no closing bracket
-      (regex("""\s+""".r)~!err("Missing closing bracket; illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
-      // Fail if we have opening bracket and task name, but not closing bracket
-      literal("]") | err("Missing closing bracket. Task name must be enclosed in square brackets.") 
+//  /** Name of a task, enclosed in square brackets. 
+//   *  <p>
+//   *  The name must conform to Bash variable name requirements: 
+//   *  "A word consisting solely of letters, numbers, and underscores, and beginning with a letter or underscore."
+//   */
+//  val taskName: Parser[String] = {
+//    ( // Fail if we have opening and closing brackets, but no task name
+//      (regex("""\[\s*\]""".r)~!err("Missing task name. Task name must be enclosed in square brackets.")) |
+//      // Fail if we have whitespace following opening bracket
+//      (regex("""\[\s+""".r)~!err("Illegal whitespace following opening bracket. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+//      // Fail if we have no opening bracket 
+//      (literal("[") | err("Missing opening bracket. Task name must be enclosed in square brackets."))
+//      // Recognize a name
+//    ) ~> name("task","""[\s\]]""".r) <~ 
+//    ( // Fail if we have whitespace following task name
+//      (regex("""\s+]""".r)~!err("Illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+//      // Fail if we have whitespace and no closing bracket
+//      (regex("""\s+""".r)~!err("Missing closing bracket; illegal whitespace following task name. Task name must be enclosed in square brackets, with no white space surrounding the task name.")) |
+//      // Fail if we have opening bracket and task name, but not closing bracket
+//      literal("]") | err("Missing closing bracket. Task name must be enclosed in square brackets.") 
+//    )
+//  }
+  
+  val name: Parser[String] = {
+    name("task",""":""".r) <~
+    (
+        // Fail if we have whitespace between name and colon
+        (regex("""\s+:""".r)~!err("Illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
+        // Fail if we have whitespace and no colon
+        (regex("""\s+""".r)~!err("Missing colon; illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
+        // Fail if we have no colon
+        literal(":") | err("Missing colon. Name must be immediately followed by a colon, with no white space following the name.")
     )
   }
   
@@ -557,7 +589,10 @@ object Grammar {
   val taskBlock: Parser[TaskDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
-    taskName ~ 
+    (
+        Keyword.task ~>
+        name 
+    ) ~ 
     (
         whitespace ~>
         taskHeader

@@ -8,27 +8,27 @@ import org.scalatest.junit.JUnitRunner
 class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
  
   def successCases = Set(
-"""[hello] {
+"""task hello: {
       echo "hello, world!"
 }""",
 """// Hello, world
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
 """ // Hello, world
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
 """ // Hello, world
 // some more
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
-"""[hello] 
+"""task hello: 
 {
       echo "hello, world!"
 }""",
-"""[funky] < in=foo > out {
+"""task funky: < in=foo > out {
   function die () {
     echo "$@" >&2
     exit 1
@@ -37,7 +37,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] < in=foo > out
+"""task funky: < in=foo > out
 {
   function die () {
     echo "$@" >&2
@@ -47,7 +47,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] < in=foo > out :: p=param
+"""task funky: < in=foo > out :: p=param
 {
   function die () {
     echo "$@" >&2
@@ -57,7 +57,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] 
+"""task funky: 
      < in=foo > out :: p=param
 {
   function die () {
@@ -68,7 +68,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] 
+"""task funky: 
      < in=foo 
      > out 
      :: p=param
@@ -81,7 +81,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky]
+"""task funky:
     // input
     < in=foo x=73
     // out
@@ -97,7 +97,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] < in=foo x=73
+"""task funky: < in=foo x=73
     // out
     > out
     // parameters
@@ -111,7 +111,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] moses < in=foo x=73
+"""task funky: moses < in=foo x=73
     // out
     > out
     // parameters
@@ -125,7 +125,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] // moses
+"""task funky: // moses
     moses < in=foo x=73
     // out
     > out
@@ -140,7 +140,7 @@ class TaskBlockTest extends AbstractTest("task header",Grammar.taskBlock) {
   # Now do it!
   die()
 }""",
-"""[funky] // moses
+"""task funky: // moses
 moses < in=foo x=73
     // out
     > out
@@ -155,7 +155,7 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""[funky] 
+"""task funky: 
 // moses
 moses < in=foo x=73
     // out
@@ -171,7 +171,7 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""[funky]
+"""task funky:
   // moses
   moses 
   // input
@@ -189,7 +189,7 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""[funky]
+"""task funky:
   // moses
   moses 
   // input
@@ -208,26 +208,26 @@ moses < in=foo x=73
 }""",
 """ // Hello, world
 
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
 """ // Hello, world
 // some more
 
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
 """ // Hello, world
 
 // some more
-[hello] {
+task hello: {
       echo "hello, world!"
 }""",
 """ // Hello, world
 
 // some more
 
-[hello] {
+task hello: {
       echo "hello, world!"
 }"""  
   ) 
@@ -238,7 +238,7 @@ moses < in=foo x=73
   
   def errorCases = Set(   
     " ",            
-"""[funky] < in=foo > out  
+"""task funky: < in=foo > out  
  bar {
   function die () {
     echo "$@" >&2
@@ -248,16 +248,16 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""" ,      
-      """[hello] {
+      """task hello: {
         echo "hello, world!"
       }""",      
-"""[hello] {
+"""task hello: {
       echo "hello, world!"
 } yay""",
-"""[hello] { // Comments are not allowed after opening { braces
+"""task hello: { // Comments are not allowed after opening { braces
       echo "hello, world!"
 }""",
-"""[hello] { # Comments are not allowed after opening { braces
+"""task hello: { # Comments are not allowed after opening { braces
       echo "hello, world!"
 }""",
     "A-variable_Name__",
