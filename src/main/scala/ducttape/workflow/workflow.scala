@@ -1,12 +1,12 @@
 package ducttape.workflow
 
 import collection._
-
 import ducttape.hyperdag._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
 import ducttape.versioner._
-import ducttape.Types._
+import ducttape.workflow.Types._
+import ducttape.hyperdag.meta._
 
 // TODO: Move into HyperDAG?
 class Realization(val branches: Seq[Branch]) {

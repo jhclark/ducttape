@@ -4,7 +4,7 @@ import collection._
 import collection.JavaConversions._
 import java.util.concurrent._
 
-import ducttape.Types._
+import ducttape.workflow.Types._
 import ducttape.hyperdag._
 
 // agenda-based DAG iterator that allows for parallelization

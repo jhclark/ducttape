@@ -27,9 +27,9 @@ object GraphViz {
 }
 
 object WorkflowViz {
-  import ducttape.Types._
   import ducttape.versioner._
   import ducttape.workflow._
+  import ducttape.workflow.Types._
 
   def toGraphViz(workflow: HyperWorkflow,
                  plannedVertices: Set[(String,Realization)],

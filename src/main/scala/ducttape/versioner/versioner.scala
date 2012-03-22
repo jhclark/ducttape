@@ -2,9 +2,9 @@ package ducttape.versioner
 
 import collection._
 
-import ducttape.environment.DirectoryArchitect
-import ducttape.workflow._
-import ducttape.util._
+import ducttape.exec.DirectoryArchitect
+import ducttape.workflow.Realization
+import ducttape.util.Files
 
 trait WorkflowVersioner {
   def apply(taskName: String, realization: Realization): Int

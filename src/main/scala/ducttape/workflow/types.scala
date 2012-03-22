@@ -1,4 +1,4 @@
-package ducttape
+package ducttape.workflow
 
 import collection._
 import ducttape.hyperdag._

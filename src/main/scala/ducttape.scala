@@ -1,18 +1,15 @@
 import System._
 import collection._
-
 import java.io.File
-
 import ducttape._
-import ducttape.environment._
 import ducttape.hyperdag._
-import ducttape.Types._
+import ducttape.exec._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.workflow._
+import ducttape.workflow.Types._
 import ducttape.util._
 import ducttape.versioner._
-
 import ducttape.ccollection._
 
 package ducttape {

@@ -1,4 +1,4 @@
-package ducttape.version
+package ducttape.versioner
 
 import collection._
 

@@ -1,8 +1,9 @@
-package ducttape
+package ducttape.exec
 
 import java.io.File
-import ducttape.workflow._
-import ducttape.util._
+import ducttape.util.Environment
+import ducttape.workflow.Realization
+import ducttape.util.Shell
 
 object Submitter {
 
