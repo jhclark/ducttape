@@ -428,8 +428,8 @@ object Grammar {
   
   /** Output variable declaration. */
   val outputAssignment: Parser[Spec] = positioned(
-      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
-          name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
+      ( 
+        name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
         opt("=" ~> (rvalue | err("Error in output variable assignment")))
       ) ^^ {
         case (variableName:String) ~ Some(rhs:RValue) => new Spec(variableName,rhs,false)
@@ -670,46 +670,7 @@ object Grammar {
   val actionBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.action,"action",funcHeader)
   val ofBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.of,"of",taskHeader)
   val funcBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
-  val taskBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.task,"task",taskHeader)//positioned({
-//    opt(whitespace) ~>
-//    comments ~
-//    (
-//        Keyword.task ~>
-//        name 
-//    ) ~ 
-//    (
-//        whitespace ~>
-//        taskHeader
-//    ) ~ 
-//    (
-//        (
-//            opt(whitespace) ~
-//            (
-//                literal("{") |
-//                failure("Missing opening { brace.")
-//            ) ~
-//            opt(space) ~
-//            (
-//                eol |
-//                err("Shell commands may not start on the same line as the task block opening { brace.")
-//            )
-//        ) ~> 
-//        shellCommands <~
-//        (
-//            (
-//                literal("}") ~ 
-//                (
-//                    opt(space) ~
-//                    (eol | err("Non-whitespace character found following the task block closing } brace."))
-//                ) |                
-//                err("Missing closing } brace for task block.")
-//            )
-//        )
-//    ) 
-//  } ^^ {
-//    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
-//      new TaskDefinition(comments,name,header,new ShellCommands(commands))
-//  })  
+  val taskBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.task,"task",taskHeader)
   
   val callBlock: Parser[CallDefinition] = positioned({
     opt(whitespace) ~>
@@ -765,7 +726,6 @@ object Grammar {
                     opt(space) ~
                     (eol | err("Non-whitespace character found following closing } brace for " +blockType+" block."))
                 ) |                
-//                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
                 err("Missing closing } brace for " +blockType+" block.")// If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
             )
         )
@@ -784,7 +744,6 @@ object Grammar {
 
   val childBlock: Parser[Block] = {
     taskBlock | callBlock | funcBlock | summaryBlock | branchpointBlock | groupBlock
-    //| err("Missing child block. A group block may contain task, call, func, summary, and group blocks.")
   }
   
   val branchpointChildBlock: Parser[Block] = {
