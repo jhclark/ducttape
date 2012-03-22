@@ -2,8 +2,9 @@ package ducttape.versioner
 
 import collection._
 
-trait Version {
-  def ==(that: Version) = this.digest() == that.digest()
+// TODO: Diff the workflow files themselves
+trait TaskVersion {
+  def ==(that: TaskVersion) = this.digest() == that.digest()
   def digest(): Int;
   def toString(): String;
 }
