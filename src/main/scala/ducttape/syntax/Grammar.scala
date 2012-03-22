@@ -47,6 +47,10 @@ object Grammar {
     val task:Parser[String] = keyword("task")
     val group:Parser[String] = keyword("group")
     val func:Parser[String] = keyword("func")
+    val summmary:Parser[String] = keyword("summary")
+    val of:Parser[String] = keyword("of")
+    val action:Parser[String] = keyword("action")
+    val submitter:Parser[String] = keyword("submitter")
     
   }
   
@@ -615,7 +619,7 @@ object Grammar {
     case (before:String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
   }  
 
-  def taskLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader]): Parser[FuncDefinition] = positioned({
+  def taskLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader]) = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -653,9 +657,12 @@ object Grammar {
     ) 
   } ^^ {
     case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
-      new FuncDefinition(comments,name,header,new ShellCommands(commands))
+        new TaskDefinition(comments,blockType,name,header,new ShellCommands(commands))
   })  
-  val funcBlock: Parser[FuncDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
+  
+  val actionBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.action,"action",funcHeader)
+  val ofBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.of,"of",taskHeader)
+  val funcBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
   val taskBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.task,"task",taskHeader)//positioned({
 //    opt(whitespace) ~>
 //    comments ~
@@ -718,23 +725,23 @@ object Grammar {
       new CallDefinition(comments,name,header,functionName)    
   })
   
-  val groupBlock: Parser[GroupDefinition] = positioned({
+  def groupLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader], childBlock:Parser[Block]): Parser[GroupDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
     (
-        Keyword.group ~>
+        keyword ~>
         name 
     ) ~ 
     (
         whitespace ~>
-        taskHeader
+        header
     ) ~ 
     (
         (
             opt(whitespace) ~
             (
                 literal("{") |
-                err("Missing opening { brace.")
+                err("Missing opening { brace for " +blockType+" block.")
             ) ~
             opt(space) ~
             (
@@ -742,29 +749,39 @@ object Grammar {
                 err("Child blocks may not start on the same line as the opening { brace.")
             )
         ) ~> 
-        rep(block) <~
+        rep(childBlock) <~
         (
             opt(whitespace) ~ 
             (
                 literal("}") ~ 
                 (
                     opt(space) ~
-                    (eol | err("Non-whitespace character found following closing } brace."))
+                    (eol | err("Non-whitespace character found following closing } brace for " +blockType+" block."))
                 ) |                
-                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
-                err("Missing closing } brace for group block. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+//                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
+                err("Missing closing } brace for " +blockType+" block.")// If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
             )
         )
     ) 
   } ^^ {
     case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (blocks:Seq[Block]) => 
-      new GroupDefinition(comments,name,header,blocks)
+      new GroupDefinition(comments,blockType,name,header,blocks)
   })
 
-  val block: Parser[Block] = {
-    taskBlock | callBlock | funcBlock | groupBlock
+  
+  def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
+  def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
+  def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
+
+  val childBlock: Parser[Block] = {
+    taskBlock | callBlock | funcBlock | summaryBlock | groupBlock | submitterBlock
+    //| err("Missing child block. A group block may contain task, call, func, summary, and group blocks.")
   }
   
+  val block: Parser[Block] = {
+    childBlock | ofBlock | actionBlock
+  }
+    
   
   val blocks: Parser[Seq[Block]] = {
     opt(whitespace) ~> 

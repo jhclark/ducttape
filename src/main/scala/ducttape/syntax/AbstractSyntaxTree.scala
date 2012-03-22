@@ -122,19 +122,13 @@ object AbstractSyntaxTree {
   class Block extends ASTType
   
   class TaskDefinition(val comments:Comments,
+                       val keyword: String,
                        val name: String, 
                        val header:TaskHeader, 
                        val commands:ShellCommands) extends Block {
     override def toString = name
   }
-  
-  class FuncDefinition(comments:Comments,
-                       name: String, 
-                       header:TaskHeader, 
-                       commands:ShellCommands) extends 
-                       TaskDefinition(comments,name,header,commands) {
-  }
-  
+
   class CallDefinition(val comments:Comments,
                        val name: String, 
                        val header:TaskHeader, 
@@ -143,6 +137,7 @@ object AbstractSyntaxTree {
   }
   
   class GroupDefinition(val comments:Comments,
+                        val keyword: String,
                         val name: String, 
                         val header:TaskHeader,
                         val blocks:Seq[Block]) extends Block {

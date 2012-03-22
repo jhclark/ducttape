@@ -245,10 +245,42 @@ task hello {
 func filter < in > out {
   cat < $in > $out
 }      
+""",
+"""summary fileSizes {
+# Inside summary block
+of pt > PTFileSize {
+  du -sh $pt > $PTFileSize
+}
+}
+""",
+"""submitter sge :: CMDS vmem walltime q {
+  // stuff
+  action wrap > wrapper {
+    echo "#$ -S /bin/bash" >> $wrapper
+  }
+
+  // more stuff
+  // and more
+  action run < wrapper > jobid {
+    qsub $wrapper > $jobid
+  }
+
+  action poll < jobid > done exit_code {
+    # some code
+  }
+
+}
 """
   ) 
   
   def failureCases = Set(
+"""group fileSizes {
+  # Inside summary block
+  of pt > PTFileSize {
+    du -sh $pt > $PTFileSize
+  }
+}
+""",      
 """task funky < in=foo > out  
  bar {
   function die () {
