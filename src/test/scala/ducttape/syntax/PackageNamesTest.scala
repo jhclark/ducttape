@@ -5,22 +5,24 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class PackageNamesTest extends AbstractTest("package naames",Grammar.packageNames) {
+class PackageNamesTest extends AbstractTest("package naames",Grammar.packageNameAssignment) {
  
   def successCases = Set(
-    "",
-    " ",
-    "moses tokenizer giza",
+
     "moses",
-    """// Package comments
-      moses tokenizerr giza"""   
+    "tokenizer"
   ) 
   
   def failureCases = Set(
-    
+    "",
+    " ",      
+    """// Package comments
+      moses tokenizerr giza""",
+      "moses tokenizer giza"
   ) 
   
   def errorCases = Set(
+      "moses=foo",
     "A-variable_Name__"  
   )
   

@@ -5,7 +5,7 @@
 // * The environment variables x and y_txt will be set by
 //   ducttape before calling bash
 // * Note that bash disallows variables containing .
-task hello_world_2: > x y_txt {
+task hello_world_2 > x y_txt {
   echo writing files $x and $y...
   echo hello > $x
   echo world > $y_txt

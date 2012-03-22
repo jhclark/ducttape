@@ -1,7 +1,7 @@
 // 4) Running tasks with dependencies
 
 // First a step we already know about...
-task first: > x {
+task first > x {
   for i in {1..10}; do
     echo $i >> $x
   done
@@ -11,6 +11,6 @@ task first: > x {
 // * Instead of specifying an absolute path as before, we specify
 //   it as a dependency using the "$" prefix
 // TODO: $first/x should become $x@first
-task and_then: < a=$x@first > x {
+task and_then < a=$x@first > x {
   cat < $a > $x
 }

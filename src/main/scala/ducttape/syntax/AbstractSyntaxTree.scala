@@ -94,6 +94,7 @@ object AbstractSyntaxTree {
   case class TaskInputs(val specs:Seq[Spec], val comments:Comments) extends Specs
   case class TaskOutputs(val specs:Seq[Spec], val comments:Comments) extends Specs  
   case class TaskParams(val specs:Seq[Spec], val comments:Comments) extends Specs
+  case class TaskPackageNames(val specs:Seq[Spec], val comments:Comments) extends Specs
   
  /** Branch in a hyperworkflow, defined in the right hand side of a variable declaration. */
   case class BranchPointDef(val name: Option[String], val specs: Seq[Spec]) extends RValue {
@@ -109,13 +110,12 @@ object AbstractSyntaxTree {
     override def toString = value
   }
   
-  class PackageNames(val comments:Comments, val packageNames: List[String]) extends ASTType {
-    override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
-  }
+//  class PackageNames(val comments:Comments, val packageNames: List[String]) extends Specs {
+//    override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
+//  }
   
-  class TaskHeader(val packageNames: PackageNames,
-                   val specs: List[Specs]) extends ASTType {
-    override def toString = packageNames.toString() + "; " + specs.mkString(" ")
+  class TaskHeader(val specs: List[Specs]) extends ASTType {
+    override def toString = specs.mkString(" ")
   } 
   
   /** Defines a block of ducttape code, such as a task definition. */

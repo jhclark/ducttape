@@ -55,7 +55,7 @@ object Grammar {
   /** One line of comments */
   val comment: Parser[String] = {
       opt(space) ~>
-      literal("//") ~>
+      (literal("//") | literal("#")) ~>
       regex("""[^\r\n]*""".r) <~
       eol
   }
@@ -276,15 +276,16 @@ object Grammar {
 //  }
   
   val name: Parser[String] = {
-    name("task",""":""".r) <~
-    (
-        // Fail if we have whitespace between name and colon
-        (regex("""\s+:""".r)~!err("Illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
-        // Fail if we have whitespace and no colon
-        (regex("""\s+""".r)~!err("Missing colon; illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
-        // Fail if we have no colon
-        literal(":") | err("Missing colon. Name must be immediately followed by a colon, with no white space following the name.")
-    )
+    name("task","""\s""".r)
+//    <~
+//    (
+//        // Fail if we have whitespace between name and colon
+//        (regex("""\s+:""".r)~!err("Illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
+//        // Fail if we have whitespace and no colon
+//        (regex("""\s+""".r)~!err("Missing colon; illegal whitespace following name. Name must be immediately followed by a colon, with no white space following the name.")) |
+//        // Fail if we have no colon
+//        literal(":") | err("Missing colon. Name must be immediately followed by a colon, with no white space following the name.")
+//    )
   }
   
   /**
@@ -465,7 +466,19 @@ object Grammar {
         case (variableName:String) ~ None             => new Spec(variableName,Unbound(),false)
       }      
   )
-    
+
+  /** Output variable declaration. */
+  val packageNameAssignment: Parser[Spec] = positioned(
+      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
+          name("package","""\s""".r,failure(_),err(_))
+//          name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
+//        opt("=" ~> (rvalue | err("Error in output variable assignment")))
+      ) ^^ {
+//        case (variableName:String) ~ Some(rhs:RValue) => new Spec(variableName,rhs,false)
+        case (packageName:String) => new Spec(packageName,Unbound(),false)
+      }      
+  )  
+  
   /** Parameter variable declaration. */
   val paramAssignment: Parser[Spec] = positioned(
       ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
@@ -527,7 +540,40 @@ object Grammar {
   } ^^ {
     case comments~list => new TaskOutputs(list,comments)    
   }
-
+//
+//  
+//  val packageNames:Parser[PackageNames] = {
+//    (comments <~ opt(eol)~opt(space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)    
+//  } ^^ {
+//    case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
+//  }
+  
+    /**
+   * Sequence of <code>assignment</code>s representing output files.
+   * This sequence must be preceded by ">".
+   *
+   */
+  val taskPackageNames: Parser[TaskPackageNames] = {
+    ( // Comments describe the output block
+      //   There may not be any comments,
+      //   in which case the comments object
+      //   will contain an empty string
+        ( comments<~
+          // there may be whitespace after the comments    
+          opt(whitespace)~
+          // then there must be a > character  
+          literal(":") ~ 
+          // then one or more spaces or tabs
+          space
+         ) ~ 
+         // Finally the list of package names
+         repsep(packageNameAssignment,space)
+    ) | failure("Failed to parse task package names")
+  } ^^ {
+    case (comments:Comments)~(list:List[String]) => new TaskPackageNames(list,comments) 
+    case _ => new TaskPackageNames(List.empty,new Comments(None)) 
+  }
+  
   /**
    * Sequence of <code>assignment</code>s representing parameter values.
    * This sequence must be preceded by "::".
@@ -554,24 +600,19 @@ object Grammar {
 
 
   val taskSpec:Parser[Specs] = {
-    taskInputs | taskOutputs | taskParams
+    taskInputs | taskOutputs | taskParams | taskPackageNames
   }
     
-  val taskSpecs:Parser[List[Specs]] = {
-    repsep(taskSpec,regex("""[ \n\r\t]+""".r))
-  }  
-  
-  val packageNames:Parser[PackageNames] = {
-    (comments <~ opt(eol)~opt(space))~ repsep(name("package","""\s""".r,failure(_),err(_)),space)    
-  } ^^ {
-    case (comments:Comments) ~ (packageNames:List[String]) => new PackageNames(comments,packageNames)
-  }
+//  val taskSpecs:Parser[List[Specs]] = {
+//    repsep(taskSpec,regex("""[ \n\r\t]+""".r))
+//  }  
+
   
   val taskHeader:Parser[TaskHeader] = {
-    (packageNames <~ (opt(space)~opt(eol)~opt(space)))~ taskSpecs
+    repsep(taskSpec,regex("""[ \n\r\t]+""".r))
+//    (packageNames <~ (opt(space)~opt(eol)~opt(space)))~ taskSpecs
   } ^^ {
-    case (packageNames:PackageNames) ~ (specs:List[Specs]) =>
-      new TaskHeader(packageNames,specs) 
+    case (specs:List[Specs]) => new TaskHeader(specs) 
   }
   
 //  val shellCommands: Parser[ShellCommands] = positioned(
@@ -652,49 +693,49 @@ object Grammar {
     case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
       new TaskDefinition(comments,name,header,new ShellCommands(commands))
   })
-//
-//  val groupBlock: Parser[GroupDefinition] = positioned({
-//    opt(whitespace) ~>
-//    comments ~
-//    (
-//        Keyword.group ~>
-//        name 
-//    ) ~ 
-//    (
-//        whitespace ~>
-//        taskHeader
-//    ) ~ 
-//    (
-//        (
-//            opt(whitespace) ~
-//            (
-//                literal("{") |
-//                err("Missing opening { brace.")
-//            ) ~
-//            opt(space) ~
-//            (
-//                eol |
-//                err("Child blocks may not start on the same line as the opening { brace.")
-//            )
-//        ) ~> 
-//        rep(block) <~
-//        (
-//            eol ~ 
-//            (
-//                literal("}") ~ 
-//                (
-//                    opt(space) ~
-//                    (eol | err("Non-whitespace character found following closing } brace."))
-//                ) |                
-//                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
-//                err("Missing closing } brace for group block. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
-//            )
-//        )
-//    ) 
-//  } ^^ {
-//    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (blocks:Seq[Block]) => 
-//      new GroupDefinition(comments,name,header,blocks)
-//  })
+
+  val groupBlock: Parser[GroupDefinition] = positioned({
+    opt(whitespace) ~>
+    comments ~
+    (
+        Keyword.group ~>
+        name 
+    ) ~ 
+    (
+        whitespace ~>
+        taskHeader
+    ) ~ 
+    (
+        (
+            opt(whitespace) ~
+            (
+                literal("{") |
+                err("Missing opening { brace.")
+            ) ~
+            opt(space) ~
+            (
+                eol |
+                err("Child blocks may not start on the same line as the opening { brace.")
+            )
+        ) ~> 
+        rep(block) <~
+        (
+            opt(whitespace) ~ 
+            (
+                literal("}") ~ 
+                (
+                    opt(space) ~
+                    (eol | err("Non-whitespace character found following closing } brace."))
+                ) |                
+                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
+                err("Missing closing } brace for group block. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+            )
+        )
+    ) 
+  } ^^ {
+    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (blocks:Seq[Block]) => 
+      new GroupDefinition(comments,name,header,blocks)
+  })
   
 //  val block : Parser[(List[Comments],TaskDefinition)] = {
 //    opt(floatingComments) ~ taskBlock
@@ -704,9 +745,7 @@ object Grammar {
 //  }
   
   val block: Parser[Block] = {
-    taskBlock 
-//    |
-//    groupBlock
+    taskBlock | groupBlock
   }
   
   

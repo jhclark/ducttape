@@ -8,10 +8,10 @@ import org.scalatest.junit.JUnitRunner
 class NameTest extends AbstractTest("name",Grammar.name) {
  
   def successCases = Set(
-    "A_task_Name__:",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_:",
-    "abc:",
-    "z123_45charlie:"
+    "A_task_Name__",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
+    "abc",
+    "z123_45charlie"
   ) 
   
   def failureCases = Set(

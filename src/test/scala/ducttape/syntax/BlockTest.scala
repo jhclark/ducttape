@@ -8,27 +8,34 @@ import org.scalatest.junit.JUnitRunner
 class BlockTest extends AbstractTest("block",Grammar.block) {
  
   def successCases = Set(
-"""task hello: {
+"""group g {
+}""",
+"""group g {
+     task hello {
+        echo "hello, world!"
+     }
+}""",      
+"""task hello {
       echo "hello, world!"
 }""",
 """// Hello, world
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
 """ // Hello, world
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
 """ // Hello, world
 // some more
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
-"""task hello: 
+"""task hello 
 {
       echo "hello, world!"
 }""",
-"""task funky: < in=foo > out {
+"""task funky < in=foo > out {
   function die () {
     echo "$@" >&2
     exit 1
@@ -37,7 +44,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: < in=foo > out
+"""task funky < in=foo > out
 {
   function die () {
     echo "$@" >&2
@@ -47,7 +54,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: < in=foo > out :: p=param
+"""task funky < in=foo > out :: p=param
 {
   function die () {
     echo "$@" >&2
@@ -57,7 +64,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: 
+"""task funky 
      < in=foo > out :: p=param
 {
   function die () {
@@ -68,7 +75,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: 
+"""task funky 
      < in=foo 
      > out 
      :: p=param
@@ -81,7 +88,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky:
+"""task funky
     // input
     < in=foo x=73
     // out
@@ -97,7 +104,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: < in=foo x=73
+"""task funky < in=foo x=73
     // out
     > out
     // parameters
@@ -111,7 +118,7 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: moses < in=foo x=73
+"""task funky : moses < in=foo x=73
     // out
     > out
     // parameters
@@ -125,8 +132,8 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: // moses
-    moses < in=foo x=73
+"""task funky // moses
+    : moses < in=foo x=73
     // out
     > out
     // parameters
@@ -140,8 +147,8 @@ task hello: {
   # Now do it!
   die()
 }""",
-"""task funky: // moses
-moses < in=foo x=73
+"""task funky // moses
+: moses < in=foo x=73
     // out
     > out
     // parameters
@@ -155,9 +162,9 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""task funky: 
+"""task funky 
 // moses
-moses < in=foo x=73
+: moses < in=foo x=73
     // out
     > out
     // parameters
@@ -171,9 +178,9 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""task funky:
+"""task funky
   // moses
-  moses 
+  : moses 
   // input
   < in=foo x=73
   // out
@@ -189,9 +196,9 @@ moses < in=foo x=73
   # Now do it!
   die()
 }""",
-"""task funky:
+"""task funky
   // moses
-  moses 
+  : moses 
   // input
   < in=foo x=73
   // out
@@ -208,29 +215,29 @@ moses < in=foo x=73
 }""",
 """ // Hello, world
 
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
 """ // Hello, world
 // some more
 
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
 """ // Hello, world
 
 // some more
-task hello: {
+task hello {
       echo "hello, world!"
 }""",
 """ // Hello, world
 
 // some more
 
-task hello: {
+task hello {
       echo "hello, world!"
 }"""  ,
-      """task hello: {
+      """task hello {
         echo "hello, world!"
       }""" 
 
@@ -264,7 +271,7 @@ task hello: {
   ) 
   
   def errorCases = Set(   
-"""task funky: < in=foo > out  
+"""task funky < in=foo > out  
  bar {
   function die () {
     echo "$@" >&2
@@ -274,13 +281,13 @@ task hello: {
   # Now do it!
   die()
 }""",          
-"""task hello: {
+"""task hello {
       echo "hello, world!"
 } yay""",
-"""task hello: { // Comments are not allowed after opening { braces
+"""task hello { // Comments are not allowed after opening { braces
       echo "hello, world!"
 }""",
-"""task hello: { # Comments are not allowed after opening { braces
+"""task hello { # Comments are not allowed after opening { braces
       echo "hello, world!"
 }""" 
   )

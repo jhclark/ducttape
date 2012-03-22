@@ -4,7 +4,7 @@
 // * They are listed after inputs and outputs, using a double colon
 // * Because we distinguish files from parameters, ducttape can check if input
 //   files exist before running length commands or submitting jobs to a scheduler
-task param_step: < in=/etc/passwd > out :: N=5 {
+task param_step < in=/etc/passwd > out :: N=5 {
   echo "$in has $(wc -l < $in) lines"
   echo "The parameter N is $N"
   echo $N > $out
@@ -14,6 +14,6 @@ task param_step: < in=/etc/passwd > out :: N=5 {
 //   that parameters don't introduce temporal dependencies when
 //   they are references (like this step)
 // * "no-dep" can start running in parallel with "param-step"
-task no_dep: :: X=$N@param_step {
+task no_dep :: X=$N@param_step {
   echo "X=$N"
 }
