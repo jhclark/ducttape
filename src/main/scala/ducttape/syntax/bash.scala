@@ -13,6 +13,7 @@ object BashParser extends App with RegexParsers {
 
   override val skipWhitespace = false
 
+  // TODO: Throw warnings on constructs that are known not to return error codes properly?
   println("heredoc:")
   val heredocResult: ParseResult[BashCode] = parseAll(BashGrammar.heredoc, """<<EOF
 {
@@ -42,11 +43,12 @@ function ohai {
 }
 $moses < $in > $out
 pid=$$
+x=\$not_a_variable
 subproc=$(echo $(echo $hi))
 string_len=${#pid}
 string_manip=${$pid:0:5}
 cat <<EOF
-{
+{ ${with_a_variable}
 EOF
 """
 )
@@ -174,21 +176,21 @@ object BashGrammar {
   def variableName: Parser[String] = regex("[A-Za-z_][A-Za-z0-9_]*".r)
 
   def heredoc: Parser[BashCode] = (literal("<<") ~ opt(literal("-")) ~ heredocMarker ~ eol ~ heredocContent ~ literal("EOF") ~ eol) ^^ {
-    case double ~ None ~ marker1 ~ e1 ~ hdoc ~ eof ~ e2  => new BashCode(double + marker1 + e1 + hdoc + eof + e2)
-    case double ~ dash ~ marker1 ~ e1 ~ hdoc ~ eof ~ e2 => new BashCode(double + dash + marker1 + e1 + hdoc + eof + e2)
+    case double ~ None ~ marker1 ~ e1 ~ hdoc ~ eof ~ e2  => new BashCode(double + marker1 + e1 + hdoc + eof + e2, hdoc.vars)
+    case double ~ dash ~ marker1 ~ e1 ~ hdoc ~ eof ~ e2 => new BashCode(double + dash + marker1 + e1 + hdoc + eof + e2, hdoc.vars)
   }
 
   // TODO: Throw an error if user tries to use anything other than EOF
   def heredocMarker: Parser[String] = literal("EOF")
 
-  def heredocLine: Parser[String] = not(literal("EOF")) ~> regex("""[^\r\n]*\n""".r)
-
-/*
-  def heredocContent: Parser[String] = rep(heredocLine) ^^ {
-    case list => list.mkString("")
+  // TODO: Recognize variables inside heredocs
+  def heredocLine: Parser[BashCode] = not(literal("EOF")) ~> regex("""[^\r\n]*\n""".r) ^^ {
+    case line => new BashCode(line)
   }
-*/
-  def heredocContent: Parser[String] = literal("{\n")
+
+  def heredocContent: Parser[BashCode] = rep(heredocLine) ^^ {
+    case list => new BashCode(list.map(_.toString).mkString(""), list.flatMap(_.vars).toSet)
+  }
 
   def nonBlobElement: Parser[BashCode] = escapedChar | variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
 
