@@ -15,10 +15,10 @@ scriptDir=$(dirname 0)
 #    rm -rf $scalatest $tmp
 #fi
 
-if [ ! -e scala-library.jar ]; then
+if [ ! -e lib/scala-library.jar ]; then
   scalaDir=$(dirname $(which scala))/../
   echo >&2 "Scala found at $scalaDir"
   jar=$scalaDir/lib/scala-library.jar
   echo >&2 "Copying scala library from $jar for use in packaging"
-  cp $jar .
+  cp $jar lib/
 fi
