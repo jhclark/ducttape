@@ -1,3 +1,5 @@
+package ducttape.doc
+
 import java.io._
 import io._
 import collection.JavaConversions._
