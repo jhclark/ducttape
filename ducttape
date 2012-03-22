@@ -2,9 +2,12 @@
 set -eo pipefail
 scriptDir=$(dirname $0)
 
+libs=$scriptDir/ducttape.jar
+libs=$libs:$scriptDir/lib/scala-library.jar
+libs=$libs:$scriptDir/lib/scala-optparse-1.1.jar
 
 #     -XX:MaxJavaStackTraceDepth=25 \
 java -Xmx1g \
      -XX:+UseCompressedOops \
-     -cp $scriptDir/ducttape.jar:$scriptDir/lib/scala-library.jar \
+     -cp $libs \
      Ducttape $@
