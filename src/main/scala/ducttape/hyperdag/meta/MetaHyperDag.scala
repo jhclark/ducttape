@@ -1,7 +1,8 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.meta
 
 import collection._
 import ducttape.util._
+import ducttape.hyperdag._
 import ducttape.hyperdag.walker.PackedMetaDagWalker
 import ducttape.hyperdag.walker.UnpackedMetaDagWalker
 

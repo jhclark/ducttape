@@ -1,4 +1,6 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.meta
+import ducttape.hyperdag.PackedVertex
+import ducttape.hyperdag.HyperEdge
 
 // m is the payload of this metahyperedge
 // In a MetaHyperDag, all vertices have only MetaEdges as their only inputs.

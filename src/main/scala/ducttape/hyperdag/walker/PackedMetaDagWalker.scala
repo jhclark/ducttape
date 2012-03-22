@@ -1,6 +1,7 @@
 package ducttape.hyperdag.walker
 
 import ducttape.hyperdag._
+import ducttape.hyperdag.meta.MetaHyperDag
 
 // our only job is to hide epsilon vertices during iteration
 // TODO: Create trait for getCompleted etc

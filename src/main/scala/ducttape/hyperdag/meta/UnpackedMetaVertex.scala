@@ -1,4 +1,7 @@
-package ducttape.hyperdag
+package ducttape.hyperdag.meta
+import ducttape.hyperdag.PackedVertex
+import ducttape.hyperdag.HyperEdge
+import ducttape.hyperdag.UnpackedVertex
 
 /**
  *  Unlike a plain UnpackedVertex, with a MetaHyperDAG, our choice of incoming

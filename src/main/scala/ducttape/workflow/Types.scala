@@ -1,11 +1,10 @@
 package ducttape.workflow
 
 import collection._
-import ducttape.hyperdag._
-//import ducttape.io._
 import ducttape.syntax.AbstractSyntaxTree.Spec
-import ducttape.workflow._
 import ducttape.util.MultiSet
+import ducttape.hyperdag.PackedVertex
+import ducttape.hyperdag.meta.UnpackedMetaVertex
 
 object Types {
   class HashMultiMap[A,B] extends mutable.HashMap[A,mutable.Set[B]] with mutable.MultiMap[A,B];

@@ -1,8 +1,8 @@
 package ducttape.workflow
 
 import collection._
-import ducttape.hyperdag.MetaHyperDag
 import ducttape.hyperdag.PackedVertex
+import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.util.MultiSet
 import ducttape.workflow.Types._
 import ducttape.syntax.AbstractSyntaxTree.Spec
