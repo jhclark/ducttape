@@ -8,6 +8,7 @@ import org.scalatest.junit.JUnitRunner
 class BlockTest extends AbstractTest("block",Grammar.block) {
  
   def successCases = Set(
+"""task x = filter < in=x.txt > out""",
 """group g {
 }""",
 """group g {
@@ -244,6 +245,16 @@ task hello {
   ) 
   
   def failureCases = Set(
+"""task funky < in=foo > out  
+ bar {
+  function die () {
+    echo "$@" >&2
+    exit 1
+  }
+  
+  # Now do it!
+  die()
+}""",      
     " ",
     "A-variable_Name__",
     "",      
@@ -271,16 +282,7 @@ task hello {
   ) 
   
   def errorCases = Set(   
-"""task funky < in=foo > out  
- bar {
-  function die () {
-    echo "$@" >&2
-    exit 1
-  }
-  
-  # Now do it!
-  die()
-}""",          
+          
 """task hello {
       echo "hello, world!"
 } yay""",

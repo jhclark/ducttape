@@ -128,6 +128,13 @@ object AbstractSyntaxTree {
     override def toString = name
   }
   
+  class CallDefinition(val comments:Comments,
+                       val name: String, 
+                       val header:TaskHeader, 
+                       val functionName:String) extends Block {
+    override def toString = name
+  }
+  
   class GroupDefinition(val comments:Comments,
                         val name: String, 
                         val header:TaskHeader,

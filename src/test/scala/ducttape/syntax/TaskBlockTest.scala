@@ -236,6 +236,16 @@ task hello {
   ) 
   
   def failureCases = Set(
+"""task funky < in=foo > out  
+ bar {
+  function die () {
+    echo "$@" >&2
+    exit 1
+  }
+  
+  # Now do it!
+  die()
+}""" ,      
     " ",      
     "A-variable_Name__",
     "",      
@@ -262,17 +272,7 @@ task hello {
     > hyps"""    
   ) 
   
-  def errorCases = Set(               
-"""task funky < in=foo > out  
- bar {
-  function die () {
-    echo "$@" >&2
-    exit 1
-  }
-  
-  # Now do it!
-  die()
-}""" ,            
+  def errorCases = Set(                           
 """task hello {
       echo "hello, world!"
 } yay""",

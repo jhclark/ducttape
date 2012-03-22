@@ -666,7 +666,7 @@ object Grammar {
             opt(whitespace) ~
             (
                 literal("{") |
-                err("Missing opening { brace.")
+                failure("Missing opening { brace.")
             ) ~
             opt(space) ~
             (
@@ -694,6 +694,27 @@ object Grammar {
       new TaskDefinition(comments,name,header,new ShellCommands(commands))
   })
 
+  val callBlock: Parser[CallDefinition] = positioned({
+    opt(whitespace) ~>
+    comments ~
+    (   
+        Keyword.task ~>
+        name <~
+        (
+            space ~
+            literal("=") ~
+            space
+        )
+    ) ~ name ~
+    (
+        whitespace ~>
+        taskHeader
+    ) <~ (eol | err("Missing newline"))
+  } ^^ {
+    case (comments:Comments) ~ (name:String) ~ (functionName:String) ~ (header:TaskHeader) => 
+      new CallDefinition(comments,name,header,functionName)    
+  })
+  
   val groupBlock: Parser[GroupDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
@@ -745,7 +766,7 @@ object Grammar {
 //  }
   
   val block: Parser[Block] = {
-    taskBlock | groupBlock
+    taskBlock | groupBlock | callBlock
   }
   
   
