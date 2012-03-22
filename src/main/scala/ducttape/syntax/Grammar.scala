@@ -56,6 +56,7 @@ object Grammar {
     val branchpoint:Parser[String] = keyword("branchpoint")
     val baseline:Parser[String] = keyword("baseline")
     val branch:Parser[String] = keyword("branch")
+    val config:Parser[String] = keyword("config")
   }
   
   /** One line of comments */
@@ -416,6 +417,10 @@ object Grammar {
       }      
   )
 
+//  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
+  
+
+  
   val branchAssignment:Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
         case assignment:Spec => assignment
@@ -454,6 +459,24 @@ object Grammar {
         case None           ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
       }      
   )
+
+  val configLine:Parser[ConfigVariable] = {
+    comments ~ 
+    (
+        opt(space) ~> 
+        paramAssignment <~ 
+        opt(space)
+    ) ~ 
+    (comment | eol)
+  } ^^ {
+    case (comments:Comments) ~ (spec:Spec) ~ (_:String) => new ConfigVariable(spec,comments)
+  }
+  
+  val configLines:Parser[Seq[ConfigVariable]] = {
+    opt(whitespace) ~> 
+    repsep(configLine,opt(whitespace)) <~ 
+    opt(whitespace)
+  }  
   
   /**
    * Sequence of <code>assignment</code>s representing input files.
@@ -742,6 +765,44 @@ object Grammar {
   def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
   def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
 
+  val configBlock: Parser[ConfigDefinition] = positioned({
+    opt(whitespace) ~>
+    comments ~
+    (
+        Keyword.config ~>
+        opt(name("config","""\s""".r,failure(_),err(_)) <~ space) 
+    ) ~ 
+    (
+        (
+            opt(whitespace) ~
+            (
+                literal("{") |
+                err("Missing opening { brace for config variable block.")
+            ) ~
+            opt(space) ~
+            (
+                eol |
+                err("Config lines may not start on the same line as the opening { brace.")
+            )
+        ) ~> 
+        configLines <~
+        (
+            opt(whitespace) ~ 
+            (
+                literal("}") ~ 
+                (
+                    opt(space) ~
+                    (eol | err("Non-whitespace character found following closing } brace for config variable block."))
+                ) |                
+                err("Missing closing } brace for config variable block.")
+            )
+        )
+    ) 
+  } ^^ {
+    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[ConfigVariable]) => 
+      new ConfigDefinition(comments,name,lines)
+  })  
+  
   val childBlock: Parser[Block] = {
     taskBlock | callBlock | funcBlock | summaryBlock | branchpointBlock | groupBlock
   }
@@ -751,7 +812,14 @@ object Grammar {
   }
   
   val block: Parser[Block] = {
-    childBlock | ofBlock | actionBlock | submitterBlock | versionerBlock | packageBlock | branchpointChildBlock
+    childBlock            | 
+    ofBlock               | 
+    actionBlock           | 
+    submitterBlock        | 
+    versionerBlock        | 
+    packageBlock          | 
+    branchpointChildBlock | 
+    configBlock
   }
     
   

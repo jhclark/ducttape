@@ -86,6 +86,10 @@ object AbstractSyntaxTree {
   
   type Spec = AbstractSpec[RValue]
   
+  class ConfigVariable(val spec:Spec, val comments:Comments) extends ASTType {
+    override def toString=spec.toString()
+  }
+  
   abstract class Specs extends ASTType {
     val specs:Seq[Spec]
     val comments:Comments
@@ -142,6 +146,17 @@ object AbstractSyntaxTree {
                         val header:TaskHeader,
                         val blocks:Seq[Block]) extends Block {
     override def toString = name
+  }
+  
+  class ConfigDefinition(val comments:Comments,
+                         val name:Option[String],
+                         val lines:Seq[ConfigVariable]) extends Block {
+    override def toString = {
+      name match {
+        case None => "GLOBAL"
+        case Some(s:String) => s
+      }
+    }
   }
   
   /** Ducttape hyperworkflow file. */
