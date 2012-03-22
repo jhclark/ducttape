@@ -18,8 +18,7 @@ class UnquotedLiteralTest extends AbstractTest("unquoted literal",Grammar.unquot
       "Ends_with_paren)",
       ")",
       " starts_with_space",
-      "contains spaces",
-      "\"This is a quoted string\""
+      "contains spaces"
   ) 
   
   def errorCases = Set( 
@@ -29,8 +28,8 @@ class UnquotedLiteralTest extends AbstractTest("unquoted literal",Grammar.unquot
       "*",
       ":",
        "$",
-      "@","@*(","foo*","bar@baz"
-    
+      "@","@*(","foo*","bar@baz",
+      "\"This is a quoted string\""
    
   )
   

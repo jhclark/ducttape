@@ -51,7 +51,8 @@ object Grammar {
     val of:Parser[String] = keyword("of")
     val action:Parser[String] = keyword("action")
     val submitter:Parser[String] = keyword("submitter")
-    
+    val versioner:Parser[String] = keyword("versioner")
+    val packageKeyword:Parser[String] = keyword("package")
   }
   
   /** One line of comments */
@@ -99,8 +100,6 @@ object Grammar {
    */
   val unquotedLiteral : Parser[Literal] = {
     ( 
-      // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
-      (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |
       (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol. If this was meant to be a variable reference instead of an unquoted literal, then you probably forgot the $ sign.")) |      
       (regex("""[^"\s]*["]""".r)~err("An unquoted literal may not contain a double quotation mark")) |
       (regex("""[^'\s]*[']""".r)~err("An unquoted literal may not contain a single quotation mark")) |      
@@ -111,7 +110,9 @@ object Grammar {
       (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
       (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
       // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
-      (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |  
+      (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |
+      // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
+      (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |      
       regex("""[^"')(\]\[\*\$:@=\s]+""".r)
     ) ^^ {
       case string:String => new Literal(string)
@@ -660,6 +661,7 @@ object Grammar {
         new TaskDefinition(comments,blockType,name,header,new ShellCommands(commands))
   })  
   
+  val packageBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.packageKeyword,"package",taskHeader)
   val actionBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.action,"action",funcHeader)
   val ofBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.of,"of",taskHeader)
   val funcBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
@@ -772,14 +774,15 @@ object Grammar {
   def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
   def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
   def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
+  def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
 
   val childBlock: Parser[Block] = {
-    taskBlock | callBlock | funcBlock | summaryBlock | groupBlock | submitterBlock
+    taskBlock | callBlock | funcBlock | summaryBlock | groupBlock
     //| err("Missing child block. A group block may contain task, call, func, summary, and group blocks.")
   }
   
   val block: Parser[Block] = {
-    childBlock | ofBlock | actionBlock
+    childBlock | ofBlock | actionBlock | submitterBlock | versionerBlock | packageBlock
   }
     
   
