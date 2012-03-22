@@ -240,8 +240,12 @@ task hello {
 }"""  ,
       """task hello {
         echo "hello, world!"
-      }""" 
-
+      }""" ,
+"""# To define a "task function" in the same file
+func filter < in > out {
+  cat < $in > $out
+}      
+"""
   ) 
   
   def failureCases = Set(

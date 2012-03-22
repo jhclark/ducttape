@@ -96,7 +96,7 @@ object Grammar {
   val unquotedLiteral : Parser[Literal] = {
     ( 
       // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
-      (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace")) |
+      (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |
       (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol. If this was meant to be a variable reference instead of an unquoted literal, then you probably forgot the $ sign.")) |      
       (regex("""[^"\s]*["]""".r)~err("An unquoted literal may not contain a double quotation mark")) |
       (regex("""[^'\s]*[']""".r)~err("An unquoted literal may not contain a single quotation mark")) |      
@@ -238,7 +238,7 @@ object Grammar {
       | regex("""[A-Za-z_][A-Za-z0-9_]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name")
+      | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
@@ -447,8 +447,6 @@ object Grammar {
       }      
   )
   
-
-
   /**
    * Sequence of <code>assignment</code>s representing input files.
    * This sequence must be preceded by "<".
@@ -553,6 +551,47 @@ object Grammar {
     taskInputs | taskOutputs | taskParams | taskPackageNames
   }
 
+  val convertNameToSpec : PartialFunction[String,Spec] = {
+    case name:String => new Spec(name,Unbound(),name.startsWith("."))
+  }
+  
+  val funcSpec:Parser[Specs] = {
+    ( // Comments describe the parameter block
+      //   There may not be any comments,
+      //   in which case the comments object
+      //   will contain an empty string
+      ( comments ~
+        (
+          // there may be whitespace after the comments    
+          opt(whitespace) ~>
+          ( 
+              literal("::") |
+              literal("<")  |
+              literal(">")  |
+              literal(":")
+          ) <~
+          space
+        )
+      ) ~
+      // Finally, the list of variables
+      repsep(name("func variable","""\s""".r,failure(_),err(_)),space)
+    )
+  } ^^ {
+    case (comments:Comments) ~ ("::") ~ (list:List[String]) =>
+      new TaskParams(list.collect(convertNameToSpec),comments)
+    case (comments:Comments) ~ ("<") ~ (list:List[String]) =>
+      new TaskInputs(list.collect(convertNameToSpec),comments)
+    case (comments:Comments) ~ (">") ~ (list:List[String]) =>
+      new TaskOutputs(list.collect(convertNameToSpec),comments)
+    case (comments:Comments) ~ (":") ~ (list:List[String]) =>
+      new TaskPackageNames(list.collect(convertNameToSpec),comments)   
+  }
+  
+  val funcHeader:Parser[TaskHeader] = {
+    repsep(funcSpec,regex("""[ \n\r\t]+""".r))
+  } ^^ {
+    case (specs:List[Specs]) => new TaskHeader(specs) 
+  }
   
   val taskHeader:Parser[TaskHeader] = {
     repsep(taskSpec,regex("""[ \n\r\t]+""".r))
@@ -575,29 +614,29 @@ object Grammar {
     case (before:String) ~ Some(open~block~close~None) => before + open + block + close
     case (before:String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
   }  
-  
-  val taskBlock: Parser[TaskDefinition] = positioned({
+
+  def taskLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader]): Parser[FuncDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
     (
-        Keyword.task ~>
+        keyword ~>
         name 
     ) ~ 
     (
         whitespace ~>
-        taskHeader
+        header
     ) ~ 
     (
         (
             opt(whitespace) ~
             (
                 literal("{") |
-                failure("Missing opening { brace.")
+                failure("Missing opening { brace for " +blockType+" block.")
             ) ~
             opt(space) ~
             (
                 eol |
-                err("Shell commands may not start on the same line as the task block opening { brace.")
+                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
             )
         ) ~> 
         shellCommands <~
@@ -606,17 +645,58 @@ object Grammar {
                 literal("}") ~ 
                 (
                     opt(space) ~
-                    (eol | err("Non-whitespace character found following the task block closing } brace."))
+                    (eol | err("Non-whitespace character found following the " +blockType+" block closing } brace."))
                 ) |                
-                err("Missing closing } brace for task block.")
+                err("Missing closing } brace for " +blockType+" block.")
             )
         )
     ) 
   } ^^ {
     case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
-      new TaskDefinition(comments,name,header,new ShellCommands(commands))
-  })
-
+      new FuncDefinition(comments,name,header,new ShellCommands(commands))
+  })  
+  val funcBlock: Parser[FuncDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
+  val taskBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.task,"task",taskHeader)//positioned({
+//    opt(whitespace) ~>
+//    comments ~
+//    (
+//        Keyword.task ~>
+//        name 
+//    ) ~ 
+//    (
+//        whitespace ~>
+//        taskHeader
+//    ) ~ 
+//    (
+//        (
+//            opt(whitespace) ~
+//            (
+//                literal("{") |
+//                failure("Missing opening { brace.")
+//            ) ~
+//            opt(space) ~
+//            (
+//                eol |
+//                err("Shell commands may not start on the same line as the task block opening { brace.")
+//            )
+//        ) ~> 
+//        shellCommands <~
+//        (
+//            (
+//                literal("}") ~ 
+//                (
+//                    opt(space) ~
+//                    (eol | err("Non-whitespace character found following the task block closing } brace."))
+//                ) |                
+//                err("Missing closing } brace for task block.")
+//            )
+//        )
+//    ) 
+//  } ^^ {
+//    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
+//      new TaskDefinition(comments,name,header,new ShellCommands(commands))
+//  })  
+  
   val callBlock: Parser[CallDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
@@ -682,7 +762,7 @@ object Grammar {
   })
 
   val block: Parser[Block] = {
-    taskBlock | groupBlock | callBlock
+    taskBlock | callBlock | funcBlock | groupBlock
   }
   
   

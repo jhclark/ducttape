@@ -128,6 +128,13 @@ object AbstractSyntaxTree {
     override def toString = name
   }
   
+  class FuncDefinition(comments:Comments,
+                       name: String, 
+                       header:TaskHeader, 
+                       commands:ShellCommands) extends 
+                       TaskDefinition(comments,name,header,commands) {
+  }
+  
   class CallDefinition(val comments:Comments,
                        val name: String, 
                        val header:TaskHeader, 
