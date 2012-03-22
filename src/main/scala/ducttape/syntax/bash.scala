@@ -32,8 +32,11 @@ x=$y
   echo 'hi' # let's confuse the parser: {
   z='confusing string {'
 )
+echo \\\"\'hi
+escaping='\'\\'
+escaping="\'\"\$\\"                                                   
 y="another confusing string{"
-string_with_var="$doubleQuoted"
+string_with_var="$doubleQuoted $$ '$not_a_variable'"
 function ohai {
   $a0
 }
@@ -99,26 +102,36 @@ object BashGrammar {
    */
   val commentContent: Parser[String] = """[^\r\n]*""".r
 
-  def singleQuoteStringLiteral: Parser[BashCode] = (literal("'") ~ regex("""[^']*""".r) ~ literal("'")) ^^ {
+  def singleQuoteStringLiteral: Parser[BashCode] = (literal("'") ~ singleQuoteContent ~ literal("'")) ^^ {
     case open ~ str ~ close => new BashCode(open + str + close)
+  }
+
+  def singleQuoteContent: Parser[String] = (regex("""[^'\\]*""".r) ~ opt(escapedChar ~ singleQuoteContent)) ^^ {
+    case content ~ None => content
+    case content ~ Some(escaped ~ content2) => content + escaped + content2
   }
 
   def doubleQuoteStringLiteral: Parser[BashCode] = (literal("\"") ~ doubleQuoteContent ~ literal("\"")) ^^ {
     case open ~ dq ~ close => new BashCode(open + dq + close, dq.vars)
   }
 
-  def doubleQuoteContent: Parser[BashCode] = regex("[^$\"]*".r) ~ opt(doubleQuoteSpecialContent ~ doubleQuoteContent) ^^ {
+  def doubleQuoteContent: Parser[BashCode] = regex("[^$\"'\\\\]*".r) ~ opt(doubleQuoteSpecialContent ~ doubleQuoteContent) ^^ {
     case before ~ None => new BashCode(before)
     case before ~ Some(special ~ after) => new BashCode(before + special + after, special.vars ++ after.vars)
   }
   
-  def doubleQuoteSpecialContent: Parser[BashCode] = variableLike | stringLiteral
+  def doubleQuoteSpecialContent: Parser[BashCode] = variableLike | singleQuoteStringLiteral | escapedChar
+
+  def escapedChar: Parser[BashCode] = (literal("\\") ~ regex(".".r)) ^^ {
+    case escaper ~ escaped => new BashCode(escaper + escaped)
+  }
 
   def stringLiteral: Parser[BashCode] = singleQuoteStringLiteral | doubleQuoteStringLiteral
 
   // never match any paired elements
+  // nor any escape sequences
   // and special case << for heredocs
-  def codeBlob: Parser[String] = (regex("[^{}()\"'#$<]*".r) ~ opt(regex("<[^<]".r) ~ codeBlob)) ^^ {
+  def codeBlob: Parser[String] = (regex("[^{}()\"'#$<\\\\]*".r) ~ opt(regex("<[^<]".r) ~ codeBlob)) ^^ {
     case blob ~ None => blob
     case blob1 ~ Some(re ~ blob2) => blob1 + re + blob2
   }
@@ -177,7 +190,7 @@ object BashGrammar {
 */
   def heredocContent: Parser[String] = literal("{\n")
 
-  def nonBlobElement: Parser[BashCode] = variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
+  def nonBlobElement: Parser[BashCode] = escapedChar | variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
 
 // Done: Strings
 // Done: Comments
