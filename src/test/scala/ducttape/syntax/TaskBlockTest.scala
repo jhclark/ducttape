@@ -229,37 +229,14 @@ task hello: {
 
 task hello: {
       echo "hello, world!"
-}"""  
+}""",
+      """task hello: {
+        echo "hello, world!"
+      }"""
   ) 
   
   def failureCases = Set(
-
-  ) 
-  
-  def errorCases = Set(   
-    " ",            
-"""task funky: < in=foo > out  
- bar {
-  function die () {
-    echo "$@" >&2
-    exit 1
-  }
-  
-  # Now do it!
-  die()
-}""" ,      
-      """task hello: {
-        echo "hello, world!"
-      }""",      
-"""task hello: {
-      echo "hello, world!"
-} yay""",
-"""task hello: { // Comments are not allowed after opening { braces
-      echo "hello, world!"
-}""",
-"""task hello: { # Comments are not allowed after opening { braces
-      echo "hello, world!"
-}""",
+    " ",      
     "A-variable_Name__",
     "",      
     "> x y_txt",
@@ -283,6 +260,29 @@ task hello: {
     < in=$out@tokenize[DataSet:test] 
     // Here's the result
     > hyps"""    
+  ) 
+  
+  def errorCases = Set(               
+"""task funky: < in=foo > out  
+ bar {
+  function die () {
+    echo "$@" >&2
+    exit 1
+  }
+  
+  # Now do it!
+  die()
+}""" ,            
+"""task hello: {
+      echo "hello, world!"
+} yay""",
+"""task hello: { // Comments are not allowed after opening { braces
+      echo "hello, world!"
+}""",
+"""task hello: { # Comments are not allowed after opening { braces
+      echo "hello, world!"
+}"""
+
   )
   
 }

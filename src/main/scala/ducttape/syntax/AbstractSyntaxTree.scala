@@ -128,6 +128,13 @@ object AbstractSyntaxTree {
     override def toString = name
   }
   
+  class GroupDefinition(val comments:Comments,
+                        val name: String, 
+                        val header:TaskHeader,
+                        val blocks:Seq[Block]) extends Block {
+    override def toString = name
+  }
+  
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val file: File, val tasks: Seq[Block]) extends ASTType {
     override def toString = tasks.mkString("\n\n")

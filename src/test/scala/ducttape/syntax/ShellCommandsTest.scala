@@ -13,10 +13,14 @@ class ShellCommandsTest extends AbstractTest("shell commands",Grammar.shellComma
     "A-variable_Name__",  
     "moses tokenizer giza",
     "moses",
-    " }",
     """ruby -e 'puts "#{month_string.upcase}(#{today.year}-#{month_num})#{month_string.downcase}"'""",
     """# Package comments
-      moses tokenizerr giza""", 
+      moses tokenizerr giza""",
+    "the { open } close",  
+    "the { open then {nested} } close",  
+    "the { {nested} } close",  
+    "the { {{}} } close", 
+   "the { {{}} } close { more! }",       
     """
       #!/bin/bash
 
@@ -76,11 +80,7 @@ class ShellCommandsTest extends AbstractTest("shell commands",Grammar.shellComma
       echo "   ./configure [--with-srilm=/path/to/srilm] [--with-irstlm=/path/to/irstlm] [--with-randlm=/path/to/randlm] [--without-kenlm] [--with-synlm=/path/to/modelblocks] [--with-xmlrpc-c=/path/to/xmlrpc-c-config]"
       echo "   make -j 4"
       echo    
-    """
-  ) 
-  
-  def failureCases = Set(
-    "}",
+    """,
 """
 #!/bin/bash
 
@@ -140,7 +140,13 @@ echo "You should now be able to configure and build:"
 echo "   ./configure [--with-srilm=/path/to/srilm] [--with-irstlm=/path/to/irstlm] [--with-randlm=/path/to/randlm] [--without-kenlm] [--with-synlm=/path/to/modelblocks] [--with-xmlrpc-c=/path/to/xmlrpc-c-config]"
 echo "   make -j 4"
 echo    
-"""    
+"""     
+  ) 
+  
+  def failureCases = Set(
+    "}",
+    "{",
+    " }"    
   ) 
   
   def errorCases = Set(

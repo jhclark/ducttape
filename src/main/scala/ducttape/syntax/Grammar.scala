@@ -36,7 +36,7 @@ object Grammar {
     private def keyword(word:String):Parser[String] = {
       (
           literal(word) |
-          err("""The keyword """"+word+"""" is required but missing.""")
+          failure("""The keyword """"+word+"""" is required but missing.""")
       ) <~ 
       (
           space |
@@ -45,6 +45,7 @@ object Grammar {
     }
        
     val task:Parser[String] = keyword("task")
+    val group:Parser[String] = keyword("group")
     
   }
   
@@ -573,19 +574,41 @@ object Grammar {
       new TaskHeader(packageNames,specs) 
   }
   
-  val shellCommands: Parser[ShellCommands] = positioned(
-    repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
-      case list:List[String] => new ShellCommands(list.mkString("\n"))
-    }
-  )
+//  val shellCommands: Parser[ShellCommands] = positioned(
+//    repsep(shellCommand,"""(\r\n)|\r|\n""".r) ^^ {
+//      case list:List[String] => new ShellCommands(list.mkString("\n"))
+//    }
+//  )
+//  
+//  /** Shell command. */
+//  val shellCommand: Parser[String] = {
+//    (regex("""[^}\n\r][^\r\n]*""".r) <~ guard(eol)) |
+//    guard(eol) |
+//    failure("The first character of a shell script line may not be }. You can fix this error by preceding the } with one or more whitespace characters.")
+//  }
+//
+//  val bashBlock: Parser[String] = {
+//    (literal("{")~opt(space)~eol) ~>
+//    bashCode <~
+//    (eol~opt(space)~literal("}"))
+//  }
   
-  /** Shell command. */
-  val shellCommand: Parser[String] = {
-    (regex("""[^}\n\r][^\r\n]*""".r) <~ guard(eol)) |
-    guard(eol) |
-    failure("The first character of a shell script line may not be }. You can fix this error by preceding the } with one or more whitespace characters.")
-  }
-
+  val shellCommands: Parser[String] = {
+    regex("""[^{}]*""".r) ~ 
+    opt(
+        (literal("}")~failure("Unmatched closing } bracket in bash code.")) |
+        literal("{") ~ 
+        shellCommands ~ 
+        (literal("}")|failure("Missing closing } bracket in bash code.")) ~
+        opt(shellCommands)
+        //regex("""[^{}]*""".r)
+    )    
+  } ^^ {
+    case (before:String) ~ None => before
+    case (before:String) ~ Some(open~block~close~None) => before + open + block + close
+    case (before:String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
+  }  
+  
   val taskBlock: Parser[TaskDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
@@ -607,28 +630,72 @@ object Grammar {
             opt(space) ~
             (
                 eol |
-                err("Shell commands may not start on the same line as the opening { brace.")
+                err("Shell commands may not start on the same line as the task block opening { brace.")
             )
         ) ~> 
         shellCommands <~
         (
-            eol ~ 
+            //eol ~ 
             (
                 literal("}") ~ 
                 (
                     opt(space) ~
-                    (eol | err("Non-whitespace character found following closing } brace."))
+                    (eol | err("Non-whitespace character found following the task block closing } brace."))
                 ) |                
-                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
-                err("Missing closing } brace. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+//                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
+//                err("Missing closing } brace for task block. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+                err("Missing closing } brace for task block.")
             )
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:ShellCommands) => 
-      new TaskDefinition(comments,name,header,commands)
+    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
+      new TaskDefinition(comments,name,header,new ShellCommands(commands))
   })
-
+//
+//  val groupBlock: Parser[GroupDefinition] = positioned({
+//    opt(whitespace) ~>
+//    comments ~
+//    (
+//        Keyword.group ~>
+//        name 
+//    ) ~ 
+//    (
+//        whitespace ~>
+//        taskHeader
+//    ) ~ 
+//    (
+//        (
+//            opt(whitespace) ~
+//            (
+//                literal("{") |
+//                err("Missing opening { brace.")
+//            ) ~
+//            opt(space) ~
+//            (
+//                eol |
+//                err("Child blocks may not start on the same line as the opening { brace.")
+//            )
+//        ) ~> 
+//        rep(block) <~
+//        (
+//            eol ~ 
+//            (
+//                literal("}") ~ 
+//                (
+//                    opt(space) ~
+//                    (eol | err("Non-whitespace character found following closing } brace."))
+//                ) |                
+//                space~literal("}")~err("Closing } brace may not be preceded by whitespace.") |
+//                err("Missing closing } brace for group block. If you have a closing brace but still got error message anyway, it probably means that you have have whitespace preceding your closing } brace. The closing } brace must be the first character of the line - it may not be preceded by any whitespace.")
+//            )
+//        )
+//    ) 
+//  } ^^ {
+//    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (blocks:Seq[Block]) => 
+//      new GroupDefinition(comments,name,header,blocks)
+//  })
+  
 //  val block : Parser[(List[Comments],TaskDefinition)] = {
 //    opt(floatingComments) ~ taskBlock
 //  } ^^ {
@@ -637,8 +704,11 @@ object Grammar {
 //  }
   
   val block: Parser[Block] = {
-    taskBlock
+    taskBlock 
+//    |
+//    groupBlock
   }
+  
   
   val blocks: Parser[Seq[Block]] = {
     opt(whitespace) ~> 
