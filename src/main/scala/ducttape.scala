@@ -86,7 +86,7 @@ object Ducttape {
     // TODO: Can we define help as an option?
     // TODO: Rewrite arg parsing as a custom module?
     override def help {
-      err.println("Usage: ducttape workflow.tape [--options] [mode] [taskName [realizationNames...]]")
+      err.println("Usage: ducttape workflow.tape [--options] [mode [taskName [realizationNames...]]]")
       err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
       super.help
 
