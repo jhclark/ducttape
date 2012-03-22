@@ -1,6 +1,7 @@
 package ducttape.workflow
 
 import collection._
+
 import ducttape.hyperdag._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
@@ -8,174 +9,11 @@ import ducttape.versioner._
 import ducttape.workflow.Types._
 import ducttape.hyperdag.meta._
 
-// TODO: Move into HyperDAG?
-class Realization(val branches: Seq[Branch]) {
- // TODO: Keep string branch point names?
-
-  // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
-  // and don't include our default branch "baseline"
-  private def realizationName(real: Map[String,Branch]): String = {
-    val branches = real.toSeq.sortBy(_._1).map(_._2)
-    val names = branches.map(_.name).filter(_ != Task.NO_BRANCH.name)
-    // TODO: Can we get rid of some of these cases now?
-    names.size match {
-      case 0 => Task.NO_BRANCH.name // make sure we have at least baseline in the name
-      case _ => names.mkString("-")
-    }
-  }
-
-  //def realizationName(real: Seq[Branch]) = realizationName(branchesToMap(real))
-  private def branchesToMap(real: Seq[Branch]) = {
-    val result = new mutable.HashMap[String,Branch]
-    result += Task.NO_BRANCH_POINT.name -> Task.NO_BRANCH // TODO: XXX: Should we enforce this elsewhere?
-    for(branch <- real) {
-      result += branch.branchPoint.name -> branch
-    }
-    result
-  }
-
-  lazy val activeBranchMap = branchesToMap(branches)
-  lazy val str = realizationName(activeBranchMap)
-
-  override def hashCode = str.hashCode // TODO: More efficient?
-  override def equals(obj: Any) = obj match { case that: Realization => this.str == that.str } // TODO: More efficient?
-  override def toString = str
-}
-
-// short for "realized task"
-// we might shorten this to Task
-class RealTask(val taskT: TaskTemplate,
-               val realization: Realization,
-               // TODO: Change inputVals and paramVals over to Realization?
-               val inputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
-               val paramVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
-               val version: Int) { // workflow version
-   def name = taskT.name
-   def taskDef = taskT.taskDef
-   def comments = taskT.comments
-   def inputs = taskT.inputs
-   def outputs = taskT.outputs
-   def params = taskT.params
-   def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
-
-  // the tasks and realizations that must temporally precede this task (due to having required input files)
-   lazy val antecedents: Set[(String, Realization)] = {
-     for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- inputVals) yield {
-       (srcTaskDef.name, new Realization(srcRealization)) // TODO: change seq[branch] to realization?
-     }
-   }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet
-
-  // TODO: Smear hash code better
-   override def hashCode = name.hashCode ^ realization.hashCode ^ version
-   override def equals(obj: Any) = obj match {
-     case that: RealTask => this.name == that.name && this.realization == that.realization && this.version == that.version
-   }
-
-   override def toString = "%s/%s".format(name, realization.toString)
- }
-
- // a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
- // TODO: fix these insane types for inputVals and paramVals
- class TaskTemplate(val taskDef: TaskDef,
-            val branchPoints: Seq[BranchPoint], // only the branch points introduced at this task
-            val inputVals: Seq[(Spec,Map[Branch,(Spec,TaskDef)])], // (mySpec,srcSpec,srcTaskDef)
-            val paramVals: Seq[(Spec,Map[Branch,(LiteralSpec,TaskDef)])] ) { // (mySpec,srcSpec,srcTaskDef)
-   def name = taskDef.name
-   def comments = taskDef.comments
-   def inputs = taskDef.inputs
-   def outputs = taskDef.outputs
-   def params = taskDef.params
-   def commands = taskDef.commands
-
-   override def toString = name
-
-   // realize this task by specifying one branch per branch point
-   // activeBranches should contain only the hyperedges encountered up until this vertex
-   // with the key being the branchPointNames
-   def realize(v: UnpackedWorkVert, versions: WorkflowVersioner): RealTask = {
-     // TODO: Assert all of our branch points are satisfied
-     // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
-     val realization = new Realization(v.realization)
-     val activeBranchMap = realization.activeBranchMap
-
-     // do a bit of sanity checking
-     for(branchPoint <- branchPoints) {
-       assert(activeBranchMap.contains(branchPoint.name),
-              "Required branch point for this task '%s' not found in active branch points '%s'"
-              .format(branchPoint.name, activeBranchMap.keys.mkString("-")))
-     }
-
-     // iterate over the hyperedges selected in this realization
-     // remember: *every* metaedge has exactly one active incoming hyperedge
-     val spec2reals = new mutable.HashMap[Spec, Seq[Branch]]
-     for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
-          <- v.edges.zip(v.parentRealizations)) {
-       val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
-       for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
-         for(spec <- specs) {
-           //System.err.println("Spec %s has source real: %s".format(spec, srcReal))
-           spec2reals += spec -> srcReal
-         }
-       }
-     }
-
-     // TODO: So how on earth are all these things parallel to meta edges etc?
-     // TODO: XXX: What about a branch point that internally points to a config line that also has a branch point?
-
-     def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): (Spec,T,TaskDef,Seq[Branch]) = {
-       curSpec.rval match {
-         case BranchPointDef(branchPointName, _) => {
-           val activeBranch: Branch = activeBranchMap(branchPointName)
-           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
-           // TODO: Borken for params
-           val parentReal = spec2reals(origSpec)
-           (origSpec, srcSpec, srcTaskDef, parentReal)
-         }
-         case ConfigVariable(_) => {
-           // config variables can, in turn, define branch points, so we must be careful
-           // TODO: Borken for nested branch points
-           val whichBranchPoint: BranchPoint = branchMap.keys.head.branchPoint
-           val activeBranch: Branch = activeBranchMap(whichBranchPoint.name)
-           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
-           val parentReal = spec2reals.get(origSpec) match {
-             case Some(r) => r // config has branch point
-             case None => v.realization // config has no branch point
-           }
-           //mapVal(origSpec, srcSpec, branchMap)
-           //System.err.println("Mapping config var with active branch %s to srcSpec %s at srcTask %s with parent real %s".format(activeBranch, srcSpec, srcTaskDef, parentReal))
-           (origSpec, srcSpec, srcTaskDef, parentReal)
-         }
-         case Variable(_,_) => { // not a branch point, but defined elsewhere
-           val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           val parentReal = spec2reals(origSpec)
-           (origSpec, srcSpec, srcTaskDef, parentReal)
-         }
-         case _ => { // not a branch point, but either a literal or unbound
-           val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           (origSpec, srcSpec, srcTaskDef, v.realization)
-         }
-       }
-     }
-     
-     // resolve the source spec/task for the selected branch
-     def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
-       values.map{ case (mySpec: Spec, branchMap: Map[Branch, (T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
-     }
-
-     val realInputVals = mapVals(inputVals)
-     val realParamVals = mapVals(paramVals)
-
-     val version = versions(taskDef.name, realization)
-     new RealTask(this, realization, realInputVals, realParamVals, version)
-   }
- }
-
- // TODO: ???
- class UnpackState {
-   
- }
-
- object WorkflowBuilder {
+/**
+ * This is where the real magic happens of turning an Abstract Syntax Tree
+ * into an immutable HyperWorkflow that everything else can use to perform actions.
+ */
+object WorkflowBuilder {
 
    // TODO: Better error reporting here?
    val CONFIG_TASK_DEF = new TaskDef("CONFIGURATION_FILE", new CommentBlock(Nil), Nil, Nil, Nil, Nil, scala.util.parsing.input.NoPosition)

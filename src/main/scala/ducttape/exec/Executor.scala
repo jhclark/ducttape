@@ -1,13 +1,14 @@
 package ducttape.exec
 
 import collection._
+
 import ducttape.Config
 import ducttape.versioner.WorkflowVersioner
-import ducttape.workflow.Types.HyperWorkflow
-import ducttape.workflow.Realization
 import ducttape.util.Shell
 import ducttape.util.Files
+import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
+import ducttape.workflow.HyperWorkflow
 
 // workflow used for viz
 class Executor(conf: Config,

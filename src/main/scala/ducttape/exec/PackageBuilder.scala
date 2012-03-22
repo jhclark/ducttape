@@ -22,7 +22,7 @@ class PackageBuilder(conf: Config, dirs: DirectoryArchitect, workflowVersion: In
       val exitCode = Shell.run(gimmeCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if(exitCode != 0) {
         println("%sBuild task %s returned %s%s".format(conf.errorColor, packageName, exitCode, Console.RESET))
-        exit(1)
+        System.exit(1)
       }
 
     }
