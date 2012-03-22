@@ -46,6 +46,7 @@ object Grammar {
        
     val task:Parser[String] = keyword("task")
     val group:Parser[String] = keyword("group")
+    val func:Parser[String] = keyword("func")
     
   }
   
