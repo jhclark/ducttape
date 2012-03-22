@@ -53,6 +53,9 @@ object Grammar {
     val submitter:Parser[String] = keyword("submitter")
     val versioner:Parser[String] = keyword("versioner")
     val packageKeyword:Parser[String] = keyword("package")
+    val branchpoint:Parser[String] = keyword("branchpoint")
+    val baseline:Parser[String] = keyword("baseline")
+    val branch:Parser[String] = keyword("branch")
   }
   
   /** One line of comments */
@@ -661,6 +664,8 @@ object Grammar {
         new TaskDefinition(comments,blockType,name,header,new ShellCommands(commands))
   })  
   
+  val baselineBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.baseline,"baseline",taskHeader)
+  val branchBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.branch,"branch",taskHeader)
   val packageBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.packageKeyword,"package",taskHeader)
   val actionBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.action,"action",funcHeader)
   val ofBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.of,"of",taskHeader)
@@ -775,14 +780,19 @@ object Grammar {
   def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
   def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
   def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
+  def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
 
   val childBlock: Parser[Block] = {
-    taskBlock | callBlock | funcBlock | summaryBlock | groupBlock
+    taskBlock | callBlock | funcBlock | summaryBlock | branchpointBlock | groupBlock
     //| err("Missing child block. A group block may contain task, call, func, summary, and group blocks.")
   }
   
+  val branchpointChildBlock: Parser[Block] = {
+    baselineBlock | branchBlock
+  }
+  
   val block: Parser[Block] = {
-    childBlock | ofBlock | actionBlock | submitterBlock | versionerBlock | packageBlock
+    childBlock | ofBlock | actionBlock | submitterBlock | versionerBlock | packageBlock | branchpointChildBlock
   }
     
   
