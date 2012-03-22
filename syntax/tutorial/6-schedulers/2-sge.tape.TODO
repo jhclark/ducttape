@@ -8,23 +8,23 @@ submitter sge :: CMDS vmem walltime q {
   # SGE: echo "#$-l vmem=$vmem" >> $wrapper
   # SGE:  echo "#-l walltime=$walltime" >> $wrapper
   action wrap > wrapper {
-    echo "#PBS -S /bin/bash" >> $jobScript
-    echo "#PBS -q $RESOURCE_q" >> $jobScript
-    echo "#PBS -l nodes=1:ppn=$RESOURCE_cpus" >> $jobScript
-    echo "#PBS -l walltime=$RESOURCE_time" >> $jobScript
-    echo "#PBS -j oe" >> $jobScript
-    echo "#PBS -o localhost:$PWD/job.out" >> $jobScript
-    echo "#PBS -N $CONF_NAME/$TASK_NAME/$REALIZATION" >> $jobScript
+    echo "#PBS -S /bin/bash" >> $wrapper
+    echo "#PBS -q $RESOURCE_q" >> $wrapper
+    echo "#PBS -l nodes=1:ppn=$RESOURCE_cpus" >> $wrapper
+    echo "#PBS -l walltime=$RESOURCE_time" >> $wrapper
+    echo "#PBS -j oe" >> $wrapper
+    echo "#PBS -o localhost:$PWD/job.out" >> $wrapper
+    echo "#PBS -N $CONF_NAME/$TASK_NAME/$REALIZATION" >> $wrapper
 
     # Bash flags aren't necessarily passed into the scheduler
     # so we must re-initialize them
-    echo "set -e # stop on errors" >> $jobScript
-    echo "set -o pipefail # stop on pipeline errors" >> $jobScript
-    echo "set -u # stop on undeclared variables" >> $jobScript
-    echo "set -x # show each command as it is executed" >> $jobScript
+    echo "set -e # stop on errors" >> $wrapper
+    echo "set -o pipefail # stop on pipeline errors" >> $wrapper
+    echo "set -u # stop on undeclared variables" >> $wrapper
+    echo "set -x # show each command as it is executed" >> $wrapper
 
     # The current working directory will also be changed by most schedulers
-    echo "cd $PWD/work" >> $jobScript
+    echo "cd $PWD/work" >> $wrapper
 
     echo "$CMDS" >> $wrapper
   }
