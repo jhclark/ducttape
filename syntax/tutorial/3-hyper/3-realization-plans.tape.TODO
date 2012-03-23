@@ -4,8 +4,6 @@
 # ducttape can be called with "ducttape -P Basics" to run cross products of branches by adding lines
 # like the following to config files:
 plan Basics {
-  # XXX: This is still a bit wonky
-
   # 4 experiments/realizations: all combinations of small and medium
   # The * operator indicates a cross-product
   # The "score" indicates that score is the goal task ("target" in GNU Make lingo)
