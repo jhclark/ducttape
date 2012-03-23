@@ -68,7 +68,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
             }
           }
         }
-        if(j>1) System.err.println("Worker thread %d of %d joined".format(i+1, j))
+        //if(j>1) System.err.println("Worker thread %d of %d joined".format(i+1, j))
       }
     })
     // start running tasks in thread pool

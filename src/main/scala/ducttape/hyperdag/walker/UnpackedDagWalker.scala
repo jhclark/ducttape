@@ -142,8 +142,10 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
   // (use foreach to prevent this)
   override def take: Option[UnpackedVertex[V,H,E]] = {
 
+    // this method just handles getting the next vertex, if any
+    // take() must also perform some vertex filtering before returning
     def getNext: Option[UnpackedVertex[V,H,E]] = {
-      def poll = {
+      def poll = { // atomically get both the size and any waiting vertex
         val (key, takenSize) = agendaTakenLock.synchronized {
           // after polling the agenda, we must update taken
           // before releasing our lock
@@ -154,36 +156,36 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
             case None => ;
           }
           (key, takenSize)
-        }
-        key match {
-          case Some(_) => {
-            // notify other threads outside of agendaTakenLock
-            // to avoid nested locks -- we only need to do this
-            // if we got a key (thus updating the agenda and taken)
-            waitingToTakeLock.synchronized {
-              waitingToTakeLock.notifyAll
-            }
-          }
-          case None => ;
-        }
+        }        
         (key, takenSize)
-      }
+      } // poll
 
-      var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = poll
-      while(key == None && takenSize > 0) {
-        waitingToTakeLock.synchronized {
+      val key: Option[UnpackedVertex[V,H,E]] = waitingToTakeLock.synchronized {
+        var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = poll        
+        while(key == None && takenSize > 0) {
           // wait, releasing our lock until we're notified of changes
           // in state of agenda and taken
           waitingToTakeLock.wait
+          
+          val (key1, takenSize1) = poll
+          key = key1
+          takenSize = takenSize1
         }
-        val (key1, takenSize1) = poll
-        key = key1
-        takenSize = takenSize1
+        if(key != None) {
+          // * notify other threads that both the agenda and waiting
+          //   vertices might be empty
+          // * do this outside of agendaTakenLock
+          //   to avoid nested locks
+          // * do this only if we got a key (thus updating the agenda and taken)
+          waitingToTakeLock.notifyAll
+        }
+        key
       }
       key
-    }
+    } // getNext
     
     var result = getNext
+    // some extra machinery to handle vertex-level filtering
     while(result != None && !vertexFilter(result.get)) {
       //System.err.println("U Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)

@@ -136,8 +136,96 @@ object WorkflowBuilder {
      val branchFactory = new BranchFactory(branchPointFactory)
      val branchPoints = new mutable.ArrayBuffer[BranchPoint]
      val branchPointsByTask = new mutable.HashMap[TaskDef,mutable.Set[BranchPoint]] // TODO: Multimap
-
+     
      // first, create tasks, but don't link them in graph yet
+     findTasks(wd, confSpecs, defMap, parents, vertices, dag, branchPointFactory, branchFactory, branchPoints, branchPointsByTask)
+
+     // == we've just completed our second pass over the workflow file and linked everything together ==
+
+     // now build a graph representation by adding converting to (meta/hyper) edges
+     for(v <- vertices.values) {
+       val task: TaskTemplate = v.value
+
+       // add one metaedge per branch point
+       for(branchPoint <- branchPointsByTask(task.taskDef)) {
+
+         // create a hyperedge list in the format expected by the HyperDAG API
+         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
+         for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
+
+           // create an edge within each hyperedge for each input associated with a task
+           // so that we will know which realization to use at the source of each edge.
+           // parameters may also be subject to branching, but will never point at a task directly
+           // since parameters do not imply a temporal ordering among task vertices.
+           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
+
+           // find which inputs and parameters are attached to this branch point
+           // this will be the payload associated with each plain edge in the MetaHyperDAG
+           def findInputParamSpecs(parentTaskDef: TaskDef): Seq[Spec] = {
+               (task.inputVals ++ task.paramVals).filter{
+                 case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
+                   specBranches.get(branch) match {
+                     case None => false
+                     case Some( (spec: Spec, specParent: TaskDef) ) => {
+                       //System.err.println("Comparing: %s %s".format(specParent, parentTaskDef))
+                       specParent == parentTaskDef
+                     }
+                   }
+                 }
+               }.map{ case(ipSpec, specBranches) => ipSpec }
+           }
+
+           // parents are stored as Options so that we can use None to indicate phantom parent vertices
+           for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
+             case Some(CONFIG_TASK_DEF) => {
+               // config entries may in turn contain branches, which require
+               // edges to reconstruct which inputs/parameters each realized task should use
+               // the parent task *of the ConfigVariable* will be listed as the current task
+               val ipSpecs = findInputParamSpecs(task.taskDef)
+               //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branch, ipSpecs.toList))
+               //System.err.println("INPUT VALS: " + task.inputVals)
+               edges.append( (None, ipSpecs) )
+             }
+             case Some(parentTaskDef) => {
+               val parentVert = vertices(parentTaskDef.name)
+               val ipSpecs = findInputParamSpecs(parentTaskDef)
+               // add an edge for each parameter/input at task that originates from parentVert
+               //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
+               edges.append( (Some(parentVert), ipSpecs) )
+             }
+             case None => {
+               // We have a branch point using only literal paths
+               // or literal param values
+               val ipSpecs = findInputParamSpecs(task.taskDef) // we are our own parent
+               edges.append( (None, ipSpecs) )
+             }
+           }
+           hyperedges.append( (branch, edges) )
+        }
+        if(!hyperedges.isEmpty) {
+          // NOTE: The meta edges are not necessarily phantom, but just have that option
+          dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
+        }
+      }
+    }
+
+    // TODO: For params, we can resolve these values *ahead*
+    // of time, prior to scheduling (but keep relationship info around)
+    // (i.e. parameter dependencies should not imply temporal dependencies)
+    new HyperWorkflow(dag.build, branchPointFactory, branchFactory)
+  }
+  
+  private def findTasks(wd: WorkflowDefinition,
+					    confSpecs: Map[String,Spec],
+					    defMap: mutable.HashMap[String,TaskDef],
+					    parents: mutable.HashMap[TaskTemplate,Map[Branch,mutable.Set[Option[TaskDef]]]],
+					    vertices: mutable.HashMap[String,ducttape.hyperdag.PackedVertex[TaskTemplate]],
+					    dag: MetaHyperDagBuilder[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
+					    branchPointFactory: BranchPointFactory,
+					    branchFactory: BranchFactory,
+					    branchPoints: mutable.ArrayBuffer[BranchPoint],
+					    branchPointsByTask: mutable.HashMap[TaskDef,mutable.Set[BranchPoint]]) {
+    
      for(taskDef <- wd.tasks) {
 
        // TODO: Check for all inputs/outputs/param names being unique in this step
@@ -282,79 +370,5 @@ object WorkflowBuilder {
        parents += task -> parentsByBranch
        vertices += task.name -> dag.addVertex(task)
      }
-
-     // == we've just completed our second pass over the workflow file and linked everything together ==
-
-     // now build a graph representation by adding converting to (meta/hyper) edges
-     for(v <- vertices.values) {
-       val task: TaskTemplate = v.value
-
-       // add one metaedge per branch point
-       for(branchPoint <- branchPointsByTask(task.taskDef)) {
-
-         // create a hyperedge list in the format expected by the HyperDAG API
-         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
-         for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
-
-           // create an edge within each hyperedge for each input associated with a task
-           // so that we will know which realization to use at the source of each edge.
-           // parameters may also be subject to branching, but will never point at a task directly
-           // since parameters do not imply a temporal ordering among task vertices.
-           val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
-
-           // find which inputs and parameters are attached to this branch point
-           // this will be the payload associated with each plain edge in the MetaHyperDAG
-           def findInputParamSpecs(parentTaskDef: TaskDef): Seq[Spec] = {
-               (task.inputVals ++ task.paramVals).filter{
-                 case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
-                   specBranches.get(branch) match {
-                     case None => false
-                     case Some( (spec: Spec, specParent: TaskDef) ) => {
-                       //System.err.println("Comparing: %s %s".format(specParent, parentTaskDef))
-                       specParent == parentTaskDef
-                     }
-                   }
-                 }
-               }.map{ case(ipSpec, specBranches) => ipSpec }
-           }
-
-           // parents are stored as Options so that we can use None to indicate phantom parent vertices
-           for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
-             case Some(CONFIG_TASK_DEF) => {
-               // config entries may in turn contain branches, which require
-               // edges to reconstruct which inputs/parameters each realized task should use
-               // the parent task *of the ConfigVariable* will be listed as the current task
-               val ipSpecs = findInputParamSpecs(task.taskDef)
-               //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branch, ipSpecs.toList))
-               //System.err.println("INPUT VALS: " + task.inputVals)
-               edges.append( (None, ipSpecs) )
-             }
-             case Some(parentTaskDef) => {
-               val parentVert = vertices(parentTaskDef.name)
-               val ipSpecs = findInputParamSpecs(parentTaskDef)
-               // add an edge for each parameter/input at task that originates from parentVert
-               //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
-               edges.append( (Some(parentVert), ipSpecs) )
-             }
-             case None => {
-               // We have a branch point using only literal paths
-               // or literal param values
-               val ipSpecs = findInputParamSpecs(task.taskDef) // we are our own parent
-               edges.append( (None, ipSpecs) )
-             }
-           }
-           hyperedges.append( (branch, edges) )
-        }
-        if(!hyperedges.isEmpty) {
-          // NOTE: The meta edges are not necessarily phantom, but just have that option
-          dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
-        }
-      }
-    }
-
-    // TODO: For params, we can resolve these values *ahead*
-    // of time, prior to scheduling (but keep relationship info around)
-    // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build, branchPointFactory, branchFactory)
-  }
+   }
 }
