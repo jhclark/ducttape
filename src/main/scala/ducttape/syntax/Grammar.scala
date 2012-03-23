@@ -57,6 +57,9 @@ object Grammar {
     val baseline:Parser[String] = keyword("baseline")
     val branch:Parser[String] = keyword("branch")
     val config:Parser[String] = keyword("config")
+    val reach:Parser[String] = keyword("reach")
+    val via:Parser[String] = keyword("via")
+    val plan:Parser[String] = keyword("plan")
   }
   
   /** One line of comments */
