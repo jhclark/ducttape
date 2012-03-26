@@ -8,6 +8,150 @@ import org.scalatest.junit.JUnitRunner
 class BlockTest extends AbstractTest("block",Grammar.block) {
  
   def successCases = Set(
+    """plan {
+      reach goal via (branchPointName: a)
+    // some comments
+    reach g1,g2,g3 via (branchPointName: a)
+    reach a via (branchPointName: a b)  
+    reach b , b2 via (greeting: y z)
+    reach tastyMeal via (sauce: a1 ketchup wasabi)
+    reach config via (flags: a b )
+    reach h_1, h_2 via (flags: a b)
+    }""",
+
+    // Bare rvalues  
+    """plan basic {
+    reach alphabet via (branchPointName: a b c)
+    reach a via (a: a1 a4)
+    reach z,y, w via (a: a1)
+    reach here, there via (a: a1 a2 a3 a4)
+    }""",
+    
+    // With comments
+    """plan {
+    reach goal via {(
+      // Here is a comment
+    a: a1 a2 a3)}}""",
+    """plan {
+    reach goal via {(
+      // Here is a comment
+    a: 
+    // More comments
+    a1 a2 a3)}
+    } """,
+    """plan {
+    reach another, goal, too via {
+    (
+      // Here is a comment
+    a: 
+    // More comments
+    a1 
+    // And more
+    // And more
+    a2 a3)
+    }
+    } """,    
+    """plan {
+    reach goal via {(
+      // Here is a comment
+    a: 
+    // More comments
+    a1 
+    // And more
+    // And more
+    a2 
+    // And more
+    a3)}}""",        
+    """plan {
+    reach goal via 
+    {
+    (
+      // Here is a comment
+    a: 
+    // More comments
+    a1 
+    // And more
+    // And more
+    a2 
+    // And more
+    a3
+    // And more
+    // and more
+    // and More
+    )
+    }}""",
+    """plan myPlan {
+    reach goal via {
+    (
+      // Here is a comment
+    a: 
+    // More comments
+    a1 // here too!
+    // And more
+    // And more
+    a2 
+    // And more
+    a3
+    // And more
+    // and more
+    // and More
+    )
+    }
+    }""",    
+    """plan {
+      reach goal via { (
+      // Here is a comment
+    a: 
+    // More comments
+    a1 // here too!
+    // And more
+    // And more
+    a2 // and here
+    // And more
+    a3  // and here
+    // And more
+    // and more
+    // and More
+    )}
+      }""",    
+    
+    // Cross products
+    """plan it {  
+          reach goal via (a: a1 a2 a3) * (b: b1 b2)
+          reach goal via (a: a1) * (b: b1)
+          reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four)
+          reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four) * (d: *)
+      }""",
+    
+    // Multi-line
+    """plan something {
+      // Comment
+      reach somewhere, else via {
+          (a: a1 a2 a3) 
+        * (b: b1 b2)
+       }
+      
+      }""",
+    """plan it {
+      reach goal via { (a: a1) * (b: b1) }}""",
+    """plan {
+      reach countdown via { (a: a1 a2 a3) * (b: b1 b2)
+    * (c: c_one c_two c_three c_four)
+    }
+      }""",
+    """plan {
+      reach super_hero via { // Here I come to save the day
+    
+    // Mighty mouse
+    // is on the way
+    (a: a1 a2 a3) // Fighting evil
+    * 
+    // in the breeze
+    (b: b1 b2) * (c: c_one c_two c_three c_four) * 
+    
+    // Looking for a piece
+    (d: *) // of cheese
+    }}""",       
 """task x = filter < in=x.txt > out""",
 """group g {
 }""",

@@ -913,7 +913,8 @@ object Grammar {
     versionerBlock        | 
     packageBlock          | 
     branchpointChildBlock | 
-    configBlock
+    configBlock           |
+    planBlock
   }
     
   
