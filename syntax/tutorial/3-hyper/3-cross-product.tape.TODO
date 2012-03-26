@@ -1,0 +1,15 @@
+# TODO: Make this into a proper regression test and tutorial example
+# TODO: This probably belongs in a config file example
+
+# Defining work plans to get more than just one-off experiments (this is intended primarily for config files)
+# ducttape can be called with "ducttape -P Basics" to run cross products of branches by adding lines
+# like the following to config files:
+[PLAN:Basics] {
+  # 4 experiments/realizations: all combinations of small and medium
+  # The * operator indicates a cross-product
+  # First, we list the name of the realization plan
+  # Second, we list the tasks that are our "goals" -- ducttape will run these tasks and all of their dependencies
+  SmallMediumPlan: evaluation_task : (WhichTM: small medium) * (WhichLM: small medium)
+  # 1 experiment/realization: just the large model
+  LargePlan: evaluation_task : (WhichLM: large) * (WhichLM: large)
+}

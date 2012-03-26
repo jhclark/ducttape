@@ -1,0 +1,30 @@
+# TODO: Unfinished tutorial step
+
+# Reports enable you to run commands after a workflow has
+# been (partially) completed and emit key-value pairs 
+# for use in an ASCII or Latex table or even a plot.
+#
+# You can give reports names to create reports
+# for debugging, status checking, or publication.
+#
+# For reports that can be reported incrementally as progress indiators,
+# use +status. Status can only be reported on a per-task basis and does not accept names like reports
+
+# what about a simple step with only a report?  
+# TODO: Do we need a special marker on the task name so that we expect nested elements?
+task some_task < a > x {
+  cat $a > $x
+}
+
+summary sizes {
+   using some_task > FileSize {
+    du -sh $x > $FileSize
+  }
+}
+
+summary status {
+  using some_task > LinesCompleted {
+   wc -l < $x > $LinesCompleted
+  }
+}
+

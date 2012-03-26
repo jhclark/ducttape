@@ -1,2 +1,17 @@
 .cache
+.*
+*.pyc
+*~
+*.class
+*#
+.metadata/.lock
+.metadata/.plugins
+.settings
+.scala_dependencies
 bin
+ducttape.jar
+syntax/tutorial/[0-9]*-*/[a-zA-Z]*
+scaladoc
+project/boot
+target/
+dist/

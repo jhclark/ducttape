@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode=$1
+
+case $mode in
+    repo-version) echo "WARNING:VERSION_UNSUPPORTED_BY_SYMLINK" ;;
+    dest-version) echo "WARNING:VERSION_UNSUPPORTED_BY_SYMLINK" ;;
+    gimme)
+	repo=$2
+	dest=$3
+	# TODO: Better handling for existing repos (add remote, then pull?)
+	ln -s $repo $dest
+	if (( $# >= 4 )); then
+	    echo >&2 "Versioning not supported by the SYMLINK repo"
+	    exit 1
+	fi
+	$0 dest-version $dest > $dest/gimme.rev
+	;;
+    *) echo >&2 "Unrecognized mode: $mode"; exit 1 ;;
+esac

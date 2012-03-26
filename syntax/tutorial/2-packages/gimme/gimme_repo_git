@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set -x
+
+mode=$1
+
+case $mode in
+    repo-version) repo=$2; cd git ls-remote $repo | head -n1 |cut -c1-7 ;;
+    dest-version) dest=$2; cd $dest; git log --pretty=format:'%h' -n1 ;;
+    gimme)
+	repo=$2
+	dest=$3
+	echo >&2 "Fetching package from git repository $repo into $dest"
+	# TODO: Better handling for existing repos (add remote, then pull?)
+	# TODO: Properly parse --rev
+	git clone $repo $dest
+	if (( $# >= 4 )); then
+	    rev=$4
+	    git checkout $rev
+	fi
+	$0 dest-version $dest > $dest/gimme.rev
+	;;
+    *) echo >&2 "Unrecognized mode: $mode"; exit 1 ;;
+esac

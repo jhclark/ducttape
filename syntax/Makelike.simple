@@ -1,0 +1,2 @@
+[head-5] a=test.txt : b
+  head -n 5 < $a > $b

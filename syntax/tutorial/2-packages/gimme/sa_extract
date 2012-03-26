@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+set -x
+
+repo=/home/jhclark/software/sa-extract
+
+mode=$1
+dest=$2
+
+$(dirname $0)/gimme_repo_symlink $mode $repo $dest
+
+case $mode in
+    repo-version) ;;
+    dest-version) ;;
+    gimme) ;;
+    *) ;;
+esac
