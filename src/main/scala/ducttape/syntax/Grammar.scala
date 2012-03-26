@@ -436,7 +436,7 @@ object Grammar {
   } ^^ {
     case (goals:Seq[String]) ~ (crossProduct:Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
   })
-  
+
   
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |
@@ -820,7 +820,45 @@ object Grammar {
   def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
   def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
   def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
-
+    
+  val planBlock: Parser[PlanDefinition] = positioned({
+    opt(whitespace) ~>
+    comments ~
+    (
+        Keyword.plan ~>
+        opt(name("plan","""\s""".r,failure(_),err(_)) <~ space) 
+    ) ~ 
+    (
+        (
+            opt(whitespace) ~
+            (
+                literal("{") |
+                err("Missing opening { brace for plan block.")
+            ) ~
+            opt(space) ~
+            (
+                eol |
+                err("Plan lines may not start on the same line as the opening { brace.")
+            )
+        ) ~> 
+        repsep(crossProduct,opt(whitespace)) <~
+        (
+            opt(whitespace) ~ 
+            (
+                literal("}") ~ 
+                (
+                    opt(space) ~
+                    (eol | err("Non-whitespace character found following closing } brace for plan block."))
+                ) |                
+                err("Missing closing } brace for plan block.")
+            )
+        )
+    ) 
+  } ^^ {
+    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[CrossProduct]) => 
+      new PlanDefinition(comments,name,lines)
+  })  
+  
   val configBlock: Parser[ConfigDefinition] = positioned({
     opt(whitespace) ~>
     comments ~

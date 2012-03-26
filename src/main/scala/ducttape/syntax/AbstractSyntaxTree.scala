@@ -172,6 +172,17 @@ object AbstractSyntaxTree {
     }
   }
   
+  class PlanDefinition(val comments:Comments,
+                       val name:Option[String],
+                       val crossProducts:Seq[CrossProduct]) extends Block {
+    override def toString = {
+      name match {
+        case None => "GLOBAL"
+        case Some(s:String) => s
+      }
+    }
+  }
+  
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val file: File, val tasks: Seq[Block]) extends ASTType {
     override def toString = tasks.mkString("\n\n")

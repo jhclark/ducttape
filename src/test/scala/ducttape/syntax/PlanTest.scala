@@ -5,34 +5,42 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct) {
+class PlanTest extends AbstractTest("plan",Grammar.planBlock) {
  
   def successCases = Set(
-    """reach goal via (branchPointName: a)""",
-    """// some comments
-    reach g1,g2,g3 via (branchPointName: a)""",
-    """reach a via (branchPointName: a b)""",   
-    """reach b , b2 via (greeting: y z)""",
-    """reach tastyMeal via (sauce: a1 ketchup wasabi)""",
-    "reach config via (flags: a b )",
-    "reach h_1, h_2 via (flags: a b)",
+    """plan {
+      reach goal via (branchPointName: a)
+    // some comments
+    reach g1,g2,g3 via (branchPointName: a)
+    reach a via (branchPointName: a b)  
+    reach b , b2 via (greeting: y z)
+    reach tastyMeal via (sauce: a1 ketchup wasabi)
+    reach config via (flags: a b )
+    reach h_1, h_2 via (flags: a b)
+    }""",
 
     // Bare rvalues  
-    """reach alphabet via (branchPointName: a b c)""",
-    "reach a via (a: a1 a4)",
-    "reach z,y, w via (a: a1)",
-    "reach here, there via (a: a1 a2 a3 a4)",
+    """plan basic {
+    reach alphabet via (branchPointName: a b c)
+    reach a via (a: a1 a4)
+    reach z,y, w via (a: a1)
+    reach here, there via (a: a1 a2 a3 a4)
+    }""",
     
     // With comments
-    """reach goal via {(
+    """plan {
+    reach goal via {(
       // Here is a comment
-    a: a1 a2 a3)}""",
-    """reach goal via {(
+    a: a1 a2 a3)}}""",
+    """plan {
+    reach goal via {(
       // Here is a comment
     a: 
     // More comments
-    a1 a2 a3)}""",
-    """reach another, goal, too via {
+    a1 a2 a3)}
+    } """,
+    """plan {
+    reach another, goal, too via {
     (
       // Here is a comment
     a: 
@@ -41,8 +49,10 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // And more
     // And more
     a2 a3)
-    }""",    
-    """reach goal via {(
+    }
+    } """,    
+    """plan {
+    reach goal via {(
       // Here is a comment
     a: 
     // More comments
@@ -51,8 +61,9 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // And more
     a2 
     // And more
-    a3)}""",        
-    """reach goal via 
+    a3)}}""",        
+    """plan {
+    reach goal via 
     {
     (
       // Here is a comment
@@ -68,8 +79,9 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // and more
     // and More
     )
-    }""",
-    """reach goal via {
+    }}""",
+    """plan myPlan {
+    reach goal via {
     (
       // Here is a comment
     a: 
@@ -84,8 +96,10 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // and more
     // and More
     )
+    }
     }""",    
-    """reach goal via { (
+    """plan {
+      reach goal via { (
       // Here is a comment
     a: 
     // More comments
@@ -98,24 +112,35 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // And more
     // and more
     // and More
-    )}""",    
+    )}
+      }""",    
     
     // Cross products
-    "reach goal via (a: a1 a2 a3) * (b: b1 b2)",
-    "reach goal via (a: a1) * (b: b1)",
-    "reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four)",
-    "reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four) * (d: *)",
+    """plan it {  
+          reach goal via (a: a1 a2 a3) * (b: b1 b2)
+          reach goal via (a: a1) * (b: b1)
+          reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four)
+          reach goal via (a: a1 a2 a3) * (b: b1 b2) * (c: c_one c_two c_three c_four) * (d: *)
+      }""",
     
     // Multi-line
-    """reach somewhere, else via {
+    """plan something {
+      // Comment
+      reach somewhere, else via {
           (a: a1 a2 a3) 
         * (b: b1 b2)
-       }""",
-    "reach goal via { (a: a1) * (b: b1) }",
-    "reach countdown via { (a: a1 a2 a3) * (b: b1 b2) " +
-    "* (c: c_one c_two c_three c_four)" +
-    "}",
-    """reach super_hero via { // Here I come to save the day
+       }
+      
+      }""",
+    """plan it {
+      reach goal via { (a: a1) * (b: b1) }}""",
+    """plan {
+      reach countdown via { (a: a1 a2 a3) * (b: b1 b2)
+    * (c: c_one c_two c_three c_four)
+    }
+      }""",
+    """plan {
+      reach super_hero via { // Here I come to save the day
     
     // Mighty mouse
     // is on the way
@@ -126,7 +151,7 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     
     // Looking for a piece
     (d: *) // of cheese
-    }"""   
+    }}"""   
     
   ) 
   
@@ -247,8 +272,8 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     "10e2147483648",
     "123456789012345678901234567890123456789012345678901234567890e123456789012345678901234567890123456789012345678901234567890",
     
-    "(a: a1) * (b: b1) }"    ,
-    
+    "(a: a1) * (b: b1) }",
+    "(a: a1=g@taskH[i:j])",
     """(branchPointName: a=1)""",
     """(branchPointName: a=1 b=5)""",   
     """(greeting: y="welcome home" z="bugger off")""",
@@ -301,8 +326,8 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
   ) 
   
   def errorCases = Set(
-    "reach goal via (a: a1=g@taskH[i:j])"
 
+  
   )
   
 }
