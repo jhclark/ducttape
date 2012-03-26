@@ -5,7 +5,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class BranchPointRefTest extends AbstractTest("branch point ref",Grammar.branchPointRef) {
+class SingleLineBranchPointRefTest extends AbstractTest("branch point ref",Grammar.branchPointRef(Grammar.space)) {
  
   def successCases = Set(
     """(branchPointName: a)""",
@@ -19,7 +19,19 @@ class BranchPointRefTest extends AbstractTest("branch point ref",Grammar.branchP
     """(branchPointName: a b c)""",
     "(a: a1 a4)",
     "(a: a1)",
-    "(a: a1 a2 a3 a4)",
+    "(a: a1 a2 a3 a4)"
+   
+  ) 
+  
+  def failureCases = Set(
+    // Anonymous branch point with bare rvalues
+    "(foo)",
+    "(1 2)",
+    "((k: 1..10) 7 42 (z:100..1000..100))",
+    
+    // Anonymous branch point (no branch point name)
+    "(foo=bar)",
+    "(a=1 b=2)",
     
     // With comments
     """(
@@ -89,39 +101,8 @@ class BranchPointRefTest extends AbstractTest("branch point ref",Grammar.branchP
     // And more
     // and more
     // and More
-    )"""    
+    )""",    
     
-//    
-//    // Complex nesting with bare rvalues
-//    "(a: (k: 8..12) a4=7)",
-//    "(a: a1=(k: 8..12) 7)",
-//    "(a: (k: 8..12) 7)",
-//    "(a: (b: c=d) e=f)",
-//    "(a: (b: d d2=var d3 d4) e=f)",
-//    "(a: (b: c=(x: x1=$d@taskE x2=farOut x3=\"\"\"Quoted!\"\"\") f=$g@taskH[i:j]) a2=5 a3=(k: 8..12) a4=7)",
-//    "(a: b=(b: c=(x: d=$d@taskE farOut \"\"\"Quoted!\"\"\") $g@taskH[i:j]) 5 (k: 8..12) 7)",
-//    "(a: (b: (x: $d@taskE farOut \"\"\"Quoted!\"\"\") $g@taskH[i:j]) 5 (k: 8..12) 7)",
-//
-//    // Anonymous branch point (no branch point name)
-//    "(foo=bar)",
-//    "(a=1 b=2)",
-//    
-//    // Anonymous branch point with bare rvalues
-//    "(foo)",
-//    "(1 2)",
-//    "((k: 1..10) 7 42 (z:100..1000..100))"
-    
-  ) 
-  
-  def failureCases = Set(
-    // Anonymous branch point with bare rvalues
-    "(foo)",
-    "(1 2)",
-    "((k: 1..10) 7 42 (z:100..1000..100))",
-    
-    // Anonymous branch point (no branch point name)
-    "(foo=bar)",
-    "(a=1 b=2)",
     
     "",
     " ",

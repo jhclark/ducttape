@@ -386,25 +386,25 @@ object Grammar {
     }
   )  
 
-  val branchPointRef : Parser[BranchPointRef] = positioned({
+  def branchPointRef(typeOfWhitespace:Parser[Any]) : Parser[BranchPointRef] = positioned({
     ( // Must start with an opening parenthesis, then optionally whitespace
-      (literal("(")~opt(commentableWhitespace))~>
+      (literal("(")~opt(typeOfWhitespace))~>
       (  (// Then (optionally) the branch point name
            name("branch point",""":""".r,failure(_),failure(_))<~
            // and the colon
            literal(":")
          )<~
          // Then optionally whitespace
-         opt(commentableWhitespace)
+         opt(typeOfWhitespace)
       ) ~
       (
           literal("*") |
           repsep(
               name("branch","""[\s/#)]""".r,err(_),err(_)),
-              regex("""\s""".r)~commentableWhitespace
+              regex("""\s""".r)~opt(typeOfWhitespace)
           )   
       ) <~
-      ( opt(commentableWhitespace) ~ literal(")")
+      ( opt(typeOfWhitespace) ~ literal(")")
       )
         
     )
@@ -414,19 +414,29 @@ object Grammar {
     }
   )
   
-  val crossProduct : Parser[Seq[BranchPointRef]] = {
-    opt(commentableWhitespace) ~>
+  val crossProduct : Parser[CrossProduct] = positioned({
+    commentableWhitespace ~>
     (
-       rep1sep(branchPointRef,opt(space)~literal("*")~opt(space)) |
+        Keyword.reach ~>
+        rep1sep(name("goal","""[\s,]""".r),opt(space)~literal(",")~opt(space)) <~
+        (
+            space ~
+            Keyword.via ~
+            opt(commentableWhitespace)
+        )
+    ) ~
+    (
+       rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
        (
            (literal("{")~opt(commentableWhitespace)) ~>
-           rep1sep(branchPointRef,opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
+           rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
            (opt(commentableWhitespace)~(literal("}")|err("Missing closing } bracket.")))
        )
     )
-  }
+  } ^^ {
+    case (goals:Seq[String]) ~ (crossProduct:Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
+  })
   
- // val reachVia
   
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |

@@ -166,6 +166,12 @@ object AbstractSyntaxTree {
     }
   }
   
+  class CrossProduct(val goals:Seq[String],val value:Seq[BranchPointRef]) extends ASTType {
+    override def toString = {
+      "reach %s via %s".format(goals.mkString(","),value.mkString(" * ")) 
+    }
+  }
+  
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val file: File, val tasks: Seq[Block]) extends ASTType {
     override def toString = tasks.mkString("\n\n")
