@@ -28,9 +28,7 @@ object Grammar {
   
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r)
-
   
-
   object Keyword {
     
     private def keyword(word:String):Parser[String] = {
@@ -83,6 +81,9 @@ object Grammar {
     }
   }
 
+  val commentableWhitespace: Parser[Comments] = {
+    opt(whitespace) ~> comments
+  }
   
   /** A signed, arbitrary precision number. */
   val number: Parser[BigDecimal] = 
@@ -384,6 +385,34 @@ object Grammar {
       case branchPointName ~ seq => new BranchPointDef(branchPointName,seq)
     }
   )  
+
+  val branchPointRef : Parser[BranchPointRef] = positioned({
+    ( // Must start with an opening parenthesis, then optionally whitespace
+      (literal("(")~opt(commentableWhitespace))~>
+      (  (// Then (optionally) the branch point name
+           name("branch point",""":""".r,failure(_),failure(_))<~
+           // and the colon
+           literal(":")
+         )<~
+         // Then optionally whitespace
+         opt(commentableWhitespace)
+      ) ~
+      (
+          literal("*") |
+          repsep(
+              name("branch","""[\s/#)]""".r,err(_),err(_)),
+              regex("""\s""".r)~commentableWhitespace
+          )   
+      ) <~
+      ( opt(commentableWhitespace) ~ literal(")")
+      )
+        
+    )
+    } ^^ {
+      case (bpName:String) ~ (branchName:String) => new BranchPointRef(bpName,List.apply(branchName))
+      case (bpName:String) ~ (branchNames:List[String]) => new BranchPointRef(bpName,branchNames)
+    }
+  )
   
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |

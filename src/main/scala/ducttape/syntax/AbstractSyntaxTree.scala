@@ -110,6 +110,13 @@ object AbstractSyntaxTree {
     }
   }  
 
+ /** Reference, in a plan, to a branchpoint and one or more of its branches. */
+  case class BranchPointRef(val name: String, val branchNames: Seq[String]) extends RValue {
+    override def toString = {
+      "(%s: %s)".format(name, branchNames.mkString(" "))
+    }
+  }    
+  
   class ShellCommands(val value:String) extends ASTType {
     override def toString = value
   }

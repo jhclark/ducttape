@@ -19,6 +19,7 @@ class BranchPointTest extends AbstractTest("branch point",Grammar.branchPoint) {
     // Bare rvalues
     """(branchPointName: 1)""",
     """(branchPointName: 1 5)""",    
+    """(branchPointName: a b c)""",
     
     // Complex nesting
     "(a: a1=(k: 8..12) a4=7)",
