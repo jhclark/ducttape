@@ -414,6 +414,20 @@ object Grammar {
     }
   )
   
+  val crossProduct : Parser[Seq[BranchPointRef]] = {
+    opt(commentableWhitespace) ~>
+    (
+       rep1sep(branchPointRef,opt(space)~literal("*")~opt(space)) |
+       (
+           (literal("{")~opt(commentableWhitespace)) ~>
+           rep1sep(branchPointRef,opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
+           (opt(commentableWhitespace)~(literal("}")|err("Missing closing } bracket.")))
+       )
+    )
+  }
+  
+ // val reachVia
+  
   val rvalue : Parser[RValue] = {
     sequentialBranchPoint |
     branchPoint           |    
