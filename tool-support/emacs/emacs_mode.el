@@ -7,12 +7,25 @@
 (setq myKeywords
  `(
    ; The first matched rule wins
-   ("^ +[^<>: ].*$" . font-lock-string-face)
+
+   ;; Indented things
+   ;("^ +[^<>: ].*$" . font-lock-string-face)
 
    ;( ,(regexp-opt '("::" "<" ">" "=" "(" ")" "@") 'word) . font-lock-function-name-face)
    ;
-   ( ,(regexp-opt '("::" "<" ">") 'word) . font-lock-builtin-face)
-   ( ,(regexp-opt '("task" "func" "group" "action" "branchpoint" "branch" "submitter" "package" "versioner") 'word) . font-lock-keyword-face)
+   ( ,(regexp-opt '("::" ":" "<" ">") 'word) . font-lock-builtin-face)
+   ( ,(regexp-opt '("action"
+		    "baseline"
+		    "branch"
+		    "branchpoint"
+		    "config"
+		    "func"
+		    "group"
+		    "package"
+		    "plan"
+		    "submitter"
+		    "task"
+		    "versioner") 'word) . font-lock-keyword-face)
    ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'word) . font-lock-keyword-face)
    ;( ,(regexp-opt '("Pi" "Infinity") 'word) . font-lock-constant-face)
 
@@ -27,15 +40,44 @@
   )
 )
 
+;; the command to comment/uncomment text
+(defun ducttape-comment-dwim (arg)
+"Comment or uncomment current line or region in a smart way.
+For detail, see `comment-dwim'."
+   (interactive "*P")
+   (require 'newcomment)
+   (let ((deactivate-mark nil) (comment-start "#") (comment-end ""))
+     (comment-dwim arg)))
+
 ;; define the major mode.
 (define-derived-mode ducttape-mode fundamental-mode
 "ducttape workflow"
 
   (setq font-lock-defaults '(myKeywords))
 
+  ;; modify the keymap
+  (define-key ducttape-mode-map [remap comment-dwim] 'ducttape-comment-dwim)
+
+  ;; for more on modify-synatx-entry, see http://www.slac.stanford.edu/comp/unix/gnu-info/elisp_32.html
+  ;; first char is class
+  ;; second chart is reserved for ( and ) pairings (should be blank otherwise)
+  ;; all following characters are synatx flags (e.g. a vs b style comments and 2-char seqs)
+
   ;; perl style comment: "# ..." 
   (modify-syntax-entry ?# "< b" ducttape-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" ducttape-mode-syntax-table)
+
+  ;; c style comment “// …” 
+  (modify-syntax-entry ?\/ ". 12b" ducttape-mode-syntax-table)
+  (modify-syntax-entry ?\n "> b" ducttape-mode-syntax-table)
+
+  ;; define comment for this style: “/* … */” (n allows nesting)
+  (modify-syntax-entry ?\/ ". 14n" ducttape-mode-syntax-table)
+  (modify-syntax-entry ?* ". 23n" ducttape-mode-syntax-table)
+
+  ;; Make { and } delimiters matching each other
+  (modify-syntax-entry ?{ "(}")
+  (modify-syntax-entry ?} "){")
 )
 
 (setq auto-mode-alist (cons '("\\.tape$" . ducttape-mode) auto-mode-alist))
