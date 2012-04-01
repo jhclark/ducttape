@@ -4,7 +4,7 @@
 # * To reproduce a workflow, you need to know what version of
 #   the software you ran
 # * in, out, and N are shown only to illustrate syntax
-task param-step: codeheap < in=/etc/passwd > out :: N=5 {
+task param-step : codeheap < in=/etc/passwd > out :: N=5 {
   ls | $codeheap/do_stuff | tee $out
 }
 
