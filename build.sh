@@ -8,6 +8,7 @@ $scriptDir/get_deps.sh
 libs=""
 libs="$libs:$libDir/sqlitejdbc-v056.jar"
 libs="$libs:$libDir/scala-optparse-1.1.jar"
+libs="$libs:$libDir/commons-lang3-3.1.jar"
 libs="$libs:$libDir/test/scalatest-1.7.1.jar"
 libs="$libs:$libDir/webui/servlet-api-3.0.jar"
 libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
