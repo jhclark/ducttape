@@ -7,6 +7,7 @@ import java.net.URL
 
 object Files {
   def write(str: String, file: File) {
+    file.getParentFile().mkdirs()
     val fw = new FileWriter(file)
     fw.write(str)
     fw.close
