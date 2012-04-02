@@ -8,6 +8,7 @@ import ducttape.versioner._
 import ducttape.workflow.Types._
 import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.hyperdag.meta.MetaHyperDagBuilder
+import ducttape.syntax.BashCode
 
 /**
  * This is where the real magic happens of turning an Abstract Syntax Tree
@@ -16,11 +17,12 @@ import ducttape.hyperdag.meta.MetaHyperDagBuilder
 object WorkflowBuilder {
 
    // TODO: Better error reporting here?
-   val CONFIG_TASK_DEF = new TaskDef(comments=new Comments(None),
-              keyword="builtin",
-              name="CONFIGURATION_FILE", 
-              header=new TaskHeader(Nil), 
-              commands=new ShellCommands(""))
+   val CONFIG_TASK_DEF = new TaskDef(
+    comments=new Comments(None),
+    keyword="builtin",
+    name="CONFIGURATION_FILE", 
+    header=new TaskHeader(Nil), 
+    commands=new BashCode(""))
 
    class ResolveMode();
    case class InputMode() extends ResolveMode;
@@ -144,15 +146,18 @@ object WorkflowBuilder {
      // first, create tasks, but don't link them in graph yet
      findTasks(wd, confSpecs, defMap, parents, vertices, dag, branchPointFactory, branchFactory, branchPoints, branchPointsByTask)
 
-     // == we've just completed our second pass over the workflow file and linked everything together ==
+     // == we've just completed our first pass over the workflow file and linked everything together ==
 
      // now build a graph representation by adding converting to (meta/hyper) edges
      for(v <- vertices.values) {
        val task: TaskTemplate = v.value
+       
+       System.err.println("Adding %s to HyperDAG".format(task))
 
        // add one metaedge per branch point
+       // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
        for(branchPoint <- branchPointsByTask(task.taskDef)) {
-
+ 
          // create a hyperedge list in the format expected by the HyperDAG API
          val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
          for( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
@@ -163,44 +168,67 @@ object WorkflowBuilder {
            // since parameters do not imply a temporal ordering among task vertices.
            val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
 
-           // find which inputs and parameters are attached to this branch point
+           // find which inputs are attached to this branch point
+           // unlike params (which are just lumped into an edge to a single phantom vertex),
+           // we must match the parent task so that we attach to the correct hyperedge
            // this will be the payload associated with each plain edge in the MetaHyperDAG
-           def findInputParamSpecs(parentTaskDef: TaskDef): Seq[Spec] = {
-               (task.inputVals ++ task.paramVals).filter{
+           def findInputSpecs(parentTaskDef: TaskDef): Seq[Spec] = {
+               task.inputVals.filter{
                  case (ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => {
                    specBranches.get(branch) match {
                      case None => false
-                     case Some( (spec: Spec, specParent: TaskDef) ) => {
-                       //System.err.println("Comparing: %s %s".format(specParent, parentTaskDef))
+                     case Some( (_: Spec, specParent: TaskDef) ) => {
+                       System.err.println("Comparing: %s %s %s".format(specParent, parentTaskDef, specParent == parentTaskDef))
                        specParent == parentTaskDef
                      }
                    }
                  }
-               }.map{ case(ipSpec, specBranches) => ipSpec }
+               }.map{
+                 case(ipSpec, specBranches) => ipSpec
+               }
+           }
+           
+           // see notes for findInputSpecs()
+           // we need only filter by branch since all params get lumped into a single phantom vertex
+           // through a single hyperedge *per branch*
+           def findParamSpecs(): Seq[Spec] = {
+               task.paramVals.filter{
+                 case(ipSpec: Spec, specBranches: Map[Branch,(Spec,TaskDef)]) => specBranches.contains(branch)
+               }.map{
+                 case(ipSpec, specBranches) => ipSpec
+               }
            }
 
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
            for( parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
              case Some(CONFIG_TASK_DEF) => {
+               // this includes only paths (not params) defined in a config
+               //
                // config entries may in turn contain branches, which require
                // edges to reconstruct which inputs/parameters each realized task should use
                // the parent task *of the ConfigVariable* will be listed as the current task
-               val ipSpecs = findInputParamSpecs(task.taskDef)
+               val ipSpecs = findInputSpecs(task.taskDef)
                //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branch, ipSpecs.toList))
                //System.err.println("INPUT VALS: " + task.inputVals)
+               //System.err.println("Found config task def only")
                edges.append( (None, ipSpecs) )
              }
              case Some(parentTaskDef) => {
                val parentVert = vertices(parentTaskDef.name)
-               val ipSpecs = findInputParamSpecs(parentTaskDef)
+               val ipSpecs = findInputSpecs(parentTaskDef)
                // add an edge for each parameter/input at task that originates from parentVert
                //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
                edges.append( (Some(parentVert), ipSpecs) )
              }
              case None => {
-               // We have a branch point using only literal paths
-               // or literal param values
-               val ipSpecs = findInputParamSpecs(task.taskDef) // we are our own parent
+               // We have a branch point (possibly baseline) using one of the following:
+               // 1) literal paths
+               // 2) any kind of param values (since params never induce temporal dependencies)
+               //
+               // however, params may still need to be statically resolved later, which is why
+               // we use findInputParamSpecs(). unlike literal paths/params, 
+               //System.err.println("Found literal paths or some type of params only")
+               val ipSpecs = findParamSpecs() ++ findInputSpecs(task.taskDef) // we are our own parent
                edges.append( (None, ipSpecs) )
              }
            }
@@ -208,7 +236,10 @@ object WorkflowBuilder {
         }
         if(!hyperedges.isEmpty) {
           // NOTE: The meta edges are not necessarily phantom, but just have that option
+          System.err.println("Adding metaedge for branchPoint %s task %s to HyperDAG: Component hyperedges are: %s".format(branchPoint, task, hyperedges))
           dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
+        } else {
+          System.err.println("No metaedge for branchPoint %s at task %s is needed (zero component hyperedges)".format(branchPoint, task))
         }
       }
     }
