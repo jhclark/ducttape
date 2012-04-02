@@ -4,7 +4,7 @@ import java.io.File
 import java.math.BigDecimal
 import java.math.BigInteger
 
-import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringEscapeUtils
 
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
@@ -13,12 +13,10 @@ import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
 
-import ducttape.syntax.GrammarParser._
 import ducttape.syntax.AbstractSyntaxTree._
 
-
 object Grammar {
-  
+  import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.  
   
   /** End of line characters, including end of file. */
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
@@ -31,7 +29,7 @@ object Grammar {
   
   object Keyword {
     
-    private def keyword(word:String):Parser[String] = {
+    private def keyword(word: String): Parser[String] = {
       (
           literal(word) |
           failure("""The keyword """"+word+"""" is required but missing.""")
@@ -42,22 +40,22 @@ object Grammar {
       )
     }
        
-    val task:Parser[String] = keyword("task")
-    val group:Parser[String] = keyword("group")
-    val func:Parser[String] = keyword("func")
-    val summmary:Parser[String] = keyword("summary")
-    val of:Parser[String] = keyword("of")
-    val action:Parser[String] = keyword("action")
-    val submitter:Parser[String] = keyword("submitter")
-    val versioner:Parser[String] = keyword("versioner")
-    val packageKeyword:Parser[String] = keyword("package")
-    val branchpoint:Parser[String] = keyword("branchpoint")
-    val baseline:Parser[String] = keyword("baseline")
-    val branch:Parser[String] = keyword("branch")
-    val config:Parser[String] = keyword("config")
-    val reach:Parser[String] = keyword("reach")
-    val via:Parser[String] = keyword("via")
-    val plan:Parser[String] = keyword("plan")
+    val task: Parser[String] = keyword("task")
+    val group: Parser[String] = keyword("group")
+    val func: Parser[String] = keyword("func")
+    val summmary: Parser[String] = keyword("summary")
+    val of: Parser[String] = keyword("of")
+    val action: Parser[String] = keyword("action")
+    val submitter: Parser[String] = keyword("submitter")
+    val versioner: Parser[String] = keyword("versioner")
+    val packageKeyword: Parser[String] = keyword("package")
+    val branchpoint: Parser[String] = keyword("branchpoint")
+    val baseline: Parser[String] = keyword("baseline")
+    val branch: Parser[String] = keyword("branch")
+    val config: Parser[String] = keyword("config")
+    val reach: Parser[String] = keyword("reach")
+    val via: Parser[String] = keyword("via")
+    val plan: Parser[String] = keyword("plan")
   }
   
   /** One line of comments */
@@ -106,7 +104,7 @@ object Grammar {
    * If the unquoted literal is more than one character long,
    * any subsequent characters may be any character except whitespace.
    */
-  val unquotedLiteral : Parser[Literal] = {
+  val unquotedLiteral: Parser[Literal] = {
     ( 
       (regex("""[^@\s]*@""".r)~err("An unquoted literal may not contain an @ symbol. If this was meant to be a variable reference instead of an unquoted literal, then you probably forgot the $ sign.")) |      
       (regex("""[^"\s]*["]""".r)~err("An unquoted literal may not contain a double quotation mark")) |
@@ -123,7 +121,7 @@ object Grammar {
       (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |      
       regex("""[^"')(\]\[\*\$:@=\s]+""".r)
     ) ^^ {
-      case string:String => new Literal(string)
+      case string: String => new Literal(string)
     }
   }
 
@@ -153,7 +151,7 @@ object Grammar {
    * <code>org.apache.commons.lang3.StringEscapeUtils.unescapeJava</code>
    * from the Apache Commons Lang package.
    */
-  val quotedLiteral : Parser[Literal] = {
+  val quotedLiteral: Parser[Literal] = {
     ( ( // A valid double-quoted string
         regex(""""([^\\"]|\\.)*"""".r) |
         // Or, if missing closing quote, an error
@@ -164,7 +162,7 @@ object Grammar {
         regex("""'([^\\']|\\.)*""".r)~err("Missing closing quotation mark") 
       ) <~ (regex("$".r)|guard(regex("""[\s)]""".r))|err("A quoted literal may not continue after the closing quotation mark"))
     ) ^^ {
-      case string:String => {
+      case string: String => {
         val s =
           // Unescape escape codes according to Java rules
           // as implemented in the Apache Commons Lang package
@@ -194,14 +192,14 @@ object Grammar {
    * the literal values of sequences are used.
    * In other words, escape sequences are not expanded. 
    */  
-  val tripleQuotedLiteral : Parser[Literal] = {
+  val tripleQuotedLiteral: Parser[Literal] = {
     ( ( // A valid triple-quoted string
         regex("""["]["]["]([^"]["]?["]?)*["]["]["]""".r) |
         // Or, if missing closing quote, an error
         regex("""["]["]["][^"]*["]?["]?""".r)~err("Missing closing triple quotation marks")
       ) <~ (regex("$".r)|guard(regex("""[\s)]""".r))|err("A quoted literal may not continue after the closing quotation mark"))
     ) ^^ {
-      case string:String => new Literal(string.substring(3,string.length()-3))
+      case string: String => new Literal(string.substring(3,string.length()-3))
     }
   }
     
@@ -213,7 +211,7 @@ object Grammar {
    * @see quotedLiteral
    * @see unquotedLiteral
    */
-  val literalValue : Parser[Literal] = {
+  val literalValue: Parser[Literal] = {
     tripleQuotedLiteral | quotedLiteral | unquotedLiteral 
   }
 
@@ -226,7 +224,7 @@ object Grammar {
    * 
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    */
-  def name(title:String,whatCanComeNext:Regex): Parser[String] = {
+  def name(title: String, whatCanComeNext: Regex): Parser[String] = {
     name(title,whatCanComeNext,err(_),err(_))
   }
 
@@ -240,10 +238,10 @@ object Grammar {
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    * @param howToFailAtEnd Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  def name(title:String,
-      whatCanComeNext:Regex,
-      howToFailAtStart:(String)=>Parser[Nothing],
-      howToFailAtEnd:(String)=>Parser[Nothing]): Parser[String] = {
+  def name(title: String,
+      whatCanComeNext: Regex,
+      howToFailAtStart: (String)=>Parser[Nothing],
+      howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
       regex("""[^A-Za-z_]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
@@ -324,7 +322,7 @@ object Grammar {
       } 
   )
   
-  val sequentialBranchPoint : Parser[SequentialBranchPoint] = positioned(
+  val sequentialBranchPoint: Parser[SequentialBranchPoint] = positioned(
       ( // Must start with an opening parenthesis, then optionally whitespace
         (literal("(")~opt(whitespace))~>
         (  opt( // Then (optionally) the branch point name
@@ -363,7 +361,7 @@ object Grammar {
   
   
   /** Branch point declaration. */
-  val branchPoint : Parser[BranchPointDef] = positioned(
+  val branchPoint: Parser[BranchPointDef] = positioned(
     ( // Must start with an opening parenthesis, then optionally whitespace
       (literal("(")~opt(whitespace))~>
       (  opt( // Then (optionally) the branch point name
@@ -386,7 +384,7 @@ object Grammar {
     }
   )  
 
-  def branchPointRef(typeOfWhitespace:Parser[Any]) : Parser[BranchPointRef] = positioned({
+  def branchPointRef(typeOfWhitespace:Parser[Any]): Parser[BranchPointRef] = positioned({
     ( // Must start with an opening parenthesis, then optionally whitespace
       (literal("(")~opt(typeOfWhitespace))~>
       (  (// Then (optionally) the branch point name
@@ -414,7 +412,7 @@ object Grammar {
     }
   )
   
-  val crossProduct : Parser[CrossProduct] = positioned({
+  val crossProduct: Parser[CrossProduct] = positioned({
     commentableWhitespace ~>
     (
         Keyword.reach ~>
@@ -438,7 +436,7 @@ object Grammar {
   })
 
   
-  val rvalue : Parser[RValue] = {
+  val rvalue: Parser[RValue] = {
     sequentialBranchPoint |
     branchPoint           |    
     branchGraft           |
@@ -477,7 +475,7 @@ object Grammar {
   
 
   
-  val branchAssignment:Parser[Spec] = positioned(
+  val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
         case assignment:Spec => assignment
         case rhs:RValue      => new Spec(null,rhs,false)
@@ -686,6 +684,7 @@ object Grammar {
     case (specs:List[Specs]) => new TaskHeader(specs) 
   }
   
+  // NOTE: This has been replaced by the more advanced bash parser
   val shellCommands: Parser[String] = {
     regex("""[^{}]*""".r) ~ 
     opt(
@@ -726,7 +725,7 @@ object Grammar {
                 err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
             )
         ) ~> 
-        shellCommands <~
+        BashGrammar.bashBlock <~
         (
             (
                 literal("}") ~ 
@@ -739,17 +738,17 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
-        new TaskDef(comments,blockType,name,header,new ShellCommands(commands))
+    case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) => 
+        new TaskDef(comments, blockType, name, header, commands)
   })  
   
-  val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline,"baseline",taskHeader)
-  val branchBlock: Parser[TaskDef] = taskLikeBlock(Keyword.branch,"branch",taskHeader)
-  val packageBlock: Parser[TaskDef] = taskLikeBlock(Keyword.packageKeyword,"package",taskHeader)
-  val actionBlock: Parser[TaskDef] = taskLikeBlock(Keyword.action,"action",funcHeader)
-  val ofBlock: Parser[TaskDef] = taskLikeBlock(Keyword.of,"of",taskHeader)
-  val funcBlock: Parser[TaskDef] = taskLikeBlock(Keyword.func,"func",funcHeader)
-  val taskBlock: Parser[TaskDef] = taskLikeBlock(Keyword.task,"task",taskHeader)
+  val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline, "baseline", taskHeader)
+  val branchBlock: Parser[TaskDef] = taskLikeBlock(Keyword.branch, "branch", taskHeader)
+  val packageBlock: Parser[TaskDef] = taskLikeBlock(Keyword.packageKeyword, "package", taskHeader)
+  val actionBlock: Parser[TaskDef] = taskLikeBlock(Keyword.action, "action", funcHeader)
+  val ofBlock: Parser[TaskDef] = taskLikeBlock(Keyword.of, "of", taskHeader)
+  val funcBlock: Parser[TaskDef] = taskLikeBlock(Keyword.func, "func", funcHeader)
+  val taskBlock: Parser[TaskDef] = taskLikeBlock(Keyword.task, "task", taskHeader)
   
   val callBlock: Parser[CallDefinition] = positioned({
     opt(whitespace) ~>
@@ -855,8 +854,8 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[CrossProduct]) => 
-      new PlanDefinition(comments,name,lines)
+    case (comments: Comments) ~ (name: Option[String]) ~ (lines: Seq[CrossProduct]) => 
+      new PlanDefinition(comments, name, lines)
   })  
   
   val configBlock: Parser[ConfigDefinition] = positioned({
@@ -864,7 +863,7 @@ object Grammar {
     comments ~
     (
         Keyword.config ~>
-        opt(name("config","""\s""".r,failure(_),err(_)) <~ space) 
+        opt(name("config", """\s""".r, failure(_), err(_)) <~ space) 
     ) ~ 
     (
         (
