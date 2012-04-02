@@ -15,5 +15,6 @@ task param_step < in=/etc/passwd > out :: N=5 {
 #   they are references (like this step)
 # * "no-dep" can start running in parallel with "param-step"
 task no_dep :: X=$N@param_step {
-  echo "X=$N"
+  #echo "X=$N" # a bug! this would be caught by ducttape's static analysis of bash
+  echo "X=$X"
 }
