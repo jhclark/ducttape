@@ -152,7 +152,7 @@ object WorkflowBuilder {
      for(v <- vertices.values) {
        val task: TaskTemplate = v.value
        
-       System.err.println("Adding %s to HyperDAG".format(task))
+       //System.err.println("Adding %s to HyperDAG".format(task))
 
        // add one metaedge per branch point
        // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
@@ -178,7 +178,7 @@ object WorkflowBuilder {
                    specBranches.get(branch) match {
                      case None => false
                      case Some( (_: Spec, specParent: TaskDef) ) => {
-                       System.err.println("Comparing: %s %s %s".format(specParent, parentTaskDef, specParent == parentTaskDef))
+                       //System.err.println("Comparing: %s %s %s".format(specParent, parentTaskDef, specParent == parentTaskDef))
                        specParent == parentTaskDef
                      }
                    }
