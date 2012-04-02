@@ -5,6 +5,7 @@ import ducttape.util.Environment
 import ducttape.workflow.Realization
 import ducttape.util.Shell
 import ducttape.syntax.AbstractSyntaxTree.ShellCommands
+import ducttape.syntax.BashCode
 
 object Submitter {
 
@@ -17,7 +18,7 @@ object Submitter {
   def prepare(workflowDir: File,
               taskWhere: File,
               params: Seq[(String,String)],
-              commands: ShellCommands,
+              commands: BashCode,
               taskName: String,
               realization: Realization,
               confName: String
