@@ -74,7 +74,9 @@ class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
     realizedRval match {
       case Literal(path) => isAbsolute(path) match {
         case true => new File(path)
-        case false => new File(confBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
+        // relative paths are resolved relative to the workflow base dir (where the .tape file resides)
+        // since the config directory might not even exist yet
+        case false => new File(workflowBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
       }
       // branches, variables, etc get matched on the src, which we already resolved
       case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
