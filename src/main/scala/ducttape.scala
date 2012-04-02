@@ -442,14 +442,15 @@ object Ducttape {
       println(workflow.dag.toGraphVizDebug)
     }
 
+    // supports '*' as a task or realization
     def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
       for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, initVersioner)
-        if(taskT.name == taskToKill) {
-          if(realsToKill(task.realization.toString)) {
+        if(taskToKill == "*" || taskT.name == taskToKill) {
+          if(realsToKill == Set("*") || realsToKill(task.realization.toString)) {
             //err.println("Found victim %s/%s".format(taskT.name, task.realizationName))
             // TODO: Store seqs instead?
             victims += ((task.name, task.realization))
@@ -493,7 +494,7 @@ object Ducttape {
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
-      err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
+      err.println("Finding tasks to be invalidated: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
       val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill)
@@ -529,7 +530,7 @@ object Ducttape {
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
-      err.println("Invalidating task %s for realizations: %s".format(taskToKill, realsToKill))
+      err.println("Finding tasks to be purged: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
       val victimList: Seq[(String,Realization)] = getVictims(taskToKill, realsToKill).toSeq.map{ task => (task.name, task.realization) }
