@@ -1,4 +1,5 @@
 package ducttape.syntax
+
 import ducttape.util.AbstractTest
 import ducttape.syntax.GrammarParser.Parser
 import org.junit.runner.RunWith
