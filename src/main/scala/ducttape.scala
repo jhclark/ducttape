@@ -321,12 +321,10 @@ object Ducttape {
 
     def env {
       if(opts.taskName == None) {
-        err.println("ERROR: env requires a taskName")
-        exit(1)
+        opts.exitHelp("env requires a taskName", 1)
       }
       if(opts.realNames.size != 1) {
-        err.println("ERROR: env requires one realization name")
-        exit(1)
+        opts.exitHelp("env requires one realization name", 1)
       }
       val goalTaskName = opts.taskName.get
       val goalRealName = opts.realNames.head
@@ -359,12 +357,10 @@ object Ducttape {
 
     def markDone {
       if(opts.taskName == None) {
-        err.println("ERROR: mark_done requires a taskName")
-        exit(1)
+        opts.exitHelp("mark_done requires a taskName", 1)
       }
       if(opts.realNames.size < 1) {
-        err.println("ERROR: mark_done requires realization names")
-        exit(1)
+        opts.exitHelp("mark_done requires realization names", 1)
       }
       val goalTaskName = opts.taskName.get
       val goalRealNames = opts.realNames.toSet
@@ -490,10 +486,10 @@ object Ducttape {
     // TODO: Don't apply plan filtering to invalidation? More generally, we should let the user choose baseline-only, baseline-one-offs, cross product, or plan
     def invalidate {
       if(opts.taskName == None) {
-        err.println("ERROR: invalidate requires a taskName")
+        opts.exitHelp("invalidate requires a taskName", 1)
       }
       if(opts.realNames.size < 1) {
-        err.println("ERROR: invalidate requires realization names")
+        opts.exitHelp("invalidate requires realization names", 1)
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
@@ -526,10 +522,10 @@ object Ducttape {
 
     def purge {
       if(opts.taskName == None) {
-        err.println("ERROR: purge requires a taskName")
+        opts.exitHelp("purge requires a taskName", 1)
       }
       if(opts.realNames.size < 1) {
-        err.println("ERROR: purge requires realization names")
+        opts.exitHelp("purge requires realization names", 1)
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
