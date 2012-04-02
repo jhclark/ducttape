@@ -1,7 +1,6 @@
 package ducttape.workflow
 
 import collection._
-
 import ducttape.hyperdag._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
@@ -64,7 +63,7 @@ object WorkflowBuilder {
              }
            }
          }
-         case Variable(srcTaskName, srcOutName) => {
+         case TaskVariable(srcTaskName, srcOutName) => {
            map.get(srcTaskName) match {
              case Some(srcDef: TaskDef) => {
                // determine where to search when resolving this variable's parent spec
@@ -117,7 +116,7 @@ object WorkflowBuilder {
 
    // create dependency pointers based on workflow definition
    // TODO: This method has become morbidly obese -- break it out into several methods
-   def build(wd: WorkflowDefinition, configSpecs: Seq[Spec]): HyperWorkflow = {
+   def build(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]): HyperWorkflow = {
 
      val confSpecs: Map[String, Spec] = configSpecs.map{spec => (spec.name, spec)}.toMap
      val defMap = new mutable.HashMap[String,TaskDef]

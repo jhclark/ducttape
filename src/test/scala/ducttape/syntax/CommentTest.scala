@@ -107,14 +107,14 @@ class CommentTest extends WordSpec {
     
     for ((key,value) <- successCases) {   
       "succeed for "+key in {
-        val result: ParseResult[Any] = GrammarParser.parseAll(new Grammar(null).comments, value);
+        val result: ParseResult[Any] = GrammarParser.parseAll(Grammar.comments, value);
         //Tests.verify(this,result)
       }
     }
     
     for ((key,value) <- errorCases) {   
       "fail for "+key in {
-        val result: ParseResult[Any] = GrammarParser.parseAll(new Grammar(null).comments, value);
+        val result: ParseResult[Any] = GrammarParser.parseAll(Grammar.comments, value);
         //Tests.verifyFailure(this,result)
       }
     }    

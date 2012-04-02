@@ -1,6 +1,6 @@
-package ducttape.syntax
+package ducttape.syntax;
 
-import org.scalatest.WordSpec
+import org.scalatest.WordSpec;
 import scala.util.parsing.combinator.Parsers
 
 import ducttape.syntax.GrammarParser.ParseResult
@@ -54,6 +54,6 @@ abstract class NamesTest(val description:String, val parser:Parser[Any]) extends
 
 class VariableNameTest extends NamesTest("variable name",new Grammar(null).variableName(allowLeadingDot=false))
 
-class BranchPointNameTest extends NamesTest("branch point name",new Grammar(null).branchPointName)
+//class BranchPointNameTest extends NamesTest("branch point name",new Grammar(null).branchPointName)
 
 //class TaskNameTest extends NamesTest("task name",Grammar.taskName)

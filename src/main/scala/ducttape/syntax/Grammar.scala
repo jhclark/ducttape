@@ -277,9 +277,9 @@ object Grammar {
    * Reference to a variable, 
    * defined as a literal dollar sign ($) followed by a name.
    */
-  val variableReference: Parser[Variable] = positioned(
+  val variableReference: Parser[ConfigVariable] = positioned(
     literal("$")~>(name("variable","""\s|\)|$""".r)|err("Missing variable name")) ^^ {
-      case string:String => new Variable(string)
+      case string:String => new ConfigVariable(string)
     }
   )
 
@@ -516,7 +516,7 @@ object Grammar {
       }      
   )
 
-  val configLine:Parser[ConfigVariable] = {
+  val configLine:Parser[ConfigAssignment] = {
     comments ~ 
     (
         opt(space) ~> 
@@ -525,10 +525,10 @@ object Grammar {
     ) ~ 
     (comment | eol)
   } ^^ {
-    case (comments:Comments) ~ (spec:Spec) ~ (_:String) => new ConfigVariable(spec,comments)
+    case (comments:Comments) ~ (spec:Spec) ~ (_:String) => new ConfigAssignment(spec,comments)
   }
   
-  val configLines:Parser[Seq[ConfigVariable]] = {
+  val configLines: Parser[Seq[ConfigAssignment]] = {
     opt(whitespace) ~> 
     repsep(configLine,opt(whitespace)) <~ 
     opt(whitespace)
@@ -740,16 +740,16 @@ object Grammar {
     ) 
   } ^^ {
     case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (commands:String) => 
-        new TaskDefinition(comments,blockType,name,header,new ShellCommands(commands))
+        new TaskDef(comments,blockType,name,header,new ShellCommands(commands))
   })  
   
-  val baselineBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.baseline,"baseline",taskHeader)
-  val branchBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.branch,"branch",taskHeader)
-  val packageBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.packageKeyword,"package",taskHeader)
-  val actionBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.action,"action",funcHeader)
-  val ofBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.of,"of",taskHeader)
-  val funcBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.func,"func",funcHeader)
-  val taskBlock: Parser[TaskDefinition] = taskLikeBlock(Keyword.task,"task",taskHeader)
+  val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline,"baseline",taskHeader)
+  val branchBlock: Parser[TaskDef] = taskLikeBlock(Keyword.branch,"branch",taskHeader)
+  val packageBlock: Parser[TaskDef] = taskLikeBlock(Keyword.packageKeyword,"package",taskHeader)
+  val actionBlock: Parser[TaskDef] = taskLikeBlock(Keyword.action,"action",funcHeader)
+  val ofBlock: Parser[TaskDef] = taskLikeBlock(Keyword.of,"of",taskHeader)
+  val funcBlock: Parser[TaskDef] = taskLikeBlock(Keyword.func,"func",funcHeader)
+  val taskBlock: Parser[TaskDef] = taskLikeBlock(Keyword.task,"task",taskHeader)
   
   val callBlock: Parser[CallDefinition] = positioned({
     opt(whitespace) ~>
@@ -893,7 +893,7 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[ConfigVariable]) => 
+    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[ConfigAssignment]) => 
       new ConfigDefinition(comments,name,lines)
   })  
   

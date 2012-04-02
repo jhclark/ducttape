@@ -3,7 +3,12 @@ import collection._
 import java.io.File
 import ducttape._
 import ducttape.hyperdag._
-import ducttape.exec._
+import ducttape.exec.CompletionChecker
+import ducttape.exec.Executor
+import ducttape.exec.PackageBuilder
+import ducttape.exec.PackageFinder
+import ducttape.exec.TaskEnvironment
+import ducttape.exec.UnpackedDagVisitor
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.workflow._
@@ -11,6 +16,7 @@ import ducttape.workflow.Types._
 import ducttape.util._
 import ducttape.versioner._
 import ducttape.ccollection._
+import ducttape.exec.DirectoryArchitect
 
 package ducttape {
   class Config {
@@ -160,7 +166,7 @@ object Ducttape {
 
     // make these messages optional with verbosity levels?
     //println("Reading workflow from %s".format(file.getAbsolutePath))
-    val confSpecs: Seq[Spec] = opts.config.value match {
+    val confSpecs: Seq[ConfigAssignment] = opts.config.value match {
       case Some(confFile) => {
         err.println("Reading workflow configuration: %s".format(confFile))
         ex2err(GrammarParser.readConfig(new File(confFile)))

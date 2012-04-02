@@ -38,7 +38,7 @@ c:\\\r\nworld'""")
   
 
   {
-    val result: ParseResult[Variable] = parseAll(Grammar.variableReference,"""$abc""")   
+    val result: ParseResult[ConfigVariable] = parseAll(Grammar.variableReference,"""$abc""")   
     print(result)
   }
 

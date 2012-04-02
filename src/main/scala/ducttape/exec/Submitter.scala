@@ -4,6 +4,7 @@ import java.io.File
 import ducttape.util.Environment
 import ducttape.workflow.Realization
 import ducttape.util.Shell
+import ducttape.syntax.AbstractSyntaxTree.ShellCommands
 
 object Submitter {
 
@@ -16,7 +17,7 @@ object Submitter {
   def prepare(workflowDir: File,
               taskWhere: File,
               params: Seq[(String,String)],
-              commands: Seq[String],
+              commands: ShellCommands,
               taskName: String,
               realization: Realization,
               confName: String
@@ -39,7 +40,7 @@ object Submitter {
     // 3) Invoke script as subprocess and receive lines of stdout back
     //    as the new commands
     implicit def file2str(f: File) = f.getAbsolutePath
-    Shell.runGetOutputLinesNoShell(submitterScript, taskWhere, env, commands)
+    Shell.runGetOutputLinesNoShell(submitterScript, taskWhere, env, Seq(commands.toString()))
   }
 
   def findSubmitter(workflowDir: File,

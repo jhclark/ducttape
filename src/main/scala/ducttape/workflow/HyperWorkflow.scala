@@ -4,7 +4,8 @@ import collection._
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.util.MultiSet
-import ducttape.workflow.Types._
+import ducttape.workflow.Types.UnpackState
+import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
 
   // final type parameter TaskDef is for storing the source of input edges

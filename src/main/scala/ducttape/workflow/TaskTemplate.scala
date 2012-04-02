@@ -6,12 +6,16 @@ import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.Types._
-import ducttape.syntax.AbstractSyntaxTree.Variable
+import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.hyperdag.HyperEdge
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
-import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
+import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
+import ducttape.syntax.FileFormatException
+import ducttape.syntax.AbstractSyntaxTree.TaskVariable
 
-// a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
+/**
+ * a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
+ */
 // TODO: fix these insane types for inputVals and paramVals
 class TaskTemplate(val taskDef: TaskDef,
             val branchPoints: Seq[BranchPoint], // only the branch points introduced at this task
@@ -61,7 +65,11 @@ class TaskTemplate(val taskDef: TaskDef,
 
      def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): (Spec,T,TaskDef,Seq[Branch]) = {
        curSpec.rval match {
-         case BranchPointDef(branchPointName, _) => {
+         case BranchPointDef(branchPointNameOpt, _) => {
+           val branchPointName = branchPointNameOpt match {
+             case Some(name) => name
+             case None => throw new RuntimeException("Branch point name is required (this should have already been checked)")
+           }
            val activeBranch: Branch = activeBranchMap(branchPointName)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
            // TODO: Borken for params
@@ -82,7 +90,7 @@ class TaskTemplate(val taskDef: TaskDef,
            //System.err.println("Mapping config var with active branch %s to srcSpec %s at srcTask %s with parent real %s".format(activeBranch, srcSpec, srcTaskDef, parentReal))
            (origSpec, srcSpec, srcTaskDef, parentReal)
          }
-         case Variable(_,_) => { // not a branch point, but defined elsewhere
+         case TaskVariable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
            val parentReal = spec2reals(origSpec)
            (origSpec, srcSpec, srcTaskDef, parentReal)

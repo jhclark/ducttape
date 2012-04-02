@@ -3,7 +3,8 @@ package ducttape.hyperdag.walker
 import collection._
 
 import ducttape.hyperdag._
-import ducttape.hyperdag.meta._
+import ducttape.hyperdag.meta.MetaHyperDag
+import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.util.MultiSet
 
 /** our only job is to hide epsilon vertices during iteration
