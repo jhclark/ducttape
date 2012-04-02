@@ -143,7 +143,7 @@ object AbstractSyntaxTree {
                 val keyword: String,
                 val name: String, 
                 val header: TaskHeader, 
-                val commands: ShellCommands) extends Block {
+                val commands: BashCode) extends Block {
 
     lazy val packageSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskPackageNames] }
     lazy val inputSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskInputs] }
@@ -162,6 +162,8 @@ object AbstractSyntaxTree {
       n
     }
     
+    override def hashCode = name.hashCode
+    override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
     override def toString = name
   }
 
