@@ -6,7 +6,8 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
 import ducttape.versioner._
 import ducttape.workflow.Types._
-import ducttape.hyperdag.meta._
+import ducttape.hyperdag.meta.MetaHyperDag
+import ducttape.hyperdag.meta.MetaHyperDagBuilder
 
 /**
  * This is where the real magic happens of turning an Abstract Syntax Tree
@@ -15,7 +16,11 @@ import ducttape.hyperdag.meta._
 object WorkflowBuilder {
 
    // TODO: Better error reporting here?
-   val CONFIG_TASK_DEF = new TaskDef("CONFIGURATION_FILE", new CommentBlock(Nil), Nil, Nil, Nil, Nil, scala.util.parsing.input.NoPosition)
+   val CONFIG_TASK_DEF = new TaskDef(comments=new Comments(None),
+              keyword="builtin",
+              name="CONFIGURATION_FILE", 
+              header=new TaskHeader(Nil), 
+              commands=new ShellCommands(""))
 
    class ResolveMode();
    case class InputMode() extends ResolveMode;
@@ -118,9 +123,9 @@ object WorkflowBuilder {
    // TODO: This method has become morbidly obese -- break it out into several methods
    def build(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]): HyperWorkflow = {
 
-     val confSpecs: Map[String, Spec] = configSpecs.map{spec => (spec.name, spec)}.toMap
+     val confSpecs: Map[String, Spec] = configSpecs.map{ass => (ass.spec.name, ass.spec)}.toMap
      val defMap = new mutable.HashMap[String,TaskDef]
-     for(t <- wd.tasks) {
+     for(t: TaskDef <- wd.tasks) {
        defMap += t.name -> t
      }
 
@@ -291,7 +296,13 @@ object WorkflowBuilder {
          }
 
          inSpec.rval match {
-           case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
+           case BranchPointDef(branchPointNameOpt, branchSpecs: Seq[Spec]) => {
+             val branchPointName: String = branchPointNameOpt match {
+               case Some(name) => name
+               case None => throw new FileFormatException(
+                       "Branch point name is required",
+                       List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+             }
              handleBranchPoint(branchPointName, branchSpecs)
            }
            case ConfigVariable(varName) => {
@@ -300,7 +311,13 @@ object WorkflowBuilder {
              confSpecs.get(varName) match {
                case Some(confSpec) => {
                  confSpec.rval match {
-                   case BranchPointDef(branchPointName, branchSpecs: Seq[Spec]) => {
+                   case BranchPointDef(branchPointNameOpt, branchSpecs: Seq[Spec]) => {
+                      val branchPointName: String = branchPointNameOpt match {
+                       case Some(name) => name
+                       case None => throw new FileFormatException(
+                               "Branch point name is required",
+                               List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+                     }
                      // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
                      handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                    }

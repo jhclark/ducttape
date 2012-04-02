@@ -132,7 +132,7 @@ object AbstractSyntaxTree {
   } 
   
   /** Defines a block of ducttape code, such as a task definition. */
-  class Block extends ASTType
+  class Block extends ASTType;
   
   /**
    * Short for "TaskDefinition". Abbreviated due to its pervasiveness in the code.
@@ -156,6 +156,12 @@ object AbstractSyntaxTree {
     lazy val outputs: Seq[Spec] = outputSpecList.flatMap{_.specs}
     lazy val params: Seq[Spec] = paramSpecList.flatMap{_.specs}
     
+    lazy val lastHeaderLine: Int = {
+      val n = header.specsList.flatMap{specs: Specs => specs.specs.map{spec: Spec => spec.pos.line}}.max
+      System.err.println("lazy header line... " + n)
+      n
+    }
+    
     override def toString = name
   }
 
@@ -169,15 +175,15 @@ object AbstractSyntaxTree {
   class GroupDefinition(val comments:Comments,
                         val keyword: String,
                         val name: String, 
-                        val header:TaskHeader,
-                        val blocks:Seq[Block]) extends Block {
+                        val header: TaskHeader,
+                        val blocks: Seq[Block]) extends Block {
     override def toString() = name
   }
   
   class ConfigDefinition(val comments: Comments,
                          val name: Option[String],
                          val lines: Seq[ConfigAssignment]) extends Block {
-    override def toString = {
+    override def toString() = {
       name match {
         case None => "GLOBAL"
         case Some(s:String) => s
@@ -185,16 +191,16 @@ object AbstractSyntaxTree {
     }
   }
   
-  class CrossProduct(val goals:Seq[String],val value:Seq[BranchPointRef]) extends ASTType {
+  class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {
     override def toString = {
       "reach %s via %s".format(goals.mkString(","),value.mkString(" * ")) 
     }
   }
   
-  class PlanDefinition(val comments:Comments,
-                       val name:Option[String],
-                       val crossProducts:Seq[CrossProduct]) extends Block {
-    override def toString = {
+  class PlanDefinition(val comments: Comments,
+                       val name: Option[String],
+                       val crossProducts: Seq[CrossProduct]) extends Block {
+    override def toString() = {
       name match {
         case None => "GLOBAL"
         case Some(s:String) => s
@@ -203,8 +209,10 @@ object AbstractSyntaxTree {
   }
   
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val file: File, val tasks: Seq[Block]) extends ASTType {
-    override def toString() = tasks.mkString("\n\n")
+  class WorkflowDefinition(val file: File, val blocks: Seq[Block]) extends ASTType {
+    lazy val tasks: Seq[TaskDef] = blocks.filter(_.isInstanceOf[TaskDef]).map(_.asInstanceOf[TaskDef])
+    
+    override def toString() = blocks.mkString("\n\n")
   }  
   
 }
