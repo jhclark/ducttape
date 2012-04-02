@@ -17,6 +17,11 @@ package ducttape
  * each unpacked vertex does include information about the hyperpath state (realization) of
  * each of its parents.
  * 
+ * Some additional variations are also included such as "phantom" vertices, which are never
+ * traversed, but may be the source of hyperedges. In ducttape, phantom edges are used so that
+ * parameters may introduce hyperedges (branches) without inducing temporal dependencies on
+ * other tasks via the HyperDAG.
+ * 
  * Asynchronous traversal over both packed and unpacked structures is handled via "walkers"
  * which support asynchronous foreach iteration. See [[ducttape.hyperdag.walker]].
  */
