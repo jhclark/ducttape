@@ -10,4 +10,4 @@ libs=$libs:$scriptDir/lib/scala-optparse-1.1.jar
 java -Xmx1g \
      -XX:+UseCompressedOops \
      -cp $libs \
-     Ducttape $@
+     Ducttape "$@"
