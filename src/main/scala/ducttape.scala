@@ -62,10 +62,10 @@ object Ducttape {
     // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
     val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
     }
-    val jobs = IntOpt(desc="Number of concurrent jobs to run")
+    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=1)
     val plan = StrOpt(desc="Plan file to read")
     val config = StrOpt(desc="Workflow configuration file to read")
-    val yes = BoolOpt(desc="Don't prompt or confirm actions -- assume the answer is 'yes', just do it.")
+    val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
 
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
@@ -110,7 +110,8 @@ object Ducttape {
 
     def exitHelp(msg: String, code: Int) {
       help
-      exit(msg, code)
+      err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+      System.exit(code)
     }
 
     if(args.isEmpty || args(0).startsWith("-")) {
