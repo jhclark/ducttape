@@ -8,6 +8,8 @@ import scala.util.parsing.input.Positional
 
 import java.io.File
 
+// TODO: Move this into unit tests
+/*
 object BashParser extends App with RegexParsers {
   	
 
@@ -68,11 +70,13 @@ function ohai {
   println(badResult)
 
 }
+*/
 
 // TODO: Pass a StringBuilder down through the AST to make stringification faster
 class BashCode(val code: String, val vars: Set[String] = Set.empty) {
   override def toString = code
 }
+
 
 /**
  * Very simple grammar for bash
@@ -80,11 +84,11 @@ class BashCode(val code: String, val vars: Set[String] = Set.empty) {
  * @author Jon Clark
  */
 object BashGrammar {
+  
+  import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
 
   // "... there are dark corners in the Bourne shell, and people use all of them."
   // --Chet Ramey
-
-  import BashParser._
 
   // === WHITE SPACE ===
 
