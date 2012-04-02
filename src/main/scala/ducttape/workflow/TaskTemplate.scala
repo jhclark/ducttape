@@ -48,6 +48,7 @@ class TaskTemplate(val taskDef: TaskDef,
 
      // iterate over the hyperedges selected in this realization
      // remember: *every* metaedge has exactly one active incoming hyperedge
+     // this annotation on the plain edges is created in WorkflowBuilder.build()
      val spec2reals = new mutable.HashMap[Spec, Seq[Branch]]
      for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
           <- v.edges.zip(v.parentRealizations)) {
@@ -63,6 +64,8 @@ class TaskTemplate(val taskDef: TaskDef,
      // TODO: So how on earth are all these things parallel to meta edges etc?
      // TODO: XXX: What about a branch point that internally points to a config line that also has a branch point?
 
+     // resolve the source spec/task for the selected branch
+     // and return the 
      def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): (Spec,T,TaskDef,Seq[Branch]) = {
        curSpec.rval match {
          case BranchPointDef(branchPointNameOpt, _) => {
@@ -92,6 +95,7 @@ class TaskTemplate(val taskDef: TaskDef,
          }
          case TaskVariable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           //System.err.println("Looking for %s in %s".format(origSpec, spec2reals))
            val parentReal = spec2reals(origSpec)
            (origSpec, srcSpec, srcTaskDef, parentReal)
          }
@@ -104,11 +108,11 @@ class TaskTemplate(val taskDef: TaskDef,
      
      // resolve the source spec/task for the selected branch
      def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
-       values.map{ case (mySpec: Spec, branchMap: Map[Branch, (T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
+       values.map{ case (mySpec: Spec, branchMap: Map[Branch,(T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
      }
 
-     val realInputVals = mapVals(inputVals)
-     val realParamVals = mapVals(paramVals)
+     val realInputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])] = mapVals(inputVals)
+     val realParamVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])] = mapVals(paramVals)
 
      val version = versions(taskDef.name, realization)
      new RealTask(this, realization, realInputVals, realParamVals, version)
