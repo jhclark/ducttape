@@ -65,6 +65,7 @@ object Ducttape {
     val jobs = IntOpt(desc="Number of concurrent jobs to run")
     val plan = StrOpt(desc="Plan file to read")
     val config = StrOpt(desc="Workflow configuration file to read")
+    val yes = BoolOpt(desc="Don't prompt or confirm actions -- assume the answer is 'yes', just do it.")
 
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
@@ -398,9 +399,6 @@ object Ducttape {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
 
-//        for( (task, real) <- cc.partial) {
-//          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real, initVersioner)))
-//        }
         for( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
         }
@@ -411,9 +409,15 @@ object Ducttape {
 //        } else {
 //        }
 
-        err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size)) // user must still press enter
+        val answer = if(opts.yes) {
+          'y'
+        } else {
+          // note: user must still press enter
+          err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size))
+          Console.readChar
+        }
         
-        Console.readChar match {
+        answer match {
           case 'y' | 'Y' => {
             err.println("Retreiving code and building...")
             val builder = new PackageBuilder(conf, dirs, versions.workflowVersion)
@@ -502,8 +506,15 @@ object Ducttape {
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
       err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
       
-      err.print("Are you sure you want to invalidate all these? [y/n] ") // user must still press enter
-      Console.readChar match {
+      val answer = if(opts.yes) {
+        'y'
+      } else {
+        // note: user must still press enter
+        err.print("Are you sure you want to invalidate all these? [y/n] ")
+        Console.readChar
+      }
+      
+      answer match {
         case 'y' | 'Y' => victims.foreach(task => {
           err.println("Invalidating %s/%s/%s".format(task.name, task.realization.toString, task.version))
           CompletionChecker.invalidate(new TaskEnvironment(dirs, initVersioner, task))
@@ -535,8 +546,15 @@ object Ducttape {
       }}
       err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
       
-      err.print("Are you sure you want to delete all these? [y/n] ") // user must still press enter
-      Console.readChar match {
+      val answer = if(opts.yes) {
+        'y'
+      } else {
+        // note: user must still press enter
+        err.print("Are you sure you want to delete all these? [y/n] ")
+        Console.readChar
+      }
+
+      answer match {
         case 'y' | 'Y' => absDirs.foreach(f => { err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) })
         case _ => err.println("Doing nothing")
       }
