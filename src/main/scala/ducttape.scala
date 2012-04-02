@@ -1,6 +1,7 @@
 import System._
 import collection._
 import java.io.File
+import java.util.concurrent.ExecutionException
 import ducttape._
 import ducttape.hyperdag._
 import ducttape.exec.CompletionChecker
@@ -213,7 +214,10 @@ object Ducttape {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
       val confBaseDir = opts.config.value match {
         case Some(confFile) => new File(workflowBaseDir, Files.basename(confFile, ".conf"))
-        case None => new File(workflowBaseDir, Files.basename(opts.workflowFile.getName, ".tape"))
+        case None => {
+          System.err.println("No configuration specified. Using the workflow name as base directory.")
+          new File(workflowBaseDir, Files.basename(opts.workflowFile.getName, ".tape"))
+        }
       }
       new DirectoryArchitect(workflowBaseDir, confBaseDir)
     }
@@ -438,7 +442,13 @@ object Ducttape {
 //            err.println("Removing partial output...")
 //            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
-            visitAll(new Executor(conf, dirs, versions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
+            try {
+              visitAll(new Executor(conf, dirs, versions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
+            } catch {
+              case e: ExecutionException => {
+                err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
+              }
+            }
           }
           case _ => err.println("Doing nothing")
         }
