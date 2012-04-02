@@ -4,7 +4,7 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.Grammar._
 import ducttape.syntax.GrammarParser._
   
-object DemoParser extends Application {
+object DemoParser extends App {
 
   def print(r:ParseResult[_]) = {
     r match {
