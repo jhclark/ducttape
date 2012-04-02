@@ -236,10 +236,10 @@ object WorkflowBuilder {
         }
         if(!hyperedges.isEmpty) {
           // NOTE: The meta edges are not necessarily phantom, but just have that option
-          System.err.println("Adding metaedge for branchPoint %s task %s to HyperDAG: Component hyperedges are: %s".format(branchPoint, task, hyperedges))
+          //System.err.println("Adding metaedge for branchPoint %s task %s to HyperDAG: Component hyperedges are: %s".format(branchPoint, task, hyperedges))
           dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
         } else {
-          System.err.println("No metaedge for branchPoint %s at task %s is needed (zero component hyperedges)".format(branchPoint, task))
+          //System.err.println("No metaedge for branchPoint %s at task %s is needed (zero component hyperedges)".format(branchPoint, task))
         }
       }
     }
