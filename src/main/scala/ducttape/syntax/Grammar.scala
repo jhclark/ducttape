@@ -318,7 +318,7 @@ object Grammar {
   val branchGraft: Parser[BranchGraft] = positioned(
       (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
       name("reference to task","""\[""".r,err(_),failure(_)) ~
-      (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|error("Missing closing bracket"))) ^^ {
+      (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) ^^ {
         case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
       } 
