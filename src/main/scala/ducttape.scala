@@ -17,6 +17,8 @@ import ducttape.util._
 import ducttape.versioner._
 import ducttape.ccollection._
 import ducttape.exec.DirectoryArchitect
+import ducttape.syntax.StaticChecker
+import ducttape.syntax.ErrorBehavior._
 
 package ducttape {
   class Config {
@@ -24,6 +26,7 @@ package ducttape {
     var headerColor = Console.BLUE
     var byColor = Console.BLUE
     var taskColor = Console.CYAN
+    var warnColor = Console.BOLD + Console.YELLOW
     var errorColor = Console.RED
     var resetColor = Console.RESET
 
@@ -178,9 +181,21 @@ object Ducttape {
     val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
     //println("Building workflow...")
 
+    val checker = new StaticChecker(conf, undeclaredBehavior=Warn, unusedBehavior=Warn)
+    val (warnings, errors) = checker.check(wd)
+    for(msg <- warnings) {
+       err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
+    }
+    for(msg <- errors) {
+       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+    }
+    if(errors.size > 0) {
+      System.exit(1)
+    }
+    
+    
     // TODO
     val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, confSpecs))
-    println("Workflow contains %d tasks".format(workflow.dag.size))
 
     // TODO: Not always exec...
     // TODO: Check against hyperworkflow to make sure we didn't name any
