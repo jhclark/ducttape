@@ -85,7 +85,7 @@ class CompletionChecker(conf: Config,
   def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
   override def visit(task: RealTask) {
-    System.err.println("Checking " + task)
+    //System.err.println("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
     if(taskEnv.where.exists) {
       _foundVersions += (task.name, task.realization) -> task.version
