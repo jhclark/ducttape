@@ -18,7 +18,7 @@ class Executor(conf: Config,
                plannedVertices: Set[(String,Realization)],
                alreadyDone: Set[(String,Realization)],
                todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
-  import ducttape.viz._
+  import ducttape.viz.WorkflowViz
 
   // TODO: Construct set elsewhere?
   val completed = new mutable.HashSet[(String,Realization)]
