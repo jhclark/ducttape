@@ -5,6 +5,7 @@ import io._
 import collection.JavaConversions._
 import collection._
 import System._
+import ducttape.util.Files
 
 trait Formatter {
   def header()
@@ -142,7 +143,7 @@ object DuctTapeDoc {
       buffer += line
     }
     val COMMENT_PAT = """^\s*#(.*)$""".r
-    val lines = Source.fromFile(file).getLines.toSeq
+    val lines = Files.read(file)
     val title = lines.head.substring(1) // first line is always title
     f.subsection("%s (%s)".format(title, file.getName))
     for(line <- lines.drop(1)) line match {
