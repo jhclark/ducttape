@@ -50,6 +50,15 @@ class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
 
   def isAbsolute(path: String) = new File(path).isAbsolute
 
+  def resolveLiteralPath(path: String): File = {
+    isAbsolute(path) match {
+      case true => new File(path)
+      // relative paths are resolved relative to the workflow base dir (where the .tape file resides)
+      // since the config directory might not even exist yet
+      case false => new File(workflowBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
+    }
+  }
+    
   def getInFile(mySpec: Spec,
                 realization: Realization,
                 version: Int,
@@ -72,12 +81,7 @@ class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
 
     // TODO: We should have already checked that this file exists by now?
     realizedRval match {
-      case Literal(path) => isAbsolute(path) match {
-        case true => new File(path)
-        // relative paths are resolved relative to the workflow base dir (where the .tape file resides)
-        // since the config directory might not even exist yet
-        case false => new File(workflowBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
-      }
+      case Literal(path) => resolveLiteralPath(path)
       // branches, variables, etc get matched on the src, which we already resolved
       case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
     }

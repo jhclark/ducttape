@@ -6,6 +6,7 @@ import ducttape._
 import ducttape.hyperdag._
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
+import ducttape.exec.InputChecker
 import ducttape.exec.PackageBuilder
 import ducttape.exec.PackageFinder
 import ducttape.exec.TaskEnvironment
@@ -409,6 +410,16 @@ object Ducttape {
         err.println("Finding packages...")
         val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo)
         visitAll(packageFinder, versions, plannedVertices)
+
+        err.println("Checking inputs...")
+        val inputChecker = new InputChecker(conf, dirs)
+        visitAll(inputChecker, versions, plannedVertices)
+        if(inputChecker.errors.size > 0) {
+          for(msg <- inputChecker.errors) {
+            err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+          }
+          System.exit(1)
+        }
 
         err.println("Work plan:")
         for(packageName <- packageFinder.packages) {
