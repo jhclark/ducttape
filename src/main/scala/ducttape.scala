@@ -430,7 +430,6 @@ object Ducttape {
         for( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
         }
-  
       
 //        if(cc.partial.size > 0) {
 //          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
