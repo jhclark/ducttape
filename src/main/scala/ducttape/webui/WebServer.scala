@@ -6,13 +6,14 @@ import org.eclipse.jetty.server.bio.SocketConnector
 import org.eclipse.jetty.servlet._
 import javax.servlet._
 import java.io.File
+import ducttape.util.Files
 
 object WebServer extends App {
   val port = args(0).toInt
   val workflowsFile = args(1)
   val server = new Server(port)
 
-  val workflows = io.Source.fromFile(workflowsFile).getLines.toList.map(str => new File(str))
+  val workflows = Files.read(new File(workflowsFile)).map(str => new File(str))
 
   val sc = new ServletContextHandler(hl, "/json", false, false)
   val servlet: Servlet = new WorkflowServlet(workflows)
