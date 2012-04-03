@@ -29,10 +29,10 @@ class RealTask(val taskT: TaskTemplate,
    }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet
 
   // TODO: Smear hash code better
-   override def hashCode = name.hashCode ^ realization.hashCode ^ version
+   override def hashCode() = name.hashCode ^ realization.hashCode ^ version
    override def equals(obj: Any) = obj match {
      case that: RealTask => this.name == that.name && this.realization == that.realization && this.version == that.version
    }
 
-   override def toString = "%s/%s".format(name, realization.toString)
+   override def toString() = "%s/%s".format(name, realization.toString)
  }
