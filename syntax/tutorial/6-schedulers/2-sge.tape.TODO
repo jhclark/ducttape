@@ -3,18 +3,20 @@
 #   and contains the "payload" of this task
 # * This assumes that scheduler submission happens asynchronously
 #   and that we must poll the scheduler to learn when the job has completed
-submitter sge :: CMDS vmem walltime q {
+submitter sge :: cpus vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
+              :: COMMANDS /* the bash commands from some task */
+              :: TASK REALIZATON CONFIGURATION /* variables passed by ducttape */ {
   # TODO: We're still missing a few variables that typically get passed in.
   # SGE: echo "#$-l vmem=$vmem" >> $wrapper
   # SGE:  echo "#-l walltime=$walltime" >> $wrapper
   action wrap > wrapper {
     echo "#PBS -S /bin/bash" >> $wrapper
-    echo "#PBS -q $RESOURCE_q" >> $wrapper
-    echo "#PBS -l nodes=1:ppn=$RESOURCE_cpus" >> $wrapper
-    echo "#PBS -l walltime=$RESOURCE_time" >> $wrapper
+    echo "#PBS -q $q" >> $wrapper
+    echo "#PBS -l nodes=1:ppn=$cpus" >> $wrapper
+    echo "#PBS -l walltime=$walltime" >> $wrapper
     echo "#PBS -j oe" >> $wrapper
     echo "#PBS -o localhost:$PWD/job.out" >> $wrapper
-    echo "#PBS -N $CONF_NAME/$TASK_NAME/$REALIZATION" >> $wrapper
+    echo "#PBS -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
 
     # Bash flags aren't necessarily passed into the scheduler
     # so we must re-initialize them
@@ -26,7 +28,7 @@ submitter sge :: CMDS vmem walltime q {
     # The current working directory will also be changed by most schedulers
     echo "cd $PWD/work" >> $wrapper
 
-    echo "$CMDS" >> $wrapper
+    echo "$COMMANDS" >> $wrapper
   }
   action run < wrapper > jobid {
     qsub $wrapper > $jobid
