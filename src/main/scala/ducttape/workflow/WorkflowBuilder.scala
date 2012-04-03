@@ -322,10 +322,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
      }
      
      def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, increment: BigDecimal): Seq[LiteralSpec] = {
-       // TODO: longValueExact?
-       for(i <- start.longValue.to(end.longValue, increment.longValue)) yield {
-         new LiteralSpec(bpName.toLowerCase + i.toString, new Literal(i.toString), dotVariable=false)
+       val result = new mutable.ArrayBuffer[LiteralSpec]
+       var value = start
+       while(value <= end) {
+         result += new LiteralSpec(bpName.toLowerCase + value.toString, new Literal(value.toString), dotVariable=false)
+         value += increment
        }
+       result
      }
 
      inSpec.rval match {

@@ -2,7 +2,6 @@ package ducttape.syntax
 
 import java.io.File
 import java.math.BigDecimal
-import java.math.BigInteger
 
 import org.apache.commons.lang3.StringEscapeUtils
 
@@ -91,7 +90,7 @@ object Grammar {
           // Do NOT recognize a number with no digits left of the decimal
           (regex("""[+-]?\.\d+([eE][-+]?\d+)?""".r)~!err("A number must have at least one digit left of the decimal point.") )
       ) ^^ {
-        case s:String => new BigDecimal(s)
+        case s: String => new BigDecimal(s)
       }
   
   
