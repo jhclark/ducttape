@@ -25,6 +25,9 @@
 # Because there is a task with more than one Branch, we say that
 # this workflow has more than one Realization (which can be thought of
 # as a single DAG derivation of this HyperDAG).
+#
+# Relative paths *as inputs* are resolved relative to this .tape file.
+# (Remember, relative paths as outputs are resolved relative to the task's working directory)
 task has_branches < in=(WhichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
 }
