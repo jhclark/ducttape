@@ -320,6 +320,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        branchPoints += Task.NO_BRANCH_POINT
        branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT  
      }
+     
+     def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, increment: BigDecimal): Seq[LiteralSpec] = {
+       // TODO: longValueExact?
+       for(i <- start.longValue.to(end.longValue, increment.longValue)) yield {
+         new LiteralSpec(bpName.toLowerCase + i.toString, new Literal(i.toString), dotVariable=false)
+       }
+     }
 
      inSpec.rval match {
        case BranchPointDef(branchPointNameOpt, branchSpecs: Seq[Spec]) => {
@@ -330,6 +337,19 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                    List( (wd.file, inSpec.pos, inSpec.pos.line) ))
          }
          handleBranchPoint(branchPointName, branchSpecs)
+       }
+       case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+                                  start: BigDecimal, 
+                                  end: BigDecimal,
+                                  increment: BigDecimal) => {
+         val branchPointName: String = branchPointNameOpt match {
+           case Some(name) => name
+           case None => throw new FileFormatException(
+                   "Branch point name is required",
+                   List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+         }
+         val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
+         handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
        }
        case ConfigVariable(varName) => {
          // config variables can also introduce branch points...
@@ -345,6 +365,19 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                            List( (wd.file, inSpec.pos, inSpec.pos.line) ))
                  }
                  // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
+                 handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
+               }
+               case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+                                          start: BigDecimal, 
+                                          end: BigDecimal,
+                                          increment: BigDecimal) => {
+                 val branchPointName: String = branchPointNameOpt match {
+                   case Some(name) => name
+                   case None => throw new FileFormatException(
+                           "Branch point name is required",
+                           List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+                 }
+                 val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
                case ConfigVariable(_) => {
