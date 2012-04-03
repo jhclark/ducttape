@@ -9,8 +9,11 @@ object Files {
   def write(str: String, file: File) {
     file.getParentFile().mkdirs()
     val fw = new FileWriter(file)
-    fw.write(str)
-    fw.close
+    try {
+      fw.write(str)
+    } finally {
+      fw.close
+    }
   }
 
   def writer(file: File): PrintWriter = {
@@ -25,9 +28,11 @@ object Files {
   // reads all lines, but closes file unlike io.Source
   def read(file: File): Seq[String] = {
     val br = new BufferedReader(new FileReader(file))
-    val lines = Iterator.continually(br.readLine).takeWhile(_ != null).toList
-    br.close
-    lines
+    try {
+      Iterator.continually(br.readLine).takeWhile(_ != null).toList
+    } finally {
+      br.close
+    }
   }
 
   // there is no reliable way of detecting symlinks in Java
@@ -35,7 +40,7 @@ object Files {
   def deleteDir(dir: File) {
     val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
     if(code != 0) {
-      throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
+      throw new RuntimeException("Failed to delete: %s (rm -rf %s returned nonzero)".format(dir.getAbsolutePath, dir.getAbsolutePath))
     }
   }
 
@@ -74,6 +79,6 @@ object IO {
     case uri: URI              => Source.fromFile(uri,encoding).reader
     case url: URL              => Source.fromURL(url,encoding).reader
     case any: AnyRef           => throw new RuntimeException("I don't know how to parse objects of type " + any.getClass())
-    case _                    => throw new RuntimeException("I don't know how to parse objects of that type")
+    case _                     => throw new RuntimeException("I don't know how to parse objects of that type")
   }
 }
