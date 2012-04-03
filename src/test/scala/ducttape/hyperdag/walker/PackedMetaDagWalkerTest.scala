@@ -3,7 +3,10 @@ package ducttape.hyperdag.walker
 import org.scalatest.FlatSpec
 import ducttape.hyperdag.HyperDagBuilder
 import ducttape.hyperdag.HyperDag
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class PackedMetaDagWalkerTest extends FlatSpec {
 
   "A Packed MetaDAG Walker" should "traverse a linear chain graph with an iterator" in {
