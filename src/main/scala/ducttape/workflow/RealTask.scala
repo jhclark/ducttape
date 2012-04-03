@@ -15,6 +15,7 @@ class RealTask(val taskT: TaskTemplate,
    def name = taskT.name
    def taskDef = taskT.taskDef
    def comments = taskT.comments
+   def packages = taskT.packages
    def inputs = taskT.inputs
    def outputs = taskT.outputs
    def params = taskT.params

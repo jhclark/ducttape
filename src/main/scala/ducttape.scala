@@ -196,8 +196,8 @@ object Ducttape {
     }
     
     
-    // TODO
-    val workflow: HyperWorkflow = ex2err(WorkflowBuilder.build(wd, confSpecs))
+    val builder = new WorkflowBuilder(wd, confSpecs)
+    val workflow: HyperWorkflow = ex2err(builder.build())
 
     // TODO: Not always exec...
     // TODO: Check against hyperworkflow to make sure we didn't name any
@@ -408,8 +408,9 @@ object Ducttape {
         err.println("All tasks to complete -- nothing to do")
       } else {
         err.println("Finding packages...")
-        val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo)
+        val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo, workflow.packageDefs)
         visitAll(packageFinder, versions, plannedVertices)
+        System.err.println("Found %d packages".format(packageFinder.packages.size))
 
         err.println("Checking inputs...")
         val inputChecker = new InputChecker(conf, dirs)

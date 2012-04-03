@@ -7,12 +7,14 @@ import ducttape.util.MultiSet
 import ducttape.workflow.Types.UnpackState
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
+import ducttape.syntax.AbstractSyntaxTree.PackageDef
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
   // - not specifying a branch point indicates that any value is acceptable
   // TODO: Multimap (just use typedef?)
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
+                      val packageDefs: Map[String,PackageDef],
                       val branchPointFactory: BranchPointFactory,
                       val branchFactory: BranchFactory) {
 

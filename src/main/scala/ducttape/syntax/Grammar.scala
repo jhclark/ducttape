@@ -287,7 +287,7 @@ object Grammar {
    */
   val taskVariableReference: Parser[TaskVariable] = positioned(
     literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s|\)|$""".r)) ^^ {
-      case (string:String) ~ (taskName:String) => new TaskVariable(taskName,string)
+      case (string: String) ~ (taskName: String) => new TaskVariable(taskName,string)
     }
   )  
   
@@ -305,7 +305,7 @@ object Grammar {
    */
   val branchGraftElement: Parser[BranchGraftElement] = positioned(
       branchPointName~branchReference ^^ {
-        case ((a:String) ~ (b:String)) => new BranchGraftElement(a,b)
+        case ((a: String) ~ (b: String)) => new BranchGraftElement(a,b)
       }
   )
   
@@ -317,7 +317,7 @@ object Grammar {
       (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
       name("reference to task","""\[""".r,err(_),failure(_)) ~
       (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) ^^ {
-        case ((variable:String) ~ (task:String) ~ (seq:Seq[BranchGraftElement])) =>
+        case ((variable: String) ~ (task: String) ~ (seq: Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
       } 
   )
@@ -352,9 +352,9 @@ object Grammar {
             literal(")"
         )
       ) ^^ {
-        case ((bpName:Option[String])~(start:BigDecimal)~(end:BigDecimal)~(Some(increment:BigDecimal))) =>
+        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(Some(increment:BigDecimal))) =>
           new SequentialBranchPoint(bpName,start,end,increment)      
-        case ((bpName:Option[String])~(start:BigDecimal)~(end:BigDecimal)~(None)) =>
+        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(None)) =>
           new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
       }
   )
@@ -384,7 +384,7 @@ object Grammar {
     }
   )  
 
-  def branchPointRef(typeOfWhitespace:Parser[Any]): Parser[BranchPointRef] = positioned({
+  def branchPointRef(typeOfWhitespace: Parser[Any]): Parser[BranchPointRef] = positioned({
     ( // Must start with an opening parenthesis, then optionally whitespace
       (literal("(")~opt(typeOfWhitespace))~>
       (  (// Then (optionally) the branch point name
@@ -407,8 +407,8 @@ object Grammar {
         
     )
     } ^^ {
-      case (bpName:String) ~ (branchName:String) => new BranchPointRef(bpName,List.apply(branchName))
-      case (bpName:String) ~ (branchNames:List[String]) => new BranchPointRef(bpName,branchNames)
+      case (bpName: String) ~ (branchName: String) => new BranchPointRef(bpName,List.apply(branchName))
+      case (bpName: String) ~ (branchNames: List[String]) => new BranchPointRef(bpName,branchNames)
     }
   )
   
@@ -432,7 +432,7 @@ object Grammar {
        )
     )
   } ^^ {
-    case (goals:Seq[String]) ~ (crossProduct:Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
+    case (goals: Seq[String]) ~ (crossProduct: Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
   })
 
   
@@ -449,10 +449,10 @@ object Grammar {
   }
 
 
-  def basicAssignment(variableType:String,
-                      howToFailAtStart:(String)=>Parser[Nothing],
-                      howToFailAtEnd:(String)=>Parser[Nothing],
-                      howToFailAtEquals:(String)=>Parser[Nothing]): Parser[Spec] = positioned(
+  def basicAssignment(variableType: String,
+                      howToFailAtStart: (String)=>Parser[Nothing],
+                      howToFailAtEnd: (String)=>Parser[Nothing],
+                      howToFailAtEquals: (String)=>Parser[Nothing]): Parser[Spec] = positioned(
       ( ( // First, a variable name
           name(variableType + " variable","""[=\s]|\z""".r,howToFailAtStart,howToFailAtEnd) <~ 
           ( // Next, the equals sign
@@ -467,7 +467,7 @@ object Grammar {
           err("Error in input variable assignment")
         )
       ) ^^ {
-        case (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
+        case (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
   )
 
@@ -491,8 +491,8 @@ object Grammar {
         name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
         opt("=" ~> (rvalue | err("Error in output variable assignment")))
       ) ^^ {
-        case (variableName:String) ~ Some(rhs:RValue) => new Spec(variableName,rhs,false)
-        case (variableName:String) ~ None             => new Spec(variableName,Unbound(),false)
+        case (variableName: String) ~ Some(rhs: RValue) => new Spec(variableName,rhs,false)
+        case (variableName: String) ~ None             => new Spec(variableName,Unbound(),false)
       }      
   )
 
@@ -500,7 +500,7 @@ object Grammar {
   val packageNameAssignment: Parser[Spec] = positioned({
       name("package","""\s""".r,failure(_),err(_))
     } ^^ {
-    case (packageName:String) => new Spec(packageName,Unbound(),false)
+    case (packageName: String) => new Spec(packageName,Unbound(),false)
   })  
   
   /** Parameter variable declaration. */
@@ -509,12 +509,12 @@ object Grammar {
           opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
         (rvalue | err("Error in parameter variable assignment"))
       ) ^^ {
-        case Some(_:String) ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,true)
-        case None           ~ (variableName:String) ~ (rhs:RValue) => new Spec(variableName,rhs,false)
+        case Some(_: String) ~ (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,true)
+        case None           ~ (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
   )
 
-  val configLine:Parser[ConfigAssignment] = {
+  val configLine: Parser[ConfigAssignment] = {
     comments ~ 
     (
         opt(space) ~> 
@@ -523,7 +523,7 @@ object Grammar {
     ) ~ 
     (comment | eol)
   } ^^ {
-    case (comments:Comments) ~ (spec:Spec) ~ (_:String) => new ConfigAssignment(spec,comments)
+    case (comments: Comments) ~ (spec: Spec) ~ (_: String) => new ConfigAssignment(spec,comments)
   }
   
   val configLines: Parser[Seq[ConfigAssignment]] = {
@@ -603,7 +603,7 @@ object Grammar {
          repsep(packageNameAssignment,space)
     ) | failure("Failed to parse task package names")
   } ^^ {
-    case (comments:Comments)~(list:List[String]) => new TaskPackageNames(list,comments) 
+    case (comments: Comments)~(list: List[String]) => new TaskPackageNames(list,comments) 
     case _ => new TaskPackageNames(List.empty,new Comments(None)) 
   }
   
@@ -632,15 +632,15 @@ object Grammar {
   }  
 
 
-  val taskSpec:Parser[Specs] = {
+  val taskSpec: Parser[Specs] = {
     taskInputs | taskOutputs | taskParams | taskPackageNames
   }
 
-  val convertNameToSpec : PartialFunction[String,Spec] = {
+  val convertNameToSpec: PartialFunction[String,Spec] = {
     case name:String => new Spec(name,Unbound(),name.startsWith("."))
   }
   
-  val funcSpec:Parser[Specs] = {
+  val funcSpec: Parser[Specs] = {
     ( // Comments describe the parameter block
       //   There may not be any comments,
       //   in which case the comments object
@@ -662,26 +662,26 @@ object Grammar {
       repsep(name("func variable","""\s""".r,failure(_),err(_)),space)
     )
   } ^^ {
-    case (comments:Comments) ~ ("::") ~ (list:List[String]) =>
+    case (comments: Comments) ~ ("::") ~ (list: List[String]) =>
       new TaskParams(list.collect(convertNameToSpec),comments)
-    case (comments:Comments) ~ ("<") ~ (list:List[String]) =>
+    case (comments: Comments) ~ ("<") ~ (list: List[String]) =>
       new TaskInputs(list.collect(convertNameToSpec),comments)
-    case (comments:Comments) ~ (">") ~ (list:List[String]) =>
+    case (comments: Comments) ~ (">") ~ (list: List[String]) =>
       new TaskOutputs(list.collect(convertNameToSpec),comments)
-    case (comments:Comments) ~ (":") ~ (list:List[String]) =>
+    case (comments: Comments) ~ (":") ~ (list: List[String]) =>
       new TaskPackageNames(list.collect(convertNameToSpec),comments)   
   }
   
-  val funcHeader:Parser[TaskHeader] = {
+  val funcHeader: Parser[TaskHeader] = {
     repsep(funcSpec,regex("""[ \n\r\t]+""".r))
   } ^^ {
-    case (specs:List[Specs]) => new TaskHeader(specs) 
+    case (specs: List[Specs]) => new TaskHeader(specs) 
   }
   
-  val taskHeader:Parser[TaskHeader] = {
+  val taskHeader: Parser[TaskHeader] = {
     repsep(taskSpec,regex("""[ \n\r\t]+""".r))
   } ^^ {
-    case (specs:List[Specs]) => new TaskHeader(specs) 
+    case (specs: List[Specs]) => new TaskHeader(specs) 
   }
   
   // NOTE: This has been replaced by the more advanced bash parser
@@ -696,12 +696,12 @@ object Grammar {
         //regex("""[^{}]*""".r)
     )    
   } ^^ {
-    case (before:String) ~ None => before
-    case (before:String) ~ Some(open~block~close~None) => before + open + block + close
-    case (before:String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
+    case (before: String) ~ None => before
+    case (before: String) ~ Some(open~block~close~None) => before + open + block + close
+    case (before: String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
   }  
 
-  def taskLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader]) = positioned({
+  def taskLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader]) = positioned({
     opt(whitespace) ~>
     comments ~
     (

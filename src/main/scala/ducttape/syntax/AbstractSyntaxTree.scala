@@ -12,7 +12,7 @@ object AbstractSyntaxTree {
     override def toString() = value match {
       case Some(s:String) => s
       case None           => ""
-      }
+    }
   }
   
   /** Type of the right hand side in an assignment. */
@@ -50,7 +50,7 @@ object AbstractSyntaxTree {
                                    val start: BigDecimal, 
                                    val end: BigDecimal,
                                    val increment: BigDecimal) extends RValue {
-    override def toString = {
+    override def toString() = {
         branchPointName match {
           case Some(s) => "(%s: %s..%s..%s)".format(s,start,end,increment)
           case None    => "(%s..%s..%s)".format(start,end,increment)
@@ -59,15 +59,15 @@ object AbstractSyntaxTree {
   }  
   
   /** Pair containing a branch point name and a branch name. */
-  class BranchGraftElement(val branchPointName:String, 
-                           val branchName:String) extends ASTType {
+  class BranchGraftElement(val branchPointName: String, 
+                           val branchName: String) extends ASTType {
     override def toString() = "%s:%s".format(branchPointName,branchName)
   }
   
   /** Type of a branch graft, in the right-hand side context of an assignment. */
-  case class BranchGraft(val variableName:String,
-                         val taskName:String,
-                         val branchGraftElements:Seq[BranchGraftElement]) extends RValue {
+  case class BranchGraft(val variableName: String,
+                         val taskName: String,
+                         val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
     override def toString() = 
       "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
   }
@@ -76,7 +76,7 @@ object AbstractSyntaxTree {
   /**
    * Abstract specification of a variable name and its right hand side.
    */
-  class AbstractSpec[+RValue] (val name: String, val rval: RValue, val dotVariable: Boolean) extends ASTType {
+  class AbstractSpec[+RValue](val name: String, val rval: RValue, val dotVariable: Boolean) extends ASTType {
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: AbstractSpec[_] => (other.name == this.name) }
     override def toString() = "%s=%s".format(name, rval)
@@ -162,10 +162,11 @@ object AbstractSyntaxTree {
       n
     }
     
-    override def hashCode = name.hashCode
+    override def hashCode() = name.hashCode
     override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
-    override def toString = name
+    override def toString() = name
   }
+  type PackageDef = TaskDef;
 
   class CallDefinition(val comments: Comments,
                        val name: String, 
@@ -194,7 +195,7 @@ object AbstractSyntaxTree {
   }
   
   class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {
-    override def toString = {
+    override def toString() = {
       "reach %s via %s".format(goals.mkString(","),value.mkString(" * ")) 
     }
   }
@@ -202,17 +203,17 @@ object AbstractSyntaxTree {
   class PlanDefinition(val comments: Comments,
                        val name: Option[String],
                        val crossProducts: Seq[CrossProduct]) extends Block {
-    override def toString() = {
-      name match {
-        case None => "GLOBAL"
-        case Some(s:String) => s
-      }
+    override def toString() = name match {
+      case None => "GLOBAL"
+      case Some(s:String) => s
     }
   }
   
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val file: File, val blocks: Seq[Block]) extends ASTType {
-    lazy val tasks: Seq[TaskDef] = blocks.filter(_.isInstanceOf[TaskDef]).map(_.asInstanceOf[TaskDef])
+    lazy val taskDefs: Seq[TaskDef] = blocks.filter(_.isInstanceOf[TaskDef]).map(_.asInstanceOf[TaskDef])
+    lazy val tasks: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "task"}
+    lazy val packages: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "package"}
     
     override def toString() = blocks.mkString("\n\n")
   }  

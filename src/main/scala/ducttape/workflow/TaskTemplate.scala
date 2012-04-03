@@ -23,6 +23,7 @@ class TaskTemplate(val taskDef: TaskDef,
             val paramVals: Seq[(Spec,Map[Branch,(LiteralSpec,TaskDef)])] ) { // (mySpec,srcSpec,srcTaskDef)
    def name = taskDef.name
    def comments = taskDef.comments
+   def packages = taskDef.packages
    def inputs = taskDef.inputs
    def outputs = taskDef.outputs
    def params = taskDef.params

@@ -44,7 +44,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
     (outSpec.name, outFile.getAbsolutePath)
   }
 
-  val packageNames: Seq[String] = Gimme.getPackagesFromParams(params)
+  val packageNames: Seq[String] = task.packages.map(_.name)
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map(name => new BuildEnvironment(dirs, versions.workflowVersion, name))
   }
