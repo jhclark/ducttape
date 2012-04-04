@@ -400,7 +400,7 @@ of pt > PTFileSize {
 """submitter sge :: CMDS vmem walltime q {
   // stuff
   action wrap > wrapper {
-    echo "#$ -S /bin/bash" >> $wrapper
+    echo '#$ -S /bin/bash' >> $wrapper
   }
 
   // more stuff
