@@ -412,15 +412,15 @@ object Ducttape {
         visitAll(packageFinder, versions, plannedVertices)
         System.err.println("Found %d packages".format(packageFinder.packages.size))
 
-        err.println("Checking inputs...")
-        val inputChecker = new InputChecker(conf, dirs)
-        visitAll(inputChecker, versions, plannedVertices)
-        if(inputChecker.errors.size > 0) {
-          for(msg <- inputChecker.errors) {
-            err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-          }
-          System.exit(1)
-        }
+//        err.println("Checking inputs...")
+//        val inputChecker = new InputChecker(conf, dirs)
+//        visitAll(inputChecker, versions, plannedVertices)
+//        if(inputChecker.errors.size > 0) {
+//          for(msg <- inputChecker.errors) {
+//            err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+//          }
+//          System.exit(1)
+//        }
 
         err.println("Work plan:")
         for(packageName <- packageFinder.packages) {
