@@ -182,7 +182,7 @@ task hello {
 }""",
 """task funky < in=foo > out {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -192,7 +192,7 @@ task hello {
 """task funky < in=foo > out
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -202,7 +202,7 @@ task hello {
 """task funky < in=foo > out :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -213,7 +213,7 @@ task hello {
      < in=foo > out :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -226,7 +226,7 @@ task hello {
      :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -242,7 +242,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -256,7 +256,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -270,7 +270,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -285,7 +285,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -300,7 +300,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -316,7 +316,7 @@ task hello {
     :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -334,7 +334,7 @@ task hello {
   :: p=param
 {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -351,7 +351,7 @@ task hello {
   // parameters
   :: p=param {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
@@ -448,7 +448,7 @@ saIni_=/phase1/jhclark/experiments/binopt/sa_full.ini
 """task funky < in=foo > out  
  bar {
   function die () {
-    echo "$@" >&2
+    echo "$@" 1>&2 > some.txt
     exit 1
   }
   
