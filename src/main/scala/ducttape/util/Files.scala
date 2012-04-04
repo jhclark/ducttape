@@ -33,10 +33,25 @@ object Files {
   // there is no reliable way of detecting symlinks in Java
   // f.getAbsolutePath != f.getCanonicalPath fails since /home/./jhclark is not canonical
   def deleteDir(dir: File) {
-    val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
-    if(code != 0) {
-      throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
-    }
+    ApacheFileUtils.deleteDirectory(dir)
+//    {
+//      val code = Shell.run("ls -lha %s".format(dir.getAbsolutePath))
+//      if(code != 0) {
+//        throw new RuntimeException("Failed to ls: %s".format(dir.getAbsolutePath))
+//      }
+//    }
+//    {
+//      val code = Shell.run("lsof -N".format(dir.getAbsolutePath))
+//      if(code != 0) {
+//        System.err.println("Failed to lsof: %s".format(dir.getAbsolutePath))
+//      }
+//    }
+//    {
+//      val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
+//      if(code != 0) {
+//        throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
+//      }
+//    }
   }
 
   def ls(dir: File): Seq[File] = {
