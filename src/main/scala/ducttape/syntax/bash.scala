@@ -159,9 +159,24 @@ object BashGrammar {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
 
-  /* see http://tldp.org/LDP/abs/html/internalvariables.html
-   * we intentially don't support script parameters: $@ $* $- $# $0 $1, etc. */
-  def internalVariable: Parser[BashCode] = (literal("$$") | literal("$?") | literal("$!") | literal("$_")) ^^ {
+  /**
+   * Bash positional and special parameters.
+   * 
+   * @see The GNU Bash Reference Manual, section 3.4.1 "Positional Parameters"
+   * @see The GNU Bash Reference Manual, section 3.4.2 "Special Parameters"
+   */
+  def internalVariable: Parser[BashCode] = (
+      literal("$*") |
+      literal("$@") |
+      literal("$#") |
+      literal("$?") | 
+      literal("$-") |      
+      literal("$$") |
+      literal("$!") |
+      literal("$0") |      
+      literal("$_") |
+      regex("""\$[1-9][0-9]*""".r)
+    ) ^^ {
     case x => new BashCode(x)
   }
 
