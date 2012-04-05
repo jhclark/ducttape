@@ -38,10 +38,7 @@ object Files {
   // there is no reliable way of detecting symlinks in Java
   // f.getAbsolutePath != f.getCanonicalPath fails since /home/./jhclark is not canonical
   def deleteDir(dir: File) {
-    val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
-    if(code != 0) {
-      throw new RuntimeException("Failed to delete: %s (rm -rf %s returned nonzero)".format(dir.getAbsolutePath, dir.getAbsolutePath))
-    }
+    ApacheFileUtils.deleteDirectory(dir)
   }
 
   def ls(dir: File): Seq[File] = {

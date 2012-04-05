@@ -412,15 +412,15 @@ object Ducttape {
         visitAll(packageFinder, versions, plannedVertices)
         System.err.println("Found %d packages".format(packageFinder.packages.size))
 
-        err.println("Checking inputs...")
-        val inputChecker = new InputChecker(conf, dirs)
-        visitAll(inputChecker, versions, plannedVertices)
-        if(inputChecker.errors.size > 0) {
-          for(msg <- inputChecker.errors) {
-            err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-          }
-          System.exit(1)
-        }
+//        err.println("Checking inputs...")
+//        val inputChecker = new InputChecker(conf, dirs)
+//        visitAll(inputChecker, versions, plannedVertices)
+//        if(inputChecker.errors.size > 0) {
+//          for(msg <- inputChecker.errors) {
+//            err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+//          }
+//          System.exit(1)
+//        }
 
         err.println("Work plan:")
         for(packageName <- packageFinder.packages) {
@@ -437,15 +437,15 @@ object Ducttape {
 //        }
 
         val answer = if(opts.yes) {
-          'y'
+          true
         } else {
           // note: user must still press enter
           err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size))
-          Console.readChar
+          Console.readBoolean
         }
         
         answer match {
-          case 'y' | 'Y' => {
+          case true => {
             err.println("Retreiving code and building...")
             val builder = new PackageBuilder(conf, dirs, versions.workflowVersion)
             builder.build(packageFinder.packages)

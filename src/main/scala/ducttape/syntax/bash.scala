@@ -164,9 +164,24 @@ object BashGrammar {
     case x => new BashCode(x)
   }
 
-  /* see http://tldp.org/LDP/abs/html/internalvariables.html
-   * we intentially don't support script parameters: $@ $* $- $# $0 $1, etc. */
-  def internalVariable: Parser[BashCode] = (literal("$$") | literal("$?") | literal("$!") | literal("$_")) ^^ {
+  /**
+   * Bash positional and special parameters.
+   * 
+   * @see The GNU Bash Reference Manual, section 3.4.1 "Positional Parameters"
+   * @see The GNU Bash Reference Manual, section 3.4.2 "Special Parameters"
+   */
+  def internalVariable: Parser[BashCode] = (
+      literal("$*") |
+      literal("$@") |
+      literal("$#") |
+      literal("$?") | 
+      literal("$-") |      
+      literal("$$") |
+      literal("$!") |
+      literal("$0") |      
+      literal("$_") |
+      regex("""\$[1-9][0-9]*""".r)
+    ) ^^ {
     case x => new BashCode(x)
   }
 
@@ -177,9 +192,13 @@ object BashGrammar {
     case open ~ content ~ close => new BashCode(open + content + close)
   }
 
-  def variable: Parser[BashCode] = (literal("$") ~ opt(literal("{")) ~ variableName ~ opt(literal("}"))) ^^ {
-    case dollar ~ None ~ name ~ None => new BashCode(dollar + name, Set(name))
-    case dollar ~ Some(open) ~ name ~ Some(close) => new BashCode(dollar + open + name + close, Set(name))
+  def variable: Parser[BashCode] = {
+    (literal("$") ~ variableName) |
+    (literal("$") ~ literal("{") ~ variableName ~ literal("}")) |
+    (literal("$") ~ literal("{") ~ variableName ~ err("Missing closing } in bash variable reference"))
+  } ^^ {
+    case (dollar:String) ~ (name:String) => new BashCode(dollar + name, Set(name))
+    case (dollar:String) ~ (open:String) ~ (name:String) ~ (close:String) => new BashCode(dollar + open + name + close, Set(name))
   }
 
   def variableName: Parser[String] = regex("[A-Za-z_][A-Za-z0-9_]*".r)

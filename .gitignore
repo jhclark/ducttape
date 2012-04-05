@@ -15,3 +15,5 @@ scaladoc
 project/boot
 target/
 dist/
+lib/scala-library.jar
+syntax/tutorial/[0-9]*-*/[0-9]-[a-zA-Z]*/

@@ -672,13 +672,13 @@ object Grammar {
   }
   
   val funcHeader: Parser[TaskHeader] = {
-    repsep(funcSpec,regex("""[ \n\r\t]+""".r))
+    repsep(funcSpec,regex("""[ \n\r\t]+""".r)) <~ commentableWhitespace
   } ^^ {
     case (specs: List[Specs]) => new TaskHeader(specs) 
   }
   
   val taskHeader: Parser[TaskHeader] = {
-    repsep(taskSpec,regex("""[ \n\r\t]+""".r))
+    repsep(taskSpec,regex("""[ \n\r\t]+""".r)) <~ commentableWhitespace
   } ^^ {
     case (specs: List[Specs]) => new TaskHeader(specs) 
   }
