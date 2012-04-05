@@ -187,9 +187,13 @@ object BashGrammar {
     case open ~ content ~ close => new BashCode(open + content + close)
   }
 
-  def variable: Parser[BashCode] = (literal("$") ~ opt(literal("{")) ~ variableName ~ opt(literal("}"))) ^^ {
-    case dollar ~ None ~ name ~ None => new BashCode(dollar + name, Set(name))
-    case dollar ~ Some(open) ~ name ~ Some(close) => new BashCode(dollar + open + name + close, Set(name))
+  def variable: Parser[BashCode] = {
+    (literal("$") ~ variableName) |
+    (literal("$") ~ literal("{") ~ variableName ~ literal("}")) |
+    (literal("$") ~ literal("{") ~ variableName ~ err("Missing closing } in bash variable reference"))
+  } ^^ {
+    case (dollar:String) ~ (name:String) => new BashCode(dollar + name, Set(name))
+    case (dollar:String) ~ (open:String) ~ (name:String) ~ (close:String) => new BashCode(dollar + open + name + close, Set(name))
   }
 
   def variableName: Parser[String] = regex("[A-Za-z_][A-Za-z0-9_]*".r)
