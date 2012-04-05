@@ -1,0 +1,34 @@
+<project default="doc">
+
+	<property environment="env" />
+	<property name="scala.home" value="${env.SCALA_HOME}" /> 
+
+	<property name="doc.dir" value="scaladoc" />
+	<property name="src.dir" value="src/main/scala"      />
+
+	<taskdef name="scaladoc" classname="scala.tools.ant.Scaladoc">
+		<classpath>
+			<pathelement location="${scala.home}/lib/scala-compiler.jar" />
+			<pathelement location="${scala.home}/lib/scala-library.jar"  />
+		</classpath>
+	</taskdef>
+
+	<target name="doc">
+		<mkdir dir="${doc.dir}" />
+		<scaladoc
+			srcdir ="${src.dir}"
+			destdir="${doc.dir}">
+		
+			<classpath>
+				<pathelement location="lib/scala-library.jar" />
+				<pathelement location="lib/scala-optparse-1.1.jar" />
+				<pathelement location="lib/scalatest-1.6.1.jar" />
+				<pathelement location="lib/junit-4.10.jar" />
+				<pathelement location="lib/commons-lang3-3.1.jar" />
+				<pathelement location="lib/webui/servlet-api-3.0.jar" />
+				<pathelement location="lib/webui/jetty-all-8.0.4.v20111024.jar" />
+			</classpath>		
+		</scaladoc>
+	</target>
+
+</project>
