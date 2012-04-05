@@ -17,8 +17,10 @@
 		<mkdir dir="${doc.dir}" />
 		<scaladoc
 			srcdir ="${src.dir}"
-			destdir="${doc.dir}">
-		
+			destdir="${doc.dir}"
+			doctitle="Ducttape">
+      <!-- Could also add attribute docversion="0.2"  -->
+			
 			<classpath>
 				<pathelement location="lib/scala-library.jar" />
 				<pathelement location="lib/scala-optparse-1.1.jar" />
