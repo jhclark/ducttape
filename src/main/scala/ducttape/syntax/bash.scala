@@ -152,11 +152,16 @@ object BashGrammar {
 
   // named variables $hi and ${hi}, builtin variable $$ or $? or $!, command substitution $(echo), etc.
   // NOTE: String manipulation must be matched *after* variable
-  def variableLike: Parser[BashCode] = internalVariable | commandSub | variable | stringManipulation
+  def variableLike: Parser[BashCode] = dollarOnly | internalVariable | commandSub | variable | stringManipulation
 
   // command substitution: $(echo)
   def commandSub: Parser[BashCode] = (literal("$(") ~ bashBlock ~ literal(")")) ^^ {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
+  }
+  
+  // allow "echo $" or "echo $ cat" or "echo $;" to mean a literal dollar
+  def dollarOnly: Parser[BashCode] = regex("""\$[ \t\r\n]+""".r) ^^ {
+    case x => new BashCode(x)
   }
 
   /* see http://tldp.org/LDP/abs/html/internalvariables.html
