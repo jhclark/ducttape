@@ -17,7 +17,8 @@ class TaskHeaderTest extends AbstractTest("task header",Grammar.taskHeader) {
 //    "[build_model] < in=$out@tokenize[DataSet:train] > model",
 //    "[optimize] < in=$out@tokenize[DataSet:tune] > weights",
 //    "[test] < in=$out@tokenize[DataSet:test] > hyps"
-    "",      
+    "",     
+    " ",
     "> x y_txt",
     "< a=/etc/passwd b=/etc/hosts",
     "> x",
@@ -369,7 +370,7 @@ class TaskHeaderTest extends AbstractTest("task header",Grammar.taskHeader) {
   ) 
   
   def failureCases = Set(
-    " ",     
+//    " ",     
     "A-variable_Name__",    
     ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ :",
     ":: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_     :",
