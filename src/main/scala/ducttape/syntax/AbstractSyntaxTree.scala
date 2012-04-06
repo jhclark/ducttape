@@ -162,7 +162,7 @@ object AbstractSyntaxTree {
       n
     }
     
-    override def hashCode() = name.hashCode
+    override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
     override def toString() = name
   }
@@ -189,7 +189,7 @@ object AbstractSyntaxTree {
     override def toString() = {
       name match {
         case None => "GLOBAL"
-        case Some(s:String) => s
+        case Some(s: String) => s
       }
     }
   }
@@ -205,13 +205,15 @@ object AbstractSyntaxTree {
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def toString() = name match {
       case None => "GLOBAL"
-      case Some(s:String) => s
+      case Some(s: String) => s
     }
   }
   
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val file: File, val blocks: Seq[Block]) extends ASTType {
-    lazy val taskDefs: Seq[TaskDef] = blocks.filter(_.isInstanceOf[TaskDef]).map(_.asInstanceOf[TaskDef])
+    lazy val plans: Seq[PlanDefinition] = blocks.collect{case x: PlanDefinition => x}
+    
+    private lazy val taskDefs: Seq[TaskDef] = blocks.collect{case x: TaskDef => x}
     lazy val tasks: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "task"}
     lazy val packages: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "package"}
     

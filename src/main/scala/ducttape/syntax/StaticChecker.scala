@@ -5,6 +5,9 @@ import ducttape.Config
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.syntax.AbstractSyntaxTree.Literal
+import ducttape.syntax.AbstractSyntaxTree.PlanDefinition
+import ducttape.syntax.AbstractSyntaxTree.CrossProduct
+import ducttape.syntax.AbstractSyntaxTree.BranchPointRef
 
 object ErrorBehavior extends Enumeration {
   type ErrorBehavior = Value
@@ -22,11 +25,12 @@ class StaticChecker(conf: Config,
   def check(wd: WorkflowDefinition): (Seq[String], Seq[String]) = {
     val warnings = new mutable.ArrayBuffer[String]
     val errors = new mutable.ArrayBuffer[String]
-    for(task <- wd.tasks) {
+    for(task: TaskDef <- wd.tasks) {
       val (w, e) = check(task)
       warnings ++= w
       errors ++= e
     }
+    
     (warnings, errors)
   }
   

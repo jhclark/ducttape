@@ -15,6 +15,7 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
   // TODO: Multimap (just use typedef?)
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
                       val packageDefs: Map[String,PackageDef],
+                      val plans: Seq[RealizationPlan],
                       val branchPointFactory: BranchPointFactory,
                       val branchFactory: BranchFactory) {
 
