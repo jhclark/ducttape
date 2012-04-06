@@ -10,7 +10,7 @@ You can also define inside your config the value "ducttape.dest_dir=/my/director
 Packages
 ========
 
-Packages get built in $DEST/ducttape.packages/$PACKAGE_NAME/$VERSION
+Packages get built in $DEST/ducttape.packages/$PACKAGE_NAME/$PACKAGE_VERSION
 
 The Attic
 =========
