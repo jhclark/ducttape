@@ -145,10 +145,10 @@ object AbstractSyntaxTree {
                 val header: TaskHeader, 
                 val commands: BashCode) extends Block {
 
-    lazy val packageSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskPackageNames] }
-    lazy val inputSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskInputs] }
-    lazy val outputSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskOutputs] }
-    lazy val paramSpecList: Seq[Specs] = header.specsList.filter{ specs: Specs => specs.isInstanceOf[TaskParams] }
+    lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
+    lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
+    lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
+    lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
     lazy val packages: Seq[Spec] = packageSpecList.flatMap{_.specs}
