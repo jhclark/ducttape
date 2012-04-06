@@ -183,7 +183,8 @@ object AbstractSyntaxTree {
     override def toString() = name
   }
   
-  class ConfigDefinition(val comments: Comments,
+  class ConfigDefinition(val keyword: String,
+                         val comments: Comments,
                          val name: Option[String],
                          val lines: Seq[ConfigAssignment]) extends Block {
     override def toString() = {

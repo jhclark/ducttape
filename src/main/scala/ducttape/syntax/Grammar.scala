@@ -55,6 +55,8 @@ object Grammar {
     val reach: Parser[String] = keyword("reach")
     val via: Parser[String] = keyword("via")
     val plan: Parser[String] = keyword("plan")
+    val global: Parser[String] = keyword("global")
+
   }
   
   /** One line of comments */
@@ -857,24 +859,24 @@ object Grammar {
       new PlanDefinition(comments, name, lines)
   })  
   
-  val configBlock: Parser[ConfigDefinition] = positioned({
+  def configLikeBlock(keyword:Parser[String], blockType:String): Parser[ConfigDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
     (
-        Keyword.config ~>
-        opt(name("config", """\s""".r, failure(_), err(_)) <~ space) 
+        keyword ~>
+        opt(name(blockType, """\s""".r, failure(_), err(_)) <~ space) 
     ) ~ 
     (
         (
             opt(whitespace) ~
             (
                 literal("{") |
-                err("Missing opening { brace for config variable block.")
+                err("Missing opening { brace for "+blockType+" variable block.")
             ) ~
             opt(space) ~
             (
                 eol |
-                err("Config lines may not start on the same line as the opening { brace.")
+                err("Lines in a "+blockType+" block may not start on the same line as the opening { brace.")
             )
         ) ~> 
         configLines <~
@@ -884,16 +886,19 @@ object Grammar {
                 literal("}") ~ 
                 (
                     opt(space) ~
-                    (eol | err("Non-whitespace character found following closing } brace for config variable block."))
+                    (eol | err("Non-whitespace character found following closing } brace for "+blockType+" variable block."))
                 ) |                
-                err("Missing closing } brace for config variable block.")
+                err("Missing closing } brace for "+blockType+" variable block.")
             )
         )
     ) 
   } ^^ {
     case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[ConfigAssignment]) => 
-      new ConfigDefinition(comments,name,lines)
+      new ConfigDefinition(blockType,comments,name,lines)
   })  
+  
+  val configBlock = configLikeBlock(Keyword.config,"config")
+  val globalBlock = configLikeBlock(Keyword.global,"global")
   
   val childBlock: Parser[Block] = {
     taskBlock | callBlock | funcBlock | summaryBlock | branchpointBlock | groupBlock
@@ -912,6 +917,7 @@ object Grammar {
     packageBlock          | 
     branchpointChildBlock | 
     configBlock           |
+    globalBlock           |
     planBlock
   }
     
