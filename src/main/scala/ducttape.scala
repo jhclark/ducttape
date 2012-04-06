@@ -42,6 +42,27 @@ package ducttape {
 
     var greenColor = Console.GREEN
     var redColor = Console.RED
+    
+    // TODO: Enum?
+    def clearColors() {
+      headerColor = ""
+      byColor = ""
+      taskColor = ""
+      warnColor = ""
+      errorColor = ""
+      resetColor = ""
+  
+      modeColor = ""
+  
+      errorLineColor = ""
+      errorScriptColor = ""
+  
+      taskNameColor = ""
+      realNameColor = ""
+  
+      greenColor = ""
+      redColor = ""
+    }
   }
   
   object ProcessInfo {
@@ -71,7 +92,8 @@ object Ducttape {
     val plan = StrOpt(desc="Plan file to read")
     val config = StrOpt(desc="Workflow configuration file to read")
     val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
-
+    val no_color = BoolOpt(desc="Don't colorize output")
+    
     val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
     val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
     val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
@@ -139,11 +161,14 @@ object Ducttape {
 
   def main(args: Array[String]) {
     val conf = new Config
+    val opts = new Opts(conf, args)
+    if(opts.no_color) {
+      conf.clearColors()
+    }
+    
     err.println("%sDuctTape v0.1".format(conf.headerColor))
     err.println("%sBy Jonathan Clark".format(conf.byColor))
     err.println(Console.RESET)
-
-    val opts = new Opts(conf, args)
 
     // format exceptions as nice error messages
     def ex2err[T](func: => T): T = {
