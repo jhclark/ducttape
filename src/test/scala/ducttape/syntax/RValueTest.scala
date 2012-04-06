@@ -40,11 +40,17 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     "$A_variable_Name__@foo",
     "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_@barBar",
     "$abc@def",
+    "${A_variable_Name__}@foo",
+    "${ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_}@barBar",
+    "${abc}@def",
       
     // Variable reference
     "$A_variable_Name__",
     "$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "$abc",
+    "${A_variable_Name__}",
+    "${ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_}",
+    "${abc}",
     
     // Unquoted literal
     "A_variable_Name__",
