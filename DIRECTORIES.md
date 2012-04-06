@@ -42,10 +42,6 @@ For the "flat" structure, this makes the $TASK directory: $DEST/$CONF_NAME/$TASK
 
 For the "hyper" structure, this makes the $TASK directory: $DEST/$CONF_NAME/$TASK_NAME/$REALIZATION_NAME
 
-For example, if we have a "config experimentA {}"... 
-
-Development note: to allow the anonymous config to output tasks directly in $BASE, the config assignments in an anonymous config must be specific to the anonymous config, not part of a global namespace. Do we now need a global config to handle this? Or do we disallow hierarchical namespaces like that altogether? Or do we allow both of "config {}" and "config _ {}" or some other string mashing?
-
 Transitioning from "Flat" to "Hyper"
 ====================================
 
