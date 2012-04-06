@@ -254,11 +254,41 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
      
     // organize packages
     val packageDefs = wd.packages.map{p => (p.name, p)}.toMap
+    val plans: Seq[RealizationPlan] = buildPlans(wd.plans)
 
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build, packageDefs, branchPointFactory, branchFactory)
+    new HyperWorkflow(dag.build, packageDefs, plans, branchPointFactory, branchFactory)
+  }
+   
+  def buildPlans(planDefs: Seq[PlanDefinition]): Seq[RealizationPlan] = {
+    val result = new mutable.ArrayBuffer[RealizationPlan]
+    
+    for(planDef: PlanDefinition <- planDefs) {
+      for(cross: CrossProduct <- planDef.crossProducts) {
+        val realizations = new mutable.HashMap[BranchPoint, Set[Branch]]
+        for(ref: BranchPointRef <- cross.value) {
+          try {
+            val branchPoint: BranchPoint = branchPointFactory(ref.name)
+            val branches: Set[Branch] = ref.branchNames.map(name => branchFactory(name, branchPoint)).toSet
+            realizations += branchPoint -> branches
+          } catch {
+            // TODO: Move to err2exception?
+            case e: NoSuchBranchPointException => {
+              Console.err.println("ERROR: No such branch point: %s".format(e.msg))
+              sys.exit(1)
+            }
+            case e: NoSuchBranchException => {
+              Console.err.println("ERROR: No such branch: %s".format(e.msg))
+              sys.exit(1)
+            }
+          }
+        }
+        result += new RealizationPlan(planDef.name, cross.goals, realizations)
+      }
+    }
+    result
   }
    
    // define branch resolution as a function that takes some callback functions

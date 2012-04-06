@@ -88,9 +88,9 @@ object Ducttape {
     // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
     val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
     }
-    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=1)
-    val plan = StrOpt(desc="Plan file to read")
-    val config = StrOpt(desc="Workflow configuration file to read")
+    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=Integer.MAX_VALUE)
+    val config_file = StrOpt(desc="Workflow configuration file to read", short='C')
+    val config = StrOpt(desc="Workflow configuration to run", short='c', invalidWith=config_file)
     val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
     val no_color = BoolOpt(desc="Don't colorize output")
     
@@ -223,17 +223,6 @@ object Ducttape {
     
     val builder = new WorkflowBuilder(wd, confSpecs)
     val workflow: HyperWorkflow = ex2err(builder.build())
-
-    // TODO: Not always exec...
-    // TODO: Check against hyperworkflow to make sure we didn't name any
-    // undefined branches or branch points
-    val plans: Seq[RealizationPlan] = opts.plan.value match {
-      case Some(planFile) => {
-        err.println("Reading plan file: %s".format(planFile))
-        RealizationPlan.read(planFile, workflow.branchPointFactory, workflow.branchFactory)
-      }
-      case None => Nil
-    }
     
     // TODO: Check that all input files exist
     val dirs = {
@@ -277,7 +266,7 @@ object Ducttape {
     // so we need to make a second reverse pass on the unpacked DAG
     // to make sure all of the vertices contribute to a goal vertex
     val initVersioner = new MostRecentWorkflowVersioner(dirs)
-    val plannedVertices: Set[(String,Realization)] = plans match {
+    val plannedVertices: Set[(String,Realization)] = workflow.plans match {
       case Nil => {
         err.println("Using default one-off realization plan")
         Set.empty
@@ -304,7 +293,7 @@ object Ducttape {
         }
         
         val vertexFilter = new mutable.HashSet[(String,Realization)]
-        for(plan: RealizationPlan <- plans) {
+        for(plan: RealizationPlan <- workflow.plans) {
           err.println("Finding vertices for plan: %s".format(plan.name))
           
           val candidates = getCandidates(plan.realizations)
