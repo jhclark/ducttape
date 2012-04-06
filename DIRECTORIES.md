@@ -15,7 +15,7 @@ Packages get built in $DEST/ducttape.packages/$PACKAGE_NAME/$PACKAGE_VERSION
 The Attic
 =========
 
-Partial output or invalidated output from previous runs gets moved to $DEST/ducttape.attic/$TASK_NAME/$REALIZATON_NAME/$VERSION. This may help prevent accidental deletion of data and can help diagnose issues if tasks fail repeatedly.
+Partial output or invalidated output from previous runs gets moved to $DEST/ducttape.attic/$TASK_NAME/$REALIZATON_NAME/$WORKFLOW_VERSION. This may help prevent accidental deletion of data and can help diagnose issues if tasks fail repeatedly. The workflow version is incremented every time the workflow is executed.
 
 "Flat" Structure
 ================
