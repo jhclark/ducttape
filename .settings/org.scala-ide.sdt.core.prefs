@@ -1,4 +1,4 @@
-#Wed Mar 07 13:05:37 EST 2012
+#Thu Apr 05 22:12:29 EDT 2012
 Xcheck-null=false
 Xcheckinit=false
 Xdisable-assertions=false
@@ -22,7 +22,7 @@ Ystruct-dispatch=poly-cache
 Ywarn-dead-code=false
 buildmanager=sbt
 compileorder=Mixed
-deprecation=false
+deprecation=true
 eclipse.preferences.version=1
 explaintypes=false
 formatter.alignParameters=false
@@ -50,7 +50,7 @@ g=vars
 no-specialization=false
 nowarn=false
 optimise=false
-scala.compiler.useProjectSettings=false
+scala.compiler.useProjectSettings=true
 syntaxColouring.bracket.bold=false
 syntaxColouring.bracket.colour=0,0,0
 syntaxColouring.bracket.italic=false
@@ -122,5 +122,5 @@ syntaxColouring.xml.tagName.italic=false
 syntaxColouring.xml.tagName.strikethrough=false
 syntaxColouring.xml.tagName.underline=false
 target=jvm-1.5
-unchecked=false
+unchecked=true
 verbose=false
