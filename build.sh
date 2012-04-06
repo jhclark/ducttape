@@ -18,7 +18,7 @@ echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
 find $scriptDir/src/main/scala $scriptDir/src/test/scala \
   | egrep '\.scala$' \
-  | xargs fsc -deprecation -cp $libs  \
+  | xargs fsc -deprecation -unchecked -cp $libs  \
     -d $scriptDir/bin/ \
   | $scriptDir/color_scalac.awk
 
