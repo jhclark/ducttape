@@ -214,6 +214,10 @@ object AbstractSyntaxTree {
   class WorkflowDefinition(val file: File, val blocks: Seq[Block]) extends ASTType {
     lazy val plans: Seq[PlanDefinition] = blocks.collect{case x: PlanDefinition => x}
     
+    private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect{case x: ConfigDefinition => x}
+    lazy val configs: Seq[ConfigDefinition] = configLikes.filter{t: ConfigDefinition => t.keyword == "config"}
+    lazy val globals: Seq[ConfigAssignment] = configLikes.filter{t: ConfigDefinition => t.keyword == "global"}.flatMap{ _.lines}
+    
     private lazy val taskDefs: Seq[TaskDef] = blocks.collect{case x: TaskDef => x}
     lazy val tasks: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "task"}
     lazy val packages: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "package"}

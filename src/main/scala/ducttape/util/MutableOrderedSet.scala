@@ -1,6 +1,4 @@
-package ducttape.ccollection
-
-trait OrderedSet[A] extends scala.collection.Set[A];
+package ducttape.util
 
 class MutableOrderedSet[A] extends OrderedSet[A] with scala.collection.mutable.Set[A] {
   protected val order = new scala.collection.mutable.ArrayBuffer[A]

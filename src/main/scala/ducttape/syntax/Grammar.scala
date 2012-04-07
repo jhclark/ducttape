@@ -768,11 +768,11 @@ object Grammar {
         taskHeader
     ) <~ (eol | err("Missing newline"))
   } ^^ {
-    case (comments:Comments) ~ (name:String) ~ (functionName:String) ~ (header:TaskHeader) => 
+    case (comments: Comments) ~ (name: String) ~ (functionName: String) ~ (header: TaskHeader) => 
       new CallDefinition(comments,name,header,functionName)    
   })
   
-  def groupLikeBlock(keyword:Parser[String], blockType:String, header:Parser[TaskHeader], childBlock:Parser[Block]): Parser[GroupDefinition] = positioned({
+  def groupLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader], childBlock: Parser[Block]): Parser[GroupDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -810,7 +810,7 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:String) ~ (header:TaskHeader) ~ (blocks:Seq[Block]) => 
+    case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (blocks: Seq[Block]) => 
       new GroupDefinition(comments,blockType,name,header,blocks)
   })
 
@@ -859,7 +859,7 @@ object Grammar {
       new PlanDefinition(comments, name, lines)
   })  
   
-  def configLikeBlock(keyword:Parser[String], blockType:String): Parser[ConfigDefinition] = positioned({
+  def configLikeBlock(keyword: Parser[String], blockType: String): Parser[ConfigDefinition] = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -893,7 +893,7 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments:Comments) ~ (name:Option[String]) ~ (lines:Seq[ConfigAssignment]) => 
+    case (comments: Comments) ~ (name: Option[String]) ~ (lines:Seq[ConfigAssignment]) => 
       new ConfigDefinition(blockType,comments,name,lines)
   })  
   

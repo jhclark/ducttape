@@ -3,7 +3,6 @@ import collection._
 import java.io.File
 import java.util.concurrent.ExecutionException
 import ducttape._
-import ducttape.hyperdag._
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
@@ -11,16 +10,24 @@ import ducttape.exec.PackageBuilder
 import ducttape.exec.PackageFinder
 import ducttape.exec.TaskEnvironment
 import ducttape.exec.UnpackedDagVisitor
+import ducttape.exec.DirectoryArchitect
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
-import ducttape.workflow._
-import ducttape.workflow.Types._
-import ducttape.util._
-import ducttape.versioner._
-import ducttape.ccollection._
-import ducttape.exec.DirectoryArchitect
 import ducttape.syntax.StaticChecker
 import ducttape.syntax.ErrorBehavior._
+import ducttape.versioner._
+import ducttape.workflow.WorkflowBuilder
+import ducttape.workflow.HyperWorkflow
+import ducttape.workflow.Realization
+import ducttape.workflow.TaskTemplate
+import ducttape.workflow.RealTask
+import ducttape.workflow.BranchPoint
+import ducttape.workflow.Branch
+import ducttape.workflow.RealizationPlan
+import ducttape.workflow.Types._
+import ducttape.util.Files
+import ducttape.util.OrderedSet
+import ducttape.util.MutableOrderedSet
 
 package ducttape {
   class Config {
@@ -88,9 +95,9 @@ object Ducttape {
     // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
     val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
     }
-    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=Integer.MAX_VALUE)
-    val config_file = StrOpt(desc="Workflow configuration file to read", short='C')
-    val config = StrOpt(desc="Workflow configuration to run", short='c', invalidWith=config_file)
+    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=1)
+    val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
+    val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
     val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
     val no_color = BoolOpt(desc="Don't colorize output")
     
@@ -198,16 +205,29 @@ object Ducttape {
 
     // make these messages optional with verbosity levels?
     //println("Reading workflow from %s".format(file.getAbsolutePath))
-    val confSpecs: Seq[ConfigAssignment] = opts.config.value match {
+    val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
+    val confSpecs: Seq[ConfigAssignment] = ex2err(opts.config_file.value match {
       case Some(confFile) => {
         err.println("Reading workflow configuration: %s".format(confFile))
-        ex2err(GrammarParser.readConfig(new File(confFile)))
+        GrammarParser.readConfig(new File(confFile))
       }
-      case None => Nil
-    }
-    val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
-    //println("Building workflow...")
-
+      case None => opts.config_name.value match {
+        case Some(confName) => {
+          wd.configs.find{ case c: ConfigDefinition => c.name == Some(confName) } match {
+            case Some(x) => x.lines
+            case None => throw new RuntimeException("Configuration not found: %s".format(confName))
+          }
+        }
+        case None => {
+          // use anonymous config, if provided
+          wd.configs.find{ case c: ConfigDefinition => c.name == None } match {
+            case Some(x) => x.lines
+            case None => Nil
+          }
+        }
+      }
+    }) ++ wd.globals
+    
     val checker = new StaticChecker(conf, undeclaredBehavior=Warn, unusedBehavior=Warn)
     val (warnings, errors) = checker.check(wd)
     for(msg <- warnings) {
@@ -220,18 +240,17 @@ object Ducttape {
       System.exit(1)
     }
     
-    
     val builder = new WorkflowBuilder(wd, confSpecs)
     val workflow: HyperWorkflow = ex2err(builder.build())
     
     // TODO: Check that all input files exist
     val dirs = {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
-      val confBaseDir = opts.config.value match {
+      val confBaseDir = opts.config_file.value match {
         case Some(confFile) => new File(workflowBaseDir, Files.basename(confFile, ".conf"))
-        case None => {
-          System.err.println("No configuration specified. Using the workflow name as base directory.")
-          new File(workflowBaseDir, Files.basename(opts.workflowFile.getName, ".tape"))
+        case None => opts.config_name.value match {
+          case Some(confName) => new File(workflowBaseDir, confName)
+          case None => workflowBaseDir
         }
       }
       new DirectoryArchitect(workflowBaseDir, confBaseDir)
@@ -253,6 +272,7 @@ object Ducttape {
                  versions: WorkflowVersioner,
                  plannedVertices: Set[(String,Realization)],
                  numCores: Int = 1) {
+      
       workflow.unpackedWalker(plannedVertices=plannedVertices).foreach(numCores, { v: UnpackedWorkVert => {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v, versions)

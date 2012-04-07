@@ -7,6 +7,8 @@ import collection._
 import ducttape.Config
 import ducttape.workflow.Realization
 import ducttape.util.Files
+import ducttape.util.OrderedSet
+import ducttape.util.MutableOrderedSet
 import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.RealTask
 
@@ -64,7 +66,6 @@ class CompletionChecker(conf: Config,
                         initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
-  import ducttape.ccollection._
   private val complete = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
   private val partialOutput = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
   private val invalid = new MutableOrderedSet[(String,Realization)] // invalidated by user (whether complete or not)
