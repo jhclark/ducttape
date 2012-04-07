@@ -1,3 +1,14 @@
+April
+=====
+
+* Discuss how directories get their names (baseline is first; sorted by branch point name)
+* implicit naming
+* discuss how workflow versioning affects directory structure
+* Implement bash code versioning
+* Implement md5 hashing of input files
+
+* Make sure that no directory names will ever collide (e.g. flat vs hyper)
+
 Basics
 ======
 
