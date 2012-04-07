@@ -10,6 +10,8 @@ Updates
 
 To keep updated on the latest versions of ducttape, subscribe to our low-traffic announcement mailing list: https://groups.google.com/group/ducttape-announce
 
+To keep updated on bleeding edge development of ducttape, subscribe to our higher traffic commits mailing list: https://groups.google.com/group/ducttape-commits
+
 Building
 ========
 
