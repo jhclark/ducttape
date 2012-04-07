@@ -17,3 +17,8 @@ Console
 =======
 
 If you wish to develop from the command line, you should use either the emacs or vi syntax highlighting mode that is distributed with Scala.
+
+Scala Style
+===========
+
+We recommend reading this guide as a starting place for Scala stype: http://davetron5000.github.com/scala-style/
