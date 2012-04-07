@@ -1,18 +1,15 @@
 import System._
 import collection._
-
 import java.io.File
-
 import ducttape._
-import ducttape.environment._
 import ducttape.hyperdag._
-import ducttape.Types._
+import ducttape.exec._
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.workflow._
+import ducttape.workflow.Types._
 import ducttape.util._
 import ducttape.versioner._
-
 import ducttape.ccollection._
 
 package ducttape {
@@ -53,7 +50,7 @@ object Ducttape {
     def unapply(name: String) = if(name == this.name) Some(name) else None
   }
 
-  class Opts(conf: Config, args: Array[String]) extends OptParse {
+  class Opts(conf: Config, args: Seq[String]) extends OptParse {
     //override val optParseDebug = true
 
     // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
@@ -89,8 +86,10 @@ object Ducttape {
     // TODO: Can we define help as an option?
     // TODO: Rewrite arg parsing as a custom module?
     override def help {
-      err.println("Usage: ducttape workflow.tape [mode] [taskName [realizationNames...]] [--options]")
+      err.println("Usage: ducttape workflow.tape [--options] [mode [taskName [realizationNames...]]]")
       err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
+      super.help
+
       for(mode <- modes) {
         // TODO: Change visibility of init to protected instead of this hack...
         mode.parse(Array())
@@ -107,21 +106,22 @@ object Ducttape {
       exit(msg, code)
     }
 
-    val leftoversOpt = defaultOpt(MultiStrOpt())
-    parse(args)
-    val posArgs = leftoversOpt.getOrElse(Nil)
-    if(posArgs.size == 0) {
+    if(args.isEmpty || args(0).startsWith("-")) {
       exitHelp("Workflow file is required", 1)
     }
+
+    _workflowFile = new File(args(0))
+
+    private val leftoversOpt = defaultOpt(MultiStrOpt())
+    parse(args.drop(1).toArray) // skip workflow file
+    private val posArgs = leftoversOpt.getOrElse(Nil)
     // TODO: More general positional args parsing
     if(posArgs.size >= 1)
-      _workflowFile = new File(posArgs(0))
+      _mode = posArgs(0)
     if(posArgs.size >= 2)
-      _mode = posArgs(1)
+      _taskName = Some(posArgs(1))
     if(posArgs.size >= 3)
-      _taskName = Some(posArgs(2))
-    if(posArgs.size >= 4)
-      _realNames = posArgs.drop(3)
+      _realNames = posArgs.drop(2)
   }
 
   def main(args: Array[String]) {

@@ -5,8 +5,12 @@
 # * The environment variables x and y_txt will be set by
 #   ducttape before calling bash
 # * Note that bash disallows variables containing .
-[hello-world-2] > x y_txt {
+task hello-world-2 > x y_txt {
   echo writing files $x and $y...
   echo hello > $x
   echo world > $y_txt
+}
+
+task named_output < x > named=x.gz {
+  cat $x | gzip > $named
 }

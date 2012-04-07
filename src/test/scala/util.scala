@@ -1,5 +1,4 @@
 import ducttape.syntax.AbstractSyntaxTree._
-import ducttape.syntax.Grammar._
 import ducttape.syntax.GrammarParser._
 import org.scalatest.Assertions
 import scala.util.parsing.combinator.Parsers

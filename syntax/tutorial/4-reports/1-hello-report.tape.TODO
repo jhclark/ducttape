@@ -12,14 +12,42 @@
 
 # what about a simple step with only a report?  
 # TODO: Do we need a special marker on the task name so that we expect nested elements?
-[TaskGroup1.SomeTask] < a > x {
-  +code { # This is a bit odd...
-    cat $a > $x
-  }
-  +report [reportA] >> FileSize {
-    echo "FileSize=$(du -sh $x)"
-  }
-  +status >> LinesCompleted {
-   echo "LinesCompleted=$(wc -l < $x)"
+task some_task < a > x {
+  cat $a > $x
+}
+
+summary sizes {
+   using some_task > FileSize {
+    du -sh $x > $FileSize
   }
 }
+
+summary status {
+  using some_task > LinesCompleted {
+   wc -l < $x > $LinesCompleted
+  }
+}
+
+
+
+task mert: cdec < f e > weights {
+  ssd=/scratch/$USER/$PBS_JOBID
+  cp $f $ssd/f
+  cp $e $ssd/e
+  cd $ssd
+  $cdec/dpmert/dist-dpmert.pl $ssd/f $ssd/e $weights
+  # Copy logs back at end of job...
+}
+
+# Scenario: You'd like to see in-progress tuning scores,
+# but your job is running on a remote machine's local SSD
+summary mert_ssd {
+  using mert > DevScore {
+    # The following code gets run on the machine the job is executing on (by ducttape magic)
+    # And it has all of the same environment variables that the task does
+    # ...but it starts out in the default working directory, not the SSD
+    cd /scratch/$USER/$PBS_JOBID
+    ls -t run.raw.*.gz | head -n1 | xargs fast_score -m ibm_bleu -r ref1 -r ref2 > $DevScore
+  }
+}
+

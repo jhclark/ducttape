@@ -1,3 +1,5 @@
+#!/usr/bin/env ducttape
+
 # 1) Running a single command
 #
 # Syntax:
@@ -14,7 +16,7 @@
 # * To have ducttape write a bash script that runs this step to
 #      ./hello-world/baseline/commands.sh, use:
 #   $ ducttape --dry-run --write-scripts basic.tape
-[hello-world] {
+task hello_world {
   echo hi
   echo >&2 hello
 }
