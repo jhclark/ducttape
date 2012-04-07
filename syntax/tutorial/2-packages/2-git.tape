@@ -4,14 +4,14 @@
 # * To reproduce a workflow, you need to know what version of
 #   the software you ran
 # * in, out, and N are shown only to illustrate syntax
-task param_step : codeheap < in=/etc/passwd > out :: N=5 {
-  ls | $codeheap/do_stuff | tee $out
+task lunchtime : lunchpy {
+  $lunchpy/lunch.py Indian Mexican Italian
 }
 
 # * Build commands are only called when versioner indicates a new version
-package codeheap :: .versioner=git .url=/home/codeheap_git_repo {
-  # We don't actually need to do this for python code,
-  # but for the sake of example...
+package lunchpy :: .versioner=git .url="https://github.com/mjdenkowski/lunchpy.git" {
+  # We don't actually need to compile anything for python code,
+  # but for the sake of example we'll make this program run a bit faster
   python -m compileall .
 }
 
