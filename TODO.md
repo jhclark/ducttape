@@ -8,6 +8,13 @@ Basics
 * Kill renegate jobs launched to the scheduler? We should really detect whether or not to resume...
 * Throw an error if all definitions of the same branch point don"t contain the same branch names
 
+* Allow using inputs as variables without implying temporal ordering
+* Why don't unbound inputs fail on workflow compilation?
+* Throw error on relative paths in config file? Or resolve them. Right now, they silently cause terrible things to happen
+* Define semantics of recursive config variables
+* Throw proper errors for poorly formed config variables
+* What do we do about branch points that refer to config variables that have branch points?
+
 Submitters
 ==========
 
