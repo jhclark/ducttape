@@ -3,17 +3,57 @@
 #   and contains the "payload" of this task
 # * This assumes that scheduler submission happens asynchronously
 #   and that we must poll the scheduler to learn when the job has completed
-submitter sge :: cmds vmem walltime {
+submitter sge :: cpus vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
+              :: COMMANDS /* the bash commands from some task */
+              :: TASK REALIZATON CONFIGURATION /* variables passed by ducttape */ {
+  # TODO: We're still missing a few variables that typically get passed in.
+  # SGE: echo "#$-l vmem=$vmem" >> $wrapper
+  # SGE:  echo "#-l walltime=$walltime" >> $wrapper
   action wrap > wrapper {
-    #$-l vmem=$vmem
-    #$-l walltime=$walltime
-    $cmds
+    echo "#PBS -S /bin/bash" >> $wrapper
+    echo "#PBS -q $q" >> $wrapper
+    echo "#PBS -l nodes=1:ppn=$cpus" >> $wrapper
+    echo "#PBS -l walltime=$walltime" >> $wrapper
+    echo "#PBS -j oe" >> $wrapper
+    echo "#PBS -o localhost:$PWD/job.out" >> $wrapper
+    echo "#PBS -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
+
+    # Bash flags aren't necessarily passed into the scheduler
+    # so we must re-initialize them
+    echo "set -e # stop on errors" >> $wrapper
+    echo "set -o pipefail # stop on pipeline errors" >> $wrapper
+    echo "set -u # stop on undeclared variables" >> $wrapper
+    echo "set -x # show each command as it is executed" >> $wrapper
+
+    # The current working directory will also be changed by most schedulers
+    echo "cd $PWD/work" >> $wrapper
+
+    echo "$COMMANDS" >> $wrapper
   }
-  action run < wrapper > id {
-    qsub $wrapper > $id
+  action run < wrapper > jobid {
+    qsub $wrapper > $jobid
   }
-  action poll > done exit_code {
-    TODO # insert the lengthy script needed to properly get the exit code here
+  action poll < jobid > done exit_code {
+   # Note: This is complicated by having to poll rather than being able to just use SGE's -sync
+   jobid=$(echo $jobid | cut -d. -f1) # Remove server name, if specified
+
+   if [[ "$jobid" == "" ]]; then
+     echo >&2 "ERROR: Empty job id. Did the job fail to submit?"
+     exit 1
+   fi
+
+   while true; do
+     # Use -alm to avoid costly queries to logs we don't even need
+     exit_status=$(tracejob -alm $jobid | awk '/Exit_status=-?[0-9]+/{print $4}' | cut -d= -f2)
+     if [[ "$exit_status" != "" ]]; then
+	echo >&2 "Job exited with status $exit_status"
+	if [[ -e job.out ]]; then
+	    cat job.out
+	fi
+        exit $exit_status
+     fi
+     sleep 30
+    done
   }
   action status > short_status long_status {
     qstat -f $id | awk '/job_state = Q/{print "queued"} /job_state = R/{print "running"}' > $status
