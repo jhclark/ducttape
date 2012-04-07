@@ -22,3 +22,8 @@ Scala Style
 ===========
 
 We recommend reading this guide as a starting place for Scala stype: http://davetron5000.github.com/scala-style/
+
+Scaladoc
+========
+
+Source code should be commented using ScalaDoc standards. See https://wiki.scala-lang.org/display/SW/Scaladoc.
