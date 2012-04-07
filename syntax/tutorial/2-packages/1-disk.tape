@@ -18,9 +18,6 @@ versioner disk :: url rev {
   action checkout > dir {
     rsync $url $dir
   }
-  action update {
-    rsync $url $dir
-  }
   action repo_version > version {
     find $url -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $version
   }

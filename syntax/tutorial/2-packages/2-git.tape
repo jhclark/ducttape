@@ -28,10 +28,6 @@ versioner git :: url rev {
   action checkout > dir {
     git clone $url $dir
   }
-  action update {
-    git pull
-    git checkout $rev
-  }
   action repo_version > version {
     git ls-remote origin HEAD | cut -f1 > $version
   }
