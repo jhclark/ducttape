@@ -12,11 +12,9 @@ package moses :: .versioner=disk .url="http://moses.svn.sourceforge.net/svnroot/
   make -j16
 }
 
-# TODO: Use proper rsync args
-# TODO: Disk versioner cannot support updating to a particular revision...
 versioner disk :: url rev {
   action checkout > dir {
-    rsync $url $dir
+    cp $url $dir
   }
   action repo_version > version {
     find $url -type f -printf '%TY-%Tm-%Td_%TT %p\n' | sort | awk 'END{print $1}' > $version

@@ -9,7 +9,7 @@ task lunchtime : lunchpy {
 }
 
 # * Build commands are only called when versioner indicates a new version
-package lunchpy :: .versioner=git .url="https://github.com/mjdenkowski/lunchpy.git" {
+package lunchpy :: .versioner=git .url="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
   # We don't actually need to compile anything for python code,
   # but for the sake of example we'll make this program run a bit faster
   python -m compileall .
@@ -24,15 +24,16 @@ package lunchpy :: .versioner=git .url="https://github.com/mjdenkowski/lunchpy.g
 # * All other commands are run inside $dir
 # * As we will see with inline branches, specializations such as checkout and update
 #   inherit all of their parent's parameters so that update has visibility of $url and $rev
-versioner git :: url rev {
+versioner git :: url ref {
   action checkout > dir {
     git clone $url $dir
   }
   action repo_version > version {
-    git ls-remote origin HEAD | cut -f1 > $version
+    git ls-remote $url $ref | cut -f1 > $version
   }
-  # Used to confirm version after update/install
-  action local_version > version date {  
+  # TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
+  # Used to confirm version after checkout
+  action local_version > version date {
     git rev-parse HEAD > $version
     git log -1 | awk '/^Date/{$1=""; print}' > $date
   }
