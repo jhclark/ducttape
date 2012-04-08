@@ -11,6 +11,7 @@ import ducttape.exec.PackageFinder
 import ducttape.exec.TaskEnvironment
 import ducttape.exec.UnpackedDagVisitor
 import ducttape.exec.DirectoryArchitect
+import ducttape.exec.PackageVersioner
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
@@ -28,6 +29,7 @@ import ducttape.workflow.Types._
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
+import ducttape.exec.FullTaskEnvironment
 
 package ducttape {
   class Config {
@@ -192,13 +194,11 @@ object Ducttape {
           sys.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
-/*
         case e: Exception => {
           err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
           exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
-*/
         case t: Throwable => throw t
       }
     }
@@ -359,9 +359,20 @@ object Ducttape {
     err.println("Planned: " + plannedVertices)
     // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
     val (cc: CompletionChecker, versions: ExecutionVersioner) = {
-      val cc = new CompletionChecker(conf, dirs, initVersioner)
+      val cc = new CompletionChecker(dirs, initVersioner)
       visitAll(cc, initVersioner, plannedVertices)
       (cc, new ExecutionVersioner(cc.completedVersions, initVersioner.nextVersion))
+    }
+    
+    def getPackageVersions() = {
+      val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo, workflow.packageDefs)
+      visitAll(packageFinder, versions, plannedVertices)
+      System.err.println("Found %d packages".format(packageFinder.packages.size))
+
+      err.println("Checking for already built packages...")
+      val packageVersions = new PackageVersioner(dirs, wd.versioners)
+      packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)
+      packageVersions
     }
 
     def list {
@@ -389,6 +400,7 @@ object Ducttape {
         workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
       }.toIterable
       err.println("Found %d vertices with matching task name".format(matchingTasks.size))
+      
       var matchingReals: Iterable[RealTask] = {
         matchingTasks.map{v: UnpackedWorkVert => {
           val taskT: TaskTemplate = v.packed.value
@@ -401,8 +413,11 @@ object Ducttape {
         }}.filter(_ != None).map(_.get)
       }
       err.println("Found %d vertices with matching realizations".format(matchingReals.size))
+      
+      val packageVersions = getPackageVersions()
+      
       for(task: RealTask <- matchingReals) {
-        val env = new TaskEnvironment(dirs, versions, task)
+        val env = new FullTaskEnvironment(dirs, versions, packageVersions, task)
         for( (k,v) <- env.env) {
           println("%s=%s".format(k,v))
         }
@@ -439,13 +454,12 @@ object Ducttape {
 
     def exec {
       if(cc.todo.isEmpty) {
+        // TODO: Might need to re-run if any package versions have changed
         err.println("All tasks to complete -- nothing to do")
       } else {
         err.println("Finding packages...")
-        val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo, workflow.packageDefs)
-        visitAll(packageFinder, versions, plannedVertices)
-        System.err.println("Found %d packages".format(packageFinder.packages.size))
-
+        val packageVersions = getPackageVersions()
+        
         err.println("Checking inputs...")
         val inputChecker = new InputChecker(conf, dirs)
         visitAll(inputChecker, versions, plannedVertices)
@@ -455,9 +469,11 @@ object Ducttape {
           }
           System.exit(1)
         }
+        
+        // TODO: Check package versions to see if any packages need rebuilding.
 
         err.println("Work plan:")
-        for(packageName <- packageFinder.packages) {
+        for(packageName <- packageVersions.packagesToBuild) {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
 
@@ -481,14 +497,14 @@ object Ducttape {
         answer match {
           case true => {
             err.println("Retreiving code and building...")
-            val builder = new PackageBuilder(conf, dirs, versions.workflowVersion)
-            builder.build(packageFinder.packages)
+            val builder = new PackageBuilder(dirs, versions.workflowVersion, packageVersions)
+            builder.build(packageVersions.packagesToBuild)
 
 //            err.println("Removing partial output...")
 //            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
             try {
-              visitAll(new Executor(conf, dirs, versions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
+              visitAll(new Executor(dirs, versions, packageVersions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
             } catch {
               case e: ExecutionException => {
                 err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
@@ -629,7 +645,7 @@ object Ducttape {
     }
 
     // TODO: Have run() function in each mode?
-    opts.mode match {
+    ex2err(opts.mode match {
       case "list" => list
       case "env" => env
       case "mark_done" => markDone
@@ -638,6 +654,6 @@ object Ducttape {
       case "invalidate" => invalidate
       case "purge" => purge
       case _ => exec
-    }
+    })
   }
 }

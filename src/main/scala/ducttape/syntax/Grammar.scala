@@ -2,20 +2,18 @@ package ducttape.syntax
 
 import java.io.File
 import java.math.BigDecimal
-
 import org.apache.commons.lang3.StringEscapeUtils
-
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
-
 import ducttape.syntax.AbstractSyntaxTree._
+import scala.util.parsing.input.NoPosition
 
 object Grammar {
-  import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.  
+  import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
   
   /** End of line characters, including end of file. */
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
@@ -353,7 +351,7 @@ object Grammar {
             literal(")"
         )
       ) ^^ {
-        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(Some(increment:BigDecimal))) =>
+        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(Some(increment: BigDecimal))) =>
           new SequentialBranchPoint(bpName,start,end,increment)      
         case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(None)) =>
           new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
@@ -478,8 +476,8 @@ object Grammar {
   
   val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
-        case assignment:Spec => assignment
-        case rhs:RValue      => new Spec(null,rhs,false)
+        case assignment: Spec => assignment
+        case rhs: RValue      => new Spec(null,rhs,false)
       }
   )
 
