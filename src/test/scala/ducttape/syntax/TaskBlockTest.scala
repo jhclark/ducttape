@@ -232,7 +232,13 @@ task hello {
 }""",
       """task hello {
         echo "hello, world!"
-      }"""
+      }""",
+"""task hello { // This is not a valid bash comment
+      echo "hello, world!"
+}""",
+"""task hello { # Comments are not allowed after opening { braces
+      echo "hello, world!"
+}"""      
   ) 
   
   def failureCases = Set(
@@ -275,14 +281,7 @@ task hello {
   def errorCases = Set(                           
 """task hello {
       echo "hello, world!"
-} yay""",
-"""task hello { // Comments are not allowed after opening { braces
-      echo "hello, world!"
-}""",
-"""task hello { # Comments are not allowed after opening { braces
-      echo "hello, world!"
-}"""
-
+} yay"""
   )
   
 }

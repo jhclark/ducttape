@@ -454,7 +454,13 @@ align_=/phase1/jhclark/experiments/data/zh/fbis/corpus.zh-en.aln.gz
 arpa_=/phase1/jhclark/experiments/data/zh/fbis/c2e.3gram.lm.gz
 saIni_=/phase1/jhclark/experiments/binopt/sa_full.ini
 }
-"""
+""",
+"""task hello { // This is not a valid bash comment
+      echo "hello, world!"
+}""",
+"""task hello { # Comments are not allowed after opening { braces
+      echo "hello, world!"
+}"""
   ) 
   
   def failureCases = Set(
@@ -505,13 +511,7 @@ saIni_=/phase1/jhclark/experiments/binopt/sa_full.ini
           
 """task hello {
       echo "hello, world!"
-} yay""",
-"""task hello { // Comments are not allowed after opening { braces
-      echo "hello, world!"
-}""",
-"""task hello { # Comments are not allowed after opening { braces
-      echo "hello, world!"
-}""" 
+} yay"""
   )
   
 }

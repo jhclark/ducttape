@@ -732,12 +732,12 @@ object Grammar {
             (
                 literal("{") |
                 failure("Missing opening { brace for " +blockType+" block.")
-            ) ~
-            opt(space) ~
-            (
-                eol |
-                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
-            )
+            ) //~
+//            opt(space) ~
+//            (
+//                eol |
+//                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
+//            )
         ) ~> 
         BashGrammar.bashBlock <~
         (
