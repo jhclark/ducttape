@@ -830,7 +830,7 @@ object Grammar {
   
   def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
   def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
-  def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",taskHeader,actionBlock)
+  def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
   def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
   def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
     
