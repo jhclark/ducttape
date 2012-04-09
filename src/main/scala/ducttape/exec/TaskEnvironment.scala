@@ -3,10 +3,15 @@ package ducttape.exec
 import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.RealTask
 import ducttape.workflow.Realization
-import ducttape.workflow.hacks.Gimme
 import java.io.File
 
-class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersioner, val task: RealTask) {
+/**
+ * Unlike the FullTaskEnvironment, does not require knowledge of packageVersions,
+ * but does not provide full list of environment variables
+ */
+class TaskEnvironment(val dirs: DirectoryArchitect,
+                      val versions: WorkflowVersioner,
+                      val task: RealTask) {
   
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
@@ -43,17 +48,6 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
     //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
-
-  val packageNames: Seq[String] = task.packages.map(_.name)
-  val packageBuilds: Seq[BuildEnvironment] = {
-    packageNames.map(name => new BuildEnvironment(dirs, versions.workflowVersion, name))
-  }
-  val packageEnvs: Seq[(String,String)] = {
-    packageBuilds.map(build => (build.packageName, new File(build.buildDir, build.packageName).getAbsolutePath) )
-  }
-
-  // TODO: Add correct build paths to task env
-  lazy val env = inputs ++ outputs ++ params ++ packageEnvs
   
   val where = dirs.assignDir(task.taskDef, task.realization, task.version)
   val stdoutFile = new File(where, "stdout.txt")
@@ -61,4 +55,26 @@ class TaskEnvironment(val dirs: DirectoryArchitect, val versions: WorkflowVersio
   val workDir = new File(where, "work")
   val exitCodeFile = new File(where, "exit_code.txt")
   val invalidatedFile = new File(where, "INVALIDATED")
+}
+
+/**
+ * Includes all environment variables, but requires knowledge of packgeVersions
+ */
+class FullTaskEnvironment(dirs: DirectoryArchitect,
+                          versions: WorkflowVersioner,
+                          val packageVersions: PackageVersioner,
+                          task: RealTask) extends TaskEnvironment(dirs, versions, task) {
+  val packageNames: Seq[String] = task.packages.map(_.name)
+  val packageBuilds: Seq[BuildEnvironment] = {
+    packageNames.map{name => {
+      val packageVersion = packageVersions(name)
+      new BuildEnvironment(dirs, packageVersion, name)
+    }}
+  }
+  val packageEnvs: Seq[(String,String)] = {
+    packageBuilds.map(build => (build.packageName, build.buildDir.getAbsolutePath) )
+  }
+
+  // TODO: Add correct build paths to task env
+  lazy val env = inputs ++ outputs ++ params ++ packageEnvs
 }

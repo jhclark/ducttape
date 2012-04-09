@@ -3,6 +3,9 @@ package ducttape.syntax
 import java.io.File
 import scala.util.parsing.input.Position
 
+/**
+ * Each element of ref has (file, line, col, untilLine)
+ */
 class FileFormatException(val msg: String, val refs: Seq[(File, Int, Int, Int)]) extends Exception(msg) {
   def this(msg: String, file: File, line: Int, col: Int) = this(msg, List( (file, line, col, line) ))
   def this(msg: String, file: File, pos: Position) = this(msg, List( (file, pos.line, pos.column, pos.line) ))

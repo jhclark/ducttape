@@ -1,7 +1,5 @@
 package ducttape.exec
 
-import ducttape.Config
-
 import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
@@ -11,9 +9,9 @@ object PartialOutputRemover {
   def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
 }
 
-class PartialOutputRemover(conf: Config,
-                           dirs: DirectoryArchitect,
+class PartialOutputRemover(dirs: DirectoryArchitect,
                            versions: WorkflowVersioner,
+                           packageVersions: PackageVersioner,
                            partial: Set[(String,Realization)]) extends UnpackedDagVisitor {
   
   override def visit(task: RealTask) {

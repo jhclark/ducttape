@@ -1,3 +1,5 @@
+# This file is for systems such as PBS/Torque with the Built-in, Catalina, or Maui schedulers.
+
 # * The resource parameter vmem can be specified as .vmem at task declarations
 # * The "cmds" parameter is inserted as a direct string replacement by ducttape
 #   and contains the "payload" of this task
@@ -6,15 +8,18 @@
 submitter sge :: cpus vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
               :: COMMANDS /* the bash commands from some task */
               :: TASK REALIZATON CONFIGURATION /* variables passed by ducttape */ {
+  # TODO: We're still missing a few variables that typically get passed in.
+  # SGE: echo "#$-l vmem=$vmem" >> $wrapper
+  # SGE:  echo "#-l walltime=$walltime" >> $wrapper
   action run > jobid {
     wrapper="job.sh"
-    echo "#$ -S /bin/bash" >> $wrapper
-    echo "#$ -q $q" >> $wrapper
-    echo "#$ -l slots=$cpus" >> $wrapper
-    echo "#$ -l h_rt=$walltime" >> $wrapper
-    echo "#$ -j oe" >> $wrapper
-    echo "#$ -o localhost:$PWD/job.out" >> $wrapper
-    echo "#$ -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
+    echo "#PBS -S /bin/bash" >> $wrapper
+    echo "#PBS -q $q" >> $wrapper
+    echo "#PBS -l nodes=1:ppn=$cpus" >> $wrapper
+    echo "#PBS -l walltime=$walltime" >> $wrapper
+    echo "#PBS -j oe" >> $wrapper
+    echo "#PBS -o localhost:$PWD/job.out" >> $wrapper
+    echo "#PBS -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
 
     # Bash flags aren't necessarily passed into the scheduler
     # so we must re-initialize them
@@ -31,16 +36,30 @@ submitter sge :: cpus vmem walltime q /* these can be passed as parameters to ea
     qsub $wrapper > $jobid
   }
 
+  # Can we divide this into 3 parts?
+  # 1) Global queue polling [get_queue]
+  # 2) Parse an in-memory (or tmp) version of the queue for each task [check_job]
+  # XXX) Back-off to expensive tracejob calls only when that fails? 
+  # Can we remove need to tracejob iff internal worker always writes exit code on success
+  # But then how do we recover non-zero exit codes?
+
+  # TODO: Specify that input and output files may be read and written *once*
+  # i.e. they are *stream* descriptors
+
+  # If we can't get the queue... just keep retrying and print a warning.
+  # We can't do anything until we know if jobs are running though.
   action get_queue > q {
-    qstat -u jhclark > $q
+    qstat > $q
   }
 
   # Can ducttape check exit code before doing this? Or is that bad for the FS?
-  action check_job < jobid q > done exit_code {
-    # If job not in q, it's done
+  action check_job < jobid q > done {
+    # If job not queued or running, it's done
     line=$(fgrep $jobid $q) 
-    # But was it successful? Can we always wrap a child JVM to take care of this?
-    
+    # The Shepard that ran the job is responsible for writing an exit_code file
+    # That will determine success (Uses shutdown hook to catch signals)
+    # However, we still can't catch signal 9, which is what most schedulers use to kill
+    # Do we give an error message such as "your job may have been killed"?
   }
 
   # Ducttape will run this once every n seconds

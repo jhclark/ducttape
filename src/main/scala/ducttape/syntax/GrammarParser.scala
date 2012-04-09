@@ -15,12 +15,20 @@ object GrammarParser extends RegexParsers {
 
   override val skipWhitespace = false;
 
+  private def addFileInfo(element: ASTType, file: File) {
+    element.declaringFile = file
+    element.children.foreach(addFileInfo(_, file))
+  }
+  
   def readWorkflow(file: File): WorkflowDefinition = {
     val result: ParseResult[Seq[Block]] = parseAll(Grammar.blocks, IO.read(file, "UTF-8"))    
     val pos = result.next.pos
     
     return result match {
-      case Success(blocks: Seq[Block], _) => new WorkflowDefinition(file,blocks)
+      case Success(blocks: Seq[Block], _) => {
+        blocks.foreach(addFileInfo(_, file))
+        new WorkflowDefinition(file, blocks)
+      }
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
       case Error(msg, _) =>
@@ -33,7 +41,10 @@ object GrammarParser extends RegexParsers {
     val pos = result.next.pos
     
     return result match {
-      case Success(asses: Seq[ConfigAssignment], _) => asses
+      case Success(asses: Seq[ConfigAssignment], _) => {
+       asses.foreach(addFileInfo(_, file))
+       asses 
+      }
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
       case Error(msg, _) =>

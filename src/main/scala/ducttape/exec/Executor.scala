@@ -2,7 +2,6 @@ package ducttape.exec
 
 import collection._
 
-import ducttape.Config
 import ducttape.versioner.WorkflowVersioner
 import ducttape.util.Shell
 import ducttape.util.Files
@@ -11,9 +10,9 @@ import ducttape.workflow.RealTask
 import ducttape.workflow.HyperWorkflow
 
 // workflow used for viz
-class Executor(conf: Config,
-               dirs: DirectoryArchitect,
+class Executor(dirs: DirectoryArchitect,
                versions: WorkflowVersioner,
+               packageVersioner: PackageVersioner,
                workflow: HyperWorkflow,
                plannedVertices: Set[(String,Realization)],
                alreadyDone: Set[(String,Realization)],
@@ -33,7 +32,7 @@ class Executor(conf: Config,
 
   override def visit(task: RealTask) {
     if(todo((task.name, task.realization))) {
-      val taskEnv = new TaskEnvironment(dirs, versions, task)
+      val taskEnv = new FullTaskEnvironment(dirs, versions, packageVersioner, task)
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
       dirs.xdotFile.synchronized {
@@ -57,7 +56,8 @@ class Executor(conf: Config,
       val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
       Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
       if(exitCode != 0) {
-        println("%sTask %s/%s returned %s%s".format(conf.errorColor, task.name, task.realization.toString, exitCode, Console.RESET))
+        // TODO: Send message via listener?
+        println("Task %s/%s returned %s".format(task.name, task.realization.toString, exitCode))
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {

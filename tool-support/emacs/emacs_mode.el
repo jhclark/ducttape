@@ -21,6 +21,7 @@
 		    "config"
 		    "func"
 		    "group"
+		    "global"
 		    "package"
 		    "plan"
 		    "submitter"

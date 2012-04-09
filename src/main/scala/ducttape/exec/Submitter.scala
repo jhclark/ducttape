@@ -23,6 +23,8 @@ object Submitter {
               realization: Realization,
               confName: String
               ): Seq[String] = {
+    
+    // TODO: Grab this information from the workflow instead.
 
     // use "shell" as default if none specified
     val submitterName = params.filter{case (k:String, v:String) => k == ".submitter"}.

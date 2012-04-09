@@ -29,9 +29,6 @@ versioner svn :: url rev {
   action checkout > dir {
     svn co -r $rev $url .
   }
-  action update {
-    svn up -r $rev
-  }
   action repo_version > version {
     svn info $url | awk -F': ' '/Revision/{print $2}' > $version
     svn info $url | awk -F': ' '/Date/{print}' > $date

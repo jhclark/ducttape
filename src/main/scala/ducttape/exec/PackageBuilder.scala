@@ -1,25 +1,27 @@
 package ducttape.exec
-
-import ducttape.Config
-import ducttape.workflow.hacks.Gimme
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 
-class PackageBuilder(conf: Config,
-                     dirs: DirectoryArchitect,
-                     workflowVersion: Int) {
+/**
+ * If we determine that a package is out of date (the requested version is not
+ * already built within ducttape), then we use this PackageBuilder to build
+ * a newly checked-out copy.
+ */
+class PackageBuilder(dirs: DirectoryArchitect,
+                     workflowVersion: Int,
+                     packageVersions: PackageVersioner) {
   
   def build(packages: Iterable[PackageDef]) {
-    for(myPackage <- packages) {
-      val buildEnv = new BuildEnvironment(dirs, workflowVersion, myPackage.name)
-      System.err.println("%sBuilding tools for: %s in %s%s".format(conf.taskColor, myPackage.name, buildEnv.buildDir, Console.RESET))
+    for(myPackage: PackageDef <- packages) {
+      val buildEnv = new BuildEnvironment(dirs, packageVersions(myPackage.name), myPackage.name)
+      System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
       // TODO: XXX: Can build ever interfere with another running workflow?
       if(buildEnv.buildDir.exists) {
          System.err.println("Removing incomplete package build: %s".format(buildEnv.buildDir.toString))
         Files.deleteDir(buildEnv.buildDir)
       }
-      buildEnv.buildDir.mkdirs()
+      packageVersions.checkout(myPackage, buildEnv.buildDir)
 
       // TODO: XXX: Resolve the versioner and then get the checkout command
       // TODO: Run static analysis on package code
@@ -32,7 +34,8 @@ class PackageBuilder(conf: Config,
       val exitCode = Shell.run(buildCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if(exitCode != 0) {
         // just bail out, this workflow is doomed without its tools
-        System.err.println("%sERROR: Build task %s returned %s%s".format(conf.errorColor, myPackage.name, exitCode, Console.RESET))
+        // TODO: Throw and then colorize output.
+        System.err.println("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
         System.exit(1)
       }
     }

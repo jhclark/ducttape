@@ -29,8 +29,8 @@ class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
     new File(unversionedDir, version.toString)
   }
 
-  def assignBuildDir(packageName: String): File = {
-    new File(confBaseDir, ".packages/%s".format(packageName))
+  def assignBuildDir(packageName: String, packageVersion: String): File = {
+    new File(confBaseDir, ".packages/%s/%s".format(packageName, packageVersion))
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, version: Int): File = {
@@ -85,5 +85,12 @@ class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
       // branches, variables, etc get matched on the src, which we already resolved
       case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
     }
+  }
+  
+  def getTempActionDir(actionName: String) = {
+    val f = File.createTempFile("ducttape", actionName)
+    f.delete() // delete file
+    f.mkdirs() // and make it a directory instead
+    f
   }
 }

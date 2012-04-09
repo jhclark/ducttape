@@ -5,8 +5,8 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
-
 import java.io.File
+import ducttape.syntax.AbstractSyntaxTree.ASTType
 
 // TODO: Move this into unit tests
 /*
@@ -73,7 +73,8 @@ function ohai {
 */
 
 // TODO: Pass a StringBuilder down through the AST to make stringification faster
-class BashCode(val code: String, val vars: Set[String] = Set.empty) {
+class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
+  override def children = Nil // TODO: Name exactly what line vars come from
   override def toString = code
 }
 
