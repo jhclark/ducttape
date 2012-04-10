@@ -5,9 +5,10 @@
 #   and contains the "payload" of this task
 # * This assumes that scheduler submission happens asynchronously
 #   and that we must poll the scheduler to learn when the job has completed
-submitter sge :: cpus vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
-              :: COMMANDS /* the bash commands from some task */
-              :: TASK REALIZATON CONFIGURATION /* variables passed by ducttape */ {
+submitter sge :: cpus vmem walltime q // these can be passed as parameters to each task: .cpus .vmem .walltime .q
+              :: COMMANDS // the bash commands from some task 
+              :: TASK REALIZATON CONFIGURATION // variables passed by ducttape 
+              {
   # TODO: We're still missing a few variables that typically get passed in.
   # SGE: echo "#$-l vmem=$vmem" >> $wrapper
   # SGE:  echo "#-l walltime=$walltime" >> $wrapper
