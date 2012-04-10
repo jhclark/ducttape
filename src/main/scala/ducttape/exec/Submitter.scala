@@ -4,66 +4,77 @@ import java.io.File
 import ducttape.util.Environment
 import ducttape.workflow.Realization
 import ducttape.util.Shell
-import ducttape.syntax.AbstractSyntaxTree.ShellCommands
 import ducttape.syntax.BashCode
+import ducttape.syntax.FileFormatException
+import ducttape.syntax.AbstractSyntaxTree.ShellCommands
+import ducttape.syntax.AbstractSyntaxTree.ActionDef
+import ducttape.syntax.AbstractSyntaxTree.Spec
+import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
+import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
+import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
+import ducttape.workflow.Branch
+import ducttape.util.BashException
+import ducttape.util.Files
+import scala.collection.LinearSeq
 
-object Submitter {
-
-  // returns a sequence of commands that should be executed
-  // to submit and then wait for the completion of a job
-  //
-  // this may optionally write temporary files to realDir
-  // generally, unless this is a no-op submitter,
-  // we expect this to return one command such as "qsub job-script.sh"
-  def prepare(workflowDir: File,
-              taskWhere: File,
-              params: Seq[(String,String)],
-              commands: BashCode,
-              taskName: String,
-              realization: Realization,
-              confName: String
-              ): Seq[String] = {
+class Submitter(submitters: Seq[SubmitterDef]) {
+  
+  // TODO: Really, this should be resolved during workflow building and
+  // we should never pass the workflow definition anywhere else...
+  private def getSubmitter(mySubmitterSpec: Spec, srcSubmitterSpec: LiteralSpec): SubmitterDef = {
     
-    // TODO: Grab this information from the workflow instead.
-
-    // use "shell" as default if none specified
-    val submitterName = params.filter{case (k:String, v:String) => k == ".submitter"}.
-                               map{case (k:String, v:String) => v}.headOption.getOrElse("shell")
-
-    // 1) Search for this submitter (assume shell if none specified)
-    val submitterScript = findSubmitter(workflowDir, submitterName)
-    
-    // 2) Send resource parameters (those that start with dots)
-    // as environment variables to this script
-    val env: Seq[(String,String)] = (for( (k,v) <- params; if k.startsWith(".") ) yield {
-      val name = k.substring(1) // remove leading dot
-      ("RESOURCE_%s".format(name), v)
-    }) ++ Seq( ("TASK_NAME", taskName), ("REALIZATION", realization.toString), ("CONF_NAME", confName) )
-
-    // 3) Invoke script as subprocess and receive lines of stdout back
-    //    as the new commands
-    implicit def file2str(f: File) = f.getAbsolutePath
-    Shell.runGetOutputLinesNoShell(submitterScript, taskWhere, env, Seq(commands.toString()))
+    val submitterName = srcSubmitterSpec.rval.value
+    submitters.find{ s => s.name == submitterName } match {
+      case Some(s) => s
+      case None => throw new FileFormatException("Submitter %s not defined", List(mySubmitterSpec, srcSubmitterSpec))
+    }
+  }
+  
+  private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
+    submitters.find{ s => s.name == submitterName } match {
+      case Some(s) => s
+      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s)".format(submitterName, requiredBy.name), requiredBy)
+    }
+  }
+  
+  private def getRunAction(submitterDef: SubmitterDef): ActionDef = {
+    submitterDef.actions.find{ action => action.name == "run"} match {
+      case Some(action: ActionDef) => action
+      case None => throw new FileFormatException("No 'run' action defined for submitter %s".format(submitterDef.name), submitterDef)
+    }
   }
 
-  def findSubmitter(workflowDir: File,
-                    submitterName: String): File = {
+  def run(taskEnv: FullTaskEnvironment) {
 
-    // 1) Search workflow dir
-    val localSubmitterDir = new File(workflowDir, "submitters")
-    val localMatch = new File(localSubmitterDir, submitterName)
-    if(localMatch.exists) {
-      return localMatch
+    // TODO: Use a reasonable type instead of tuple for params, inputs, and output vals
+    val dotParams = taskEnv.task.paramVals.filter(_._1.dotVariable)
+    val dotParamsEnv: Seq[(String,String)] = dotParams.map{
+      case (mySpec: Spec, srcSpec: LiteralSpec, srcTaskDef: TaskDef, srcReal: Seq[Branch]) => (mySpec.name, srcSpec.rval.value)
+    }
+    
+    val runAction = {
+      val submitterDef = dotParams.find(_._1.name == "submitter") match {
+        case Some(submitterSpec) => getSubmitter(submitterSpec._1, submitterSpec._2)
+        case None => getDefaultSubmitter("shell", taskEnv.task.taskDef)
+      }
+      getRunAction(submitterDef)
     }
 
-    // 2) Search ducttape dir
-    val globalSubmitterDir = new File(Environment.getJarDir, "submitters")
-    val globalMatch = new File(globalSubmitterDir, submitterName)
-    if(globalMatch.exists) {
-      return globalMatch
-    } else {
-      // TODO: Is there a better choice of exception class here?
-      throw new RuntimeException("No matching submitter found for '%s' in %s or %s ".format(submitterName, localSubmitterDir.getAbsolutePath, globalSubmitterDir.getAbsolutePath))
+    // TODO: Run also requires the real params from the task
+    // TODO: Make sure no params have name conflicts
+    
+    // TODO: Grab all dot params from this task
+    val env: Seq[(String,String)] = Seq(
+        ("COMMANDS", taskEnv.task.commands.toString),
+        ("TASK", taskEnv.task.name),
+        ("REALIZATION", taskEnv.task.realization.toString),
+        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv
+    
+    val exitCode = Shell.run(runAction.commands.toString, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
+    Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
+    if (exitCode != 0) {
+      throw new BashException("Task %s/%s failed".format(taskEnv.task.name, taskEnv.task.realization))
     }
   }
 }

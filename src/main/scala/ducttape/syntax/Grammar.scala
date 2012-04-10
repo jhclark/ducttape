@@ -700,7 +700,7 @@ object Grammar {
     case (before: String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
   }  
 
-  def taskLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader]) = positioned({
+  def taskLikeBlock[A <: TaskDef](keyword: Parser[String], blockType: String, header: Parser[TaskHeader]) = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -737,14 +737,14 @@ object Grammar {
         )
     ) 
   } ^^ {
-    case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) => 
+    case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) =>
         new TaskDef(comments, blockType, name, header, commands)
   })  
   
   val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline, "baseline", taskHeader)
   val branchBlock: Parser[TaskDef] = taskLikeBlock(Keyword.branch, "branch", taskHeader)
   val packageBlock: Parser[TaskDef] = taskLikeBlock(Keyword.packageKeyword, "package", taskHeader)
-  val actionBlock: Parser[TaskDef] = taskLikeBlock(Keyword.action, "action", funcHeader)
+  val actionBlock: Parser[ActionDef] = taskLikeBlock(Keyword.action, "action", funcHeader)
   val ofBlock: Parser[TaskDef] = taskLikeBlock(Keyword.of, "of", taskHeader)
   val funcBlock: Parser[TaskDef] = taskLikeBlock(Keyword.func, "func", funcHeader)
   val taskBlock: Parser[TaskDef] = taskLikeBlock(Keyword.task, "task", taskHeader)
@@ -811,12 +811,11 @@ object Grammar {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (blocks: Seq[Block]) => 
       new GroupDefinition(comments,blockType,name,header,blocks)
   })
-
   
   def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
   def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
-  def submitterBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.submitter,"submitter",taskHeader,actionBlock)
-  def versionerBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
+  def submitterBlock: Parser[SubmitterDef] = groupLikeBlock(Keyword.submitter,"submitter",taskHeader,actionBlock)
+  def versionerBlock: Parser[VersionerDef] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
   def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
     
   val planBlock: Parser[PlanDefinition] = positioned({

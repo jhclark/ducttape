@@ -9,7 +9,9 @@ import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
 
-class DirectoryArchitect(val workflowBaseDir: File, val confBaseDir: File) {
+class DirectoryArchitect(val workflowBaseDir: File,
+                         val confBaseDir: File,
+                         val confName: Option[String]) {
 
   val xdotFile = new File(confBaseDir, ".xdot")
 

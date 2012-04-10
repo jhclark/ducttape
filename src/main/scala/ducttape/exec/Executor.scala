@@ -1,13 +1,13 @@
 package ducttape.exec
 
 import collection._
-
 import ducttape.versioner.WorkflowVersioner
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.workflow.HyperWorkflow
+import ducttape.util.BashException
 
 // workflow used for viz
 class Executor(dirs: DirectoryArchitect,
@@ -18,6 +18,8 @@ class Executor(dirs: DirectoryArchitect,
                alreadyDone: Set[(String,Realization)],
                todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
   import ducttape.viz.WorkflowViz
+  
+  val submitter = new Submitter(workflow.submitters)
 
   // TODO: Construct set elsewhere?
   val completed = new mutable.HashSet[(String,Realization)]
@@ -40,31 +42,18 @@ class Executor(dirs: DirectoryArchitect,
         Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
       }
 
-      taskEnv.workDir.mkdirs
-      if(!taskEnv.workDir.exists) {
+      taskEnv.where.mkdirs
+      if(!taskEnv.where.exists) {
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
           Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
         }
-        throw new RuntimeException("Could not make directory: " + taskEnv.where.getAbsolutePath)
+        throw new BashException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
 
-      // there's so many parameters here in case we want to "augment" the commands in some way
-      val submitCommands = Submitter.prepare(dirs.workflowBaseDir, taskEnv.where, taskEnv.params,
-                                             task.commands, task.name, task.realization, dirs.confBaseDir.getName)
-      val exitCode = Shell.run(submitCommands, taskEnv.workDir, taskEnv.env, taskEnv.stdoutFile, taskEnv.stderrFile)
-      Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
-      if(exitCode != 0) {
-        // TODO: Send message via listener?
-        println("Task %s/%s returned %s".format(task.name, task.realization.toString, exitCode))
-        failed += ((task.name, task.realization))
-        running -= ((task.name, task.realization))
-        dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
-        }
-        throw new RuntimeException("Task failed") // TODO: Catch and continue? Check for errors at end of visitor?
-      }
+      // the "run" action of the submitter will throw if the exit code is non-zero
+      submitter.run(taskEnv)
     }
     completed += ((task.name, task.realization))
     running -= ((task.name, task.realization))

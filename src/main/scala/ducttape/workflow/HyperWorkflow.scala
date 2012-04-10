@@ -8,6 +8,7 @@ import ducttape.workflow.Types.UnpackState
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
+import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
@@ -16,6 +17,7 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
   class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
                       val packageDefs: Map[String,PackageDef],
                       val plans: Seq[RealizationPlan],
+                      val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
                       val branchPointFactory: BranchPointFactory,
                       val branchFactory: BranchFactory) {
 

@@ -246,14 +246,17 @@ object Ducttape {
     // TODO: Check that all input files exist
     val dirs = {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
-      val confBaseDir = opts.config_file.value match {
-        case Some(confFile) => new File(workflowBaseDir, Files.basename(confFile, ".conf"))
+      val (confNameOpt, confBaseDir) = opts.config_file.value match {
+        case Some(confFile) => {
+          val confName = Files.basename(confFile, ".conf")
+          (Some(confName), new File(workflowBaseDir, confName))
+        }
         case None => opts.config_name.value match {
-          case Some(confName) => new File(workflowBaseDir, confName)
-          case None => workflowBaseDir
+          case Some(confName) => (Some(confName), new File(workflowBaseDir, confName))
+          case None => (None, workflowBaseDir)
         }
       }
-      new DirectoryArchitect(workflowBaseDir, confBaseDir)
+      new DirectoryArchitect(workflowBaseDir, confBaseDir, confNameOpt)
     }
 
     def colorizeDir(taskName: String, real: Realization, versions: WorkflowVersioner): String = {

@@ -259,7 +259,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build, packageDefs, plans, branchPointFactory, branchFactory)
+    new HyperWorkflow(dag.build, packageDefs, plans, wd.submitters, branchPointFactory, branchFactory)
   }
    
   def buildPlans(planDefs: Seq[PlanDefinition]): Seq[RealizationPlan] = {

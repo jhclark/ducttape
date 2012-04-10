@@ -197,7 +197,7 @@ object AbstractSyntaxTree {
     override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
     override def toString() = name
   }
-  type PackageDef = TaskDef;
+  type PackageDef = TaskDef
   type ActionDef = TaskDef
 
   class CallDefinition(val comments: Comments,
@@ -213,10 +213,18 @@ object AbstractSyntaxTree {
                         val name: String, 
                         val header: TaskHeader,
                         val blocks: Seq[Block]) extends Block {
+    private lazy val taskLikes = blocks.collect{ case x: TaskDef => x}
+    
+    // only has members for SubmitterDefs (but adding more info to the typesystem gets ridiculous)
+    lazy val actions = taskLikes.filter(_.name == "action")
+    
     override def children = Seq(comments, header) ++ blocks
     override def toString() = name
   }
-  type VersionerDef = GroupDefinition;
+  type VersionerDef = GroupDefinition
+  type SubmitterDef = GroupDefinition
+  
+  // TODO: use the Pimp My Library Pattern to add certain methods to certain keywords?
   
   class ConfigDefinition(val keyword: String,
                          val comments: Comments,
@@ -255,7 +263,8 @@ object AbstractSyntaxTree {
     lazy val plans: Seq[PlanDefinition] = blocks.collect{case x: PlanDefinition => x}
     
     private lazy val groupLikes: Seq[GroupDefinition] = blocks.collect{case x: GroupDefinition => x}
-    lazy val versioners: Seq[VersionerDef] = groupLikes.filter{x: GroupDefinition => x.keyword == "versioner"}
+    lazy val versioners: Seq[VersionerDef] = groupLikes.filter(_.keyword == "versioner")
+    lazy val submitters: Seq[SubmitterDef] = groupLikes.filter(_.keyword == "submitter")
     
     private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect{case x: ConfigDefinition => x}
     lazy val configs: Seq[ConfigDefinition] = configLikes.filter{t: ConfigDefinition => t.keyword == "config"}

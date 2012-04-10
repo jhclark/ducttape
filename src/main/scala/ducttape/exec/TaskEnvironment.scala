@@ -50,10 +50,9 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   }
   
   val where = dirs.assignDir(task.taskDef, task.realization, task.version)
-  val stdoutFile = new File(where, "stdout.txt")
-  val stderrFile = new File(where, "stderr.txt")
-  val workDir = new File(where, "work")
-  val exitCodeFile = new File(where, "exit_code.txt")
+  val stdoutFile = new File(where, "ducttape_stdout.txt")
+  val stderrFile = new File(where, "ducttape_stderr.txt")
+  val exitCodeFile = new File(where, "ducttape_exit_code.txt")
   val invalidatedFile = new File(where, "INVALIDATED")
 }
 
