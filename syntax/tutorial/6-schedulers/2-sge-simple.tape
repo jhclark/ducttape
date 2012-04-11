@@ -1,6 +1,6 @@
-/* cpus, vmem, walltime, q: these can be passed as parameters to each task: .cpus .vmem .walltime .q */
-/* COMMANDS: the bash commands from some task */
-/* TASK, REALIZATION, CONFIGURATION: variables passed by ducttape */
+# cpus, vmem, walltime, q: these can be passed as parameters to each task: .cpus .vmem .walltime .q
+# COMMANDS: the bash commands from some task
+# TASK, REALIZATION, CONFIGURATION: variables passed by ducttape
 submitter sge :: cpus vmem walltime q
               :: COMMANDS
               :: TASK REALIZATON CONFIGURATION {
@@ -29,4 +29,8 @@ submitter sge :: cpus vmem walltime q
     # Use SGE's -sync option to prevent qsub from immediately returning
     qsub -sync $wrapper
   }
+}
+
+task hello :: .submitter=sge .cpus=1 .walltime="00:01:00" .vmem=1g .q=all.q {
+  echo hello
 }

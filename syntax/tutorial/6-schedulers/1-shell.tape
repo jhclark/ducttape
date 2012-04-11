@@ -4,3 +4,7 @@ submitter shell :: COMMANDS {
     $COMMANDS
   }
 }
+
+task hello {
+  echo hello
+}
