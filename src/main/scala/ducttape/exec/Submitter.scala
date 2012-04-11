@@ -27,7 +27,7 @@ class Submitter(submitters: Seq[SubmitterDef]) {
     val submitterName = srcSubmitterSpec.rval.value
     submitters.find{ s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined", List(mySubmitterSpec, srcSubmitterSpec))
+      case None => throw new FileFormatException("Submitter %s not defined", LinearSeq(mySubmitterSpec, srcSubmitterSpec))
     }
   }
   

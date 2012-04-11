@@ -213,10 +213,10 @@ object AbstractSyntaxTree {
                         val name: String, 
                         val header: TaskHeader,
                         val blocks: Seq[Block]) extends Block {
-    private lazy val taskLikes = blocks.collect{ case x: TaskDef => x}
+    private lazy val taskLikes = blocks.collect{ case x: ActionDef => x}
     
     // only has members for SubmitterDefs (but adding more info to the typesystem gets ridiculous)
-    lazy val actions = taskLikes.filter(_.name == "action")
+    lazy val actions: Seq[ActionDef] = taskLikes.filter(_.keyword == "action")
     
     override def children = Seq(comments, header) ++ blocks
     override def toString() = name
