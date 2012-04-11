@@ -275,7 +275,9 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val variableReference: Parser[ConfigVariable] = positioned(
-    literal("$")~>(name("variable","""\s|\)|$""".r)|err("Missing variable name")) ^^ {
+    ( ((literal("$")~literal("{"))~>(name("variable","""}""".r)|err("Missing variable name"))<~(literal("}")|err("Missing closing } brace"))) |
+      (literal("$")~>(name("variable","""\s|\)|$""".r)|err("Missing variable name")))      
+    )^^ {
       case string:String => new ConfigVariable(string)
     }
   )
@@ -285,7 +287,9 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val taskVariableReference: Parser[TaskVariable] = positioned(
-    literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s|\)|$""".r)) ^^ {
+    ( ((literal("$")~literal("{"))~>name("task variable","""}""".r,err(_),failure(_))~((literal("}")|err("Missing closing } brace"))~literal("@")~>name("task name","""\s|\)|$""".r))) |
+      (literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s|\)|$""".r)) )         
+    ) ^^ {
       case (string: String) ~ (taskName: String) => new TaskVariable(taskName,string)
     }
   )  
@@ -313,9 +317,18 @@ object Grammar {
    * a task name, and a list of branch graft elements.
    */
   val branchGraft: Parser[BranchGraft] = positioned(
-      (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
-      name("reference to task","""\[""".r,err(_),failure(_)) ~
-      (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) ^^ {
+      (
+          (
+              (literal("$")~literal("{")~>name("branch graft variable","""}""".r,err(_),failure(_))<~(literal("}")|err("Missing closing } brace"))~literal("@")) ~
+              name("reference to task","""\[""".r,err(_),failure(_)) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          ) |
+          (
+              (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
+              name("reference to task","""\[""".r,err(_),failure(_)) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          )
+      ) ^^ {
         case ((variable: String) ~ (task: String) ~ (seq: Seq[BranchGraftElement])) =>
           new BranchGraft(variable,task,seq)
       } 
@@ -717,12 +730,12 @@ object Grammar {
             (
                 literal("{") |
                 failure("Missing opening { brace for " +blockType+" block.")
-            ) ~
-            opt(space) ~
-            (
-                eol |
-                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
-            )
+            ) //~
+//            opt(space) ~
+//            (
+//                eol |
+//                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
+//            )
         ) ~> 
         BashGrammar.bashBlock <~
         (
