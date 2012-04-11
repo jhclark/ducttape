@@ -31,6 +31,7 @@ import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
 import ducttape.exec.FullTaskEnvironment
 import ducttape.workflow.BuiltInLoader
+import ducttape.syntax.FileFormatException
 
 package ducttape {
   class Config {
@@ -171,7 +172,7 @@ object Ducttape {
   }
 
   def main(args: Array[String]) {
-    val conf = new Config
+    implicit val conf = new Config
     val opts = new Opts(conf, args)
     if(opts.no_color) {
       conf.clearColors()
@@ -229,20 +230,32 @@ object Ducttape {
         }
       }
     }) ++ wd.globals
+    
+    val flat: Boolean = ex2err {
+      confSpecs.map(_.spec).find{ spec => spec.name == "ducttape_structure" } match {
+        case Some(spec) => spec.rval match {
+          case lit: Literal => lit.value.trim().toLowerCase match {
+            case "flat" => true
+            case "hyper" => false
+            case _ => throw new FileFormatException("ducttape stuctue directive must be either 'flat' or 'hyper'", spec) 
+          }
+          case _ => throw new FileFormatException("ducttape stucture directive must be a literal", spec)
+        }
+        case None => false // not flat by default (hyper)
+      }
+    }
+    if (flat) System.err.println("Using structure: flat")
         
     val dirs: DirectoryArchitect = {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
-      val (confNameOpt, confBaseDir) = opts.config_file.value match {
-        case Some(confFile) => {
-          val confName = Files.basename(confFile, ".conf")
-          (Some(confName), new File(workflowBaseDir, confName))
-        }
+      val confNameOpt = opts.config_file.value match {
+        case Some(confFile) => Some(Files.basename(confFile, ".conf"))
         case None => opts.config_name.value match {
-          case Some(confName) => (Some(confName), new File(workflowBaseDir, confName))
-          case None => (None, workflowBaseDir)
+          case Some(confName) => Some(confName)
+          case None => None
         }
       }
-      new DirectoryArchitect(workflowBaseDir, confBaseDir, confNameOpt)
+      new DirectoryArchitect(flat, workflowBaseDir, confNameOpt)
     }
     
     val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
@@ -262,28 +275,17 @@ object Ducttape {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
-    def colorizeDir(taskName: String, real: Realization, versions: WorkflowVersioner): String = {
-      val ver = versions(taskName, real)
-      "%s/%s%s%s/%s%s%s/%d".format(dirs.confBaseDir.getAbsolutePath,
-                                   conf.taskNameColor, taskName, conf.resetColor,
-                                   conf.realNameColor, real.toString, conf.resetColor,
-                                   ver)
-    }
-
-    def colorizeDirs(list: Iterable[(String,Realization)], versions: WorkflowVersioner): Seq[String] = {
-      list.toSeq.map{ case (name, real) => colorizeDir(name, real, versions) }
-    }
-
-    def visitAll(visitor: UnpackedDagVisitor,
-                 versions: WorkflowVersioner,
-                 plannedVertices: Set[(String,Realization)],
-                 numCores: Int = 1) {
+    def visitAll[A <: UnpackedDagVisitor](
+        visitor: A,
+        plannedVertices: Set[(String,Realization)],
+        numCores: Int = 1): A = {
       
       workflow.unpackedWalker(plannedVertices=plannedVertices).foreach(numCores, { v: UnpackedWorkVert => {
         val taskT: TaskTemplate = v.packed.value
-        val task: RealTask = taskT.realize(v, versions)
+        val task: RealTask = taskT.realize(v)
         visitor.visit(task)
       }})
+      visitor
     }
 
     // Our dag is directed from antecedents toward their consequents
@@ -291,7 +293,6 @@ object Ducttape {
     // to generate vertices whose realizations are part of the plan
     // so we need to make a second reverse pass on the unpacked DAG
     // to make sure all of the vertices contribute to a goal vertex
-    val initVersioner = new MostRecentWorkflowVersioner(dirs)
     val plannedVertices: Set[(String,Realization)] = workflow.plans match {
       case Nil => {
         err.println("Using default one-off realization plan")
@@ -312,7 +313,7 @@ object Ducttape {
           // this is the most important place for us to pass the filter to unpackedWalker!
           workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
             val taskT: TaskTemplate = v.packed.value
-            val task: RealTask = taskT.realize(v, initVersioner)
+            val task: RealTask = taskT.realize(v)
             candidates += (task.name, task.realization) -> task
           }})
           candidates
@@ -362,17 +363,14 @@ object Ducttape {
     }
       
     err.println("Checking for completed steps...")
-    err.println("Planned: " + plannedVertices)
+    if (plannedVertices.size > 0) err.println("Planned: " + plannedVertices)
     // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
-    val (cc: CompletionChecker, versions: ExecutionVersioner) = {
-      val cc = new CompletionChecker(dirs, initVersioner)
-      visitAll(cc, initVersioner, plannedVertices)
-      (cc, new ExecutionVersioner(cc.completedVersions, initVersioner.nextVersion))
-    }
+    val cc: CompletionChecker = visitAll(new CompletionChecker(dirs), plannedVertices)
+    //val workflowVersion = XXX
     
     def getPackageVersions() = {
-      val packageFinder = new PackageFinder(conf, dirs, versions, cc.todo, workflow.packageDefs)
-      visitAll(packageFinder, versions, plannedVertices)
+      val packageFinder = new PackageFinder(conf, dirs, cc.todo, workflow.packageDefs)
+      visitAll(packageFinder, plannedVertices)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
       err.println("Checking for already built packages...")
@@ -384,7 +382,7 @@ object Ducttape {
     def list {
       for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
-        val task: RealTask = taskT.realize(v, versions)
+        val task: RealTask = taskT.realize(v)
         println("%s %s".format(task.name, task.realization))
         //println("Actual realization: " + v.realization)
       }
@@ -410,7 +408,7 @@ object Ducttape {
       var matchingReals: Iterable[RealTask] = {
         matchingTasks.map{v: UnpackedWorkVert => {
           val taskT: TaskTemplate = v.packed.value
-          val task: RealTask = taskT.realize(v, versions)
+          val task: RealTask = taskT.realize(v)
           if(task.realization.toString == goalRealName) {
             Some(task)
           } else {
@@ -423,7 +421,7 @@ object Ducttape {
       val packageVersions = getPackageVersions()
       
       for(task: RealTask <- matchingReals) {
-        val env = new FullTaskEnvironment(dirs, versions, packageVersions, task)
+        val env = new FullTaskEnvironment(dirs, packageVersions, task)
         for( (k,v) <- env.env) {
           println("%s=%s".format(k,v))
         }
@@ -444,9 +442,9 @@ object Ducttape {
       for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
-          val task: RealTask = taskT.realize(v, initVersioner)
+          val task: RealTask = taskT.realize(v)
           if(goalRealNames(task.realization.toString)) {
-            val env = new TaskEnvironment(dirs, versions, task)
+            val env = new TaskEnvironment(dirs, task)
             if(CompletionChecker.isComplete(env)) {
               err.println("Task already complete: " + task.name + "/" + task.realization)
             } else {
@@ -468,7 +466,7 @@ object Ducttape {
         
         err.println("Checking inputs...")
         val inputChecker = new InputChecker(conf, dirs)
-        visitAll(inputChecker, versions, plannedVertices)
+        visitAll(inputChecker, plannedVertices)
         if(inputChecker.errors.size > 0) {
           for(msg <- inputChecker.errors) {
             err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
@@ -484,7 +482,7 @@ object Ducttape {
         }
 
         for( (task, real) <- cc.todo) {
-          err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real, versions)))
+          err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, dirs.colorizeDir(task, real)))
         }
       
 //        if(cc.partial.size > 0) {
@@ -503,14 +501,14 @@ object Ducttape {
         answer match {
           case true => {
             err.println("Retreiving code and building...")
-            val builder = new PackageBuilder(dirs, versions.workflowVersion, packageVersions)
+            val builder = new PackageBuilder(dirs, packageVersions)
             builder.build(packageVersions.packagesToBuild)
 
 //            err.println("Removing partial output...")
 //            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
             err.println("Executing tasks...")
             try {
-              visitAll(new Executor(dirs, versions, packageVersions, workflow, plannedVertices, cc.completed, cc.todo), versions, plannedVertices, opts.jobs())
+              visitAll(new Executor(dirs, packageVersions, workflow, plannedVertices, cc.completed, cc.todo), plannedVertices, opts.jobs())
             } catch {
               case e: ExecutionException => {
                 err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
@@ -525,7 +523,7 @@ object Ducttape {
     def viz {
       err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
-      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, plannedVertices, initVersioner)))
+      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, plannedVertices)))
     }
 
     def debugViz {
@@ -540,10 +538,9 @@ object Ducttape {
       val victimList = new MutableOrderedSet[RealTask]
       for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
-        val task: RealTask = taskT.realize(v, initVersioner)
+        val task: RealTask = taskT.realize(v)
         if(taskToKill == "*" || taskT.name == taskToKill) {
           if(realsToKill == Set("*") || realsToKill(task.realization.toString)) {
-            //err.println("Found victim %s/%s".format(taskT.name, task.realizationName))
             // TODO: Store seqs instead?
             victims += ((task.name, task.realization))
             victimList += task
@@ -556,7 +553,6 @@ object Ducttape {
             victims(parent)
           }}
           if(isVictim) {
-            //err.println("Found indirect victim %s/%s".format(task.name, task.realizationName))
             victims += ((task.name, task.realization))
             victimList += task
           }
@@ -565,11 +561,11 @@ object Ducttape {
       //  TODO: Fix OrderedSet with a companion object so that we can use filter
       val extantVictims = new MutableOrderedSet[RealTask]
       for(task <- victimList) {
-        val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
+        val taskEnv = new TaskEnvironment(dirs, task)
         if(taskEnv.where.exists) {
           extantVictims += task
         } else {
-          err.println("No previous output for: %s/%s/%s".format(task.name, task.realization, task.version))
+          err.println("No previous output for: %s".format(task))
         }
       }
       extantVictims
@@ -589,11 +585,11 @@ object Ducttape {
 
       // 1) Accumulate the set of changes
       val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill)
-      val victimList: Seq[(String,Realization)] = victims.toSeq.map{ task => (task.name, task.realization) }
+      val victimList: Seq[RealTask] = victims.toSeq
       
       // 2) prompt the user
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
-      err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
+      err.println(dirs.colorizeDirs(victimList).mkString("\n"))
       
       val answer = if(opts.yes) {
         'y'
@@ -605,8 +601,8 @@ object Ducttape {
       
       answer match {
         case 'y' | 'Y' => victims.foreach(task => {
-          err.println("Invalidating %s/%s/%s".format(task.name, task.realization.toString, task.version))
-          CompletionChecker.invalidate(new TaskEnvironment(dirs, initVersioner, task))
+          err.println("Invalidating %s".format(task))
+          CompletionChecker.invalidate(new TaskEnvironment(dirs, task))
         })
         case _ => err.println("Doing nothing")
       }
@@ -624,16 +620,12 @@ object Ducttape {
       err.println("Finding tasks to be purged: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victimList: Seq[(String,Realization)] = getVictims(taskToKill, realsToKill).toSeq.map{ task => (task.name, task.realization) }
+      val victimList: Seq[RealTask] = getVictims(taskToKill, realsToKill).toSeq
       
       // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
-      // TODO: Use directory architect here
-      val absDirs: Seq[File] = victimList.map{case (name, real) => {
-        val ver = initVersioner(name, real)
-        new File(dirs.confBaseDir, "%s/%s/%d".format(name,real,ver))
-      }}
-      err.println(colorizeDirs(victimList, initVersioner).mkString("\n"))
+      val absDirs: Seq[File] = victimList.map{task: RealTask => dirs.assignDir(task.taskDef, task.realization) }
+      err.println(dirs.colorizeDirs(victimList).mkString("\n"))
       
       val answer = if(opts.yes) {
         'y'

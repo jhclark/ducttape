@@ -37,7 +37,7 @@ class TaskTemplate(val taskDef: TaskDef,
    // realize this task by specifying one branch per branch point
    // activeBranches should contain only the hyperedges encountered up until this vertex
    // with the key being the branchPointNames
-   def realize(v: UnpackedWorkVert, versions: WorkflowVersioner): RealTask = {
+   def realize(v: UnpackedWorkVert): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
      val realization = new Realization(v.realization)
@@ -118,7 +118,6 @@ class TaskTemplate(val taskDef: TaskDef,
      val realInputVals: Seq[ResolvedSpec] = mapVals(inputVals)
      val realParamVals: Seq[ResolvedLiteralSpec] = mapVals(paramVals)
 
-     val version = versions(taskDef.name, realization)
-     new RealTask(this, realization, realInputVals, realParamVals, version)
+     new RealTask(this, realization, realInputVals, realParamVals)
    }
 }

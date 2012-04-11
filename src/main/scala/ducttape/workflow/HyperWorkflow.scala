@@ -85,7 +85,7 @@ import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 
       def vertexFilter(v: UnpackedWorkVert): Boolean = {
         // TODO: Less extra work?
-        val task = v.packed.value.realize(v, ducttape.versioner.NullVersioner)
+        val task = v.packed.value.realize(v)
         plannedVertices.contains( (task.name, task.realization) ) || plannedVertices.isEmpty
       }
       dag.unpackedWalker[UnpackState](new UnpackState, unpackFilter, vertexFilter)

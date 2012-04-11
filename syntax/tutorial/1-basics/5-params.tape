@@ -18,3 +18,7 @@ task no_dep :: X=$N@param_step {
   #echo "X=$N" # a bug! this would be caught by ducttape's static analysis of bash
   echo "X=$X"
 }
+
+global {
+  ducttape_structure=flat
+}

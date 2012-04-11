@@ -7,10 +7,14 @@
 task one_off_1 < in=(whichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
 }
+
 // And now add a child task that also has a packed parameter with multiple branches
+// a subdirectory will be created under the task directory for one_off_2
+// for each realization: one-smaller, one-bigger, two-smaller, two-bigger
 task one_off_2 < in=$out@one_off_1 :: N=(N: one=1 two=2) {
   head -n $N < $in
 }
+
 // By default, ducttape will run each of these as "one off" experiments: Ducttape
 // runs each workflow to completion (still sharing as much substructure as possible)
 // using each branch of every Pack, but using the baseline branch for all other Packs.

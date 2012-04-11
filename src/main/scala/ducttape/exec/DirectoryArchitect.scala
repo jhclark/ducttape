@@ -9,13 +9,21 @@ import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.util.Environment
+import ducttape.workflow.Task
+import ducttape.syntax.FileFormatException
+import ducttape.workflow.RealTask
 
-class DirectoryArchitect(val workflowBaseDir: File,
-                         val confBaseDir: File,
+class DirectoryArchitect(val flat: Boolean,
+                         val workflowBaseDir: File,
                          val confName: Option[String]) {
 
   val installDir = Environment.getJarDir
   val builtinsDir = new File(installDir, "builtins")
+  
+  val confBaseDir = confName match {
+    case Some(name) => new File(workflowBaseDir, name)
+    case None => workflowBaseDir
+  }
   
   val xdotFile = new File(confBaseDir, ".xdot")
 
@@ -23,25 +31,25 @@ class DirectoryArchitect(val workflowBaseDir: File,
     new File(confBaseDir, taskName).getAbsoluteFile
   }
 
-  def assignUnversionedDir(taskName: String, realization: Realization): File = {
-    val packedDir = assignPackedDir(taskName)
-    new File(packedDir, realization.toString).getAbsoluteFile
-  }
-
-  // TODO: Rename to assignRealTaskDir
-  // version: workflow version
-  def assignDir(taskDef: TaskDef, realization: Realization, version: Int): File = {
-    val unversionedDir = assignUnversionedDir(taskDef.name, realization)
-    new File(unversionedDir, version.toString)
+  def assignDir(taskDef: TaskDef, realization: Realization): File = {
+    val packedDir = assignPackedDir(taskDef.name)
+    if (flat) {
+      if(realization != Task.NO_REALIZATION) { // TODO: Statically check this elsewhere, too?
+        throw new FileFormatException("workflow may not contain any branchpoints if flat structure is being used", taskDef)
+      }
+      packedDir
+    } else { // using hyper structure
+      new File(packedDir, realization.toString).getAbsoluteFile 
+    }
   }
 
   def assignBuildDir(packageName: String, packageVersion: String): File = {
     new File(confBaseDir, ".packages/%s/%s".format(packageName, packageVersion))
   }
 
-  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, version: Int): File = {
+  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization): File = {
     //println("Assigning outfile for " + spec)
-    val taskDir = assignDir(taskDef, realization, version)
+    val taskDir = assignDir(taskDef, realization)
     assert(!spec.isInstanceOf[BranchPointDef])
 
     spec.rval match {
@@ -67,11 +75,9 @@ class DirectoryArchitect(val workflowBaseDir: File,
     
   def getInFile(mySpec: Spec,
                 realization: Realization,
-                version: Int,
                 srcSpec: Spec,
                 srcTaskDef: TaskDef,
-                srcRealization: Realization,
-                srcVersion: Int): File = {
+                srcRealization: Realization): File = {
 
     // first, resolve the realization, if necessary
     // also, resolve through any ConfigVariables
@@ -89,7 +95,7 @@ class DirectoryArchitect(val workflowBaseDir: File,
     realizedRval match {
       case Literal(path) => resolveLiteralPath(path)
       // branches, variables, etc get matched on the src, which we already resolved
-      case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
+      case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization)
     }
   }
   
@@ -98,5 +104,20 @@ class DirectoryArchitect(val workflowBaseDir: File,
     f.delete() // delete file
     f.mkdirs() // and make it a directory instead
     f
+  }
+  
+  // ==== TODO: Separate off the following UI-specific code =====
+  
+  def colorizeDir(taskName: String, real: Realization)(implicit conf: ducttape.Config): String = {
+    val x = "%s/%s%s%s".format(confBaseDir.getAbsolutePath, conf.taskNameColor, taskName, conf.resetColor)           
+    if (flat) {
+      x
+    } else {
+      x + "/%s%s%s".format(conf.realNameColor, real.toString, conf.resetColor)
+    }
+  }
+
+  def colorizeDirs(list: Iterable[RealTask])(implicit conf: ducttape.Config): Seq[String] = {
+    list.toSeq.map{ task => colorizeDir(task.name, task.realization) }
   }
 }

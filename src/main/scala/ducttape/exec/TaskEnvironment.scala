@@ -10,7 +10,6 @@ import java.io.File
  * but does not provide full list of environment variables
  */
 class TaskEnvironment(val dirs: DirectoryArchitect,
-                      val versions: WorkflowVersioner,
                       val task: RealTask) {
   
   // grab input paths -- how are these to be resolved?
@@ -27,9 +26,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
   val inputs: Seq[(String, String)] = for(inputVal <- task.inputVals) yield {
-    val srcVersion: Int = versions(inputVal.srcTaskDef.name, inputVal.srcReal)
-    val inFile = dirs.getInFile(inputVal.mySpec, task.realization, task.version,
-                                inputVal.srcSpec, inputVal.srcTaskDef, inputVal.srcReal, srcVersion)
+    val inFile = dirs.getInFile(inputVal.mySpec, task.realization,
+                                inputVal.srcSpec, inputVal.srcTaskDef, inputVal.srcReal)
     //System.err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
     (inputVal.mySpec.name, inFile.getAbsolutePath)
   }
@@ -43,12 +41,12 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
 
   // assign output paths
   val outputs: Seq[(String, String)] = for(outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
+    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization)
     //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
   
-  val where = dirs.assignDir(task.taskDef, task.realization, task.version)
+  val where = dirs.assignDir(task.taskDef, task.realization)
   val stdoutFile = new File(where, "ducttape_stdout.txt")
   val stderrFile = new File(where, "ducttape_stderr.txt")
   val exitCodeFile = new File(where, "ducttape_exit_code.txt")
@@ -59,9 +57,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
  * Includes all environment variables, but requires knowledge of packgeVersions
  */
 class FullTaskEnvironment(dirs: DirectoryArchitect,
-                          versions: WorkflowVersioner,
                           val packageVersions: PackageVersioner,
-                          task: RealTask) extends TaskEnvironment(dirs, versions, task) {
+                          task: RealTask) extends TaskEnvironment(dirs, task) {
   val packageNames: Seq[String] = task.packages.map(_.name)
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map{name => {

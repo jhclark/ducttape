@@ -60,8 +60,7 @@ object CompletionChecker {
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
 // the most recent result is untouched, invalid, partial, or complete
-class CompletionChecker(dirs: DirectoryArchitect,
-                        initVersioner: WorkflowVersioner) extends UnpackedDagVisitor {
+class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   private val complete = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
@@ -80,18 +79,18 @@ class CompletionChecker(dirs: DirectoryArchitect,
   def todo: OrderedSet[(String,Realization)] = todoList
 
   // the workflow versions of each completed unpacked task
-  def completedVersions: Map[(String,Realization),Int] = completeVersions
-  def foundVersions: Map[(String,Realization),Int] = _foundVersions
+//  def completedVersions: Map[(String,Realization),Int] = completeVersions
+//  def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
   override def visit(task: RealTask) {
-    //System.err.println("Checking " + task)
-    val taskEnv = new TaskEnvironment(dirs, initVersioner, task)
-    if(taskEnv.where.exists) {
-      _foundVersions += (task.name, task.realization) -> task.version
-    }
+    System.err.println("Checking " + task)
+    val taskEnv = new TaskEnvironment(dirs, task)
+//    if(taskEnv.where.exists) {
+//      _foundVersions += (task.name, task.realization) -> task.version
+//    }
     if(CompletionChecker.isComplete(taskEnv)) {
       complete += ((task.name, task.realization))
-      completeVersions += (task.name, task.realization) -> task.version
+//      completeVersions += (task.name, task.realization) -> task.version
     } else {
       todoList += ((task.name, task.realization))
       if(CompletionChecker.isInvalidated(taskEnv)) {

@@ -11,7 +11,7 @@ import ducttape.util.BashException
 
 // workflow used for viz
 class Executor(dirs: DirectoryArchitect,
-               versions: WorkflowVersioner,
+//               versions: WorkflowVersioner,
                packageVersioner: PackageVersioner,
                workflow: HyperWorkflow,
                plannedVertices: Set[(String,Realization)],
@@ -29,17 +29,17 @@ class Executor(dirs: DirectoryArchitect,
   // TODO: Move all dot-related things to an instrumentation class
   dirs.xdotFile.synchronized {
     completed ++= alreadyDone
-    Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
+    Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, completed, running, failed), dirs.xdotFile)
   }
 
   override def visit(task: RealTask) {
     if(todo((task.name, task.realization))) {
-      val taskEnv = new FullTaskEnvironment(dirs, versions, packageVersioner, task)
+      val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
       println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
       dirs.xdotFile.synchronized {
         running += ((task.name, task.realization))
-        Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
+        Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, completed, running, failed), dirs.xdotFile)
       }
 
       taskEnv.where.mkdirs
@@ -47,7 +47,7 @@ class Executor(dirs: DirectoryArchitect,
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         dirs.xdotFile.synchronized {
-          Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
+          Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, completed, running, failed), dirs.xdotFile)
         }
         throw new BashException("Could not make directory: " + taskEnv.where.getAbsolutePath)
       }
@@ -58,7 +58,7 @@ class Executor(dirs: DirectoryArchitect,
     completed += ((task.name, task.realization))
     running -= ((task.name, task.realization))
     dirs.xdotFile.synchronized {
-      Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, versions, completed, running, failed), dirs.xdotFile)
+      Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, completed, running, failed), dirs.xdotFile)
     }
   }
 }
