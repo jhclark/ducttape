@@ -16,9 +16,7 @@ class InputChecker(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVi
   val errors = new mutable.ArrayBuffer[String]
 
   override def visit(task: RealTask) {
-    val inSpecs = task.inputVals.map{ case (mySpec: Spec, _: Spec, _: TaskDef, _: Seq[Branch]) => {
-      mySpec
-    }}
+    val inSpecs: Seq[Spec] = task.inputVals.map(_.mySpec)
     for(inSpec <- inSpecs) inSpec.rval match {
       case Literal(path) => {
         val file = dirs.resolveLiteralPath(path)

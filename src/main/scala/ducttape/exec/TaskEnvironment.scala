@@ -26,20 +26,19 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-  val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- task.inputVals) yield {
-    val srcReal = new Realization(srcRealization) // TODO: Hacky
-    val srcVersion: Int = versions(srcTaskDef.name, srcReal)
-    val inFile = dirs.getInFile(inSpec, task.realization, task.version,
-                                srcSpec, srcTaskDef, srcReal, srcVersion)
+  val inputs: Seq[(String, String)] = for(inputVal <- task.inputVals) yield {
+    val srcVersion: Int = versions(inputVal.srcTaskDef.name, inputVal.srcReal)
+    val inFile = dirs.getInFile(inputVal.mySpec, task.realization, task.version,
+                                inputVal.srcSpec, inputVal.srcTaskDef, inputVal.srcReal, srcVersion)
     //System.err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
-    (inSpec.name, inFile.getAbsolutePath)
+    (inputVal.mySpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
   // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
-  val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef, srcRealization) <- task.paramVals) yield {
+  val params: Seq[(String,String)] = for(paramVal <- task.paramVals) yield {
     //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
-    (paramSpec.name, srcSpec.rval.value)
+    (paramVal.mySpec.name, paramVal.srcSpec.rval.value)
   }
 
   // assign output paths

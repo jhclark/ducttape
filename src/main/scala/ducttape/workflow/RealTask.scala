@@ -3,14 +3,15 @@ package ducttape.workflow
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import ducttape.workflow.SpecTypes._
 
 // short for "realized task"
 // we might shorten this to Task
 class RealTask(val taskT: TaskTemplate,
                val realization: Realization,
                // TODO: Change inputVals and paramVals over to Realization?
-               val inputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
-               val paramVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])], // (mySpec,srcSpec,srcTaskDef,srcRealization)
+               val inputVals: Seq[ResolvedSpec],
+               val paramVals: Seq[ResolvedLiteralSpec],
                val version: Int) { // workflow version
    def name = taskT.name
    def taskDef = taskT.taskDef
@@ -23,8 +24,8 @@ class RealTask(val taskT: TaskTemplate,
 
   // the tasks and realizations that must temporally precede this task (due to having required input files)
    lazy val antecedents: Set[(String, Realization)] = {
-     for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- inputVals) yield {
-       (srcTaskDef.name, new Realization(srcRealization)) // TODO: change seq[branch] to realization?
+     for( inputVal <- inputVals) yield {
+       (inputVal.srcTaskDef.name, inputVal.srcReal) // TODO: change seq[branch] to realization?
      }
    }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet
 

@@ -17,17 +17,18 @@ import ducttape.workflow.Branch
 import ducttape.util.BashException
 import ducttape.util.Files
 import scala.collection.LinearSeq
+import ducttape.workflow.SpecTypes._
 
 class Submitter(submitters: Seq[SubmitterDef]) {
   
   // TODO: Really, this should be resolved during workflow building and
   // we should never pass the workflow definition anywhere else...
-  private def getSubmitter(mySubmitterSpec: Spec, srcSubmitterSpec: LiteralSpec): SubmitterDef = {
+  private def getSubmitter(submitterSpec: ResolvedLiteralSpec): SubmitterDef = {
     
-    val submitterName = srcSubmitterSpec.rval.value
+    val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find{ s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined", LinearSeq(mySubmitterSpec, srcSubmitterSpec))
+      case None => throw new FileFormatException("Submitter %s not defined", LinearSeq(submitterSpec.mySpec, submitterSpec.srcSpec))
     }
   }
   
@@ -47,20 +48,14 @@ class Submitter(submitters: Seq[SubmitterDef]) {
 
   def run(taskEnv: FullTaskEnvironment) {
 
-    
-    
     // TODO: Check in ducttape/defaults for default submitters/versioners
-    // TODO: Use a reasonable type instead of tuple for params, inputs, and output vals
-    
-    
-    val dotParams = taskEnv.task.paramVals.filter(_._1.dotVariable)
-    val dotParamsEnv: Seq[(String,String)] = dotParams.map{
-      case (mySpec: Spec, srcSpec: LiteralSpec, srcTaskDef: TaskDef, srcReal: Seq[Branch]) => (mySpec.name, srcSpec.rval.value)
-    }
+
+    val dotParams: Seq[ResolvedLiteralSpec] = taskEnv.task.paramVals.filter(_.mySpec.dotVariable)
+    val dotParamsEnv: Seq[(String,String)] = dotParams.map{ p => (p.mySpec.name, p.srcSpec.rval.value) }
     
     val runAction = {
-      val submitterDef = dotParams.find(_._1.name == "submitter") match {
-        case Some(submitterSpec) => getSubmitter(submitterSpec._1, submitterSpec._2)
+      val submitterDef = dotParams.find{p: ResolvedLiteralSpec => p.mySpec.name == "submitter"} match {
+        case Some(p) => getSubmitter(p)
         case None => getDefaultSubmitter("shell", taskEnv.task.taskDef)
       }
       getRunAction(submitterDef)

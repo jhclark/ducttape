@@ -37,10 +37,7 @@ object WorkflowViz {
       val taskT: TaskTemplate = v.packed.value
       val task: RealTask = taskT.realize(v, versions)
       val child = getName(task.name, task.realization)
-      task.inputVals.map{ case (_, _, srcTaskDef, srcRealization) => {
-        val srcReal = new Realization(srcRealization) // TODO: Hacky
-        getName(srcTaskDef.name, srcReal)
-      }}.toSet.foreach{parent: String => {
+      task.inputVals.map{ inputVal => getName(inputVal.srcTaskDef.name, inputVal.srcReal) }.toSet.foreach{parent: String => {
         if(parent != child)
           str ++= "\"%s\" -> \"%s\";\n".format(parent, child) // TODO: Quote?
       }}

@@ -548,10 +548,9 @@ object Ducttape {
         } else {
           // was this task invalidated by its parent?
           // TODO: Can we propagate this in a more natural way
-          val isVictim = task.inputVals.exists{ case (_, _, srcTaskDef, srcRealization) => {
-            val srcReal = new Realization(srcRealization) // TODO: More efficient?
-            val parent = (srcTaskDef.name, srcReal)
-              victims(parent)
+          val isVictim = task.inputVals.exists{ inputVal => {
+            val parent = (inputVal.srcTaskDef.name, inputVal.srcReal)
+            victims(parent)
           }}
           if(isVictim) {
             //err.println("Found indirect victim %s/%s".format(task.name, task.realizationName))
