@@ -47,7 +47,12 @@ class Submitter(submitters: Seq[SubmitterDef]) {
 
   def run(taskEnv: FullTaskEnvironment) {
 
+    
+    
+    // TODO: Check in ducttape/defaults for default submitters/versioners
     // TODO: Use a reasonable type instead of tuple for params, inputs, and output vals
+    
+    
     val dotParams = taskEnv.task.paramVals.filter(_._1.dotVariable)
     val dotParamsEnv: Seq[(String,String)] = dotParams.map{
       case (mySpec: Spec, srcSpec: LiteralSpec, srcTaskDef: TaskDef, srcReal: Seq[Branch]) => (mySpec.name, srcSpec.rval.value)
