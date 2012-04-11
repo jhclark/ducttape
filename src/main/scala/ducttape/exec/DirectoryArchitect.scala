@@ -8,11 +8,15 @@ import ducttape.syntax.AbstractSyntaxTree.Unbound
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
+import ducttape.util.Environment
 
 class DirectoryArchitect(val workflowBaseDir: File,
                          val confBaseDir: File,
                          val confName: Option[String]) {
 
+  val installDir = Environment.getJarDir
+  val builtinsDir = new File(installDir, "builtins")
+  
   val xdotFile = new File(confBaseDir, ".xdot")
 
   def assignPackedDir(taskName: String): File = {

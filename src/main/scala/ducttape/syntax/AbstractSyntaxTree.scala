@@ -2,6 +2,7 @@ package ducttape.syntax
 
 import scala.util.parsing.input.Positional
 import java.io.File
+import scala.util.parsing.input.Position
 
 object AbstractSyntaxTree {
 
@@ -10,6 +11,9 @@ object AbstractSyntaxTree {
     private var _file = new File("unknown_file")
     def declaringFile_=(f: File) { _file = f }
     def declaringFile: File = _file
+    
+    // can be overridden to give better error messages (e.g. TaskHeaders may cover a large span)
+    def endPos: Position = pos
     
     // used for traversing AST... abstractly
     def children: Seq[ASTType]
@@ -176,10 +180,10 @@ object AbstractSyntaxTree {
     
     override def children = Seq(comments, header, commands)
 
-    lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
-    lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
-    lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
-    lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
+    private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
+    private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
+    private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
+    private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
     lazy val packages: Seq[Spec] = packageSpecList.flatMap{_.specs}
@@ -187,10 +191,11 @@ object AbstractSyntaxTree {
     lazy val outputs: Seq[Spec] = outputSpecList.flatMap{_.specs}
     lazy val params: Seq[Spec] = paramSpecList.flatMap{_.specs}
     
-    lazy val lastHeaderLine: Int = {
-      val n = header.specsList.flatMap{specs: Specs => specs.specs.map{spec: Spec => spec.pos.line}}.max
-      System.err.println("lazy header line... " + n)
-      n
+    override lazy val endPos: Position = {
+      val specs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
+      // TODO: Define ordering on positional so that we can find last column, too
+      val lastSpec: Spec = specs.maxBy[Int]{spec: Spec => spec.pos.line}
+      lastSpec.pos
     }
     
     override def hashCode() = name.hashCode()
@@ -257,7 +262,7 @@ object AbstractSyntaxTree {
   }
   
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val file: File, val blocks: Seq[Block]) extends ASTType {
+  class WorkflowDefinition(val blocks: Seq[Block]) extends ASTType {
     override def children = blocks
     
     lazy val plans: Seq[PlanDefinition] = blocks.collect{case x: PlanDefinition => x}

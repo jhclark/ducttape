@@ -28,7 +28,7 @@ class Submitter(submitters: Seq[SubmitterDef]) {
     val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find{ s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined", LinearSeq(submitterSpec.mySpec, submitterSpec.srcSpec))
+      case None => throw new FileFormatException("Submitter %s not defined", List(submitterSpec.mySpec, submitterSpec.srcSpec))
     }
   }
   
@@ -66,12 +66,15 @@ class Submitter(submitters: Seq[SubmitterDef]) {
     
     // TODO: Grab all dot params from this task
     val env: Seq[(String,String)] = Seq(
-        ("COMMANDS", taskEnv.task.commands.toString),
         ("TASK", taskEnv.task.name),
         ("REALIZATION", taskEnv.task.realization.toString),
-        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv
+        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv ++ taskEnv.env
+        
+    // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
+    // TODO: Any other mangling that might be necessary here?
+    val code = runAction.commands.toString.replace("$COMMANDS", taskEnv.task.commands.toString).replace("${COMMANDS}", taskEnv.task.commands.toString)
     
-    val exitCode = Shell.run(runAction.commands.toString, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
+    val exitCode = Shell.run(code, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
     Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
     if (exitCode != 0) {
       throw new BashException("Task %s/%s failed".format(taskEnv.task.name, taskEnv.task.realization))

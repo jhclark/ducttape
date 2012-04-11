@@ -27,7 +27,7 @@ object GrammarParser extends RegexParsers {
     return result match {
       case Success(blocks: Seq[Block], _) => {
         blocks.foreach(addFileInfo(_, file))
-        new WorkflowDefinition(file, blocks)
+        new WorkflowDefinition(blocks)
       }
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)

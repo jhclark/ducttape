@@ -9,6 +9,7 @@ import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
+import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
@@ -18,6 +19,7 @@ import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
                       val packageDefs: Map[String,PackageDef],
                       val plans: Seq[RealizationPlan],
                       val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
+                      val versioners: Seq[VersionerDef],
                       val branchPointFactory: BranchPointFactory,
                       val branchFactory: BranchFactory) {
 

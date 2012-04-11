@@ -30,6 +30,7 @@ import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
 import ducttape.exec.FullTaskEnvironment
+import ducttape.workflow.BuiltInLoader
 
 package ducttape {
   class Config {
@@ -92,6 +93,7 @@ object Ducttape {
   }
 
   class Opts(conf: Config, args: Seq[String]) extends OptParse {
+    
     //override val optParseDebug = true
 
     // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
@@ -175,7 +177,7 @@ object Ducttape {
       conf.clearColors()
     }
     
-    err.println("%sDuctTape v0.1".format(conf.headerColor))
+    err.println("%sDuctTape v0.2".format(conf.headerColor))
     err.println("%sBy Jonathan Clark".format(conf.byColor))
     err.println(Console.RESET)
 
@@ -227,24 +229,8 @@ object Ducttape {
         }
       }
     }) ++ wd.globals
-    
-    val checker = new StaticChecker(conf, undeclaredBehavior=Warn, unusedBehavior=Warn)
-    val (warnings, errors) = checker.check(wd)
-    for(msg <- warnings) {
-       err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
-    }
-    for(msg <- errors) {
-       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-    }
-    if(errors.size > 0) {
-      System.exit(1)
-    }
-    
-    val builder = new WorkflowBuilder(wd, confSpecs)
-    val workflow: HyperWorkflow = ex2err(builder.build())
-    
-    // TODO: Check that all input files exist
-    val dirs = {
+        
+    val dirs: DirectoryArchitect = {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
       val (confNameOpt, confBaseDir) = opts.config_file.value match {
         case Some(confFile) => {
@@ -258,6 +244,23 @@ object Ducttape {
       }
       new DirectoryArchitect(workflowBaseDir, confBaseDir, confNameOpt)
     }
+    
+    val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
+    
+    val checker = new StaticChecker(conf, undeclaredBehavior=Warn, unusedBehavior=Warn)
+    val (warnings, errors) = checker.check(wd)
+    for(msg <- warnings) {
+       err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
+    }
+    for(msg <- errors) {
+       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+    }
+    if(errors.size > 0) {
+      System.exit(1)
+    }
+    
+    val builder = new WorkflowBuilder(wd, confSpecs, builtins)
+    val workflow: HyperWorkflow = ex2err(builder.build())
 
     def colorizeDir(taskName: String, real: Realization, versions: WorkflowVersioner): String = {
       val ver = versions(taskName, real)
@@ -373,7 +376,7 @@ object Ducttape {
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
       err.println("Checking for already built packages...")
-      val packageVersions = new PackageVersioner(dirs, wd.versioners)
+      val packageVersions = new PackageVersioner(dirs, workflow.versioners)
       packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)
       packageVersions
     }
@@ -626,7 +629,7 @@ object Ducttape {
       // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
       // TODO: Use directory architect here
-      val absDirs = victimList.map{case (name, real) => {
+      val absDirs: Seq[File] = victimList.map{case (name, real) => {
         val ver = initVersioner(name, real)
         new File(dirs.confBaseDir, "%s/%s/%d".format(name,real,ver))
       }}
@@ -641,7 +644,7 @@ object Ducttape {
       }
 
       answer match {
-        case 'y' | 'Y' => absDirs.foreach(f => { err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) })
+        case 'y' | 'Y' => absDirs.foreach{f: File => { err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) }}
         case _ => err.println("Doing nothing")
       }
     }
