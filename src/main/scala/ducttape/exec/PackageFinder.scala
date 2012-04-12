@@ -13,7 +13,6 @@ import java.io.File
 // dirs and versions are unimportant other than being required to generate the TaskEnvironment
 class PackageFinder(conf: Config,
                     dirs: DirectoryArchitect,
-                    versions: WorkflowVersioner,
                     todo: Set[(String,Realization)],
                     packageDefs: Map[String,PackageDef]) extends UnpackedDagVisitor {
   

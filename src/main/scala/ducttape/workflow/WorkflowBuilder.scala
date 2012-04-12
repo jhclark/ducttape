@@ -29,7 +29,7 @@ object WorkflowBuilder {
  * This is where the real magic happens of turning an Abstract Syntax Tree
  * into an immutable HyperWorkflow that everything else can use to perform actions.
  */
-class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]) {
+class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment], builtins: Seq[WorkflowDefinition]) {
   
   import WorkflowBuilder._
   
@@ -69,12 +69,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            confSpecs.get(varName) match {
              // TODO: Does this TaskDef break line numbering for error reporting?
              // TODO: Should we return? Or do we allow config files to point back into workflows?
-             case Some(confSpec: Spec) => return (confSpec, CONFIG_TASK_DEF)
+             case Some(confSpec) => return (confSpec, CONFIG_TASK_DEF)
              case None => {
                throw new FileFormatException(
-                 "Config variable %s required by input %s at task %s not found in config file.".format(
-                   varName, spec.name, taskDef.name),
-                 List( (wd.file, spec.pos, spec.pos.line), (wd.file, src.pos, src.lastHeaderLine) ))
+                 "Config variable %s required by input %s at task %s not found in config file.".
+                 format(varName, spec.name, taskDef.name),
+                 List(spec, src))
              }
            }
          }
@@ -91,9 +91,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                  case Some(srcSpec) => curSpec = srcSpec
                  case None => {
                    throw new FileFormatException(
-                     "Output %s at source task %s for required by input %s at task %s not found. Candidate outputs are: %s".format(
-                       srcOutName, srcTaskName, spec.name, taskDef.name, specSet.map(_.name).mkString(" ")),
-                     List( (wd.file, spec.pos, spec.pos.line), (wd.file, srcDef.pos, srcDef.lastHeaderLine) ))
+                     "Output %s at source task %s for required by input %s at task %s not found. Candidate outputs are: %s".
+                     format(srcOutName, srcTaskName, spec.name, taskDef.name, specSet.map(_.name).mkString(" ")),
+                     List(spec, srcDef))
                  }
                }
                // assign after we've gotten a chance to print error messages
@@ -101,8 +101,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
              }
              case None => {
                throw new FileFormatException(
-                 "Source task %s for input %s at task %s not found".format(
-                   srcTaskName, spec.name, taskDef.name), wd.file, spec.pos)
+                 "Source task %s for input %s at task %s not found".
+                 format(srcTaskName, spec.name, taskDef.name), spec)
              }
            }
          }
@@ -121,7 +121,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                  return (curSpec, src)
                } else {
                  throw new FileFormatException("Unbound input variable: %s".format(curSpec.name),
-                                               List((wd.file, taskDef.pos), (wd.file, src.pos)))
+                                               List(taskDef, src))
                }
              }
              case _ => throw new RuntimeException("Unsupported unbound variable: %s".format(curSpec.name))
@@ -255,11 +255,15 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // organize packages
     val packageDefs = wd.packages.map{p => (p.name, p)}.toMap
     val plans: Seq[RealizationPlan] = buildPlans(wd.plans)
+    
+    // TODO: More checking on submitters and versioners?
+    val submitters: Seq[SubmitterDef] = wd.submitters ++ builtins.flatMap{ b: WorkflowDefinition => b.submitters }
+    val versioners: Seq[VersionerDef] = wd.versioners ++ builtins.flatMap{ b: WorkflowDefinition => b.versioners }
 
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
-    new HyperWorkflow(dag.build, packageDefs, plans, branchPointFactory, branchFactory)
+    new HyperWorkflow(dag.build, packageDefs, plans, submitters, versioners, branchPointFactory, branchFactory)
   }
    
   def buildPlans(planDefs: Seq[PlanDefinition]): Seq[RealizationPlan] = {
@@ -365,9 +369,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        case BranchPointDef(branchPointNameOpt, branchSpecs: Seq[Spec]) => {
          val branchPointName: String = branchPointNameOpt match {
            case Some(name) => name
-           case None => throw new FileFormatException(
-                   "Branch point name is required",
-                   List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+           case None => throw new FileFormatException("Branch point name is required", inSpec)
          }
          handleBranchPoint(branchPointName, branchSpecs)
        }
@@ -377,9 +379,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                                   increment: BigDecimal) => {
          val branchPointName: String = branchPointNameOpt match {
            case Some(name) => name
-           case None => throw new FileFormatException(
-                   "Branch point name is required",
-                   List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+           case None => throw new FileFormatException("Branch point name is required", inSpec)
          }
          val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
          handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
@@ -393,9 +393,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                case BranchPointDef(branchPointNameOpt, branchSpecs: Seq[Spec]) => {
                   val branchPointName: String = branchPointNameOpt match {
                    case Some(name) => name
-                   case None => throw new FileFormatException(
-                           "Branch point name is required",
-                           List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+                   case None => throw new FileFormatException("Branch point name is required", inSpec)
                  }
                  // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
@@ -406,18 +404,16 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                                           increment: BigDecimal) => {
                  val branchPointName: String = branchPointNameOpt match {
                    case Some(name) => name
-                   case None => throw new FileFormatException(
-                           "Branch point name is required",
-                           List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+                   case None => throw new FileFormatException("Branch point name is required", inSpec)
                  }
                  val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
                case ConfigVariable(_) => {
                  throw new FileFormatException(
-                   "Recursive config variable %s required by input %s at task %s is not yet supported by ducttape".format(
-                     varName, inSpec.name, taskDef.name),
-                   List( (wd.file, inSpec.pos, inSpec.pos.line), (wd.file, confSpec.pos, confSpec.pos.line) ))
+                   "Recursive config variable %s required by input %s at task %s is not yet supported by ducttape".
+                     format(varName, inSpec.name, taskDef.name),
+                   List(inSpec, confSpec))
                }
                case _ => {
                  handleNonBranchPoint
@@ -425,9 +421,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
              }
            }
            case None => throw new FileFormatException(
-             "Config variable %s required by input %s at task %s not found in config file.".format(
-               varName, inSpec.name, taskDef.name),
-             List( (wd.file, inSpec.pos, inSpec.pos.line) ))
+             "Config variable %s required by input %s at task %s not found in config file.".
+               format(varName, inSpec.name, taskDef.name),
+             inSpec)
          }
        }
        case _ => {
@@ -450,7 +446,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        if(vertices.contains(taskDef.name)) {
          val prev: TaskTemplate = vertices(taskDef.name).value
          throw new FileFormatException("Duplicate task name: %s".format(taskDef.name),
-                                     List((wd.file, taskDef.pos), (wd.file, prev.taskDef.pos)))
+                                       List(taskDef, prev.taskDef))
        }
 
        val parentsByBranch = new mutable.HashMap[Branch,mutable.Set[Option[TaskDef]]]

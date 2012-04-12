@@ -7,3 +7,7 @@ task hello_world :: who=$someone {
 config World {
   someone=world
 }
+
+global {
+  ducttape_structure=flat
+}

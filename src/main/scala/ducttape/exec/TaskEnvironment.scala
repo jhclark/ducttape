@@ -10,7 +10,6 @@ import java.io.File
  * but does not provide full list of environment variables
  */
 class TaskEnvironment(val dirs: DirectoryArchitect,
-                      val versions: WorkflowVersioner,
                       val task: RealTask) {
   
   // grab input paths -- how are these to be resolved?
@@ -26,34 +25,31 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-  val inputs: Seq[(String, String)] = for( (inSpec, srcSpec, srcTaskDef, srcRealization) <- task.inputVals) yield {
-    val srcReal = new Realization(srcRealization) // TODO: Hacky
-    val srcVersion: Int = versions(srcTaskDef.name, srcReal)
-    val inFile = dirs.getInFile(inSpec, task.realization, task.version,
-                                srcSpec, srcTaskDef, srcReal, srcVersion)
+  val inputs: Seq[(String, String)] = for(inputVal <- task.inputVals) yield {
+    val inFile = dirs.getInFile(inputVal.mySpec, task.realization,
+                                inputVal.srcSpec, inputVal.srcTaskDef, inputVal.srcReal)
     //System.err.println("For inSpec %s with srcSpec %s, got path: %s".format(inSpec,srcSpec,inFile))
-    (inSpec.name, inFile.getAbsolutePath)
+    (inputVal.mySpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
   // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
-  val params: Seq[(String,String)] = for( (paramSpec, srcSpec, srcTaskDef, srcRealization) <- task.paramVals) yield {
+  val params: Seq[(String,String)] = for(paramVal <- task.paramVals) yield {
     //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
-    (paramSpec.name, srcSpec.rval.value)
+    (paramVal.mySpec.name, paramVal.srcSpec.rval.value)
   }
 
   // assign output paths
   val outputs: Seq[(String, String)] = for(outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
+    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization)
     //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
   
-  val where = dirs.assignDir(task.taskDef, task.realization, task.version)
-  val stdoutFile = new File(where, "stdout.txt")
-  val stderrFile = new File(where, "stderr.txt")
-  val workDir = new File(where, "work")
-  val exitCodeFile = new File(where, "exit_code.txt")
+  val where = dirs.assignDir(task.taskDef, task.realization)
+  val stdoutFile = new File(where, "ducttape_stdout.txt")
+  val stderrFile = new File(where, "ducttape_stderr.txt")
+  val exitCodeFile = new File(where, "ducttape_exit_code.txt")
   val invalidatedFile = new File(where, "INVALIDATED")
 }
 
@@ -61,9 +57,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
  * Includes all environment variables, but requires knowledge of packgeVersions
  */
 class FullTaskEnvironment(dirs: DirectoryArchitect,
-                          versions: WorkflowVersioner,
                           val packageVersions: PackageVersioner,
-                          task: RealTask) extends TaskEnvironment(dirs, versions, task) {
+                          task: RealTask) extends TaskEnvironment(dirs, task) {
   val packageNames: Seq[String] = task.packages.map(_.name)
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map{name => {

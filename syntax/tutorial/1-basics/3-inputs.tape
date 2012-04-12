@@ -7,3 +7,7 @@ task hello_world_3 < a=/etc/passwd b=/etc/hosts {
   cat $a>/dev/null
   cat $b>/dev/null
 }
+
+global {
+  ducttape_structure=flat
+}

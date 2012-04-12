@@ -9,7 +9,6 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
  * a newly checked-out copy.
  */
 class PackageBuilder(dirs: DirectoryArchitect,
-                     workflowVersion: Int,
                      packageVersions: PackageVersioner) {
   
   def build(packages: Iterable[PackageDef]) {

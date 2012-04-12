@@ -15,7 +15,7 @@ class PartialOutputRemover(dirs: DirectoryArchitect,
                            partial: Set[(String,Realization)]) extends UnpackedDagVisitor {
   
   override def visit(task: RealTask) {
-    val taskEnv = new TaskEnvironment(dirs, versions, task)
+    val taskEnv = new TaskEnvironment(dirs, task)
     if(partial( (task.name, task.realization) )) {
       Console.err.println("Removing partial output at %s".format(taskEnv.where))
       Files.deleteDir(taskEnv.where)

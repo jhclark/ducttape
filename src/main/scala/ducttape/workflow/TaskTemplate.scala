@@ -12,6 +12,7 @@ import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.FileFormatException
 import ducttape.syntax.AbstractSyntaxTree.TaskVariable
+import ducttape.workflow.SpecTypes._
 
 /**
  * a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
@@ -19,7 +20,7 @@ import ducttape.syntax.AbstractSyntaxTree.TaskVariable
 // TODO: fix these insane types for inputVals and paramVals
 class TaskTemplate(val taskDef: TaskDef,
             val branchPoints: Seq[BranchPoint], // only the branch points introduced at this task
-            val inputVals: Seq[(Spec,Map[Branch,(Spec,TaskDef)])], // (mySpec,srcSpec,srcTaskDef)
+            val inputVals: Seq[(Spec,Map[Branch,(Spec,TaskDef)])],
             val paramVals: Seq[(Spec,Map[Branch,(LiteralSpec,TaskDef)])] ) { // (mySpec,srcSpec,srcTaskDef)
    def name = taskDef.name
    def comments = taskDef.comments
@@ -30,11 +31,13 @@ class TaskTemplate(val taskDef: TaskDef,
    def commands = taskDef.commands
 
    override def toString = name
+   
+   // NOTE: MEMORY WARNING: These realizations are not uniqued in any way. We might want to pool them at some point!
 
    // realize this task by specifying one branch per branch point
    // activeBranches should contain only the hyperedges encountered up until this vertex
    // with the key being the branchPointNames
-   def realize(v: UnpackedWorkVert, versions: WorkflowVersioner): RealTask = {
+   def realize(v: UnpackedWorkVert): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
      val realization = new Realization(v.realization)
@@ -50,14 +53,14 @@ class TaskTemplate(val taskDef: TaskDef,
      // iterate over the hyperedges selected in this realization
      // remember: *every* metaedge has exactly one active incoming hyperedge
      // this annotation on the plain edges is created in WorkflowBuilder.build()
-     val spec2reals = new mutable.HashMap[Spec, Seq[Branch]]
+     val spec2reals = new mutable.HashMap[Spec, Realization]
      for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
           <- v.edges.zip(v.parentRealizations)) {
        val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
        for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
          for(spec <- specs) {
            //System.err.println("Spec %s has source real: %s".format(spec, srcReal))
-           spec2reals += spec -> srcReal
+           spec2reals += spec -> new Realization(srcReal) // TODO: Pool realizations?
          }
        }
      }
@@ -67,7 +70,7 @@ class TaskTemplate(val taskDef: TaskDef,
 
      // resolve the source spec/task for the selected branch
      // and return the 
-     def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): (Spec,T,TaskDef,Seq[Branch]) = {
+     def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): ResolvedSpecType[T] = {
        curSpec.rval match {
          case BranchPointDef(branchPointNameOpt, _) => {
            val branchPointName = branchPointNameOpt match {
@@ -78,7 +81,7 @@ class TaskTemplate(val taskDef: TaskDef,
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
            // TODO: Borken for params
            val parentReal = spec2reals(origSpec)
-           (origSpec, srcSpec, srcTaskDef, parentReal)
+           new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case ConfigVariable(_) => {
            // config variables can, in turn, define branch points, so we must be careful
@@ -86,36 +89,35 @@ class TaskTemplate(val taskDef: TaskDef,
            val whichBranchPoint: BranchPoint = branchMap.keys.head.branchPoint
            val activeBranch: Branch = activeBranchMap(whichBranchPoint.name)
            val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
-           val parentReal = spec2reals.get(origSpec) match {
+           val parentReal: Realization = spec2reals.get(origSpec) match {
              case Some(r) => r // config has branch point
-             case None => v.realization // config has no branch point
+             case None => new Realization(v.realization) // config has no branch point
            }
            //mapVal(origSpec, srcSpec, branchMap)
            //System.err.println("Mapping config var with active branch %s to srcSpec %s at srcTask %s with parent real %s".format(activeBranch, srcSpec, srcTaskDef, parentReal))
-           (origSpec, srcSpec, srcTaskDef, parentReal)
+           new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case TaskVariable(_,_) => { // not a branch point, but defined elsewhere
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
            //System.err.println("Looking for %s in %s".format(origSpec, spec2reals))
            val parentReal = spec2reals(origSpec)
-           (origSpec, srcSpec, srcTaskDef, parentReal)
+           new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case _ => { // not a branch point, but either a literal or unbound
            val(srcSpec: T, srcTaskDef) = branchMap.values.head
-           (origSpec, srcSpec, srcTaskDef, v.realization)
+           new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, new Realization(v.realization))
          }
        }
      }
      
      // resolve the source spec/task for the selected branch
-     def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[(Spec,T,TaskDef,Seq[Branch])] = {
+     def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[ResolvedSpecType[T]] = {
        values.map{ case (mySpec: Spec, branchMap: Map[Branch,(T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
      }
 
-     val realInputVals: Seq[(Spec,Spec,TaskDef,Seq[Branch])] = mapVals(inputVals)
-     val realParamVals: Seq[(Spec,LiteralSpec,TaskDef,Seq[Branch])] = mapVals(paramVals)
+     val realInputVals: Seq[ResolvedSpec] = mapVals(inputVals)
+     val realParamVals: Seq[ResolvedLiteralSpec] = mapVals(paramVals)
 
-     val version = versions(taskDef.name, realization)
-     new RealTask(this, realization, realInputVals, realParamVals, version)
+     new RealTask(this, realization, realInputVals, realParamVals)
    }
 }

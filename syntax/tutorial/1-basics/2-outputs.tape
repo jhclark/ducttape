@@ -19,3 +19,7 @@ task hello_world_2 > x y_txt {
 task named_output < x=/etc/passwd > named=x.gz {
   cat $x | gzip > $named
 }
+
+global {
+  ducttape_structure=flat
+}

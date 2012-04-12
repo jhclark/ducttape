@@ -3,3 +3,7 @@ submitter sge :: COMMANDS /* the bash commands from some task */ {
     $COMMANDS
   }
 }
+
+task hello {
+  echo hello
+}

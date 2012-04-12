@@ -7,4 +7,7 @@ task hello_world :: who=$someone {
 // be shared among *all* configs
 global {
   someone=world
+
+  # Remember, the ducttape_structure global is a special directive to ducttape
+  ducttape_structure=flat
 }
