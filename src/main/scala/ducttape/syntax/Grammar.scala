@@ -58,13 +58,63 @@ object Grammar {
   }
   
   /** One line of comments */
-  val comment: Parser[String] = {
+  val lineComment: Parser[String] = {
       opt(space) ~>
       (literal("//") | literal("#")) ~>
       regex("""[^\r\n]*""".r) <~
       eol
   }
   
+  val blockComment: Parser[String] = {
+    literal("/*") ~> 
+    rep(
+      not(literal("*/"))~>
+      (
+        blockComment |
+        regex(""".|\n|\r""".r)
+      )
+    ) <~ 
+    (
+      literal("*/") |
+      err("Comment is missing closing */")
+    )
+//    (
+//      literal("/**/") |  
+//      
+//      (
+//        (literal("/*")) ~> 
+//        rep(
+//          blockComment | 
+//          (
+//            regex("""([^\*]|\*(?!/))+""".r) ~
+//            opt(blockComment)
+//          )
+//        ) <~
+//        (
+//          literal("*/") |
+//          err("Comment is missing closing */")        
+//        )
+//      )
+//    )
+    
+  } ^^ {
+//    case s:String => ""
+    case list:List[String] => {
+      val sb = new StringBuilder()
+      list.foreach((item:String) => sb.append(item) )
+//        item match {
+//          case (s:String) => 
+////          case ()~(s:String) ~ Some(c:String) => { sb.append(s); sb.append(c) }
+////          case (s:String) ~ None => sb.append(s)
+//        }
+//      )
+      sb.toString
+    }
+  }
+
+    
+  val comment: Parser[String] = lineComment | blockComment
+
   /** One or more lines of comments */
   val comments: Parser[Comments] = {
     repsep(comment,opt(whitespace)) <~ opt(whitespace)
