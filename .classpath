@@ -11,5 +11,6 @@
 	<classpathentry kind="lib" path="lib/commons-lang3-3.1.jar"/>
 	<classpathentry kind="lib" path="lib/webui/servlet-api-3.0.jar"/>
 	<classpathentry kind="lib" path="lib/webui/jetty-all-8.0.4.v20111024.jar"/>
+	<classpathentry kind="lib" path="lib/test/junit-4.10.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

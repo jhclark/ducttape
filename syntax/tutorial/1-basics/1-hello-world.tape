@@ -1,3 +1,5 @@
+#!/usr/bin/env ducttape
+
 # 1) Running a single command
 #
 # Syntax:
