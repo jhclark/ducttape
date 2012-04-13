@@ -1,6 +1,5 @@
 package ducttape.exec
 
-import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.RealTask
 import ducttape.workflow.Realization
 import java.io.File

@@ -4,7 +4,6 @@ import collection._
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
-import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.Types._
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.hyperdag.HyperEdge

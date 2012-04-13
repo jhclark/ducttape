@@ -75,14 +75,6 @@ package ducttape {
       redColor = ""
     }
   }
-  
-  object ProcessInfo {
-    import java.lang.management._
-    // vmName looks like 11411@mymachine.org
-    lazy val vmName = ManagementFactory.getRuntimeMXBean.getName
-    lazy val pid = vmName.split("@")(0).toInt
-    lazy val hostname = vmName.split("@")(1)
-  }
 }
 
 object Ducttape {
@@ -275,6 +267,10 @@ object Ducttape {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
+    // Check version information
+    val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
+    err.println("Have %d previous workflow versions".format(history.prevVersion))
+    
     def visitAll[A <: UnpackedDagVisitor](
         visitor: A,
         plannedVertices: Set[(String,Realization)],
@@ -288,6 +284,7 @@ object Ducttape {
       visitor
     }
 
+    // TODO: Move this to a separate file
     // Our dag is directed from antecedents toward their consequents
     // After an initial forward pass that uses a realization filter
     // to generate vertices whose realizations are part of the plan
@@ -500,6 +497,10 @@ object Ducttape {
         
         answer match {
           case true => {
+            // create a new workflow version
+            val configFile: Option[File] = opts.config_file.value.map(new File(_))
+            val myVersion = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
+            
             err.println("Retreiving code and building...")
             val builder = new PackageBuilder(dirs, packageVersions)
             builder.build(packageVersions.packagesToBuild)

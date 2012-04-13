@@ -1,7 +1,6 @@
 package ducttape.exec
 
 import collection._
-import ducttape.versioner.WorkflowVersioner
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.workflow.Realization

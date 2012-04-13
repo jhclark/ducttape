@@ -2,7 +2,6 @@ package ducttape.exec
 
 import collection._
 import ducttape.Config
-import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.syntax.AbstractSyntaxTree.PackageDef

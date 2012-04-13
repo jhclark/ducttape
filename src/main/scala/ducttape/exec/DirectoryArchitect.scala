@@ -25,6 +25,9 @@ class DirectoryArchitect(val flat: Boolean,
     case None => workflowBaseDir
   }
   
+  val versionHistoryDir = new File(confBaseDir, ".versions")
+  def assignVersionDir(version: Int) = new File(versionHistoryDir, version.toString)
+  
   val xdotFile = new File(confBaseDir, ".xdot")
 
   def assignPackedDir(taskName: String): File = {

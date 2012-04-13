@@ -56,6 +56,12 @@ object Files {
       filename
     }
   }
+  
+  def copy(src: File, dest: File) {
+    val to = new FileOutputStream(dest).getChannel
+    val from = new FileInputStream(src).getChannel
+    to.transferFrom(from, 0, Long.MaxValue)
+  }
 }
 
 object NullWriter extends Writer {

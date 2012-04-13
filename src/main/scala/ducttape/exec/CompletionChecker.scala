@@ -8,7 +8,6 @@ import ducttape.workflow.Realization
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
-import ducttape.versioner.WorkflowVersioner
 import ducttape.workflow.RealTask
 
 // checks the state of a task directory to make sure things completed as expected
@@ -82,6 +81,8 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
 //  def completedVersions: Map[(String,Realization),Int] = completeVersions
 //  def foundVersions: Map[(String,Realization),Int] = _foundVersions
 
+  def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
+  
   override def visit(task: RealTask) {
     System.err.println("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
@@ -96,7 +97,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
       if(CompletionChecker.isInvalidated(taskEnv)) {
         invalid += ((task.name, task.realization))
       } else {
-        if(PartialOutputRemover.hasPartialOutput(taskEnv)) {
+        if(hasPartialOutput(taskEnv)) {
           partialOutput += ((task.name, task.realization))
         }
       }
