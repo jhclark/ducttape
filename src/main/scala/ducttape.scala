@@ -74,6 +74,7 @@ package ducttape {
       greenColor = ""
       redColor = ""
     }
+
   }
 }
 
@@ -85,6 +86,17 @@ object Ducttape {
     def unapply(name: String) = if(name == this.name) Some(name) else None
   }
 
+  def exit(status: Int) {
+    // If using an interactive console,
+    if (java.lang.System.console() != null) {
+      // reset colors to system defaults
+      err.print(Console.RESET)
+    }
+    
+    // Exit with appropriate status
+    sys.exit(status)
+  }
+  
   class Opts(conf: Config, args: Seq[String]) extends OptParse {
     
     //override val optParseDebug = true
@@ -138,11 +150,12 @@ object Ducttape {
         }
       }
     }
-
+  
     def exitHelp(msg: String, code: Int) {
       help
       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-      System.exit(code)
+      
+      Ducttape.exit(code)
     }
 
     if(args.isEmpty || args(0).startsWith("-")) {
@@ -187,12 +200,12 @@ object Ducttape {
             err.println(conf.errorScriptColor + badLines.mkString("\n"))
             err.println(" " * (col-2) + "^")
           }
-          sys.exit(1)
+          Ducttape.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
         case e: Exception => {
           err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
-          exit(1)
+          Ducttape.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
         case t: Throwable => throw t
@@ -262,7 +275,7 @@ object Ducttape {
        err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
     }
     if(errors.size > 0) {
-      System.exit(1)
+      Ducttape.exit(1)
     }
     
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
@@ -469,7 +482,7 @@ object Ducttape {
           for(msg <- inputChecker.errors) {
             err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
           }
-          System.exit(1)
+          Ducttape.exit(1)
         }
         
         // TODO: Check package versions to see if any packages need rebuilding.
