@@ -163,16 +163,17 @@ object Ducttape {
       _realNames = posArgs.drop(2)
   }
 
+  
   def main(args: Array[String]) {
     implicit val conf = new Config
     val opts = new Opts(conf, args)
-    if(opts.no_color) {
+    if(opts.no_color || java.lang.System.console()==null) {
       conf.clearColors()
     }
     
     err.println("%sDuctTape v0.2".format(conf.headerColor))
     err.println("%sBy Jonathan Clark".format(conf.byColor))
-    err.println(Console.RESET)
+    err.println(conf.resetColor)
 
     // format exceptions as nice error messages
     def ex2err[T](func: => T): T = {
