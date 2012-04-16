@@ -35,22 +35,23 @@ object Files {
     }
   }
 
-  // there is no reliable way of detecting symlinks in Java
-  // f.getAbsolutePath != f.getCanonicalPath fails since /home/./jhclark is not canonical
-  def deleteDir(dir: File) {
-    ApacheFileUtils.deleteDirectory(dir)
-  }
+  def deleteDir(dir: File) = org.apache.commons.io.FileUtils.deleteDirectory(dir)
+
+  // Java's File.rename fails if moving between file systems
+  // see http://stackoverflow.com/questions/7087743/how-to-rename-a-file-to-another-file-system
+  def moveDir(src: File, dest: File) = org.apache.commons.io.FileUtils.moveDirectory(src, dest)
+  def moveFile(src: File, dest: File) = org.apache.commons.io.FileUtils.moveFile(src, dest)
 
   def ls(dir: File): Seq[File] = {
     val listing = dir.listFiles
-    if(listing == null)
+    if (listing == null)
       Nil
     else
       listing.toSeq
   }
 
   def basename(filename: String, suffix: String) = {
-    if(filename.endsWith(suffix)) {
+    if (filename.endsWith(suffix)) {
       filename.substring(0, filename.length - suffix.length)
     } else {
       filename
