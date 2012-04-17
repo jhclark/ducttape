@@ -35,16 +35,16 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
 
   override def take(): Option[UnpackedMetaVertex[V,H,E]] = {
 
-    def getNext: Option[UnpackedMetaVertex[V,H,E]] = {
+    def getNext(): Option[UnpackedMetaVertex[V,H,E]] = {
       var result: Option[UnpackedVertex[V,H,E]] = delegate.take
       // never return epsilon vertices nor phantom verties
       // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
       // but phantom vertices break this
-      while(!result.isEmpty && dag.shouldSkip(result.get.packed)) {
+      while (!result.isEmpty && dag.shouldSkip(result.get.packed)) {
         //println("TAKE SKIPPING: " + result)
         val uv = result.get
         delegate.complete(uv)
-        if(dag.isEpsilon(uv.packed)) {
+        if (dag.isEpsilon(uv.packed)) {
           // TODO: We'd really prefer not to store these...
           epsilons += (uv.packed, uv.realization) -> uv
         }
@@ -80,11 +80,11 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
       }
     } // getNext
       
-    var result = getNext
-    while(result != None && !vertexFilter(result.get)) {
+    var result = getNext()
+    while (result != None && !vertexFilter(result.get)) {
       //System.err.println("MEAT Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
-      result = getNext
+      result = getNext()
     }
     result
   } // take

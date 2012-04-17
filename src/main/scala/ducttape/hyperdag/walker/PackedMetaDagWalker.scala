@@ -18,13 +18,13 @@ class PackedMetaDagWalker[V](val dag: MetaHyperDag[V,_,_,_])
   override def complete(item: PackedVertex[V], continue: Boolean = true) = delegate.complete(item, continue)
 
   override def take(): Option[PackedVertex[V]] = {
-    var result = delegate.take
+    var result = delegate.take()
     // never return epsilon vertices nor phantom vertices
     // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
     // but phantom vertices break this
-    while(!result.isEmpty && (dag.shouldSkip(result.get))) {
+    while (!result.isEmpty && (dag.shouldSkip(result.get))) {
       complete(result.get)
-      result = delegate.take
+      result = delegate.take()
     }
     return result
   }
