@@ -6,34 +6,79 @@ import java.util.concurrent._
 import ducttape.hyperdag._
 import ducttape.util._
 
-// hedge filter allows us to exclude certain hyperedges from
-// the edge derivation (e.g. edges without a brach name / the default branch name)
-//
-// the selectionFilter allows us to prevent exhaustive traversal of all derivations
-// (i.e. prevent combinatorial explosion)
-//
-// the constraintFilter allows for higher order semantics to be imposed on the traversal
-// for example, that for hyperedges (branches) linked to the same metaedge (branch point),
-// we want to choose a branch once and consistently use the same branch choice within each derivation
-//
-// Null can be used as the type of F (the FilterState) if a constraintFilter is not desired
-//
-// the "edge derivation" == the realization
+object UnpackedDagWalker {
+  trait SelectionFilter[H] {
+    def apply(combo: MultiSet[H]): Boolean
+  }
+  def DefaultSelectionFilter[H] = new SelectionFilter[H] {
+    override def apply(combo: MultiSet[H]) = true
+  }
+  
+  trait HyperEdgeFilter[H,E] {
+    def apply(he: HyperEdge[H,E]): Boolean
+  }
+  def DefaultHyperEdgeFilter[H,E] = new HyperEdgeFilter[H,E] {
+    override def apply(combo: HyperEdge[H,E]) = true
+  }
+  
+  trait ConstraintFilter[V,H,F] {
+    def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]): Option[F]
+    val initState: F
+  }
+  def DefaultConstraintFilter[V,H,F] = new ConstraintFilter[V,H,F] {
+    override def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]) = Some(prevState)
+    private var nada: F = _ // syntactic cruft, just to get a null...
+    override val initState: F = nada
+  }
+  
+  trait VertexFilter[V,H,E] {
+    def apply(v: UnpackedVertex[V,H,E]): Boolean
+  }
+  def DefaultVertexFilter[V,H,E] = new VertexFilter[V,H,E] {
+    override def apply(v: UnpackedVertex[V,H,E]) = true
+  }
+  
+  // TODO: Receieve immutable multiset as argument?
+  trait ComboTransformer[H] {
+    def apply(combo: MultiSet[H]): MultiSet[H]
+  }
+  def DefaultComboTransformer[H] = new ComboTransformer[H] {
+    override def apply(combo: MultiSet[H]) = combo
+  }
+}
+import UnpackedDagWalker._
+
+/** the hedge filter allows us to hide certain hyperedges from
+ *  the edge derivation (e.g. edges without a branch name / the default branch name)
+ *  however, this filter is cosmetic only and does not result in any additional 
+ *
+ *  the selectionFilter allows us to prevent exhaustive traversal of all derivations
+ *  (i.e. prevent combinatorial explosion)
+ *
+ *  the constraintFilter allows for higher order semantics to be imposed on the traversal
+ *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
+ *  we want to choose a branch once and consistently use the same branch choice within each derivation
+ *
+ *  the vertex filter allows early termination when it is guaranteed that no future
+ *  vertices should be reachable
+ *
+ *  the comboTransformer is used to implement anti-hyperedges by taking in the result of aggregating
+ *  all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
+ *  version (e.g. anti-hyperedges remove entirely one of these edges)
+ *
+ *  the "edge derivation" == the realization */
 // TODO: SPECIFY GOAL VERTICES
-class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
-        val selectionFilter: MultiSet[H] => Boolean = (_:MultiSet[H]) => true,
-        val hedgeFilter: HyperEdge[H,E] => Boolean = (_:HyperEdge[H,E]) => true,
-        val initState: F = null, // shouldn't be null if we specify a constraintFilter
-        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F]
-                              = (_:PackedVertex[V], prevState:F,_:MultiSet[H],_:Seq[H]) => Some(prevState),
-        val vertexFilter: UnpackedVertex[V,H,E] => Boolean = (_:UnpackedVertex[V,H,E]) => true)
+class UnpackedDagWalker[V,H,E,F](
+        val dag: HyperDag[V,H,E],
+        val selectionFilter: SelectionFilter[H] = DefaultSelectionFilter,
+        val hedgeFilter: HyperEdgeFilter[H,E] = DefaultHyperEdgeFilter,
+        val constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter,
+        val vertexFilter: VertexFilter[V,H,E] = DefaultVertexFilter,
+        val comboTransformer: ComboTransformer[H] = DefaultComboTransformer)
   extends Walker[UnpackedVertex[V,H,E]] {
 
-  type SelectionFilter = MultiSet[H] => Boolean
-  type HyperEdgeFilter = HyperEdge[H,E] => Boolean
-  type ConstraintFilter = (V, F, MultiSet[H], Seq[H]) => Option[F]
-  type VertexFilter = UnpackedVertex[V,H,E] => Boolean
-    
+  // TODO: Factor this out into a class all its own?
+  // TODO: Document why active vertices are isomorphic to hyperedges (or no hyperedge)
   class ActiveVertex(val v: PackedVertex[V],
                      val he: Option[HyperEdge[H,E]]) {
 
@@ -44,7 +89,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       val sz = if (he.isEmpty) 0 else dag.sources(he.get).size
       new Array[mutable.ListBuffer[Seq[H]]](sz)
     }
-    for(i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
+    for (i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
 
     // TODO: smear
     override def hashCode() = v.hashCode ^ he.hashCode
@@ -65,17 +110,17 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
 
       // hedgeFilter has already been applied
       if (i == filled.size) {
-        if (selectionFilter(combo)) {
-          callback(new UnpackedVertex[V,H,E](v, he,
-                         combo.toList, parentReals.toList))
+        val transformedCombo = comboTransformer(combo)
+        if (selectionFilter(transformedCombo)) {
+          callback(new UnpackedVertex[V,H,E](v, he, transformedCombo.toList, parentReals.toList))
         }
       } else {
         //unpack(i+1, iFixed, combo, parentReals, prevState, callback)
         // NOTE: We previously set parentReals(iFixed) to be the fixed realization
-        val myParentReals: Iterable[Seq[H]] = if(i == iFixed) Seq(parentReals(iFixed)) else filled(i)
+        val myParentReals: Iterable[Seq[H]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
-        for(parentRealization: Seq[H] <- myParentReals) {
+        for (parentRealization: Seq[H] <- myParentReals) {
           // TODO: Get prevState
           // check if we meet external semantic constraints
           constraintFilter(v, prevState, combo, parentRealization) match {
@@ -113,7 +158,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       val parentReals = new Array[Seq[H]](filled.size)
       parentReals(iFixed) = fixedRealization
       combo ++= fixedRealization
-      unpack(0, iFixed, combo, parentReals, initState, callback)
+      unpack(0, iFixed, combo, parentReals, constraintFilter.initState, callback)
     }
   } // end ActiveVertex
 
@@ -149,7 +194,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
         val (key, takenSize) = agendaTakenLock.synchronized {
           // after polling the agenda, we must update taken
           // before releasing our lock
-          val key = Optional.toOption(agenda.poll)
+          val key = Optional.toOption(agenda.poll())
           val takenSize = taken.size
           key match {
             case Some(v) => taken += v
@@ -217,7 +262,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
           def newActiveVertex() = { // thunk
             // get() will throw if we don't get a valid state -- we should be guaranteed a valid state
             // TODO: Can the following line be written prettier? Also, consequentE should never be null
-            val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
+            val h = if (consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
             new ActiveVertex(consequentV, Some(consequentE))
           }
           val activeCon: ActiveVertex = activeEdges.getOrElseUpdate(consequentE, newActiveVertex())
