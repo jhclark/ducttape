@@ -13,6 +13,7 @@ libs="$libs:$libDir/scalatest-1.6.1.jar"
 libs="$libs:$libDir/webui/servlet-api-3.0.jar"
 libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
 libs="$libs:$libDir/junit-4.10.jar"
+libs="$libs:$libDir/commons-io-2.2.jar"
 
 echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
@@ -24,3 +25,6 @@ find $scriptDir/src/main/scala $scriptDir/src/test/scala \
 
 echo >&2 "Building JAR..."
 (cd $scriptDir/bin; zip -qr $scriptDir/ducttape.jar *)
+
+#echo >&2 "Building One JAR to Rule Them All..."
+#java -jar $scriptDir/lib/proguard-4.7.jar @ducttape.proguard
