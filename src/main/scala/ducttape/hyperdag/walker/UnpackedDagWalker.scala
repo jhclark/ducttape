@@ -41,15 +41,15 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     // TODO: Could we make this more space efficient by only accumulating deltas?
     // indices: sourceEdge, whichUnpacking, whichRealization
     val filled = {
-      val sz = if(he.isEmpty) 0 else dag.sources(he.get).size
+      val sz = if (he.isEmpty) 0 else dag.sources(he.get).size
       new Array[mutable.ListBuffer[Seq[H]]](sz)
     }
     for(i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
 
     // TODO: smear
-    override def hashCode = v.hashCode ^ he.hashCode
+    override def hashCode() = v.hashCode ^ he.hashCode
     override def equals(obj: Any) = obj match { case that: ActiveVertex => (that.v == this.v) && (that.he == this.he) }
-    override def toString = "%s(he=%s)".format(v,he)
+    override def toString() = "%s(he=%s)".format(v,he)
 
     // recursively scan left-to-right across the array called filled,
     // building up the combination of hyperedges that forms a realization
@@ -64,8 +64,8 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       //err.println("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
       // hedgeFilter has already been applied
-      if(i == filled.size) {
-        if(selectionFilter(combo)) {
+      if (i == filled.size) {
+        if (selectionFilter(combo)) {
           callback(new UnpackedVertex[V,H,E](v, he,
                          combo.toList, parentReals.toList))
         }
@@ -108,7 +108,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       
       val combo = new MultiSet[H]
       // allow user to filter out certain hyperedges from the derivation
-      if(!he.isEmpty && hedgeFilter(he.get))
+      if (!he.isEmpty && hedgeFilter(he.get))
         combo += he.get.h
       val parentReals = new Array[Seq[H]](filled.size)
       parentReals(iFixed) = fixedRealization
@@ -127,7 +127,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
   private val completed = new mutable.HashSet[UnpackedVertex[V,H,E]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E]]
 
   // first, visit the roots, which are guaranteed not to be packed
-  for(root <- dag.roots.iterator) {
+  for (root <- dag.roots.iterator) {
     val actRoot = new ActiveVertex(root, None)
     val unpackedRoot = new UnpackedVertex[V,H,E](root, None, Nil, Nil)
     agenda.add(unpackedRoot)
@@ -140,12 +140,12 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
   // WARNING: may never return if complete() is not called as expected
   // this is why take/compelte are protected and only foreach and iterator are exposed
   // (use foreach to prevent this)
-  override def take: Option[UnpackedVertex[V,H,E]] = {
+  override def take(): Option[UnpackedVertex[V,H,E]] = {
 
     // this method just handles getting the next vertex, if any
     // take() must also perform some vertex filtering before returning
-    def getNext: Option[UnpackedVertex[V,H,E]] = {
-      def poll = { // atomically get both the size and any waiting vertex
+    def getNext(): Option[UnpackedVertex[V,H,E]] = {
+      def poll() = { // atomically get both the size and any waiting vertex
         val (key, takenSize) = agendaTakenLock.synchronized {
           // after polling the agenda, we must update taken
           // before releasing our lock
@@ -161,35 +161,35 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       } // poll
 
       val key: Option[UnpackedVertex[V,H,E]] = waitingToTakeLock.synchronized {
-        var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = poll        
-        while(key == None && takenSize > 0) {
+        var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = poll()
+        while (key == None && takenSize > 0) {
           // wait, releasing our lock until we're notified of changes
           // in state of agenda and taken
-          waitingToTakeLock.wait
+          waitingToTakeLock.wait()
           
-          val (key1, takenSize1) = poll
+          val (key1, takenSize1) = poll()
           key = key1
           takenSize = takenSize1
         }
-        if(key != None) {
+        if (key != None) {
           // * notify other threads that both the agenda and waiting
           //   vertices might be empty
           // * do this outside of agendaTakenLock
           //   to avoid nested locks
           // * do this only if we got a key (thus updating the agenda and taken)
-          waitingToTakeLock.notifyAll
+          waitingToTakeLock.notifyAll()
         }
         key
       }
       key
     } // getNext
     
-    var result = getNext
+    var result = getNext()
     // some extra machinery to handle vertex-level filtering
-    while(result != None && !vertexFilter(result.get)) {
+    while (result != None && !vertexFilter(result.get)) {
       //System.err.println("U Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
-      result = getNext
+      result = getNext()
     }
     result
   }
@@ -209,24 +209,24 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
     agendaTakenLock.synchronized {
       taken -= item
 
-      if(continue) {
+      if (continue) {
         // first, match fronteir vertices
         // note: consequent is an edge unlike the packed walker
-        for(consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
+        for (consequentE: HyperEdge[H,E] <- dag.outEdges(key.v)) {
           val consequentV = dag.sink(consequentE)
-          def newActiveVertex = { // thunk
+          def newActiveVertex() = { // thunk
             // get() will throw if we don't get a valid state -- we should be guaranteed a valid state
             // TODO: Can the following line be written prettier? Also, consequentE should never be null
             val h = if(consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
             new ActiveVertex(consequentV, Some(consequentE))
           }
-          val activeCon: ActiveVertex = activeEdges.getOrElseUpdate(consequentE, newActiveVertex)
+          val activeCon: ActiveVertex = activeEdges.getOrElseUpdate(consequentE, newActiveVertex())
           
           val antecedents = dag.sources(consequentE)
-          for(iEdge <- 0 until activeCon.filled.size) {
+          for (iEdge <- 0 until activeCon.filled.size) {
             // save a backpointer to the realizations (hyperedge derivation)
             // as of this parent antecedent vertex
-            if(item.packed == antecedents(iEdge)) {
+            if (item.packed == antecedents(iEdge)) {
               // before adding backpointer, take cross-product
               // of unpackings possible when holding this realization fixed.
               // if no complete unpacked vertex exists (i.e. the dependencies for
@@ -253,7 +253,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
       completed += item
     } // and... unlock the agenda and taken buffers
     waitingToTakeLock.synchronized {
-      waitingToTakeLock.notifyAll
+      waitingToTakeLock.notifyAll()
     }
   }
 }
