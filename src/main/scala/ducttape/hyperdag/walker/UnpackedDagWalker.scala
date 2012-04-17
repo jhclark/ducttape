@@ -75,7 +75,7 @@ class UnpackedDagWalker[V,H,E,F](val dag: HyperDag[V,H,E],
         val myParentReals: Iterable[Seq[H]] = if(i == iFixed) Seq(parentReals(iFixed)) else filled(i)
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
-        for(parentRealization: Seq[H] <- myParentReals) {
+        for (parentRealization: Seq[H] <- myParentReals) {
           // TODO: Get prevState
           // check if we meet external semantic constraints
           constraintFilter(v, prevState, combo, parentRealization) match {
