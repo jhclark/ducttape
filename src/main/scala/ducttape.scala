@@ -6,12 +6,15 @@ import ducttape._
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
+import ducttape.exec.PidWriter
 import ducttape.exec.PackageBuilder
 import ducttape.exec.PackageFinder
 import ducttape.exec.TaskEnvironment
 import ducttape.exec.UnpackedDagVisitor
 import ducttape.exec.DirectoryArchitect
 import ducttape.exec.PackageVersioner
+import ducttape.exec.FullTaskEnvironment
+import ducttape.exec.PartialOutputMover
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
@@ -29,7 +32,6 @@ import ducttape.workflow.Types._
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
-import ducttape.exec.FullTaskEnvironment
 import ducttape.workflow.BuiltInLoader
 import ducttape.syntax.FileFormatException
 
@@ -473,25 +475,31 @@ object Ducttape {
         
         // TODO: Check package versions to see if any packages need rebuilding.
 
+        // TODO: Check for existing PID lock files from some other process...x
+        
         err.println("Work plan:")
+        for( (task, real) <- cc.broken) {
+          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, dirs.colorizeDir(task, real)))
+        }
+        for( (task, real) <- cc.partial) {
+          err.println("%sMOVE TO ATTIC:%s %s".format(conf.redColor, conf.resetColor, dirs.colorizeDir(task, real)))
+        }
         for(packageName <- packageVersions.packagesToBuild) {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
-
         for( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, dirs.colorizeDir(task, real)))
         }
-      
-//        if(cc.partial.size > 0) {
-//          err.print("Are you sure you want to DELETE all this partial output and then run the tasks above? [y/n] ") // user must still press enter
-//        } else {
-//        }
 
         val answer = if(opts.yes) {
           true
         } else {
           // note: user must still press enter
-          err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size))
+          if(cc.partial.size > 0) {
+            err.print("Are you sure you want to MOVE all this partial output to the attic and then run these %d tasks? [y/n] ".format(cc.todo.size))
+          } else {
+            err.print("Are you sure you want to run these %d tasks? [y/n] ".format(cc.todo.size))
+          }
           Console.readBoolean
         }
         
@@ -499,14 +507,20 @@ object Ducttape {
           case true => {
             // create a new workflow version
             val configFile: Option[File] = opts.config_file.value.map(new File(_))
-            val myVersion = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
+            val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
             
             err.println("Retreiving code and building...")
             val builder = new PackageBuilder(dirs, packageVersions)
             builder.build(packageVersions.packagesToBuild)
 
-//            err.println("Removing partial output...")
-//            visitAll(new PartialOutputRemover(conf, dirs, versions, cc.partial), initVersioner, plannedVertices)
+            err.println("Moving previous partial output to the attic...")
+            // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
+            visitAll(new PartialOutputMover(dirs, cc.partial, cc.broken), plannedVertices)
+            
+            // Make a pass after moving partial output to write output files
+            // claiming those directories as ours so that we can later start another ducttape process
+            visitAll(new PidWriter(dirs, myVersion, cc.todo), plannedVertices)
+
             err.println("Executing tasks...")
             try {
               visitAll(new Executor(dirs, packageVersions, workflow, plannedVertices, cc.completed, cc.todo), plannedVertices, opts.jobs())
@@ -625,7 +639,7 @@ object Ducttape {
       
       // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
-      val absDirs: Seq[File] = victimList.map{task: RealTask => dirs.assignDir(task.taskDef, task.realization) }
+      val absDirs: Seq[File] = victimList.map{task: RealTask => dirs.assignDir(task) }
       err.println(dirs.colorizeDirs(victimList).mkString("\n"))
       
       val answer = if(opts.yes) {

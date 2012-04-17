@@ -23,10 +23,10 @@ object CompletionChecker {
           ( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
           ( () => try { Files.read(taskEnv.exitCodeFile)(0).trim == "0" } catch { case _ => false }, "Non-zero exit code"),
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
-          ( () => taskEnv.stderrFile.exists, "Stderr file does not exist")) ++
-      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f))} ++
-      Seq(( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated"))
-
+          ( () => taskEnv.stderrFile.exists, "Stderr file does not exist"),
+          ( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated")) ++
+          
+      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f))}
     )
     for( (cond, msg) <- conditions) {
       if(!cond()) {
@@ -55,6 +55,9 @@ object CompletionChecker {
       throw new RuntimeException("Failed to force completion of task")
     }
   }
+  
+  def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
+  def isBroken(taskEnv: TaskEnvironment) = taskEnv.where.exists && !taskEnv.versionFile.exists
 }
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
@@ -62,44 +65,36 @@ object CompletionChecker {
 class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
-  private val complete = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
-  private val partialOutput = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
-  private val invalid = new MutableOrderedSet[(String,Realization)] // invalidated by user (whether complete or not)
-  private val todoList = new MutableOrderedSet[(String,Realization)]
+  private val _completed = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
+  private val _partial = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
+  private val _todo = new MutableOrderedSet[(String,Realization)]
+  private val _broken = new MutableOrderedSet[(String,Realization)]
 
   // what is the workflow version of the completed version that we'll be reusing?
   private val _foundVersions = new mutable.HashMap[(String,Realization), Int]
   private val completeVersions = new mutable.HashMap[(String,Realization), Int]
 
-  // TODO: return immutable views:
-  def completed: OrderedSet[(String,Realization)] = complete
-  def partial: OrderedSet[(String,Realization)] = partialOutput
-  def invalidated: OrderedSet[(String,Realization)] = invalid
-  def todo: OrderedSet[(String,Realization)] = todoList
+  // NOTE: completed never includes invalidated
+  def completed: OrderedSet[(String,Realization)] = _completed
+  def partial: OrderedSet[(String,Realization)] = _partial
+  def todo: OrderedSet[(String,Realization)] = _todo
+  def broken: OrderedSet[(String,Realization)] = _broken
 
-  // the workflow versions of each completed unpacked task
-//  def completedVersions: Map[(String,Realization),Int] = completeVersions
-//  def foundVersions: Map[(String,Realization),Int] = _foundVersions
-
-  def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
   
   override def visit(task: RealTask) {
     System.err.println("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
-//    if(taskEnv.where.exists) {
-//      _foundVersions += (task.name, task.realization) -> task.version
-//    }
-    if(CompletionChecker.isComplete(taskEnv)) {
-      complete += ((task.name, task.realization))
+
+    if (CompletionChecker.isComplete(taskEnv)) {
+      _completed += ((task.name, task.realization))
 //      completeVersions += (task.name, task.realization) -> task.version
     } else {
-      todoList += ((task.name, task.realization))
-      if(CompletionChecker.isInvalidated(taskEnv)) {
-        invalid += ((task.name, task.realization))
-      } else {
-        if(hasPartialOutput(taskEnv)) {
-          partialOutput += ((task.name, task.realization))
-        }
+      _todo += ((task.name, task.realization))
+      
+      if (CompletionChecker.isBroken(taskEnv)) {
+        _broken += ((task.name, task.realization))
+      } else if (CompletionChecker.hasPartialOutput(taskEnv)) {
+        _partial += ((task.name, task.realization))
       }
     }
   }

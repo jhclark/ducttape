@@ -16,10 +16,10 @@ import ducttape.util.Environment
  * * the version number assigned to that run of the workflow
  */
 class WorkflowVersionInfo(val tapeFile: File,
-                        val confFile: Option[File],
-                        val hostname: String,
-                        val pid: Int,
-                        val version: Int)
+                          val confFile: Option[File],
+                          val hostname: String,
+                          val pid: Int,
+                          val version: Int)
 
 object WorkflowVersionInfo {
   def load(versionInfoDir: File): WorkflowVersionInfo = {

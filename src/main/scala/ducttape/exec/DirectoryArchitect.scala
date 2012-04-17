@@ -30,14 +30,18 @@ class DirectoryArchitect(val flat: Boolean,
   
   val xdotFile = new File(confBaseDir, ".xdot")
 
-  def assignPackedDir(taskName: String): File = {
-    new File(confBaseDir, taskName).getAbsoluteFile
+  def assignPackedDir(taskName: String, relativeTo: File = confBaseDir): File = {
+    new File(relativeTo, taskName).getAbsoluteFile
   }
-
-  def assignDir(taskDef: TaskDef, realization: Realization): File = {
-    val packedDir = assignPackedDir(taskDef.name)
+  
+  def assignDir(task: RealTask, relativeTo: File = confBaseDir): File = assignDir(task.taskDef, task.realization, relativeTo)
+  
+  def assignDir(taskDef: TaskDef, realization: Realization): File = assignDir(taskDef, realization, confBaseDir)
+  
+  def assignDir(taskDef: TaskDef, realization: Realization, relativeTo: File): File = {
+    val packedDir = assignPackedDir(taskDef.name, relativeTo)
     if (flat) {
-      if(realization != Task.NO_REALIZATION) { // TODO: Statically check this elsewhere, too?
+      if (realization != Task.NO_REALIZATION) { // TODO: Statically check this elsewhere, too?
         throw new FileFormatException("workflow may not contain any branchpoints if flat structure is being used", taskDef)
       }
       packedDir
@@ -45,6 +49,10 @@ class DirectoryArchitect(val flat: Boolean,
       new File(packedDir, realization.toString).getAbsoluteFile 
     }
   }
+  
+  val atticDir = new File(confBaseDir, ".attic")
+  def assignAtticDir(task: RealTask, version: Int)
+    = assignDir(task, relativeTo=new File(atticDir, version.toString)) 
 
   def assignBuildDir(packageName: String, packageVersion: String): File = {
     new File(confBaseDir, ".packages/%s/%s".format(packageName, packageVersion))

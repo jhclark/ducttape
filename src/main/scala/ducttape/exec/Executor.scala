@@ -45,6 +45,7 @@ class Executor(dirs: DirectoryArchitect,
       if(!taskEnv.where.exists) {
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
+        taskEnv.lockFile.delete() // TODO: Factor out into listener/callback
         dirs.xdotFile.synchronized {
           Files.write(WorkflowViz.toGraphViz(workflow, plannedVertices, completed, running, failed), dirs.xdotFile)
         }
@@ -53,6 +54,7 @@ class Executor(dirs: DirectoryArchitect,
 
       // the "run" action of the submitter will throw if the exit code is non-zero
       submitter.run(taskEnv)
+      taskEnv.lockFile.delete() // TODO: Factor out into listener/callback
     }
     completed += ((task.name, task.realization))
     running -= ((task.name, task.realization))

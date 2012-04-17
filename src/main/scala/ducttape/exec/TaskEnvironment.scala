@@ -45,11 +45,13 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
     (outSpec.name, outFile.getAbsolutePath)
   }
   
-  val where = dirs.assignDir(task.taskDef, task.realization)
+  val where = dirs.assignDir(task)
   val stdoutFile = new File(where, "ducttape_stdout.txt")
   val stderrFile = new File(where, "ducttape_stderr.txt")
   val exitCodeFile = new File(where, "ducttape_exit_code.txt")
-  val invalidatedFile = new File(where, "INVALIDATED")
+  val versionFile = new File(where, "ducttape_version.txt")
+  val lockFile = new File(where, "ducttape.LOCK")
+  val invalidatedFile = new File(where, "ducttape.INVALIDATED")
 }
 
 /**

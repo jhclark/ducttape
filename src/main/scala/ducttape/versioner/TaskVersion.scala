@@ -1,6 +1,16 @@
 package ducttape.versioner
 
 import collection._
+import java.io.File
+import ducttape.util.Files
+
+object TaskVersion {
+  def read(file: File): Int = Files.read(file) match {
+    case Seq(line) => line.toInt
+    // TODO: More resilient error handling?
+    case _ => throw new RuntimeException("Invalid version file: %s".format(file.getAbsolutePath))
+  }
+}
 
 // TODO: Diff the workflow files themselves
 trait TaskVersion {
