@@ -23,6 +23,10 @@ Scala Style
 
 We recommend reading this guide as a starting place for Scala stype: http://davetron5000.github.com/scala-style/
 
+Ducttape code should wrap after no more than 120 characters. If you can't fit more than 80 characters wide on your screen,
+please buy a new monitor. Generally, functions should fit within about 40-50 lines (aka, a screenfull). Shorter is usually better.
+There's plenty of ducttape code that breaks this rule. When possible, fix.
+
 Scaladoc
 ========
 
