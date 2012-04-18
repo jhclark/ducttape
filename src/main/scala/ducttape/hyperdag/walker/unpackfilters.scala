@@ -63,6 +63,8 @@ class DefaultComboTransformer[H,E] extends ComboTransformer[H,E] {
   override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = Some(combo)
 }
 
+/** when used with an unpacker, causes anti-hyperedges to be recognized
+ *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
 class AntiHyperEdgeComboTransformer[H,E] extends ComboTransformer[H,E] {
   override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = he match {
     case Some(anti: AntiHyperEdge[_,_]) => {

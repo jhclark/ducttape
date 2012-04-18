@@ -63,7 +63,7 @@ import ducttape.hyperdag.walker._
             } else {
               val ok = myReal.forall{ realBranch => planFilter.get(realBranch.branchPoint) match {
                 // planFilter must explicitly mention a branch point
-                case Some(planBranches: Set[Branch]) => planBranches.contains(realBranch)
+                case Some(planBranches: Set[_] /*Set[Branch]*/) => planBranches.contains(realBranch)
                 // otherwise it implies the baseline branch
                 case None => realBranch.name == Task.NO_BRANCH.name // compare *name*, not actual Baseline:baseline
               }}

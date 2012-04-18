@@ -53,10 +53,12 @@ class TaskTemplate(val taskDef: TaskDef,
      // remember: *every* metaedge has exactly one active incoming hyperedge
      // this annotation on the plain edges is created in WorkflowBuilder.build()
      val spec2reals = new mutable.HashMap[Spec, Realization]
-     for( (he: HyperEdge[Branch, Seq[Spec]], parentRealsByE: Seq[Seq[Branch]])
-          <- v.edges.zip(v.parentRealizations)) {
+     for( (heX, parentRealsByE: Seq[Seq[Branch]]) <- v.edges.zip(v.parentRealizations)) {
+       val he: HyperEdge[Branch, Seq[Spec]] = heX
        val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
-       for( (specs: Seq[Spec], srcReal: Seq[Branch]) <- edges) {
+       for( (specsX, srcRealX) <- edges) {
+         val specs: Seq[Spec] = specsX
+         val srcReal: Seq[Branch] = srcRealX
          for(spec <- specs) {
            //System.err.println("Spec %s has source real: %s".format(spec, srcReal))
            spec2reals += spec -> new Realization(srcReal) // TODO: Pool realizations?
@@ -77,7 +79,8 @@ class TaskTemplate(val taskDef: TaskDef,
              case None => throw new RuntimeException("Branch point name is required (this should have already been checked)")
            }
            val activeBranch: Branch = activeBranchMap(branchPointName)
-           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
+           val (srcSpecX, srcTaskDef) = branchMap(activeBranch)
+           val srcSpec: T = srcSpecX
            // TODO: Borken for params
            val parentReal = spec2reals(origSpec)
            new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
@@ -87,7 +90,8 @@ class TaskTemplate(val taskDef: TaskDef,
            // TODO: Borken for nested branch points
            val whichBranchPoint: BranchPoint = branchMap.keys.head.branchPoint
            val activeBranch: Branch = activeBranchMap(whichBranchPoint.name)
-           val(srcSpec: T, srcTaskDef) = branchMap(activeBranch)
+           val(srcSpecX, srcTaskDef) = branchMap(activeBranch)
+           val srcSpec = srcSpecX
            val parentReal: Realization = spec2reals.get(origSpec) match {
              case Some(r) => r // config has branch point
              case None => new Realization(v.realization) // config has no branch point
@@ -97,13 +101,15 @@ class TaskTemplate(val taskDef: TaskDef,
            new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case TaskVariable(_,_) => { // not a branch point, but defined elsewhere
-           val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           val (srcSpecX, srcTaskDef) = branchMap.values.head
+           val srcSpec = srcSpecX
            //System.err.println("Looking for %s in %s".format(origSpec, spec2reals))
            val parentReal = spec2reals(origSpec)
            new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
          }
          case _ => { // not a branch point, but either a literal or unbound
-           val(srcSpec: T, srcTaskDef) = branchMap.values.head
+           val (srcSpecX, srcTaskDef) = branchMap.values.head
+           val srcSpec = srcSpecX
            new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, new Realization(v.realization))
          }
        }
@@ -111,7 +117,7 @@ class TaskTemplate(val taskDef: TaskDef,
      
      // resolve the source spec/task for the selected branch
      def mapVals[T <: Spec](values: Seq[(Spec,Map[Branch,(T,TaskDef)])]): Seq[ResolvedSpecType[T]] = {
-       values.map{ case (mySpec: Spec, branchMap: Map[Branch,(T,TaskDef)]) => mapVal(mySpec, mySpec, branchMap) }
+       values.map{ case (mySpec, branchMap) => mapVal(mySpec, mySpec, branchMap) }
      }
 
      val realInputVals: Seq[ResolvedSpec] = mapVals(inputVals)

@@ -68,7 +68,7 @@ class UnpackedMetaDagWalker[V,M,H,E,F](
             case parents => {
               assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
               // for parallel to number of incoming meta edges
-              for ((parentEpsilonV: PackedVertex[V], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
+              for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
                 val parentEpsilonUV: UnpackedVertex[V,H,E] = epsilons( (parentEpsilonV, parentEpsilonReals) )
                 // use this Seq[Seq[H]], which is parallel to the active hyperedge
                 activeEdges += parentEpsilonUV.edge.get
