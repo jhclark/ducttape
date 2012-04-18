@@ -193,7 +193,7 @@ object Ducttape {
     // format exceptions as nice error messages
     def ex2err[T](func: => T): T = {
       
-      def showError(e: Exception) = {
+      def exitError(e: Exception) = {
         err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
         Ducttape.exit(1)
         throw new Error("Unreachable") // make the compiler happy
@@ -204,15 +204,15 @@ object Ducttape {
           err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
           for( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
             err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
-            val badLines = io.Source.fromFile(file).getLines.drop(line-1).take(line-untilLine+1)
+            val badLines = Files.read(file).drop(line-1).take(line-untilLine+1)
             err.println(conf.errorScriptColor + badLines.mkString("\n"))
             err.println(" " * (col-2) + "^")
           }
           Ducttape.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
-        case e: BashException => showError(e)
-        case e: DucttapeException => showError(e)
+        case e: BashException => exitError(e)
+        case e: DucttapeException => exitError(e)
         case t: Throwable => throw t
       }
     }
