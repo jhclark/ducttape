@@ -1,7 +1,6 @@
 package ducttape.syntax
 
 import collection._
-import ducttape.Config
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.syntax.AbstractSyntaxTree.Literal
@@ -15,8 +14,7 @@ object ErrorBehavior extends Enumeration {
 }
 import ErrorBehavior._
 
-class StaticChecker(conf: Config,
-                    undeclaredBehavior: ErrorBehavior,
+class StaticChecker(undeclaredBehavior: ErrorBehavior,
                     unusedBehavior: ErrorBehavior) {
   
   /**

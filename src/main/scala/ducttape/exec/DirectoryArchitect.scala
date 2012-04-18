@@ -116,19 +116,4 @@ class DirectoryArchitect(val flat: Boolean,
     f.mkdirs() // and make it a directory instead
     f
   }
-  
-  // ==== TODO: Separate off the following UI-specific code =====
-  
-  def colorizeDir(taskName: String, real: Realization)(implicit conf: ducttape.Config): String = {
-    val x = "%s/%s%s%s".format(confBaseDir.getAbsolutePath, conf.taskNameColor, taskName, conf.resetColor)           
-    if (flat) {
-      x
-    } else {
-      x + "/%s%s%s".format(conf.realNameColor, real.toString, conf.resetColor)
-    }
-  }
-
-  def colorizeDirs(list: Iterable[RealTask])(implicit conf: ducttape.Config): Seq[String] = {
-    list.toSeq.map{ task => colorizeDir(task.name, task.realization) }
-  }
 }

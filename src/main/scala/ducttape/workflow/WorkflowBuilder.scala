@@ -228,7 +228,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
        // add one metaedge per branch point
        // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
-       for(branchPoint <- branchPointsByTask(task.taskDef)) {
+       for (branchPoint <- branchPointsByTask(task.taskDef)) {
  
          // create a hyperedge list in the format expected by the HyperDAG API
          val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
@@ -257,7 +257,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                    }
                  }
                }.map{
-                 case(ipSpec, specBranches) => ipSpec
+                 case (ipSpec, specBranches) => ipSpec
                }
            }
            
@@ -266,12 +266,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            // through a single hyperedge *per branch*
            def findParamSpecs(): Seq[Spec] = {
                task.paramVals.filter{
-                 case(ipSpec, specBranchez) => {
+                 case (ipSpec, specBranchez) => {
                    val specBranches: Map[Branch,(Spec,TaskDef)] = specBranchez
                    specBranches.contains(branch)
                  }
                }.map{
-                 case(ipSpec, specBranches) => ipSpec
+                 case (ipSpec, specBranches) => ipSpec
                }
            }
 
@@ -423,12 +423,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        branchPointsByTask.getOrElseUpdate(taskDef, {new mutable.HashSet}) += Task.NO_BRANCH_POINT  
      }
      
-     def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, increment: BigDecimal): Seq[LiteralSpec] = {
+     def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, inc: BigDecimal): Seq[LiteralSpec] = {
        val result = new mutable.ArrayBuffer[LiteralSpec]
        var value = start
        while (value <= end) {
          result += new LiteralSpec(bpName.toLowerCase + value.toString, new Literal(value.toString), dotVariable=false)
-         value += increment
+         value += inc
        }
        result
      }

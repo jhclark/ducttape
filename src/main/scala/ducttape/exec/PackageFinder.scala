@@ -1,7 +1,6 @@
 package ducttape.exec
 
 import collection._
-import ducttape.Config
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
@@ -10,8 +9,7 @@ import ducttape.syntax.FileFormatException
 import java.io.File
 
 // dirs and versions are unimportant other than being required to generate the TaskEnvironment
-class PackageFinder(conf: Config,
-                    dirs: DirectoryArchitect,
+class PackageFinder(dirs: DirectoryArchitect,
                     todo: Set[(String,Realization)],
                     packageDefs: Map[String,PackageDef]) extends UnpackedDagVisitor {
   

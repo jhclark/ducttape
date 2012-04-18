@@ -2,7 +2,6 @@ package ducttape.exec
 
 import java.io.File
 import collection._
-import ducttape.Config
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.workflow.Branch
 import ducttape.workflow.Realization

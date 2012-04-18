@@ -2,7 +2,6 @@ import System._
 import collection._
 import java.io.File
 import java.util.concurrent.ExecutionException
-import ducttape._
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
@@ -32,52 +31,53 @@ import ducttape.workflow.Types._
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
+import ducttape.util.Environment
 import ducttape.workflow.BuiltInLoader
 import ducttape.syntax.FileFormatException
+import ducttape.util.DucttapeException
+import ducttape.util.BashException
 
-package ducttape {
-  class Config {
-    // TODO: Use Map for color sot that we can remove all of them easily?
-    var headerColor = Console.BLUE
-    var byColor = Console.BLUE
-    var taskColor = Console.CYAN
-    var warnColor = Console.BOLD + Console.YELLOW
-    var errorColor = Console.RED
-    var resetColor = Console.RESET
+class Config {
+  // TODO: Use Map for color sot that we can remove all of them easily?
+  var headerColor = Console.BLUE
+  var byColor = Console.BLUE
+  var taskColor = Console.CYAN
+  var warnColor = Console.BOLD + Console.YELLOW
+  var errorColor = Console.RED
+  var resetColor = Console.RESET
 
-    var modeColor = Console.GREEN
+  var modeColor = Console.GREEN
 
-    var errorLineColor = Console.BLUE // file and line number of error
-    var errorScriptColor = Console.WHITE // quote from file
+  var errorLineColor = Console.BLUE // file and line number of error
+  var errorScriptColor = Console.WHITE // quote from file
 
-    var taskNameColor = Console.CYAN
-    var realNameColor = Console.BLUE
+  var taskNameColor = Console.CYAN
+  var realNameColor = Console.BLUE
 
-    var greenColor = Console.GREEN
-    var redColor = Console.RED
-    
-    // TODO: Enum?
-    def clearColors() {
-      headerColor = ""
-      byColor = ""
-      taskColor = ""
-      warnColor = ""
-      errorColor = ""
-      resetColor = ""
+  var greenColor = Console.GREEN
+  var redColor = Console.RED
   
-      modeColor = ""
-  
-      errorLineColor = ""
-      errorScriptColor = ""
-  
-      taskNameColor = ""
-      realNameColor = ""
-  
-      greenColor = ""
-      redColor = ""
-    }
+  // TODO: Enum?
+  def clearColors() {
+    headerColor = ""
+    byColor = ""
+    taskColor = ""
+    warnColor = ""
+    errorColor = ""
+    resetColor = ""
 
+    modeColor = ""
+
+    errorLineColor = ""
+    errorScriptColor = ""
+
+    taskNameColor = ""
+    realNameColor = ""
+
+    greenColor = ""
+    redColor = ""
   }
+
 }
 
 object Ducttape {
@@ -182,7 +182,7 @@ object Ducttape {
   def main(args: Array[String]) {
     implicit val conf = new Config
     val opts = new Opts(conf, args)
-    if(opts.no_color || java.lang.System.console()==null) {
+    if(opts.no_color || !Environment.hasTTY) {
       conf.clearColors()
     }
     
@@ -192,7 +192,13 @@ object Ducttape {
 
     // format exceptions as nice error messages
     def ex2err[T](func: => T): T = {
-      import ducttape.syntax.FileFormatException
+      
+      def showError(e: Exception) = {
+        err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
+        Ducttape.exit(1)
+        throw new Error("Unreachable") // make the compiler happy
+      }
+      
       try { func } catch {
         case e: FileFormatException => {
           err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
@@ -205,11 +211,8 @@ object Ducttape {
           Ducttape.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }
-        case e: Exception => {
-          err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
-          Ducttape.exit(1)
-          throw new Error("Unreachable") // make the compiler happy
-        }
+        case e: BashException => showError(e)
+        case e: DucttapeException => showError(e)
         case t: Throwable => throw t
       }
     }
@@ -226,7 +229,7 @@ object Ducttape {
         case Some(confName) => {
           wd.configs.find{ case c: ConfigDefinition => c.name == Some(confName) } match {
             case Some(x) => x.lines
-            case None => throw new RuntimeException("Configuration not found: %s".format(confName))
+            case None => throw new DucttapeException("Configuration not found: %s".format(confName))
           }
         }
         case None => {
@@ -254,7 +257,7 @@ object Ducttape {
     }
     if (flat) System.err.println("Using structure: flat")
         
-    val dirs: DirectoryArchitect = {
+    implicit val dirs: DirectoryArchitect = {
       val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
       val confNameOpt = opts.config_file.value match {
         case Some(confFile) => Some(Files.basename(confFile, ".conf"))
@@ -268,7 +271,7 @@ object Ducttape {
     
     val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
     
-    val checker = new StaticChecker(conf, undeclaredBehavior=Warn, unusedBehavior=Warn)
+    val checker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
     val (warnings, errors) = checker.check(wd)
     for(msg <- warnings) {
        err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
@@ -286,6 +289,21 @@ object Ducttape {
     // Check version information
     val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
     err.println("Have %d previous workflow versions".format(history.prevVersion))
+    
+    def colorizeDir(taskName: String, real: Realization)
+                   (implicit dirs: DirectoryArchitect, conf: Config): String = {
+      val x = "%s/%s%s%s".format(dirs.confBaseDir.getAbsolutePath, conf.taskNameColor, taskName, conf.resetColor)           
+      if (dirs.flat) {
+        x
+      } else {
+        x + "/%s%s%s".format(conf.realNameColor, real.toString, conf.resetColor)
+      }
+    }
+  
+    def colorizeDirs(list: Iterable[RealTask])
+                    (implicit dirs: DirectoryArchitect, conf: Config): Seq[String] = {
+      list.toSeq.map{ task => colorizeDir(task.name, task.realization) }
+    }
     
     def visitAll[A <: UnpackedDagVisitor](
         visitor: A,
@@ -382,7 +400,7 @@ object Ducttape {
     //val workflowVersion = XXX
     
     def getPackageVersions() = {
-      val packageFinder = new PackageFinder(conf, dirs, cc.todo, workflow.packageDefs)
+      val packageFinder = new PackageFinder(dirs, cc.todo, workflow.packageDefs)
       visitAll(packageFinder, plannedVertices)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
@@ -478,7 +496,7 @@ object Ducttape {
         val packageVersions = getPackageVersions()
         
         err.println("Checking inputs...")
-        val inputChecker = new InputChecker(conf, dirs)
+        val inputChecker = new InputChecker(dirs)
         visitAll(inputChecker, plannedVertices)
         if(inputChecker.errors.size > 0) {
           for(msg <- inputChecker.errors) {
@@ -493,16 +511,16 @@ object Ducttape {
         
         err.println("Work plan:")
         for( (task, real) <- cc.broken) {
-          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, dirs.colorizeDir(task, real)))
+          err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
         }
         for( (task, real) <- cc.partial) {
-          err.println("%sMOVE TO ATTIC:%s %s".format(conf.redColor, conf.resetColor, dirs.colorizeDir(task, real)))
+          err.println("%sMOVE TO ATTIC:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
         }
         for(packageName <- packageVersions.packagesToBuild) {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
         for( (task, real) <- cc.todo) {
-          err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, dirs.colorizeDir(task, real)))
+          err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
         }
 
         val answer = if(opts.yes) {
@@ -618,7 +636,7 @@ object Ducttape {
       
       // 2) prompt the user
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
-      err.println(dirs.colorizeDirs(victimList).mkString("\n"))
+      err.println(colorizeDirs(victimList).mkString("\n"))
       
       val answer = if(opts.yes) {
         'y'
@@ -654,7 +672,7 @@ object Ducttape {
       // 2) prompt the user
       err.println("About to permenantly delete the following directories:")
       val absDirs: Seq[File] = victimList.map{task: RealTask => dirs.assignDir(task) }
-      err.println(dirs.colorizeDirs(victimList).mkString("\n"))
+      err.println(colorizeDirs(victimList).mkString("\n"))
       
       val answer = if(opts.yes) {
         'y'

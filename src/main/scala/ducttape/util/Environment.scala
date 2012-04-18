@@ -5,6 +5,8 @@ object Environment {
   def getJarFile = new File(Environment.getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
   def getJarDir = getJarFile.getParentFile
   
+  def hasTTY: Boolean = java.lang.System.console != null
+  
   import java.lang.management._
   // vmName looks like 11411@mymachine.org
   lazy val vmName = ManagementFactory.getRuntimeMXBean.getName

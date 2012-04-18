@@ -4,14 +4,13 @@ import java.io.File
 
 import collection._
 
-import ducttape.Config
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.workflow.Branch
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.util.Files
 
-class InputChecker(conf: Config, dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
 
   val errors = new mutable.ArrayBuffer[String]
 
