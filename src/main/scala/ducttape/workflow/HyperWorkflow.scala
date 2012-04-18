@@ -11,8 +11,7 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 
-import ducttape.hyperdag.walker.UnpackedDagWalker._
-import ducttape.hyperdag.walker.UnpackedMetaDagWalker._
+import ducttape.hyperdag.walker._
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible

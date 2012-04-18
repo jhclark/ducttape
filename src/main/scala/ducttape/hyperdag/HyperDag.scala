@@ -17,7 +17,7 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
     = new walker.PackedDagWalker[V](this)
   // TODO: Pass filters to dag walker
   def unpackedWalker()
-    = new walker.UnpackedDagWalker[V,H,E,Null](this)
+    = new walker.UnpackedDagWalker[V,H,E,Any](this)
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
   def outEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]

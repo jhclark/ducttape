@@ -9,6 +9,11 @@ object MultiSet {
 
 class MultiSet[A] {
   private val map = new mutable.HashMap[A,Int]
+  
+  def this(other: MultiSet[A]) {
+    this()
+    map ++= other.map
+  }
 
   def +=(a: A) {
     map.get(a) match {
@@ -24,10 +29,15 @@ class MultiSet[A] {
       case None => throw new NoSuchElementException(a.toString)
     }
   }
+  
+  def removeAll(a: A) {
+    map.remove(a)
+  }
 
   def ++=(xs: TraversableOnce[A]) = for (x <- xs) this += x
   def --=(xs: TraversableOnce[A]) = for (x <- xs) this -= x
   def apply(a: A) = map.contains(a)
+  def contains(a: A) = map.contains(a)
   def view() = map.keys.view
   def toList(): List[A] = map.keys.toList
   override def toString() = map.toString

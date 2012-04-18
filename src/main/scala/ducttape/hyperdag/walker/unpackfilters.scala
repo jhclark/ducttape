@@ -4,6 +4,7 @@ import ducttape.util.MultiSet
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.UnpackedVertex
+import ducttape.hyperdag.AntiHyperEdge
 
 // these really better belong in companion objects
 // for UnpackedDagWalker and UnpackedMetaDagWalker
@@ -54,10 +55,30 @@ class DefaultVertexFilter[V,H,E] extends VertexFilter[V,H,E] {
 }
 
 // TODO: Receieve immutable multiset as argument?
-trait ComboTransformer[H] {
-  def apply(combo: MultiSet[H]): MultiSet[H]
+trait ComboTransformer[H,E] {
+  def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]): Option[MultiSet[H]]
 }
 
-class DefaultComboTransformer[H] extends ComboTransformer[H] {
-  override def apply(combo: MultiSet[H]) = combo
+class DefaultComboTransformer[H,E] extends ComboTransformer[H,E] {
+  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = Some(combo)
+}
+
+class AntiHyperEdgeComboTransformer[H,E] extends ComboTransformer[H,E] {
+  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = he match {
+    case Some(anti: AntiHyperEdge[_,_]) => {
+      if (combo.contains(anti.h)) {
+        val copy = new MultiSet[H](combo)
+        copy.removeAll(anti.h)
+        Some(copy)
+      } else {
+        // no corresponding edge was found in the derivation
+        // this anti-hyperedge cannot apply
+        //
+        // TODO: Note when corresponding edge not found
+        // to help user understand why no path is available
+        None
+      }
+    }
+    case _ => Some(combo)
+  }
 }

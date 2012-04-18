@@ -7,7 +7,7 @@ import ducttape.hyperdag.walker.PackedMetaDagWalker
 import ducttape.hyperdag.walker.UnpackedMetaDagWalker
 
 import ducttape.hyperdag.walker.UnpackedDagWalker._
-import UnpackedMetaDagWalker._
+import ducttape.hyperdag.walker._
 
 // an implementation of MetaHyperDAGs based on transforming
 // meta-edges into epsilon vertices (but these are hidden from the user)
@@ -33,9 +33,9 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
 
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
-  def unpackedWalker[F](constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter,
-                        vertexFilter: MetaVertexFilter[V,H,E] = DefaultMetaVertexFilter,
-                        comboTransformer: ComboTransformer[H] = DefaultComboTransformer) = {
+  def unpackedWalker[F](constraintFilter: ConstraintFilter[V,H,F] = new DefaultConstraintFilter[V,H,F],
+                        vertexFilter: MetaVertexFilter[V,H,E] = new DefaultMetaVertexFilter[V,H,E],
+                        comboTransformer: ComboTransformer[H,E] = new DefaultComboTransformer[H,E]) = {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
@@ -45,7 +45,7 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
       override def apply(he: HyperEdge[H,E]) = !isEpsilon(he)
     }
 
-    new UnpackedMetaDagWalker[V,M,H,E,F](this, DefaultSelectionFilter, epsilonHyperEdgeFilter,
+    new UnpackedMetaDagWalker[V,M,H,E,F](this, new DefaultSelectionFilter[H], epsilonHyperEdgeFilter,
                                          constraintFilter, vertexFilter, comboTransformer)
   }
 

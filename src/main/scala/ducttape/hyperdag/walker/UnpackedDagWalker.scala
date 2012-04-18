@@ -6,47 +6,6 @@ import java.util.concurrent._
 import ducttape.hyperdag._
 import ducttape.util._
 
-object UnpackedDagWalker {
-  trait SelectionFilter[H] {
-    def apply(combo: MultiSet[H]): Boolean
-  }
-  object DefaultSelectionFilter extends SelectionFilter[_] {
-    override def apply(combo: MultiSet[_]) = true
-  }
-  
-  trait HyperEdgeFilter[H,E] {
-    def apply(he: HyperEdge[H,E]): Boolean
-  }
-  def DefaultHyperEdgeFilter[H,E] = new HyperEdgeFilter[H,E] {
-    override def apply(combo: HyperEdge[H,E]) = true
-  }
-  
-  trait ConstraintFilter[V,H,F] {
-    def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]): Option[F]
-    val initState: F
-  }
-  def DefaultConstraintFilter[V,H,F] = new ConstraintFilter[V,H,F] {
-    override def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]) = Some(prevState)
-    private var nada: F = _ // syntactic cruft, just to get a null...
-    override val initState: F = nada
-  }
-  
-  trait VertexFilter[V,H,E] {
-    def apply(v: UnpackedVertex[V,H,E]): Boolean
-  }
-  def DefaultVertexFilter[V,H,E] = new VertexFilter[V,H,E] {
-    override def apply(v: UnpackedVertex[V,H,E]) = true
-  }
-  
-  // TODO: Receieve immutable multiset as argument?
-  trait ComboTransformer[H] {
-    def apply(combo: MultiSet[H]): MultiSet[H]
-  }
-  def DefaultComboTransformer[H] = new ComboTransformer[H] {
-    override def apply(combo: MultiSet[H]) = combo
-  }
-}
-import UnpackedDagWalker._
 
 /** the hedge filter allows us to hide certain hyperedges from
  *  the edge derivation (e.g. edges without a branch name / the default branch name)
@@ -70,11 +29,11 @@ import UnpackedDagWalker._
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,F](
         val dag: HyperDag[V,H,E],
-        val selectionFilter: SelectionFilter[H] = DefaultSelectionFilter[H],
-        val hedgeFilter: HyperEdgeFilter[H,E] = DefaultHyperEdgeFilter[H,E],
-        val constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter[V,H,F],
-        val vertexFilter: VertexFilter[V,H,E] = DefaultVertexFilter[V,H,E],
-        val comboTransformer: ComboTransformer[H] = DefaultComboTransformer[H])
+        val selectionFilter: SelectionFilter[H] = new DefaultSelectionFilter[H],
+        val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        val constraintFilter: ConstraintFilter[V,H,F] = new DefaultConstraintFilter[V,H,F],
+        val vertexFilter: VertexFilter[V,H,E] = new DefaultVertexFilter[V,H,E],
+        val comboTransformer: ComboTransformer[H,E] = new DefaultComboTransformer[H,E])
   extends Walker[UnpackedVertex[V,H,E]] {
 
   // TODO: Factor this out into a class all its own?
@@ -110,9 +69,13 @@ class UnpackedDagWalker[V,H,E,F](
 
       // hedgeFilter has already been applied
       if (i == filled.size) {
-        val transformedCombo = comboTransformer(combo)
-        if (selectionFilter(transformedCombo)) {
-          callback(new UnpackedVertex[V,H,E](v, he, transformedCombo.toList, parentReals.toList))
+        comboTransformer(he, combo) match {
+          case None => ; // combination could not continue (e.g. anti-hyperedge was not matched)
+          case Some(transformedCombo: MultiSet[_]) => {
+            if (selectionFilter(transformedCombo)) {
+              callback(new UnpackedVertex[V,H,E](v, he, transformedCombo.toList, parentReals.toList))
+            }
+          } 
         }
       } else {
         //unpack(i+1, iFixed, combo, parentReals, prevState, callback)

@@ -7,32 +7,20 @@ import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.util.MultiSet
 
-import UnpackedDagWalker._
-
-object UnpackedMetaDagWalker {
-  trait MetaVertexFilter[V,H,E] {
-    def apply(v: UnpackedMetaVertex[V,H,E]): Boolean
-  }
-  def DefaultMetaVertexFilter[V,H,E] = new MetaVertexFilter[V,H,E] {
-    override def apply(v: UnpackedMetaVertex[V,H,E]) = true
-  }
-}
-
-import UnpackedMetaDagWalker._
-
 /** our only job is to hide epsilon vertices during iteration
  *  see UnpackedDagWalker for definitions of filter and state types
  *  F is the FilterState */
-class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
-        val selectionFilter: SelectionFilter[H] = DefaultSelectionFilter,
-        val hedgeFilter: HyperEdgeFilter[H,E] = DefaultHyperEdgeFilter,
-        val constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter,
-        val vertexFilter: MetaVertexFilter[V,H,E] = DefaultMetaVertexFilter,
-        val comboTransformer: ComboTransformer[H] = DefaultComboTransformer)
+class UnpackedMetaDagWalker[V,M,H,E,F](
+        val dag: MetaHyperDag[V,M,H,E],
+        val selectionFilter: SelectionFilter[H] = new DefaultSelectionFilter[H],
+        val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        val constraintFilter: ConstraintFilter[V,H,F] = new DefaultConstraintFilter[V,H,F],
+        val vertexFilter: MetaVertexFilter[V,H,E] = new DefaultMetaVertexFilter[V,H,E],
+        val comboTransformer: ComboTransformer[H,E] = new DefaultComboTransformer[H,E])
   extends Walker[UnpackedMetaVertex[V,H,E]] {
 
   private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter,
-                                                        constraintFilter, DefaultVertexFilter, comboTransformer)
+                                                        constraintFilter, new DefaultVertexFilter[V,H,E], comboTransformer)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps
