@@ -10,8 +10,8 @@ object UnpackedDagWalker {
   trait SelectionFilter[H] {
     def apply(combo: MultiSet[H]): Boolean
   }
-  def DefaultSelectionFilter[H] = new SelectionFilter[H] {
-    override def apply(combo: MultiSet[H]) = true
+  object DefaultSelectionFilter extends SelectionFilter[_] {
+    override def apply(combo: MultiSet[_]) = true
   }
   
   trait HyperEdgeFilter[H,E] {
@@ -70,11 +70,11 @@ import UnpackedDagWalker._
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,F](
         val dag: HyperDag[V,H,E],
-        val selectionFilter: SelectionFilter[H] = DefaultSelectionFilter,
-        val hedgeFilter: HyperEdgeFilter[H,E] = DefaultHyperEdgeFilter,
-        val constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter,
-        val vertexFilter: VertexFilter[V,H,E] = DefaultVertexFilter,
-        val comboTransformer: ComboTransformer[H] = DefaultComboTransformer)
+        val selectionFilter: SelectionFilter[H] = DefaultSelectionFilter[H],
+        val hedgeFilter: HyperEdgeFilter[H,E] = DefaultHyperEdgeFilter[H,E],
+        val constraintFilter: ConstraintFilter[V,H,F] = DefaultConstraintFilter[V,H,F],
+        val vertexFilter: VertexFilter[V,H,E] = DefaultVertexFilter[V,H,E],
+        val comboTransformer: ComboTransformer[H] = DefaultComboTransformer[H])
   extends Walker[UnpackedVertex[V,H,E]] {
 
   // TODO: Factor this out into a class all its own?

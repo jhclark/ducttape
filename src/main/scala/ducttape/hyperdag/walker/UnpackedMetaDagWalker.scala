@@ -67,7 +67,7 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
       
       return result match {
         case None => None
-        case Some(raw: UnpackedVertex[V,H,E]) => {
+        case Some(raw: UnpackedVertex[_,_,_]) => {
           
           // TODO: CAN WE STOP UNPACKING EARLY?
           
