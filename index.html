@@ -16,28 +16,34 @@
     <div class="wrapper">
       <header>
         <h1>Ducttape</h1>
-        <p>
-	   A workflow management system for researchers who heart Unix.
-	   <br/>
-	   <a href="https://groups.google.com/group/ducttape-announce">Get annoncements</a>
-	</p>
+        <p>A workflow management system for researchers who heart Unix.</p>
         <p class="view"><a href="https://github.com/jhclark/ducttape">View the Project on GitHub <small>jhclark/ducttape</small></a></p>
         <ul>
-          <li><a href="https://github.com/jhclark/ducttape/tarball/master">Download <strong>TAR Ball</strong></a></li>
           <li><a href="https://github.com/jhclark/ducttape">View On <strong>GitHub</strong></a></li>
+          <li><a href="https://github.com/jhclark/ducttape/tarball/master">Download <strong>Alpha TGZ</strong></a></li>
+	  <li><a href="https://groups.google.com/group/ducttape-announce"> Get <strong>Announcements</strong></a></li>
         </ul>
       </header>
       <section>
-        <h3>Getting started.</h3>
+        <h3>Quick Start.</h3>
 
-	<pre><code>$ cd your_repo_root/repo_name
-	    $ git fetch origin
-	    $ git checkout gh-pages
+	Grab and build.
+	<pre><code>
+	    $ git clone git@github.com:jhclark/ducttape.git
+	    $ cd ducttape
+	    $ ./build.sh
+            # Add ducttape to your path
+	    $ echo 'export PATH=$PWD:$PATH' >> ~/.bashrc
 	</code></pre>
 
+	Do something.
+	<pre><code>
+	    $ ducttape syntax/tutorial/1-basics/1-hello-world.tape
+	</code></pre>
 
-
-	<h3>Authors and Contributors</h3>
+	Now what? Try the <a href="https://github.com/jhclark/ducttape/blob/master/tutorial.md">tutorial</a>.
+	
+	<h3>Authors and Contributors.</h3>
 
 	Thanks to <a href="https://github.com/dowobeha">Lane Schwartz</a> for writing the grammar that parses all of ducttape's syntax and putting in many hours of deep thought and discussion into design decisions that help to keep ducttape simple and usable.
 
