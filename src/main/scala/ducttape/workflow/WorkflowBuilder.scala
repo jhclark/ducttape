@@ -134,12 +134,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
              // TODO: Does this TaskDef break line numbering for error reporting?
              // TODO: Should we return? Or do we allow config files to point back into workflows?
              case Some(confSpec) => return (confSpec, CONFIG_TASK_DEF)
-             case None => {
-               throw new FileFormatException(
+             case None => throw new FileFormatException(
                  "Config variable %s required by input %s at task %s not found in config file.".
-                 format(varName, spec.name, taskDef.name),
-                 List(spec, src))
-             }
+                   format(varName, spec.name, taskDef.name),
+                   List(spec, src))
            }
          }
          case TaskVariable(srcTaskName, srcOutName) => {
@@ -170,12 +168,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
              }
            }
          }
-         case BranchPointDef(_,_) => {
-           throw new RuntimeException("Expected branches to be resolved by now")
-         }
-         case SequentialBranchPoint(_,_,_,_) => {
-           throw new RuntimeException("Expected branches to be resolved by now")
-         }
+         case BranchGraft(_,_,_) => throw new RuntimeException("Expected branch grafts to be resolved by now")
+         case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
+         case SequentialBranchPoint(_,_,_,_) => throw new RuntimeException("Expected sequences to be resolved by now")
          case Unbound() => {
            mode match {
              case InputMode() => {
@@ -410,7 +405,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          resolvedVars.append( (inSpec, branchMap) )
      }
 
-     def handleNonBranchPoint {
+     def handleNonBranchPoint() {
        val (srcSpec, srcTaskDef) = resolveVarFunc(taskDef, defMap, inSpec)
        resolvedVars.append( (inSpec, Map(Task.NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
        
@@ -479,9 +474,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                      format(varName, inSpec.name, taskDef.name),
                    List(inSpec, confSpec))
                }
-               case _ => {
-                 handleNonBranchPoint
-               }
+               case _ => handleNonBranchPoint()
              }
            }
            case None => throw new FileFormatException(
@@ -490,9 +483,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
              inSpec)
          }
        }
-       case _ => {
-         handleNonBranchPoint
-       }
+       case _ => handleNonBranchPoint()
      }
    }
 }
