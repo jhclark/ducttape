@@ -10,7 +10,7 @@
 # there should be a separate "input def" block
 # for inputting files along with their settings (similar to a loonybin FILESYSTEM node)
 
-task tok_src: cdec
+task tok_src : cdec
               < src=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
               > tok
               :: lang=de sz=(size: small=small large=large)
@@ -18,7 +18,7 @@ task tok_src: cdec
   /home/jhclark/workspace/moses/scripts/tokenizer/tokenizer.pl -l $lang < $src > $tok
 }
 
-task tok_tgt: cdec
+task tok_tgt : cdec
               < tgt=(sets: train=train.$lang.$sz tune=tune.$lang.$sz test=test.$lang.$sz)
               > tok
               :: lang=en size=(size: small=small large=large)
@@ -27,7 +27,7 @@ task tok_tgt: cdec
 }
 
 # TODO: Split so that it can be parallelized/resumed
-task align: mgiza
+task align : mgiza
             < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] > symmetrized
             :: .vmem=(size: small=2gb large=16gb) .cpus=8 {
   $mgiza > $symmetrized
@@ -35,7 +35,7 @@ task align: mgiza
 
 # Setup Adam Lopez's extractor.
 # Extract a grammar for both the tuning set and test set with the magic of realizations
-task extract_gra: sa_extract
+task extract_gra : sa_extract
                   < src=$tok@tok_src[sets:train] tgt=$tok@tok_tgt[sets:train] align=$symmetrized@align
                   < filteredTo=(filterSet: tune=$tok@tok_src[sets:tune] test=$tok@tok_src[sets:test])
                   > gra
@@ -43,19 +43,19 @@ task extract_gra: sa_extract
   $sa_extract TODO $filteredTo > $gra
 }
 
-task tune: cdec < src=$tok/tok_src[sets:tune] refs=$tok@tok_tgt[sets:tune] gra=$gra@extract_gra[filterSet:tune]
+task tune : cdec < src=$tok/tok_src[sets:tune] refs=$tok@tok_tgt[sets:tune] gra=$gra@extract_gra[filterSet:tune]
            > hyps weights
            :: .submitter=localhost # submits its own jobs {
   $cdec/pro-trainer/dist-pro.pl TODO
 }
 
-task decode: cdec < src=$tok@tok_src[sets:test] gra=$gra@extract_gra[filterSet:test] weights=$weights@tune
+task decode : cdec < src=$tok@tok_src[sets:test] gra=$gra@extract_gra[filterSet:test] weights=$weights@tune
              > hyps
              :: .vmem=16gb .cpus=8 {
   $cdec/decoder/cdec TODO -w $weights > $hyps
 }
 
-task eval: multeval < hyps=(scoreSet: tune=$hyps@tune test=$hyps@decode)
+task eval : multeval < hyps=(scoreSet: tune=$hyps@tune test=$hyps@decode)
            < refs=(scoreSet: tune=$tok@tok_tgt[sets:tune] test=$tok@tok_tgt[sets:test])
            > scores
            :: .vmem=4gb .cpus=1 {
