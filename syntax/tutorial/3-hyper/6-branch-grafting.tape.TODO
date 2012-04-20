@@ -11,18 +11,14 @@
 # if we have a tokenizer that we'd like to run on the training, dev, and test set
 # and then later using exactly one branch from that branch point
 
-task tokenize: tokenizer < in=(DataSet: train=a.txt tune=b.txt test=c.txt) > out {
-  $tokenizer < $in > $out
+task preproc < in=(DataSet: train=big.txt test=small.txt) > out {
+  cat < $in > $out
 }
 
-task build_model < in=$out@tokenize[DataSet:train] > model {
+task trainer < in=$out@preproc[DataSet:train] > model {
    cat < $in > $model
 }
 
-task optimize < in=$out@tokenize[DataSet:tune] > weights {
-  cat < $in > $weights
-}
-
-task test < in=$out@tokenize[DataSet:test] > hyps {
+task tester < in=$out@preproc[DataSet:test] > hyps {
   cat < $in > $hyps
 }

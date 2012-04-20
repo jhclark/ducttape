@@ -7,9 +7,13 @@ import java.net.URL
 
 object Files {
   def write(str: String, file: File) {
+    file.getParentFile().mkdirs()
     val fw = new FileWriter(file)
-    fw.write(str)
-    fw.close
+    try {
+      fw.write(str)
+    } finally {
+      fw.close
+    }
   }
 
   def writer(file: File): PrintWriter = {
@@ -24,34 +28,40 @@ object Files {
   // reads all lines, but closes file unlike io.Source
   def read(file: File): Seq[String] = {
     val br = new BufferedReader(new FileReader(file))
-    val lines = Iterator.continually(br.readLine).takeWhile(_ != null).toList
-    br.close
-    lines
-  }
-
-  // there is no reliable way of detecting symlinks in Java
-  // f.getAbsolutePath != f.getCanonicalPath fails since /home/./jhclark is not canonical
-  def deleteDir(dir: File) {
-    val code = Shell.run("rm -rf %s".format(dir.getAbsolutePath))
-    if(code != 0) {
-      throw new RuntimeException("Failed to delete: %s".format(dir.getAbsolutePath))
+    try {
+      Iterator.continually(br.readLine).takeWhile(_ != null).toList
+    } finally {
+      br.close
     }
   }
 
+  def deleteDir(dir: File) = org.apache.commons.io.FileUtils.deleteDirectory(dir)
+
+  // Java's File.rename fails if moving between file systems
+  // see http://stackoverflow.com/questions/7087743/how-to-rename-a-file-to-another-file-system
+  def moveDir(src: File, dest: File) = org.apache.commons.io.FileUtils.moveDirectory(src, dest)
+  def moveFile(src: File, dest: File) = org.apache.commons.io.FileUtils.moveFile(src, dest)
+
   def ls(dir: File): Seq[File] = {
     val listing = dir.listFiles
-    if(listing == null)
+    if (listing == null)
       Nil
     else
       listing.toSeq
   }
 
   def basename(filename: String, suffix: String) = {
-    if(filename.endsWith(suffix)) {
+    if (filename.endsWith(suffix)) {
       filename.substring(0, filename.length - suffix.length)
     } else {
       filename
     }
+  }
+  
+  def copy(src: File, dest: File) {
+    val to = new FileOutputStream(dest).getChannel
+    val from = new FileInputStream(src).getChannel
+    to.transferFrom(from, 0, Long.MaxValue)
   }
 }
 
@@ -73,6 +83,6 @@ object IO {
     case uri: URI              => Source.fromFile(uri,encoding).reader
     case url: URL              => Source.fromURL(url,encoding).reader
     case any: AnyRef           => throw new RuntimeException("I don't know how to parse objects of type " + any.getClass())
-    case _                    => throw new RuntimeException("I don't know how to parse objects of that type")
+    case _                     => throw new RuntimeException("I don't know how to parse objects of that type")
   }
 }

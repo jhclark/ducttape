@@ -26,7 +26,7 @@ class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
   private val completed = new mutable.HashSet[ActiveVertex] with mutable.SynchronizedSet[ActiveVertex]
 
   // first, visit the roots
-  for(root <- dag.roots.iterator) {
+  for (root <- dag.roots.iterator) {
     val actRoot = new ActiveVertex(root)
     agenda.offer(actRoot)
     active += root -> actRoot
@@ -38,7 +38,7 @@ class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
 //  def getBlocked(): Traversable[PackedVertex[P]] = 
   
   override def take(): Option[PackedVertex[V]] = {
-    if(agenda.size == 0 && taken.size == 0) {
+    if (agenda.size == 0 && taken.size == 0) {
       return None
     } else {
       agenda.synchronized {
@@ -57,21 +57,21 @@ class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
     agenda.synchronized {
       taken -= key
 
-      if(continue) {
+      if (continue) {
         // first, match fronteir vertices
-        for(consequent <- dag.children(key.v)) {
+        for (consequent <- dag.children(key.v)) {
           val activeCon = active.getOrElseUpdate(consequent, new ActiveVertex(consequent))
           var allFilled = true
           val antecedents = dag.parents(consequent)
-          for(i <- 0 until activeCon.filled.size) {
-            if(key.v == antecedents(i)) {
+          for (i <- 0 until activeCon.filled.size) {
+            if (key.v == antecedents(i)) {
               activeCon.filled(i) = key
-            } else if(activeCon.filled(i) == null) {
+            } else if (activeCon.filled(i) == null) {
               allFilled = false
             }
           }
           // this consequent has all its dependencies fulfilled
-          if(allFilled) {
+          if (allFilled) {
             agenda.offer(activeCon)
             // TODO: We could sort the agenda here to impose different objectives...
           }

@@ -3,22 +3,24 @@ package ducttape.hyperdag.walker
 import collection._
 
 import ducttape.hyperdag._
-import ducttape.hyperdag.meta._
+import ducttape.hyperdag.meta.MetaHyperDag
+import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.util.MultiSet
 
 /** our only job is to hide epsilon vertices during iteration
  *  see UnpackedDagWalker for definitions of filter and state types
  *  F is the FilterState */
-class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
-        val selectionFilter: MultiSet[H] => Boolean = Function.const[Boolean,MultiSet[H]](true)_,
-        val hedgeFilter: HyperEdge[H,E] => Boolean = Function.const[Boolean,HyperEdge[H,E]](true)_,
-        val initState: F,
-        val constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F],
-        val vertexFilter: UnpackedMetaVertex[V,H,E] => Boolean)
+class UnpackedMetaDagWalker[V,M,H,E,F](
+        val dag: MetaHyperDag[V,M,H,E],
+        val selectionFilter: SelectionFilter[H] = new DefaultSelectionFilter[H],
+        val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        val constraintFilter: ConstraintFilter[V,H,F] = new DefaultConstraintFilter[V,H,F],
+        val vertexFilter: MetaVertexFilter[V,H,E] = new DefaultMetaVertexFilter[V,H,E],
+        val comboTransformer: ComboTransformer[H,E] = new DefaultComboTransformer[H,E])
   extends Walker[UnpackedMetaVertex[V,H,E]] {
 
   private val delegate = new UnpackedDagWalker[V,H,E,F](dag.delegate, selectionFilter, hedgeFilter,
-                                                        initState, constraintFilter)
+                                                        constraintFilter, new DefaultVertexFilter[V,H,E], comboTransformer)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps
@@ -34,26 +36,26 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
 
   override def take(): Option[UnpackedMetaVertex[V,H,E]] = {
 
-    def getNext: Option[UnpackedMetaVertex[V,H,E]] = {
-      var result: Option[UnpackedVertex[V,H,E]] = delegate.take
+    def getNext(): Option[UnpackedMetaVertex[V,H,E]] = {
+      var result: Option[UnpackedVertex[V,H,E]] = delegate.take()
       // never return epsilon vertices nor phantom verties
       // we're guaranteed to only have one epsilon vertex in between vertices (no chains)
       // but phantom vertices break this
-      while(!result.isEmpty && dag.shouldSkip(result.get.packed)) {
+      while (!result.isEmpty && dag.shouldSkip(result.get.packed)) {
         //println("TAKE SKIPPING: " + result)
         val uv = result.get
         delegate.complete(uv)
-        if(dag.isEpsilon(uv.packed)) {
+        if (dag.isEpsilon(uv.packed)) {
           // TODO: We'd really prefer not to store these...
           epsilons += (uv.packed, uv.realization) -> uv
         }
-        result = delegate.take
+        result = delegate.take()
       }
       //println("TAKING: " + result)
       
       return result match {
         case None => None
-        case Some(raw: UnpackedVertex[V,H,E]) => {
+        case Some(raw: UnpackedVertex[_,_,_]) => {
           
           // TODO: CAN WE STOP UNPACKING EARLY?
           
@@ -66,7 +68,7 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
             case parents => {
               assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
               // for parallel to number of incoming meta edges
-              for((parentEpsilonV: PackedVertex[V], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
+              for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
                 val parentEpsilonUV: UnpackedVertex[V,H,E] = epsilons( (parentEpsilonV, parentEpsilonReals) )
                 // use this Seq[Seq[H]], which is parallel to the active hyperedge
                 activeEdges += parentEpsilonUV.edge.get
@@ -79,11 +81,11 @@ class UnpackedMetaDagWalker[V,M,H,E,F](val dag: MetaHyperDag[V,M,H,E],
       }
     } // getNext
       
-    var result = getNext
-    while(result != None && !vertexFilter(result.get)) {
+    var result: Option[UnpackedMetaVertex[V,H,E]] = getNext()
+    while (result != None && !vertexFilter(result.get)) {
       //System.err.println("MEAT Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
-      result = getNext
+      result = getNext()
     }
     result
   } // take

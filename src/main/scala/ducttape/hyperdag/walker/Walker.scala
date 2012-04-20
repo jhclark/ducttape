@@ -47,7 +47,7 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
         var running = true
         while(running) {
           take match {
-            case Some(a: A) => {
+            case Some(a) => {
               var success = true
               try {
                 f(a)

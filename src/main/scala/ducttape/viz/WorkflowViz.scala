@@ -9,7 +9,6 @@ object WorkflowViz {
 
   def toGraphViz(workflow: HyperWorkflow,
                  plannedVertices: Set[(String,Realization)],
-                 versions: WorkflowVersioner,
                  completed: Set[(String,Realization)] = Set.empty,
                  running: Set[(String,Realization)] = Set.empty,
                  failed: Set[(String,Realization)] = Set.empty) = {
@@ -22,7 +21,7 @@ object WorkflowViz {
     // first, list vertices
     for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
       val taskT: TaskTemplate = v.packed.value
-      val task: RealTask = taskT.realize(v, versions)
+      val task: RealTask = taskT.realize(v)
       val color = (task.name, task.realization) match {
         case t if completed(t) => "dodgerblue1"
         case t if running(t) => "darkolivegreen4"
@@ -35,12 +34,9 @@ object WorkflowViz {
     // now list edges
     for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
       val taskT: TaskTemplate = v.packed.value
-      val task: RealTask = taskT.realize(v, versions)
+      val task: RealTask = taskT.realize(v)
       val child = getName(task.name, task.realization)
-      task.inputVals.map{ case (_, _, srcTaskDef, srcRealization) => {
-        val srcReal = new Realization(srcRealization) // TODO: Hacky
-        getName(srcTaskDef.name, srcReal)
-      }}.toSet.foreach{parent: String => {
+      task.inputVals.map{ inputVal => getName(inputVal.srcTaskDef.name, inputVal.srcReal) }.toSet.foreach{parent: String => {
         if(parent != child)
           str ++= "\"%s\" -> \"%s\";\n".format(parent, child) // TODO: Quote?
       }}

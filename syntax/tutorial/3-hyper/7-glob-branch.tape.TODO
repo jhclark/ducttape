@@ -6,6 +6,6 @@
 
 # Globbing realizations...
 # $x will be a space-delimited string
-task glob_realization < x=$a@g2.doStuff[whichThing:*] > y {
+task g2_globRealization < x=$a@g2_doStuff[whichThing:*] > y {
   for file in $x; do echo $file; done
 }

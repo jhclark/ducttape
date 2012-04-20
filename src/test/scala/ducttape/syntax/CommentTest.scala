@@ -1,126 +1,53 @@
-package ducttape.syntax 
-
-import org.scalatest.WordSpec
-import scala.util.parsing.combinator.Parsers
-
-import ducttape.syntax.GrammarParser.ParseResult
+package ducttape.syntax
+import ducttape.util.AbstractTest
 import ducttape.syntax.GrammarParser.Parser
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
-class CommentTest extends WordSpec {
-
-  val successCases = Map(
-
-"a single-line comment" -> 
-"""# Welcome to make
-""",
-
-
-"a single-line comment with preceding white space" ->
-"""	 	# Welcome to make
-""",
-
-
-"a single-line comment with no trailing newline" ->
-"""# Welcome to make""",
-
-
-"a multi-line comment" ->
-"""# Welcome to make
-# This is a sample
-# Comments
-# blah blah - this line should cause a parse failure
-# Another comment
-""",
-
-
-"a multi-line comment with preceding white space" ->
-""" # Welcome to make
-			   # This is a sample
-  # Comments
- # blah blah - this line should cause a parse failure
-			  # Another comment
-""",
-
-"a multi-line comment with interspersed blank lines" ->
-"""# Welcome to make
-# This is a sample
-
-# Comments
-
-
-# blah blah - this line should cause a parse failure
-
-# Another comment
-""",
-
-"a multi-line comment with preceding white space and interspersed blank lines" ->
-"""# Welcome to make
-				# This is a sample
-
-				# Comments
-
-
-				# blah blah - this line should cause a parse failure
-
-				# Another comment
-""",
-
-"a multi-line comment with preceding white space and interspersed blank lines followed by blank lines" ->
-"""# Welcome to make
-				# This is a sample
-
-				# Comments
-
-
-				# blah blah - this line should cause a parse failure
-
-				# Another comment
-
-
-""",
-
-
-"a multi-line comment with preceding white space and interspersed white space lines followed by blank lines" ->
-"""# Welcome to make
-				# This is a sample
-				   
-				# Comments
-
-
-				# blah blah - this line should cause a parse failure
+@RunWith(classOf[JUnitRunner])
+class CommentTest extends AbstractTest("comment",Grammar.comment) {
  
-				# Another comment
-
-
-"""
+  def successCases = Set(
+    "// Hello, world",
+    "#  Hello, world",
+    "// This is OK /* Unclosed ",
+    "#  This is OK /* Unclosed ",
+    "/**/",
+    "/*a*/",
+    "/* A_variable_Name__ */",
+    "/* ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_ */",
+    "/* Here we go /* another problem */ */",
+    """/*
+    
+    space!
+    
+    */""",
+  """/*
+    
+    /*
+    space!
+    */
+    
+    */""",
+  """/*
+    
+    /*
+    space!
+    *//*and more*/
+    
+    */"""    
+  ) 
+  
+  def failureCases = Set(
+    "",
+    " ",
+    "A-variable_Name__"    
+  ) 
+  
+  def errorCases = Set(
+    "/* Forgot to close ",
+    "/* Here we go /* another problem",
+    "/* Here we go /* another problem */"
   )
-
-
-    val errorCases = Map(
-    		"A non-comment line" -> 
-        """[jobName]"""
-    )
-    
-    
-    
-    "Parsing comment" should {
-    
-    for ((key,value) <- successCases) {   
-      "succeed for "+key in {
-        val result: ParseResult[Any] = GrammarParser.parseAll(new Grammar(null).comments, value);
-        //Tests.verify(this,result)
-      }
-    }
-    
-    for ((key,value) <- errorCases) {   
-      "fail for "+key in {
-        val result: ParseResult[Any] = GrammarParser.parseAll(new Grammar(null).comments, value);
-        //Tests.verifyFailure(this,result)
-      }
-    }    
-    
-  }
-  
-  
   
 }

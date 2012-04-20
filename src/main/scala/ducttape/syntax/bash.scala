@@ -5,9 +5,11 @@ import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
-
 import java.io.File
+import ducttape.syntax.AbstractSyntaxTree.ASTType
 
+// TODO: Move this into unit tests
+/*
 object BashParser extends App with RegexParsers {
   	
 
@@ -68,11 +70,14 @@ function ohai {
   println(badResult)
 
 }
+*/
 
 // TODO: Pass a StringBuilder down through the AST to make stringification faster
-class BashCode(val code: String, val vars: Set[String] = Set.empty) {
+class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
+  override def children = Nil // TODO: Name exactly what line vars come from
   override def toString = code
 }
+
 
 /**
  * Very simple grammar for bash
@@ -80,11 +85,11 @@ class BashCode(val code: String, val vars: Set[String] = Set.empty) {
  * @author Jon Clark
  */
 object BashGrammar {
+  
+  import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
 
   // "... there are dark corners in the Bourne shell, and people use all of them."
   // --Chet Ramey
-
-  import BashParser._
 
   // === WHITE SPACE ===
 
@@ -148,16 +153,36 @@ object BashGrammar {
 
   // named variables $hi and ${hi}, builtin variable $$ or $? or $!, command substitution $(echo), etc.
   // NOTE: String manipulation must be matched *after* variable
-  def variableLike: Parser[BashCode] = internalVariable | commandSub | variable | stringManipulation
+  def variableLike: Parser[BashCode] = dollarOnly | internalVariable | commandSub | variable | stringManipulation
 
   // command substitution: $(echo)
   def commandSub: Parser[BashCode] = (literal("$(") ~ bashBlock ~ literal(")")) ^^ {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
+  
+  // allow "echo $" or "echo $ cat" or "echo $;" to mean a literal dollar
+  def dollarOnly: Parser[BashCode] = regex("""\$[ \t\r\n]+""".r) ^^ {
+    case x => new BashCode(x)
+  }
 
-  /* see http://tldp.org/LDP/abs/html/internalvariables.html
-   * we intentially don't support script parameters: $@ $* $- $# $0 $1, etc. */
-  def internalVariable: Parser[BashCode] = (literal("$$") | literal("$?") | literal("$!") | literal("$_")) ^^ {
+  /**
+   * Bash positional and special parameters.
+   * 
+   * @see The GNU Bash Reference Manual, section 3.4.1 "Positional Parameters"
+   * @see The GNU Bash Reference Manual, section 3.4.2 "Special Parameters"
+   */
+  def internalVariable: Parser[BashCode] = (
+      literal("$*") |
+      literal("$@") |
+      literal("$#") |
+      literal("$?") | 
+      literal("$-") |      
+      literal("$$") |
+      literal("$!") |
+      literal("$0") |      
+      literal("$_") |
+      regex("""\$[1-9][0-9]*""".r)
+    ) ^^ {
     case x => new BashCode(x)
   }
 
@@ -168,9 +193,13 @@ object BashGrammar {
     case open ~ content ~ close => new BashCode(open + content + close)
   }
 
-  def variable: Parser[BashCode] = (literal("$") ~ opt(literal("{")) ~ variableName ~ opt(literal("}"))) ^^ {
-    case dollar ~ None ~ name ~ None => new BashCode(dollar + name, Set(name))
-    case dollar ~ Some(open) ~ name ~ Some(close) => new BashCode(dollar + open + name + close, Set(name))
+  def variable: Parser[BashCode] = {
+    (literal("$") ~ variableName) |
+    (literal("$") ~ literal("{") ~ variableName ~ literal("}")) |
+    (literal("$") ~ literal("{") ~ variableName ~ err("Missing closing } in bash variable reference"))
+  } ^^ {
+    case (dollar:String) ~ (name:String) => new BashCode(dollar + name, Set(name))
+    case (dollar:String) ~ (open:String) ~ (name:String) ~ (close:String) => new BashCode(dollar + open + name + close, Set(name))
   }
 
   def variableName: Parser[String] = regex("[A-Za-z_][A-Za-z0-9_]*".r)

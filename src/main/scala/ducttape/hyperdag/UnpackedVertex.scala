@@ -8,9 +8,9 @@ class UnpackedVertex[V,H,E](val packed: PackedVertex[V],
                             val realization: Seq[H],
                             val parentRealizations: Seq[Seq[H]]) {
   // TODO: More smearing of hash codes
-  override def hashCode = packed.id ^ realization.hashCode
+  override def hashCode() = packed.id ^ realization.hashCode
   override def equals(that: Any) = that match {
     case other: UnpackedVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
-  override def toString = packed.toString + " (realization=" + realization.toString +")"
+  override def toString() = packed.toString + " (realization=" + realization.toString +")"
 }

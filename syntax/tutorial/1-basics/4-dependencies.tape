@@ -14,3 +14,7 @@ task first > x {
 task and_then < a=$x@first > x {
   cat < $a > $x
 }
+
+global {
+  ducttape_structure=flat
+}
