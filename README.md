@@ -5,10 +5,22 @@ This is the in-progress baking of Ducttape, a workflow management system for res
 
 For a basic tutorial on the syntax of Ducttape that currently works, see [tutorial.md](https://github.com/jhclark/ducttape/blob/master/tutorial.md).
 
+Design Principles
+=================
+
+* Simple things should remain simple.
+
+* You should be able to start simple. Run. Add complexity. And re-run.
+
+* Workflow management and data flows have very different design patterns than other sorts of code.
+  Writing them in C++, Java, or XML is annoying.
+
 Updates
 =======
 
 To keep updated on the latest versions of ducttape, subscribe to our low-traffic announcement mailing list: https://groups.google.com/group/ducttape-announce
+
+To stay in the loop on ducttape development, subscribe to our higher traffic development mailing list: https://groups.google.com/group/ducttape-dev
 
 To keep updated on bleeding edge development of ducttape, subscribe to our higher traffic commits mailing list: https://groups.google.com/group/ducttape-commits
 
@@ -17,24 +29,13 @@ Building
 
 TODO: Move this section to a separate file once we move out of alpha...
 
-Assuming you have Scala 2.9.0+ installed, just run:
+Assuming you have Scala 2.9.2+ installed, just run:
 
 ```bash
-#sbt compile
 ./build.sh
 ```
 
-To continuously recompile whenever source files change:
-```bash
-sbt ~compile
-```
-
-To run the program during the build cycle:
-```bash
-sbt run
-```
-
-This will download the required version of scala test and build a JAR file using the Scala Compiler.
+This will produce ducttape.jar.
 
 Documentation
 =============
@@ -47,7 +48,7 @@ To generate the tutorial documentation as doc/doc.pdf:
 
 To generate scaladoc:
 ```bash
-sbt doc
+./scaladoc.sh
 ```
 
 Testing
@@ -56,7 +57,7 @@ Testing
 To test low level data structures, run:
 
 ```bash
-sbt test
+TODO (Currently Eclipse JUnit is used)
 ```
 
 To test high-level functionality, run:
@@ -90,22 +91,3 @@ Then add a line to your ~/.vimrc to create an association with .tape files:
 ```
 au BufRead,BufNewFile *.tape set filetype=ducttape
 ```
-
-Eclipse
-=======
-
-To develop using Eclipse:
-
-```
-mkdir workspace
-cd workspace
-git clone git:github.com/jhclark/ducttape.git
-mkdir ducttape/lib
-cp /path/to/scalatest-1.6.1.jar ducttape/lib
-```
-
-Now, open Eclipse using the workspace you just created.
-Perform File..Import..General..Existing Projects into Workspace.
-Select workspace as the root directory of the project to import, make sure that the ducttape project is selected, then click Finish.
-Eclipse should now compile the code. Once Eclipse has completed building the workspace, exit Eclipse.
-Re-open Eclipse, and you should be good to go. To verify, open ducttape.scala in the scala directory, and select Run As..Scala Application.
