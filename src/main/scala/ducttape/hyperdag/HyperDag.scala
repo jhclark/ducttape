@@ -1,8 +1,18 @@
 package ducttape.hyperdag
 
 import collection._
-
 import ducttape.viz._
+import ducttape.hyperdag.walker.ConstraintFilter
+import ducttape.hyperdag.walker.ComboTransformer
+import ducttape.hyperdag.walker.VertexFilter
+import ducttape.hyperdag.walker.SelectionFilter
+import ducttape.hyperdag.walker.HyperEdgeFilter
+import ducttape.hyperdag.walker.DefaultConstraintFilter
+import ducttape.hyperdag.walker.DefaultComboTransformer
+import ducttape.hyperdag.walker.DefaultVertexFilter
+import ducttape.hyperdag.walker.DefaultSelectionFilter
+import ducttape.hyperdag.walker.DefaultHyperEdgeFilter
+import ducttape.hyperdag.walker.DefaultToD
 
 // immutable
 class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
@@ -16,8 +26,15 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   def packedWalker()
     = new walker.PackedDagWalker[V](this)
   // TODO: Pass filters to dag walker
-  def unpackedWalker()
-    = new walker.UnpackedDagWalker[V,H,E,Any](this)
+  def unpackedWalker[D,F](selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
+                          hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+                          constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+                          vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
+                          comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
+                          toD: H => D = new DefaultToD[H])
+    = new walker.UnpackedDagWalker[V,H,E,D,F](this, selectionFilter, hedgeFilter, constraintFilter, vertexFilter,
+                                              comboTransformer, toD)
+    
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)
   def outEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]

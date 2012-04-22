@@ -18,15 +18,15 @@ import ducttape.hyperdag.UnpackedVertex
  * parents so that we can eventually discard more of the explored space
  * the prevState can store information such as "what realizations does my parent have?"
  * NOTE: It's actually the incoming edges that are meta -- not the vertex itself */
-class UnpackedMetaVertex[V,H,E](val packed: PackedVertex[V],
-                                val edges: Seq[HyperEdge[H,E]],
-                                val realization: Seq[H],
-                                val parentRealizations: Seq[Seq[Seq[H]]],
-                                private[hyperdag] val dual: UnpackedVertex[V,H,E]) {
+class UnpackedMetaVertex[V,H,E,D](val packed: PackedVertex[V],
+                                  val edges: Seq[HyperEdge[H,E]],
+                                  val realization: Seq[D],
+                                  val parentRealizations: Seq[Seq[Seq[D]]],
+                                  private[hyperdag] val dual: UnpackedVertex[V,H,E,D]) {
   // TODO: More smearing of hash codes
   override def hashCode = packed.id ^ realization.hashCode
   override def equals(that: Any) = that match {
-    case other: UnpackedMetaVertex[_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
+    case other: UnpackedMetaVertex[_,_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
   override def toString = packed.toString + " (realization=" + realization.toString +")"
 }

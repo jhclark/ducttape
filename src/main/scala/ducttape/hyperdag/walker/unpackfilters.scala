@@ -11,12 +11,12 @@ import ducttape.hyperdag.AntiHyperEdge
 // however, that caused inscrutable compiler errors
 // for some bizarre reasons
 
-trait MetaVertexFilter[V,H,E] {
-  def apply(v: UnpackedMetaVertex[V,H,E]): Boolean
+trait MetaVertexFilter[V,H,E,D] {
+  def apply(v: UnpackedMetaVertex[V,H,E,D]): Boolean
 }
 
-class DefaultMetaVertexFilter[V,H,E] extends MetaVertexFilter[V,H,E] {
-  override def apply(v: UnpackedMetaVertex[V,H,E]) = true
+class DefaultMetaVertexFilter[V,H,E,D] extends MetaVertexFilter[V,H,E,D] {
+  override def apply(v: UnpackedMetaVertex[V,H,E,D]) = true
 }
 
 trait SelectionFilter[H] {
@@ -35,8 +35,8 @@ class DefaultHyperEdgeFilter[H,E] extends HyperEdgeFilter[H,E] {
   override def apply(combo: HyperEdge[H,E]) = true
 }
 
-trait ConstraintFilter[V,H,F] {
-  def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]): Option[F]
+trait ConstraintFilter[V,D,F] {
+  def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]): Option[F]
   val initState: F
 }
 
@@ -46,19 +46,23 @@ class DefaultConstraintFilter[V,H,F] extends ConstraintFilter[V,H,F] {
   override val initState: F = nada
 }
 
-trait VertexFilter[V,H,E] {
-  def apply(v: UnpackedVertex[V,H,E]): Boolean
+trait VertexFilter[V,H,E,D] {
+  def apply(v: UnpackedVertex[V,H,E,D]): Boolean
 }
 
-class DefaultVertexFilter[V,H,E] extends VertexFilter[V,H,E] {
-  override def apply(v: UnpackedVertex[V,H,E]) = true
+class DefaultVertexFilter[V,H,E,D] extends VertexFilter[V,H,E,D] {
+  override def apply(v: UnpackedVertex[V,H,E,D]) = true
+}
+
+class DefaultToD[H] extends Function1[H,H] {
+  override def apply(h: H) = h
 }
 
 // TODO: Receieve immutable multiset as argument?
-trait ComboTransformer[H,E] {
-  def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]): Option[MultiSet[H]]
+trait ComboTransformer[H,E,D] {
+  def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]]
 }
 
-class DefaultComboTransformer[H,E] extends ComboTransformer[H,E] {
-  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = Some(combo)
+class DefaultComboTransformer[H,E,D] extends ComboTransformer[H,E,D] {
+  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[D]) = Some(combo)
 }

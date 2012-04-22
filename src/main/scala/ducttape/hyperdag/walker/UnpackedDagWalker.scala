@@ -25,16 +25,20 @@ import ducttape.util._
  *  all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
  *  version (e.g. anti-hyperedges remove entirely one of these edges)
  *
- *  the "edge derivation" == the realization */
+ *  the "edge derivation" == the realization
+ *  
+ *  The type D is the "derivation type" of the hyperedge. Usually, having D=H is fine, but
+ *  D may be any function of H via the function toD() */
 // TODO: SPECIFY GOAL VERTICES
-class UnpackedDagWalker[V,H,E,F](
+class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
-        val selectionFilter: SelectionFilter[H] = new DefaultSelectionFilter[H],
+        val selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
         val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-        val constraintFilter: ConstraintFilter[V,H,F] = new DefaultConstraintFilter[V,H,F],
-        val vertexFilter: VertexFilter[V,H,E] = new DefaultVertexFilter[V,H,E],
-        val comboTransformer: ComboTransformer[H,E] = new DefaultComboTransformer[H,E])
-  extends Walker[UnpackedVertex[V,H,E]] {
+        val constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+        val vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
+        val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
+        val toD: H => D = new DefaultToD[H])
+  extends Walker[UnpackedVertex[V,H,E,D]] {
 
   // TODO: Factor this out into a class all its own?
   // TODO: Document why active vertices are isomorphic to hyperedges (or no hyperedge)
@@ -46,9 +50,9 @@ class UnpackedDagWalker[V,H,E,F](
     // indices: sourceEdge, whichUnpacking, whichRealization
     val filled = {
       val sz = if (he.isEmpty) 0 else dag.sources(he.get).size
-      new Array[mutable.ListBuffer[Seq[H]]](sz)
+      new Array[mutable.ListBuffer[Seq[D]]](sz)
     }
-    for (i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[H]]
+    for (i <- 0 until filled.size) filled(i) = new mutable.ListBuffer[Seq[D]]
 
     // TODO: smear
     override def hashCode() = v.hashCode ^ he.hashCode
@@ -60,10 +64,10 @@ class UnpackedDagWalker[V,H,E,F](
     // we can bail at any point during this process if a filter fails
     private def unpack(i: Int,
                        iFixed: Int,
-                       combo: MultiSet[H],
-                       parentReals: Array[Seq[H]],
+                       combo: MultiSet[D],
+                       parentReals: Array[Seq[D]],
                        prevState: F,
-                       callback: UnpackedVertex[V,H,E] => Unit) {
+                       callback: UnpackedVertex[V,H,E,D] => Unit) {
 
       //err.println("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
@@ -73,17 +77,17 @@ class UnpackedDagWalker[V,H,E,F](
           case None => ; // combination could not continue (e.g. anti-hyperedge was not matched)
           case Some(transformedCombo: MultiSet[_]) => {
             if (selectionFilter(transformedCombo)) {
-              callback(new UnpackedVertex[V,H,E](v, he, transformedCombo.toList, parentReals.toList))
+              callback(new UnpackedVertex[V,H,E,D](v, he, transformedCombo.toList, parentReals.toList))
             }
           } 
         }
       } else {
         //unpack(i+1, iFixed, combo, parentReals, prevState, callback)
         // NOTE: We previously set parentReals(iFixed) to be the fixed realization
-        val myParentReals: Iterable[Seq[H]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
+        val myParentReals: Iterable[Seq[D]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
-        for (parentRealization: Seq[H] <- myParentReals) {
+        for (parentRealization: Seq[D] <- myParentReals) {
           // TODO: Get prevState
           // check if we meet external semantic constraints
           constraintFilter(v, prevState, combo, parentRealization) match {
@@ -111,14 +115,14 @@ class UnpackedDagWalker[V,H,E,F](
     // backpointers we've saved so far, but fixing
     // one of the hyperedge sources at a particular realization
     def unpack(iFixed: Int,
-               fixedRealization: Seq[H],
-               callback: UnpackedVertex[V,H,E] => Unit) {
+               fixedRealization: Seq[D],
+               callback: UnpackedVertex[V,H,E,D] => Unit) {
       
-      val combo = new MultiSet[H]
+      val combo = new MultiSet[D]
       // allow user to filter out certain hyperedges from the derivation
       if (!he.isEmpty && hedgeFilter(he.get))
-        combo += he.get.h
-      val parentReals = new Array[Seq[H]](filled.size)
+        combo += toD(he.get.h)
+      val parentReals = new Array[Seq[D]](filled.size)
       parentReals(iFixed) = fixedRealization
       combo ++= fixedRealization
       unpack(0, iFixed, combo, parentReals, constraintFilter.initState, callback)
@@ -130,14 +134,14 @@ class UnpackedDagWalker[V,H,E,F](
                    with mutable.SynchronizedMap[PackedVertex[V],ActiveVertex]
   private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
                    with mutable.SynchronizedMap[HyperEdge[H,E],ActiveVertex]
-  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E]]//new ArrayBlockingQueue[UnpackedVertex[V,H,E]](dag.size)
-  private val taken = new mutable.HashSet[UnpackedVertex[V,H,E]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E]]
-  private val completed = new mutable.HashSet[UnpackedVertex[V,H,E]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E]]
+  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E,D]]//new ArrayBlockingQueue[UnpackedVertex[V,H,E,D]](dag.size)
+  private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E,D]]
+  private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E,D]]
 
   // first, visit the roots, which are guaranteed not to be packed
   for (root <- dag.roots.iterator) {
     val actRoot = new ActiveVertex(root, None)
-    val unpackedRoot = new UnpackedVertex[V,H,E](root, None, Nil, Nil)
+    val unpackedRoot = new UnpackedVertex[V,H,E,D](root, None, Nil, Nil)
     agenda.add(unpackedRoot)
     activeRoots += root -> actRoot
   }
@@ -148,11 +152,11 @@ class UnpackedDagWalker[V,H,E,F](
   // WARNING: may never return if complete() is not called as expected
   // this is why take/compelte are protected and only foreach and iterator are exposed
   // (use foreach to prevent this)
-  override def take(): Option[UnpackedVertex[V,H,E]] = {
+  override def take(): Option[UnpackedVertex[V,H,E,D]] = {
 
     // this method just handles getting the next vertex, if any
     // take() must also perform some vertex filtering before returning
-    def getNext(): Option[UnpackedVertex[V,H,E]] = {
+    def getNext(): Option[UnpackedVertex[V,H,E,D]] = {
       def poll() = { // atomically get both the size and any waiting vertex
         val (key, takenSize) = agendaTakenLock.synchronized {
           // after polling the agenda, we must update taken
@@ -168,8 +172,8 @@ class UnpackedDagWalker[V,H,E,F](
         (key, takenSize)
       } // poll
 
-      val key: Option[UnpackedVertex[V,H,E]] = waitingToTakeLock.synchronized {
-        var (key: Option[UnpackedVertex[V,H,E]], takenSize: Int) = poll()
+      val key: Option[UnpackedVertex[V,H,E,D]] = waitingToTakeLock.synchronized {
+        var (key: Option[UnpackedVertex[V,H,E,D]], takenSize: Int) = poll()
         while (key == None && takenSize > 0) {
           // wait, releasing our lock until we're notified of changes
           // in state of agenda and taken
@@ -202,7 +206,7 @@ class UnpackedDagWalker[V,H,E,F](
     result
   }
 
-  override def complete(item: UnpackedVertex[V,H,E], continue: Boolean = true) = {
+  override def complete(item: UnpackedVertex[V,H,E,D], continue: Boolean = true) = {
     require(activeRoots.contains(item.packed) || item.edge.exists(activeEdges.contains(_)),
             "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
     val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
@@ -242,7 +246,7 @@ class UnpackedDagWalker[V,H,E,F](
               // function will not be called during this invocation
               activeCon.unpack(iEdge, item.realization,
                 // callback function:
-                (unpackedV: UnpackedVertex[V,H,E]) => {
+                (unpackedV: UnpackedVertex[V,H,E,D]) => {
                   // still have the lock on agenda...
                   // TODO: This agenda membership test could be slow O(n)
                   //assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
