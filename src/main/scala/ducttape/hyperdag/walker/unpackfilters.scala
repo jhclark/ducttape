@@ -62,25 +62,3 @@ trait ComboTransformer[H,E] {
 class DefaultComboTransformer[H,E] extends ComboTransformer[H,E] {
   override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = Some(combo)
 }
-
-/** when used with an unpacker, causes anti-hyperedges to be recognized
- *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
-class AntiHyperEdgeComboTransformer[H,E] extends ComboTransformer[H,E] {
-  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[H]) = he match {
-    case Some(anti: AntiHyperEdge[_,_]) => {
-      if (combo.contains(anti.h)) {
-        val copy = new MultiSet[H](combo)
-        copy.removeAll(anti.h)
-        Some(copy)
-      } else {
-        // no corresponding edge was found in the derivation
-        // this anti-hyperedge cannot apply
-        //
-        // TODO: Note when corresponding edge not found
-        // to help user understand why no path is available
-        None
-      }
-    }
-    case _ => Some(combo)
-  }
-}

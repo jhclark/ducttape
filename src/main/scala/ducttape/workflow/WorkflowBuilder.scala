@@ -226,7 +226,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        for (branchPoint <- branchPointsByTask(task.taskDef)) {
  
          // create a hyperedge list in the format expected by the HyperDAG API
-         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])])]
+         val hyperedges = new mutable.ArrayBuffer[(Branch, Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])], MATCHERS)]
          for ( (branch, parentTaskDefs) <- parents(task); if branchPoint == branch.branchPoint) {
 
            // create an edge within each hyperedge for each input associated with a task
@@ -234,6 +234,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            // parameters may also be subject to branching, but will never point at a task directly
            // since parameters do not imply a temporal ordering among task vertices.
            val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
+           val antiedges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
 
            // find which inputs are attached to this branch point
            // unlike params (which are just lumped into an edge to a single phantom vertex),
@@ -271,7 +272,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            }
 
            // parents are stored as Options so that we can use None to indicate phantom parent vertices
-           for (parentTaskDefOpt: Option[TaskDef] <- parentTaskDefs) parentTaskDefOpt match {
+           parentTaskDefs.foreach {
              case Some(CONFIG_TASK_DEF) => {
                // this includes only paths (not params) defined in a config
                //
