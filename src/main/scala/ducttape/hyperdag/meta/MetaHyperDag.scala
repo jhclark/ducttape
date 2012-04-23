@@ -34,9 +34,9 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
   def unpackedWalker[D,F](constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
-                        vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
-                        comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-                        toD: H => D = new DefaultToD[H]) = {
+                          vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
+                          comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
+                          toD: H => D = new DefaultToD[H]) = {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
