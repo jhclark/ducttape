@@ -12,8 +12,8 @@ class BranchFactory(bpf: BranchPointFactory) {
   // creates new if branch isn't found
   private[workflow] def get(myName: String, myBranchPoint: BranchPoint): Branch = {
     pool.getOrElseUpdate( (myName, myBranchPoint), new Branch {
-      val name = myName
-      val branchPoint = myBranchPoint
+      override val name = myName
+      override val branchPoint = myBranchPoint
     } )
   }
   // creates new if branch isn't found
