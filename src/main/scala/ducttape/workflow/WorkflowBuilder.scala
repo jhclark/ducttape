@@ -176,6 +176,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          }
          case BranchGraft(srcOutName, srcTaskName, branchGraftElements) => {
            handleTaskVar(srcTaskName, srcOutName)
+           grafts = branchGraftElements.map{e => branchFactory(e.branchName, e.branchPointName) }
          }
          case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
          case SequentialBranchPoint(_,_,_,_) => throw new RuntimeException("Expected sequences to be resolved by now")
