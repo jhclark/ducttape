@@ -19,6 +19,19 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
         val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         val toD: H => D = new DefaultToD[H])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] {
+  
+  object MetaComboTransformer extends ComboTransformer[H,E,D] {
+    override def apply(heOpt: Option[HyperEdge[H,E]], combo: MultiSet[D]) = heOpt match {
+      case None => comboTransformer(heOpt, combo)
+      case Some(he) => {
+        if(dag.isEpsilon(he)) {
+          Some(combo) // never transform epsilons
+        } else {
+          comboTransformer(heOpt, combo)
+        }
+      }
+    }
+  }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](dag.delegate, selectionFilter, hedgeFilter,
                                                           constraintFilter, new DefaultVertexFilter[V,H,E,D],
