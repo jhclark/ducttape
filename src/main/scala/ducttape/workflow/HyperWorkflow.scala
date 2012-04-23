@@ -6,18 +6,19 @@ import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.util.MultiSet
 import ducttape.workflow.Types.UnpackState
 import ducttape.workflow.Types.UnpackedWorkVert
+import ducttape.workflow.Types.WorkflowEdge
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
-
 import ducttape.hyperdag.walker._
+import ducttape.hyperdag.HyperEdge
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
   // - not specifying a branch point indicates that any value is acceptable
   // TODO: Multimap (just use typedef?)
-  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,Branch,Seq[Spec]],
+  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]],
                       val packageDefs: Map[String,PackageDef],
                       val plans: Seq[RealizationPlan],
                       val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
@@ -30,20 +31,25 @@ import ducttape.hyperdag.walker._
     
   /** when used with an unpacker, causes anti-hyperedges to be recognized
    *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
-  class AntiHyperEdgeComboTransformer extends ComboTransformer[Branch,Seq[Spec]] {
-    override def apply(he: Option[HyperEdge[Branch,Seq[Spec]]], combo: MultiSet[Branch]) = he match {
-      case Some(anti: AntiHyperEdge[_,_]) => {
-        if (combo.contains(anti.h)) {
-          val copy = new MultiSet[H](combo)
-          copy.removeAll(anti.h)
-          Some(copy)
+  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[Spec],Branch] {
+    override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
+      case Some(he) => {
+        if (he.h.grafts.size > 0) {
+          // no grafting required. do nothing
+          Some(combo)
         } else {
-          // no corresponding edge was found in the derivation
-          // this anti-hyperedge cannot apply
-          //
-          // TODO: Note when corresponding edge not found
-          // to help user understand why no path is available
-          None
+          if (he.h.grafts.forall(b => combo.contains(b))) {
+            val copy = new MultiSet[Branch](combo)
+            he.h.grafts.foreach(b => copy.removeAll(b))
+            Some(copy)
+          } else {
+            // no corresponding edge was found in the derivation
+            // this anti-hyperedge cannot apply
+            //
+            // TODO: Note when corresponding edge not found
+            // to help user understand why no path is available
+            None
+          }
         }
       }
       case _ => Some(combo)
@@ -84,9 +90,12 @@ import ducttape.hyperdag.walker._
           if(planFilter.size == 0) {
             true // size zero plan has special meaning
           } else {
-            val ok = myReal.forall{ realBranch => planFilter.get(realBranch.branchPoint) match {
+            val ok = myReal.forall{ realBranch: Branch => planFilter.get(realBranch.branchPoint) match {
               // planFilter must explicitly mention a branch point
-              case Some(planBranches: Set[_] /*Set[Branch]*/) => planBranches.contains(realBranch)
+              case Some(planBranchesX: Set[_] /*Set[Branch]*/) => {
+                val planBranches: Set[Branch] = planBranchesX
+                planBranches.contains(realBranch)
+              }
               // otherwise it implies the baseline branch
               case None => realBranch.name == Task.NO_BRANCH.name // compare *name*, not actual Baseline:baseline
             }}
@@ -108,18 +117,21 @@ import ducttape.hyperdag.walker._
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
           //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
-          Some(seen ++ parentReal.map(b => (b.branchPoint, b))) // left operand determines return type
+          // left operand determines return type (an efficient immutable.HashMap)
+          val result: UnpackState = seen ++ parentReal.map{b: Branch => (b.branchPoint, b)}
+          Some(result)
         }
       }
     }
 
-    val vertexFilter = new MetaVertexFilter[TaskTemplate,Branch,Seq[Spec]] {
+    val vertexFilter = new MetaVertexFilter[TaskTemplate,BranchInfo,Seq[Spec],Branch] {
       override def apply(v: UnpackedWorkVert): Boolean = {
         // TODO: Less extra work?
         val task = v.packed.value.realize(v)
         plannedVertices.contains( (task.name, task.realization) ) || plannedVertices.isEmpty
       } 
     }
-    dag.unpackedWalker[UnpackState](globalBranchPointConstraint, vertexFilter)
+    def toD(branchInfo: BranchInfo): Branch = branchInfo.branch
+    dag.unpackedWalker[Branch,UnpackState](globalBranchPointConstraint, vertexFilter, BranchGraftComboTransformer, toD)
   }
 }

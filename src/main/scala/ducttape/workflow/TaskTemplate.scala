@@ -39,6 +39,7 @@ class TaskTemplate(val taskDef: TaskDef,
    def realize(v: UnpackedWorkVert): RealTask = {
      // TODO: Assert all of our branch points are satisfied
      // TODO: We could try this as a view.map() instead of just map() to only calculate these on demand...
+     
      val realization = new Realization(v.realization)
      val activeBranchMap = realization.activeBranchMap
 
@@ -54,7 +55,7 @@ class TaskTemplate(val taskDef: TaskDef,
      // this annotation on the plain edges is created in WorkflowBuilder.build()
      val spec2reals = new mutable.HashMap[Spec, Realization]
      for( (heX, parentRealsByE: Seq[Seq[Branch]]) <- v.edges.zip(v.parentRealizations)) {
-       val he: HyperEdge[Branch, Seq[Spec]] = heX
+       val he: HyperEdge[BranchInfo, Seq[Spec]] = heX
        val edges = he.e.zip(parentRealsByE).filter{case (e, eReals) => e != null}
        for( (specsX, srcRealX) <- edges) {
          val specs: Seq[Spec] = specsX
