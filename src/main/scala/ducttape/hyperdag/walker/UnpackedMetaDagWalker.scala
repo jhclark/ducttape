@@ -23,8 +23,8 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   object MetaComboTransformer extends ComboTransformer[H,E,D] {
     override def apply(heOpt: Option[HyperEdge[H,E]], combo: MultiSet[D]) = heOpt match {
       case None => comboTransformer(heOpt, combo)
-      case Some(he) => {
-        if(dag.isEpsilon(he)) {
+      case Some(he: HyperEdge[_,_]) => {
+        if (dag.isEpsilon(he)) {
           Some(combo) // never transform epsilons
         } else {
           comboTransformer(heOpt, combo)
@@ -33,9 +33,9 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     }
   }
 
-  private val delegate = new UnpackedDagWalker[V,H,E,D,F](dag.delegate, selectionFilter, hedgeFilter,
-                                                          constraintFilter, new DefaultVertexFilter[V,H,E,D],
-                                                          comboTransformer, toD)
+  private val delegate = new UnpackedDagWalker[V,H,E,D,F](
+    dag.delegate, selectionFilter, hedgeFilter, constraintFilter,
+    new DefaultVertexFilter[V,H,E,D], comboTransformer, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps
@@ -74,18 +74,20 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
           
           // TODO: CAN WE STOP UNPACKING EARLY?
           
+          // these lists are both parallel to the number of incoming metaedges
           val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
           val metaParentReals = new mutable.ListBuffer[Seq[Seq[D]]]
           
           dag.delegate.parents(raw.packed) match {
             // skip the case of phantom parents
-            case Seq(singleParent) if(dag.isPhantom(singleParent)) => ;
+            case Seq(singleParent) if (dag.isPhantom(singleParent)) => ;
             case parents => {
-              assert(parents.size == raw.parentRealizations.size, "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
-              // for parallel to number of incoming meta edges
-              for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[H]]) <- parents.zip(raw.parentRealizations)) {
+              assert(parents.size == raw.parentRealizations.size,
+                     "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
+              // for: parallel to number of incoming meta edges
+              for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[D]]) <- parents.zip(raw.parentRealizations)) {
                 val parentEpsilonUV: UnpackedVertex[V,H,E,D] = epsilons( (parentEpsilonV, parentEpsilonReals) )
-                // use this Seq[Seq[H]], which is parallel to the active hyperedge
+                // use this Seq[Seq[D]], which is parallel to the active hyperedge
                 activeEdges += parentEpsilonUV.edge.get
                 metaParentReals += parentEpsilonUV.parentRealizations
               }

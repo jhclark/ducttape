@@ -34,7 +34,7 @@ import ducttape.hyperdag.HyperEdge
   object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[Spec],Branch] {
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
-        if (he.h.grafts.size == 0) {
+        if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
           // no grafting required. do nothing
           Some(combo)
         } else {

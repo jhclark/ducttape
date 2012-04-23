@@ -42,7 +42,7 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
     // TODO: Exclude epsilons from completed, etc.
     // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
     // the burden on the filter
-    val epsilonHyperEdgeFilter = new HyperEdgeFilter[H,E] {
+    val epsilonHyperEdgeFilter = new HyperEdgeFilter[H,E] { // TODO: Rename as "mask"
       override def apply(he: HyperEdge[H,E]) = !isEpsilon(he)
     }
 

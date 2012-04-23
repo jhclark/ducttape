@@ -34,7 +34,7 @@ class Executor(dirs: DirectoryArchitect,
   override def visit(task: RealTask) {
     if(todo((task.name, task.realization))) {
       val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
-      println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
+      System.err.println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
       dirs.xdotFile.synchronized {
         running += ((task.name, task.realization))

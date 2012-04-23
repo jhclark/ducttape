@@ -77,7 +77,6 @@ class UnpackedDagWalker[V,H,E,D,F](
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
           case Some(transformedCombo: MultiSet[_]) => {
             if (selectionFilter(transformedCombo)) {
-              System.err.println("CALLBACK: " + v + " " + parentReals.toList)
               callback(new UnpackedVertex[V,H,E,D](v, he, transformedCombo.toList, parentReals.toList))
             }
           } 

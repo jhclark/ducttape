@@ -23,7 +23,7 @@ class RealTask(val taskT: TaskTemplate,
 
   // the tasks and realizations that must temporally precede this task (due to having required input files)
    lazy val antecedents: Set[(String, Realization)] = {
-     for( inputVal <- inputVals) yield {
+     for (inputVal <- inputVals) yield {
        (inputVal.srcTaskDef.name, inputVal.srcReal) // TODO: change seq[branch] to realization?
      }
    }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet

@@ -441,6 +441,7 @@ object Ducttape {
           val taskT: TaskTemplate = v.packed.value
           val task: RealTask = taskT.realize(v)
           if(task.realization.toString == goalRealName) {
+            System.err.println("My parents are: " + v.parentRealizations)
             Some(task)
           } else {
             None
