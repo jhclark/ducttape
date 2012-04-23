@@ -3,6 +3,7 @@ package ducttape.syntax
 import scala.util.parsing.input.Positional
 import java.io.File
 import scala.util.parsing.input.Position
+import scala.collection.immutable.NumericRange.Inclusive
 
 object AbstractSyntaxTree {
 
@@ -58,19 +59,24 @@ object AbstractSyntaxTree {
     override def toString() = "$%s@%s".format(value,taskName)
   }  
   
+  case class Sequence(val start: BigDecimal, 
+                      val end: BigDecimal,
+                      val increment: BigDecimal) extends ASTType {
+    override def children = Nil
+    override def toString() = "%s..%s..%s".format(start,end,increment)
+  }
+  
   /** 
    * Type of a branch point that defines a sequence, 
    * in the right-hand side context of an assignment. 
    */
   case class SequentialBranchPoint(val branchPointName: Option[String], 
-                                   val start: BigDecimal, 
-                                   val end: BigDecimal,
-                                   val increment: BigDecimal) extends RValue {
-    override def children = Nil
+                                   val sequence: Sequence) extends RValue {
+    override def children = Seq(sequence)
     override def toString() = {
         branchPointName match {
-          case Some(s) => "(%s: %s..%s..%s)".format(s,start,end,increment)
-          case None    => "(%s..%s..%s)".format(start,end,increment)
+          case Some(s) => "(%s: %s)".format(s,sequence)
+          case None    => "(%s)".format(sequence)
         }
     }
   }  
@@ -142,7 +148,7 @@ object AbstractSyntaxTree {
   }  
 
  /** Reference, in a plan, to a branchpoint and one or more of its branches. */
-  case class BranchPointRef(val name: String, val branchNames: Seq[String]) extends ASTType {
+  case class BranchPointRef(val name: String, val branchNames: Seq[ASTType]) extends ASTType {
     override def children = Nil
     override def toString() = {
       "(%s: %s)".format(name, branchNames.mkString(" "))
