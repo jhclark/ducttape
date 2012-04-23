@@ -23,8 +23,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val e2 = builder.addHyperEdge("HyperEdge 2", List((b,"")), c)
 
     val dag: HyperDag[String,String,String] = builder.build
-    val vertices = dag.unpackedWalker.iterator.toList
-    for(v: UnpackedVertex[String,String,String] <- vertices) {
+    val vertices = dag.unpackedWalker().iterator.toList
+    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     assert(vertices(0).packed.value == "Vertex A")
@@ -49,8 +49,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
   }
 
   it should "traverse a diamond with an iterator" in {
-    val vertices = diamond.unpackedWalker.iterator.toList
-    for(v: UnpackedVertex[String,String,String] <- vertices) {
+    val vertices = diamond.unpackedWalker().iterator.toList
+    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     
@@ -113,7 +113,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
         //println(i)
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
-	    diamond.unpackedWalker.foreach(10, {v => {
+	    diamond.unpackedWalker().foreach(10, {v => {
 	      verts += v.packed.value
 	      reals += v.realization
 	    }})
