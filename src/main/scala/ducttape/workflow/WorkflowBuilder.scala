@@ -463,12 +463,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          }
          handleBranchPoint(branchPointName, branchSpecs)
        }
-<<<<<<< HEAD
-       case SequentialBranchPoint(branchPointNameOpt, start: BigDecimal, end: BigDecimal, increment: BigDecimal) => {
-=======
        case SequentialBranchPoint(branchPointNameOpt: Option[String], 
                                   sequence: Sequence) => {
->>>>>>> syntax
          val branchPointName: String = branchPointNameOpt match {
            case Some(name) => name
            case None => throw new FileFormatException("Branch point name is required", inSpec)
@@ -491,12 +487,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                  // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
-<<<<<<< HEAD
-               case SequentialBranchPoint(branchPointNameOpt, start: BigDecimal, end: BigDecimal, increment: BigDecimal) => {
-=======
                case SequentialBranchPoint(branchPointNameOpt: Option[String], 
                                           sequence: Sequence) => {
->>>>>>> syntax
                  val branchPointName: String = branchPointNameOpt match {
                    case Some(name) => name
                    case None => throw new FileFormatException("Branch point name is required", inSpec)
