@@ -389,6 +389,10 @@ object Ducttape {
           vertexFilter ++= seen.map{task => (task.name, task.realization)}
         }
         err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
+        if (vertexFilter.isEmpty) {
+          err.println("%sERROR: Plan includes zero tasks%s".format(conf.errorColor, conf.resetColor))
+          Ducttape.exit(1)
+        }
         vertexFilter
       }
     }

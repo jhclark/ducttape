@@ -11,6 +11,7 @@ class BranchFactory(bpf: BranchPointFactory) {
 
   // creates new if branch isn't found
   private[workflow] def get(myName: String, myBranchPoint: BranchPoint): Branch = {
+    assert(myName != null)
     pool.getOrElseUpdate( (myName, myBranchPoint), new Branch {
       override val name = myName
       override val branchPoint = myBranchPoint
@@ -18,6 +19,7 @@ class BranchFactory(bpf: BranchPointFactory) {
   }
   // creates new if branch isn't found
   private[workflow] def get(name: String, branchPoint: String): Branch = {
+    assert(name != null)
     get(name, bpf.get(branchPoint))
   }
   

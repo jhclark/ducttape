@@ -176,7 +176,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          }
          case BranchGraft(srcOutName, srcTaskName, branchGraftElements) => {
            handleTaskVar(srcTaskName, srcOutName)
-           grafts = branchGraftElements.map{e => branchFactory(e.branchName, e.branchPointName) }
+           grafts = branchGraftElements.map{ e => try {
+               branchFactory(e.branchName, e.branchPointName)
+             } catch {
+               case ex: NoSuchBranchException => throw new FileFormatException(ex.getMessage, e)
+             }
+           }
          }
          case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
          case SequentialBranchPoint(_,_,_,_) => throw new RuntimeException("Expected sequences to be resolved by now")
@@ -243,7 +248,6 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            // parameters may also be subject to branching, but will never point at a task directly
            // since parameters do not imply a temporal ordering among task vertices.
            val edges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
-           val antiedges = new mutable.ArrayBuffer[(Option[PackedVertex[TaskTemplate]],Seq[Spec])]
 
            // find which inputs are attached to this branch point
            // unlike params (which are just lumped into an edge to a single phantom vertex),
