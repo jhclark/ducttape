@@ -12,7 +12,7 @@ submitter sge :: cpus vmem walltime q
     echo "#$ -l h_rt=$walltime" >> $wrapper
     echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
-    echo "#$ -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
+    echo "#$ -N $CONFIGURATION-$TASK-$REALIZATION" >> $wrapper
 
     # Bash flags aren't necessarily passed into the scheduler
     # so we must re-initialize them
