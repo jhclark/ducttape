@@ -1,7 +1,10 @@
 import System._
 import collection._
+import sys.ShutdownHookThread
+
 import java.io.File
 import java.util.concurrent.ExecutionException
+
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
@@ -87,17 +90,6 @@ object Ducttape {
     def optCount = allOpts.size
     def unapply(name: String) = if(name == this.name) Some(name) else None
   }
-
-  def exit(status: Int) {
-    // If using an interactive console,
-    if (java.lang.System.console() != null) {
-      // reset colors to system defaults
-      err.print(Console.RESET)
-    }
-    
-    // Exit with appropriate status
-    sys.exit(status)
-  }
   
   class Opts(conf: Config, args: Seq[String]) extends OptParse {
     
@@ -156,8 +148,7 @@ object Ducttape {
     def exitHelp(msg: String, code: Int) {
       help
       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-      
-      Ducttape.exit(code)
+      System.exit(code)
     }
 
     if (args.isEmpty || args(0).startsWith("-")) {
@@ -184,6 +175,12 @@ object Ducttape {
     val opts = new Opts(conf, args)
     if (opts.no_color || !Environment.hasTTY) {
       conf.clearColors()
+    }
+    
+    import ducttape.cli.ErrorUtils.ex2err
+    ShutdownHookThread { // make sure we never leave the color in a bad state on exit
+      println(conf.resetColor)
+      System.err.println(conf.resetColor)
     }
     
     err.println("%sDuctTape v0.2".format(conf.headerColor))
@@ -280,7 +277,7 @@ object Ducttape {
        err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
     }
     if (errors.size > 0) {
-      Ducttape.exit(1)
+      exit(1)
     }
     
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
@@ -391,7 +388,7 @@ object Ducttape {
         err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
         if (vertexFilter.isEmpty) {
           err.println("%sERROR: Plan includes zero tasks%s".format(conf.errorColor, conf.resetColor))
-          Ducttape.exit(1)
+          exit(1)
         }
         vertexFilter
       }
@@ -507,7 +504,7 @@ object Ducttape {
           for(msg <- inputChecker.errors) {
             err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
           }
-          Ducttape.exit(1)
+          exit(1)
         }
         
         // TODO: Check package versions to see if any packages need rebuilding.
