@@ -83,7 +83,7 @@ class DirectoryArchitect(val flat: Boolean,
       case false => new File(workflowBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
     }
   }
-    
+  
   def getInFile(mySpec: Spec,
                 realization: Realization,
                 srcSpec: Spec,
