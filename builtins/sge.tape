@@ -10,7 +10,7 @@ submitter sge :: cpus vmem walltime q
     echo "#$ -q $q" >> $wrapper
     echo "#$ -l slots=$cpus" >> $wrapper
     echo "#$ -l h_rt=$walltime" >> $wrapper
-    echo "#$ -j oe" >> $wrapper
+    echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
     echo "#$ -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
 
