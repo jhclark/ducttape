@@ -1,10 +1,8 @@
 import System._
 import collection._
 import sys.ShutdownHookThread
-
 import java.io.File
 import java.util.concurrent.ExecutionException
-
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
@@ -39,140 +37,16 @@ import ducttape.workflow.BuiltInLoader
 import ducttape.syntax.FileFormatException
 import ducttape.util.DucttapeException
 import ducttape.util.BashException
-
-class Config {
-  // TODO: Use Map for color sot that we can remove all of them easily?
-  var headerColor = Console.BLUE
-  var byColor = Console.BLUE
-  var taskColor = Console.CYAN
-  var warnColor = Console.BOLD + Console.YELLOW
-  var errorColor = Console.RED
-  var resetColor = Console.RESET
-
-  var modeColor = Console.GREEN
-
-  var errorLineColor = Console.BLUE // file and line number of error
-  var errorScriptColor = Console.WHITE // quote from file
-
-  var taskNameColor = Console.CYAN
-  var realNameColor = Console.BLUE
-
-  var greenColor = Console.GREEN
-  var redColor = Console.RED
-  
-  // TODO: Enum?
-  def clearColors() {
-    headerColor = ""
-    byColor = ""
-    taskColor = ""
-    warnColor = ""
-    errorColor = ""
-    resetColor = ""
-
-    modeColor = ""
-
-    errorLineColor = ""
-    errorScriptColor = ""
-
-    taskNameColor = ""
-    realNameColor = ""
-
-    greenColor = ""
-    redColor = ""
-  }
-
-}
+import ducttape.cli.Config
+import ducttape.cli.ErrorUtils
+import ducttape.cli.Opts
+import ducttape.cli.EnvironmentMode
 
 object Ducttape {
-
-  import com.frugalmechanic.optparse._
-  class Mode(val name: String, val desc: String) extends OptParse {
-    def optCount = allOpts.size
-    def unapply(name: String) = if(name == this.name) Some(name) else None
-  }
-  
-  class Opts(conf: Config, args: Seq[String]) extends OptParse {
-    
-    //override val optParseDebug = true
-
-    // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
-    val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
-    }
-    val jobs = IntOpt(desc="Number of concurrent jobs to run", default=1)
-    val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
-    val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
-    val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
-    val no_color = BoolOpt(desc="Don't colorize output")
-    
-    val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
-    val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
-    val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
-    val debug_viz = new Mode("debug_viz", desc="Output a GraphViz dot visualization of the packed MetaHyperDAG");
-    val mark_done = new Mode("mark_done", desc="Mark a specific task/realization as complete (useful if some manual recovery or resumption was necessary)");
-    val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
-    val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
-
-    val modes = Seq(exec, list, env, viz, debug_viz, mark_done, invalidate)
-
-    // Positional arguments:
-    private var _workflowFile = new File(".")
-    def workflowFile = _workflowFile
-
-    private var _mode = "exec"
-    def mode = _mode
-
-    private var _taskName: Option[String] = None
-    def taskName: Option[String] = _taskName
-
-    private var _realNames: Seq[String] = Nil
-    def realNames: Seq[String] = _realNames
-
-    // TODO: Can we define help as an option?
-    // TODO: Rewrite arg parsing as a custom module?
-    override def help {
-      err.println("Usage: ducttape workflow.tape [--options] [mode [taskName [realizationNames...]]]")
-      err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
-      super.help
-
-      for (mode <- modes) {
-        // TODO: Change visibility of init to protected instead of this hack...
-        mode.parse(Array())
-
-        if(mode.optCount > 1) {
-          err.println("%s%s mode:%s".format(conf.modeColor, mode.name, conf.resetColor))
-          mode.help
-        }
-      }
-    }
-  
-    def exitHelp(msg: String, code: Int) {
-      help
-      err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
-      System.exit(code)
-    }
-
-    if (args.isEmpty || args(0).startsWith("-")) {
-      exitHelp("Workflow file is required", 1)
-    }
-
-    _workflowFile = new File(args(0))
-
-    private val leftoversOpt = defaultOpt(MultiStrOpt())
-    parse(args.drop(1).toArray) // skip workflow file
-    private val posArgs = leftoversOpt.getOrElse(Nil)
-    // TODO: More general positional args parsing
-    if (posArgs.size >= 1)
-      _mode = posArgs(0)
-    if (posArgs.size >= 2)
-      _taskName = Some(posArgs(1))
-    if (posArgs.size >= 3)
-      _realNames = posArgs.drop(2)
-  }
-
   
   def main(args: Array[String]) {
     implicit val conf = new Config
-    val opts = new Opts(conf, args)
+    implicit val opts = new Opts(conf, args)
     if (opts.no_color || !Environment.hasTTY) {
       conf.clearColors()
     }
@@ -186,33 +60,6 @@ object Ducttape {
     err.println("%sDuctTape v0.2".format(conf.headerColor))
     err.println("%sBy Jonathan Clark".format(conf.byColor))
     err.println(conf.resetColor)
-
-    // format exceptions as nice error messages
-    def ex2err[T](func: => T): T = {
-      
-      def exitError(e: Exception) = {
-        err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
-        Ducttape.exit(1)
-        throw new Error("Unreachable") // make the compiler happy
-      }
-      
-      try { func } catch {
-        case e: FileFormatException => {
-          err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
-          for ( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
-            err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
-            val badLines = Files.read(file).drop(line-1).take(line-untilLine+1)
-            err.println(conf.errorScriptColor + badLines.mkString("\n"))
-            err.println(" " * (col-2) + "^")
-          }
-          Ducttape.exit(1)
-          throw new Error("Unreachable") // make the compiler happy
-        }
-        case e: BashException => exitError(e)
-        case e: DucttapeException => exitError(e)
-        case t: Throwable => throw t
-      }
-    }
 
     // make these messages optional with verbosity levels?
     //println("Reading workflow from %s".format(file.getAbsolutePath))
@@ -417,47 +264,6 @@ object Ducttape {
         val task: RealTask = taskT.realize(v)
         println("%s %s".format(task.name, task.realization))
         //println("Actual realization: " + v.realization)
-      }
-    }
-
-    def env {
-      if (opts.taskName == None) {
-        opts.exitHelp("env requires a taskName", 1)
-      }
-      if(opts.realNames.size != 1) {
-        opts.exitHelp("env requires one realization name", 1)
-      }
-      val goalTaskName = opts.taskName.get
-      val goalRealName = opts.realNames.head
-
-      // TODO: Dont' apply plan filter?
-      // TODO: Apply filters so that we do much less work to get here
-      var matchingTasks: Iterable[UnpackedWorkVert] = {
-        workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
-      }.toIterable
-      err.println("Found %d vertices with matching task name".format(matchingTasks.size))
-      
-      var matchingReals: Iterable[RealTask] = {
-        matchingTasks.map{v: UnpackedWorkVert => {
-          val taskT: TaskTemplate = v.packed.value
-          val task: RealTask = taskT.realize(v)
-          if (task.realization.toString == goalRealName) {
-            System.err.println("My parents are: " + v.parentRealizations)
-            Some(task)
-          } else {
-            None
-          }
-        }}.filter(_ != None).map(_.get)
-      }
-      err.println("Found %d vertices with matching realizations".format(matchingReals.size))
-      
-      val packageVersions = getPackageVersions()
-      
-      for (task: RealTask <- matchingReals) {
-        val env = new FullTaskEnvironment(dirs, packageVersions, task)
-        for( (k,v) <- env.env) {
-          println("%s=%s".format(k,v))
-        }
       }
     }
 
@@ -693,7 +499,7 @@ object Ducttape {
     // TODO: Have run() function in each mode?
     ex2err(opts.mode match {
       case "list" => list
-      case "env" => env
+      case "env" => EnvironmentMode.run(workflow, plannedVertices, getPackageVersions)
       case "mark_done" => markDone
       case "viz" => viz
       case "debug_viz" => debugViz
