@@ -22,7 +22,7 @@ submitter sge :: cpus vmem walltime q
     echo "set -x # show each command as it is executed" >> $wrapper
 
     # The current working directory will also be changed by most schedulers
-    echo "cd $PWD/work" >> $wrapper
+    echo "cd $PWD" >> $wrapper
 
     echo "$COMMANDS" >> $wrapper
 

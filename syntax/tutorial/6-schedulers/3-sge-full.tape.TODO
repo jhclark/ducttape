@@ -24,7 +24,7 @@ submitter sge :: cpus vmem walltime q /* these can be passed as parameters to ea
     echo "set -x # show each command as it is executed" >> $wrapper
 
     # The current working directory will also be changed by most schedulers
-    echo "cd $PWD/work" >> $wrapper
+    echo "cd $PWD" >> $wrapper
 
     echo "$COMMANDS" >> $wrapper
 
