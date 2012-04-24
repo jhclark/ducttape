@@ -11,6 +11,7 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.WorkflowBuilder
 
+// TODO: Disconnect from CLI and move to workflow package
 object Plans {
   def getPlannedVertices(workflow: HyperWorkflow)
                         (implicit conf: Config): Set[(String,Realization)] = {  

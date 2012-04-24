@@ -32,7 +32,7 @@ class Executor(dirs: DirectoryArchitect,
   }
 
   override def visit(task: RealTask) {
-    if(todo((task.name, task.realization))) {
+    if (todo( (task.name, task.realization) )) {
       val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
       System.err.println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
 
@@ -42,7 +42,7 @@ class Executor(dirs: DirectoryArchitect,
       }
 
       taskEnv.where.mkdirs
-      if(!taskEnv.where.exists) {
+      if (!taskEnv.where.exists) {
         failed += ((task.name, task.realization))
         running -= ((task.name, task.realization))
         taskEnv.lockFile.delete() // TODO: Factor out into listener/callback

@@ -72,7 +72,8 @@ class Submitter(submitters: Seq[SubmitterDef]) {
         
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     // TODO: Any other mangling that might be necessary here?
-    val code = runAction.commands.toString.replace("$COMMANDS", taskEnv.task.commands.toString).replace("${COMMANDS}", taskEnv.task.commands.toString)
+    val code = runAction.commands.toString.replace("$COMMANDS", taskEnv.task.commands.toString).
+                                           replace("${COMMANDS}", taskEnv.task.commands.toString)
     
     val exitCode = Shell.run(code, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
     Files.write("%d".format(exitCode), taskEnv.exitCodeFile)

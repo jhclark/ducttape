@@ -33,10 +33,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   
   import WorkflowBuilder._
   
-   val branchPointFactory = new BranchPointFactory
-   val branchFactory = new BranchFactory(branchPointFactory)
-   val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]]
-  
+  val branchPointFactory = new BranchPointFactory
+  val branchFactory = new BranchFactory(branchPointFactory)
+  val dag = new MetaHyperDagBuilder[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]]
   
   private def findTasks(wd: WorkflowDefinition,
                         confSpecs: Map[String,Spec],
