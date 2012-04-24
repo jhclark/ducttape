@@ -27,7 +27,7 @@ submitter sge :: cpus vmem walltime q
     echo "$COMMANDS" >> $wrapper
 
     # Use SGE's -sync option to prevent qsub from immediately returning
-    qsub -sync $wrapper
+    qsub -sync y $wrapper
   }
 }
 
