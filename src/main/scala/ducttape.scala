@@ -351,7 +351,7 @@ object Ducttape {
         }
         
         val vertexFilter = new mutable.HashSet[(String,Realization)]
-        for(plan: RealizationPlan <- workflow.plans) {
+        for (plan: RealizationPlan <- workflow.plans) {
           err.println("Finding vertices for plan: %s".format(plan.name))
           
           val candidates = getCandidates(plan.realizations)
@@ -359,18 +359,18 @@ object Ducttape {
           
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
-          for(goalTask <- plan.goalTasks) {
+          for (goalTask <- plan.goalTasks) {
             val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
             err.println("Found %d realizations of goal task %s: %s".format(goalRealTasks.size, goalTask, goalRealTasks.map{_.realization}.mkString(" ")))
             fronteir ++= goalRealTasks
           }
           
           val seen = new mutable.HashSet[RealTask]
-          while(fronteir.size > 0) {
+          while (fronteir.size > 0) {
             val task: RealTask = fronteir.dequeue
             //err.println("Tracing back from task " + task)
             // add all parents (aka antecedents) to frontier
-            if(!seen(task)) {
+            if (!seen(task)) {
               try {
                 val antTasks: Set[RealTask] = task.antecedents
                   .filter{ case (taskName, _) => taskName != WorkflowBuilder.CONFIG_TASK_DEF.name }

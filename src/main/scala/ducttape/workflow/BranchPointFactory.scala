@@ -23,5 +23,3 @@ class BranchPointFactory {
     case e: NoSuchElementException => throw new NoSuchBranchPointException(name)
   }
 }
-
-

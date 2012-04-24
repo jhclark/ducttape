@@ -12,9 +12,9 @@ import ducttape.hyperdag.HyperEdge
 class MetaEdge[M,H,E](private[hyperdag] val epsilonV: PackedVertex[_],
                       val m: M,
                       val hyperedges: Seq[HyperEdge[H,E]])  {
-  override def hashCode = epsilonV.id
+  override def hashCode() = epsilonV.id
   override def equals(that: Any) = that match {
     case other: MetaEdge[_,_,_] => (other.epsilonV.id == this.epsilonV.id)
   }
-  override def toString = m.toString + " " + hyperedges.toString
+  override def toString() = m.toString + " " + hyperedges.toString
 }

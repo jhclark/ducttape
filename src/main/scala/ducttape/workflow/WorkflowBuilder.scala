@@ -289,7 +289,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                // edges to reconstruct which inputs/parameters each realized task should use
                // the parent task *of the ConfigVariable* will be listed as the current task
                val ipSpecs = findInputSpecs(task.taskDef)
-               //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branch, ipSpecs.toList))
+               //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branchInfo, ipSpecs.toList))
                //System.err.println("INPUT VALS: " + task.inputVals)
                //System.err.println("Found config task def only")
                edges.append( (None, ipSpecs) )
