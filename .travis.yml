@@ -1,4 +1,4 @@
 language: scala
 scala:
-  - 2.9.1
-script: sbt ++2.9.1 test >&2
+  - 2.9.2
+script: ./sbt test

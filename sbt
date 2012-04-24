@@ -8,4 +8,5 @@ java -Dfile.encoding=UTF8 \
      -XX:+CMSClassUnloadingEnabled \
      -XX:MaxPermSize=384m \
      -jar $scriptDir/sbt-launch.jar \
-     "$@"
+     "$@" \
+     1>&2 # Hack for Travis CI
