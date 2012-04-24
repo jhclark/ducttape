@@ -19,7 +19,11 @@ class SingleLineBranchPointRefTest extends AbstractTest("branch point ref",Gramm
     """(branchPointName: a b c)""",
     "(a: a1 a4)",
     "(a: a1)",
-    "(a: a1 a2 a3 a4)"
+    "(a: a1 a2 a3 a4)",
+    
+    // Bare rvalues
+    """(branchPointName: 1)""",
+    """(branchPointName: 1 5)"""    
    
   ) 
   
@@ -138,22 +142,18 @@ class SingleLineBranchPointRefTest extends AbstractTest("branch point ref",Gramm
       "-0"     ,
     "10e-2147483648",
     "10e2147483648",
-    "123456789012345678901234567890123456789012345678901234567890e123456789012345678901234567890123456789012345678901234567890"     
+    "123456789012345678901234567890123456789012345678901234567890e123456789012345678901234567890123456789012345678901234567890",
+    """(branchPointName: a=1)""",
+    """(branchPointName: a=1 b=5)"""    
   ) 
   
   def errorCases = Set(
     "(a: a1=g@taskH[i:j])",
-    """(branchPointName: a=1)""",
-    """(branchPointName: a=1 b=5)""",   
     """(greeting: y="welcome home" z="bugger off")""",
     """(sauce: a1="A1 Sauce" ketchup="Tomato Ketchup" wasabi="wasabi")""",
     "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\" )",
     "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=\"kumbaya\")",
-    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)",
-
-    // Bare rvalues
-    """(branchPointName: 1)""",
-    """(branchPointName: 1 5)""",    
+    "(flags: a=\"\"\"-avze 'ssh -o \"SomeOption=Value\"\"\"\" b=kumbaya)",   
     
     // Complex nesting
     "(a: a1=(k: 8..12) a4=7)",

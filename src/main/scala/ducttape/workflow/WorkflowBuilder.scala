@@ -9,6 +9,7 @@ import ducttape.workflow.Types._
 import ducttape.hyperdag.meta.MetaHyperDag
 import ducttape.hyperdag.meta.MetaHyperDagBuilder
 import ducttape.syntax.BashCode
+import ducttape.syntax.AbstractSyntaxTreeException
 
 object WorkflowBuilder {
    // TODO: Better error reporting here?
@@ -183,7 +184,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
            }
          }
          case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
-         case SequentialBranchPoint(_,_,_,_) => throw new RuntimeException("Expected sequences to be resolved by now")
+         case SequentialBranchPoint(_,_) => {
+           throw new RuntimeException("Expected branches to be resolved by now")
+         }
          case Unbound() => {
            mode match {
              case InputMode() => {
@@ -351,7 +354,17 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         for (ref: BranchPointRef <- cross.value) {
           try {
             val branchPoint: BranchPoint = branchPointFactory(ref.name)
-            val branches: Set[Branch] = ref.branchNames.map(name => branchFactory(name, branchPoint)).toSet
+            val branches: Set[Branch] = ref.branchNames.flatMap(
+                (element: ASTType) => element match {
+                  case l: Literal => List(branchFactory(l.value, branchPoint))
+                  case s: Sequence => {
+                    for (x: BigDecimal <- (s.start).to(s.end).by(s.increment) ) yield {
+                      branchFactory(x.toString, branchPoint)
+                    }
+                  }
+                  case e: ASTType => throw new AbstractSyntaxTreeException(e,"Element cannot be used to refer to a branch name")
+                }
+            ).toSet
             realizations += branchPoint -> branches
           } catch {
             // TODO: Move to err2exception?
@@ -453,12 +466,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          }
          handleBranchPoint(branchPointName, branchSpecs)
        }
-       case SequentialBranchPoint(branchPointNameOpt, start: BigDecimal, end: BigDecimal, increment: BigDecimal) => {
+       case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+                                  sequence: Sequence) => {
          val branchPointName: String = branchPointNameOpt match {
            case Some(name) => name
            case None => throw new FileFormatException("Branch point name is required", inSpec)
          }
-         val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
+         val branchSpecs = generateBranchSpecs(branchPointName, sequence.start, sequence.end, sequence.increment)
          handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
        }
        case ConfigVariable(varName) => {
@@ -476,12 +490,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                  // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
-               case SequentialBranchPoint(branchPointNameOpt, start: BigDecimal, end: BigDecimal, increment: BigDecimal) => {
+               case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+                                          sequence: Sequence) => {
                  val branchPointName: String = branchPointNameOpt match {
                    case Some(name) => name
                    case None => throw new FileFormatException("Branch point name is required", inSpec)
                  }
-                 val branchSpecs = generateBranchSpecs(branchPointName, start, end, increment)
+                 val branchSpecs = generateBranchSpecs(branchPointName, sequence.start, sequence.end, sequence.increment)
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
                case ConfigVariable(_) => {

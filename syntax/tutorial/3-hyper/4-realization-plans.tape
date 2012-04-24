@@ -4,7 +4,7 @@ task planned_1 < in=(whichSize: smaller=small.txt bigger=big.txt) > out {
 }
 
 # And add a sequence to this step
-task planned_2 < in=$out@one_off_1 :: N=(N: one=1 two=2) M=(M: 1..10) {
+task planned_2 < in=$out@planned_1 :: N=(N: one=1 two=2) M=(M: 1..10) {
   head -n $N $M < $in
 }
 

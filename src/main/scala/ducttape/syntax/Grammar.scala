@@ -384,17 +384,8 @@ object Grammar {
       } 
   )
   
-  val sequentialBranchPoint: Parser[SequentialBranchPoint] = positioned(
-      ( // Must start with an opening parenthesis, then optionally whitespace
-        (literal("(")~opt(whitespace))~>
-        (  opt( // Then (optionally) the branch point name
-             name("branch point",""":""".r,failure(_),failure(_))<~
-             // and the colon
-             literal(":")
-           )<~
-           // Then optionally whitespace
-           opt(whitespace)
-        )~
+  val sequence: Parser[Sequence] = positioned(
+      (
         ( // First number
           number<~
           // Then dots
@@ -406,18 +397,36 @@ object Grammar {
         opt( // dots
             literal("..")~>
             // then third number
-            number)
-        ) <~
+            number
+        )
+      )  ^^ {
+        case ((start: BigDecimal)~(end: BigDecimal)~(Some(increment: BigDecimal))) =>
+          new Sequence(start,end,increment)      
+        case ((start: BigDecimal)~(end: BigDecimal)~(None)) =>
+          new Sequence(start,end,new BigDecimal("1"))
+      }      
+      )
+  
+  val sequentialBranchPoint: Parser[SequentialBranchPoint] = positioned(
+      ( // Must start with an opening parenthesis, then optionally whitespace
+        (literal("(")~opt(whitespace))~>
+        (  opt( // Then (optionally) the branch point name
+             name("branch point",""":""".r,failure(_),failure(_))<~
+             // and the colon
+             literal(":")
+           )<~
+           // Then optionally whitespace
+           opt(whitespace)
+        )~
+        sequence <~
         ( // Optionally whitespace
             opt(whitespace)~
             // Then closing parenthesis
-            literal(")"
+            literal(")")
         )
       ) ^^ {
-        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(Some(increment: BigDecimal))) =>
-          new SequentialBranchPoint(bpName,start,end,increment)      
-        case ((bpName: Option[String])~(start: BigDecimal)~(end: BigDecimal)~(None)) =>
-          new SequentialBranchPoint(bpName,start,end,new BigDecimal("1"))
+        case ((bpName: Option[String])~(seq: Sequence)) =>
+          new SequentialBranchPoint(bpName,seq)      
       }
   )
   
@@ -446,6 +455,11 @@ object Grammar {
     }
   )  
 
+  val branchPointRefBranchName: Parser[ASTType] = {
+    sequence |
+    literalValue
+  }
+  
   def branchPointRef(typeOfWhitespace: Parser[Any]): Parser[BranchPointRef] = positioned({
     ( // Must start with an opening parenthesis, then optionally whitespace
       (literal("(")~opt(typeOfWhitespace))~>
@@ -460,7 +474,7 @@ object Grammar {
       (
           literal("*") |
           repsep(
-              name("branch","""[\s/#)]""".r,err(_),err(_)),
+              branchPointRefBranchName,
               regex("""\s""".r)~opt(typeOfWhitespace)
           )   
       ) <~
@@ -469,8 +483,8 @@ object Grammar {
         
     )
     } ^^ {
-      case (bpName: String) ~ (branchName: String) => new BranchPointRef(bpName,List.apply(branchName))
-      case (bpName: String) ~ (branchNames: List[String]) => new BranchPointRef(bpName,branchNames)
+      case (bpName: String) ~ (branchName: String) => new BranchPointRef(bpName,List.apply(new Literal(branchName)))
+      case (bpName: String) ~ (branchNames: List[ASTType]) => new BranchPointRef(bpName,branchNames)
     }
   )
   

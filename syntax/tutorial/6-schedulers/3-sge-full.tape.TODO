@@ -3,18 +3,17 @@
 #   and contains the "payload" of this task
 # * This assumes that scheduler submission happens asynchronously
 #   and that we must poll the scheduler to learn when the job has completed
-submitter sge :: cpus vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
+submitter sge :: vmem walltime q /* these can be passed as parameters to each task: .cpus .vmem .walltime .q */
               :: COMMANDS /* the bash commands from some task */
               :: TASK REALIZATON CONFIGURATION /* variables passed by ducttape */ {
   action run > jobid {
     wrapper="job.sh"
     echo "#$ -S /bin/bash" >> $wrapper
     echo "#$ -q $q" >> $wrapper
-    echo "#$ -l slots=$cpus" >> $wrapper
     echo "#$ -l h_rt=$walltime" >> $wrapper
-    echo "#$ -j oe" >> $wrapper
+    echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
-    echo "#$ -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
+    echo "#$ -N $CONFIGURATION-$TASK-$REALIZATION" >> $wrapper
 
     # Bash flags aren't necessarily passed into the scheduler
     # so we must re-initialize them
@@ -24,7 +23,7 @@ submitter sge :: cpus vmem walltime q /* these can be passed as parameters to ea
     echo "set -x # show each command as it is executed" >> $wrapper
 
     # The current working directory will also be changed by most schedulers
-    echo "cd $PWD/work" >> $wrapper
+    echo "cd $PWD" >> $wrapper
 
     echo "$COMMANDS" >> $wrapper
 
