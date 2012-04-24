@@ -1,14 +1,13 @@
 # cpus, vmem, walltime, q: these can be passed as parameters to each task: .cpus .vmem .walltime .q
 # COMMANDS: the bash commands from some task
 # TASK, REALIZATION, CONFIGURATION: variables passed by ducttape
-submitter sge :: cpus vmem walltime q
+submitter sge :: vmem walltime q
               :: COMMANDS
               :: TASK REALIZATON CONFIGURATION {
   action run {
     wrapper="ducttape_job.sh"
     echo "#$ -S /bin/bash" >> $wrapper
     echo "#$ -q $q" >> $wrapper
-    echo "#$ -l slots=$cpus" >> $wrapper
     echo "#$ -l h_rt=$walltime" >> $wrapper
     echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
@@ -31,6 +30,6 @@ submitter sge :: cpus vmem walltime q
   }
 }
 
-task hello :: .submitter=sge .cpus=1 .walltime="00:01:00" .vmem=1g .q=all.q {
+task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
   echo hello
 }
