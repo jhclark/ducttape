@@ -142,7 +142,7 @@ object Ducttape {
       err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
       super.help
 
-      for(mode <- modes) {
+      for (mode <- modes) {
         // TODO: Change visibility of init to protected instead of this hack...
         mode.parse(Array())
 
@@ -160,7 +160,7 @@ object Ducttape {
       Ducttape.exit(code)
     }
 
-    if(args.isEmpty || args(0).startsWith("-")) {
+    if (args.isEmpty || args(0).startsWith("-")) {
       exitHelp("Workflow file is required", 1)
     }
 
@@ -170,11 +170,11 @@ object Ducttape {
     parse(args.drop(1).toArray) // skip workflow file
     private val posArgs = leftoversOpt.getOrElse(Nil)
     // TODO: More general positional args parsing
-    if(posArgs.size >= 1)
+    if (posArgs.size >= 1)
       _mode = posArgs(0)
-    if(posArgs.size >= 2)
+    if (posArgs.size >= 2)
       _taskName = Some(posArgs(1))
-    if(posArgs.size >= 3)
+    if (posArgs.size >= 3)
       _realNames = posArgs.drop(2)
   }
 
@@ -182,7 +182,7 @@ object Ducttape {
   def main(args: Array[String]) {
     implicit val conf = new Config
     val opts = new Opts(conf, args)
-    if(opts.no_color || !Environment.hasTTY) {
+    if (opts.no_color || !Environment.hasTTY) {
       conf.clearColors()
     }
     
@@ -202,7 +202,7 @@ object Ducttape {
       try { func } catch {
         case e: FileFormatException => {
           err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
-          for( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
+          for ( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
             err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
             val badLines = Files.read(file).drop(line-1).take(line-untilLine+1)
             err.println(conf.errorScriptColor + badLines.mkString("\n"))
@@ -273,13 +273,13 @@ object Ducttape {
     
     val checker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
     val (warnings, errors) = checker.check(wd)
-    for(msg <- warnings) {
+    for (msg <- warnings) {
        err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
     }
-    for(msg <- errors) {
+    for (msg <- errors) {
        err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
     }
-    if(errors.size > 0) {
+    if (errors.size > 0) {
       Ducttape.exit(1)
     }
     
@@ -424,7 +424,7 @@ object Ducttape {
     }
 
     def env {
-      if(opts.taskName == None) {
+      if (opts.taskName == None) {
         opts.exitHelp("env requires a taskName", 1)
       }
       if(opts.realNames.size != 1) {
@@ -444,7 +444,7 @@ object Ducttape {
         matchingTasks.map{v: UnpackedWorkVert => {
           val taskT: TaskTemplate = v.packed.value
           val task: RealTask = taskT.realize(v)
-          if(task.realization.toString == goalRealName) {
+          if (task.realization.toString == goalRealName) {
             System.err.println("My parents are: " + v.parentRealizations)
             Some(task)
           } else {
@@ -456,7 +456,7 @@ object Ducttape {
       
       val packageVersions = getPackageVersions()
       
-      for(task: RealTask <- matchingReals) {
+      for (task: RealTask <- matchingReals) {
         val env = new FullTaskEnvironment(dirs, packageVersions, task)
         for( (k,v) <- env.env) {
           println("%s=%s".format(k,v))
@@ -465,17 +465,17 @@ object Ducttape {
     }
 
     def markDone {
-      if(opts.taskName == None) {
+      if (opts.taskName == None) {
         opts.exitHelp("mark_done requires a taskName", 1)
       }
-      if(opts.realNames.size < 1) {
+      if (opts.realNames.size < 1) {
         opts.exitHelp("mark_done requires realization names", 1)
       }
       val goalTaskName = opts.taskName.get
       val goalRealNames = opts.realNames.toSet
 
       // TODO: Apply filters so that we do much less work to get here
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         if(taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v)
@@ -493,7 +493,7 @@ object Ducttape {
     }
 
     def exec {
-      if(cc.todo.isEmpty) {
+      if (cc.todo.isEmpty) {
         // TODO: Might need to re-run if any package versions have changed
         err.println("All tasks to complete -- nothing to do")
       } else {
@@ -515,16 +515,16 @@ object Ducttape {
         // TODO: Check for existing PID lock files from some other process...x
         
         err.println("Work plan:")
-        for( (task, real) <- cc.broken) {
+        for ( (task, real) <- cc.broken) {
           err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
         }
-        for( (task, real) <- cc.partial) {
+        for ( (task, real) <- cc.partial) {
           err.println("%sMOVE TO ATTIC:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
         }
-        for(packageName <- packageVersions.packagesToBuild) {
+        for (packageName <- packageVersions.packagesToBuild) {
           err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
         }
-        for( (task, real) <- cc.todo) {
+        for ( (task, real) <- cc.todo) {
           err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
         }
 
@@ -588,11 +588,11 @@ object Ducttape {
     def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
-      for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v)
-        if(taskToKill == "*" || taskT.name == taskToKill) {
-          if(realsToKill == Set("*") || realsToKill(task.realization.toString)) {
+        if (taskToKill == "*" || taskT.name == taskToKill) {
+          if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
             // TODO: Store seqs instead?
             victims += ((task.name, task.realization))
             victimList += task
@@ -604,7 +604,7 @@ object Ducttape {
             val parent = (inputVal.srcTaskDef.name, inputVal.srcReal)
             victims(parent)
           }}
-          if(isVictim) {
+          if (isVictim) {
             victims += ((task.name, task.realization))
             victimList += task
           }
@@ -612,9 +612,9 @@ object Ducttape {
       }
       //  TODO: Fix OrderedSet with a companion object so that we can use filter
       val extantVictims = new MutableOrderedSet[RealTask]
-      for(task <- victimList) {
+      for (task <- victimList) {
         val taskEnv = new TaskEnvironment(dirs, task)
-        if(taskEnv.where.exists) {
+        if (taskEnv.where.exists) {
           extantVictims += task
         } else {
           err.println("No previous output for: %s".format(task))
@@ -625,10 +625,10 @@ object Ducttape {
 
     // TODO: Don't apply plan filtering to invalidation? More generally, we should let the user choose baseline-only, baseline-one-offs, cross product, or plan
     def invalidate {
-      if(opts.taskName == None) {
+      if (opts.taskName == None) {
         opts.exitHelp("invalidate requires a taskName", 1)
       }
-      if(opts.realNames.size < 1) {
+      if (opts.realNames.size < 1) {
         opts.exitHelp("invalidate requires realization names", 1)
       }
       val taskToKill = opts.taskName.get
@@ -643,7 +643,7 @@ object Ducttape {
       err.println("About to mark all the following directories as invalid so that a new version will be re-run for them:")
       err.println(colorizeDirs(victimList).mkString("\n"))
       
-      val answer = if(opts.yes) {
+      val answer = if (opts.yes) {
         'y'
       } else {
         // note: user must still press enter
@@ -661,10 +661,10 @@ object Ducttape {
     }
 
     def purge {
-      if(opts.taskName == None) {
+      if (opts.taskName == None) {
         opts.exitHelp("purge requires a taskName", 1)
       }
-      if(opts.realNames.size < 1) {
+      if (opts.realNames.size < 1) {
         opts.exitHelp("purge requires realization names", 1)
       }
       val taskToKill = opts.taskName.get
