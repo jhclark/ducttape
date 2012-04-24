@@ -11,14 +11,16 @@ import ducttape.workflow.Realization
 import ducttape.exec.PackageVersioner
 
 object EnvironmentMode {
+  
   def run(workflow: HyperWorkflow,
           plannedVertices: Set[(String,Realization)],
-          getPackageVersions: () => PackageVersioner)
+          packageVersions: PackageVersioner)
          (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
+    
     if (opts.taskName == None) {
       opts.exitHelp("env requires a taskName", 1)
     }
-    if(opts.realNames.size != 1) {
+    if (opts.realNames.size != 1) {
       opts.exitHelp("env requires one realization name", 1)
     }
     val goalTaskName = opts.taskName.get
@@ -36,7 +38,6 @@ object EnvironmentMode {
         val taskT: TaskTemplate = v.packed.value
         val task: RealTask = taskT.realize(v)
         if (task.realization.toString == goalRealName) {
-          System.err.println("My parents are: " + v.parentRealizations)
           Some(task)
         } else {
           None
@@ -45,11 +46,9 @@ object EnvironmentMode {
     }
     System.err.println("Found %d vertices with matching realizations".format(matchingReals.size))
     
-    val packageVersions = getPackageVersions()
-    
     for (task: RealTask <- matchingReals) {
       val env = new FullTaskEnvironment(dirs, packageVersions, task)
-      for( (k,v) <- env.env) {
+      for ( (k,v) <- env.env) {
         println("%s=%s".format(k,v))
       }
     }
