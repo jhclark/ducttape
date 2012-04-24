@@ -67,8 +67,8 @@ class DirectoryArchitect(val flat: Boolean,
       case Unbound() => { // user didn't specify a name for this output file
         new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
       }
-      case Literal(filename) => { // the user told us what name to use for the file -- put it under work/
-        new File(taskDir, "work/%s".format(filename))
+      case Literal(filename) => { // the user told us what name to use for the file
+        new File(taskDir, filename)
       }
     }
   }
