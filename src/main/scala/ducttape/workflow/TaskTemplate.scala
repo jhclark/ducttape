@@ -1,20 +1,22 @@
 package ducttape.workflow
 
 import collection._
+import ducttape.workflow.SpecTypes._
+
+import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
-import ducttape.workflow.Types._
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.hyperdag.HyperEdge
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
+import ducttape.syntax.AbstractSyntaxTree.SequentialBranchPoint
 import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.AbstractSyntaxTree.BranchGraft
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.Unbound
 import ducttape.syntax.FileFormatException
 import ducttape.syntax.AbstractSyntaxTree.TaskVariable
-import ducttape.workflow.SpecTypes._
 
 /**
  * a TaskTemplate is a TaskDef with its input vals, param vals, and branch points resolved
@@ -81,19 +83,23 @@ class TaskTemplate(val taskDef: TaskDef,
      // resolve the source spec/task for the selected branch
      // and return the 
      def mapVal[T <: Spec](origSpec: Spec, curSpec: Spec, branchMap: Map[Branch,(T,TaskDef)]): ResolvedSpecType[T] = {
-       curSpec.rval match {
-         case BranchPointDef(branchPointNameOpt, _) => {
-           val branchPointName = branchPointNameOpt match {
-             case Some(name) => name
-             case None => throw new RuntimeException("Branch point name is required (this should have already been checked)")
-           }
-           val activeBranch: Branch = activeBranchMap(branchPointName)
-           val (srcSpecX, srcTaskDef) = branchMap(activeBranch)
-           val srcSpec: T = srcSpecX
-           // TODO: Borken for params
-           val parentReal = spec2reals(origSpec)
-           new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
+       
+       def handleBranchPoint(branchPointNameOpt: Option[String]) = {
+         val branchPointName = branchPointNameOpt match {
+           case Some(name) => name
+           case None => throw new RuntimeException("Branch point name is required (this should have already been checked)")
          }
+         val activeBranch: Branch = activeBranchMap(branchPointName)
+         val (srcSpecX, srcTaskDef) = branchMap(activeBranch)
+         val srcSpec: T = srcSpecX
+         // TODO: Borken for params
+         val parentReal = spec2reals(origSpec)
+         new ResolvedSpecType[T](origSpec, srcSpec, srcTaskDef, parentReal)
+       }
+       
+       curSpec.rval match {
+         case BranchPointDef(branchPointNameOpt, _) => handleBranchPoint(branchPointNameOpt)
+         case SequentialBranchPoint(branchPointNameOpt, _) => handleBranchPoint(branchPointNameOpt)
          case ConfigVariable(_) => {
            // config variables can, in turn, define branch points, so we must be careful
            // TODO: Borken for nested branch points
