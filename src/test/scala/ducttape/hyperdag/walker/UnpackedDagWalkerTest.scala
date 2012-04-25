@@ -101,27 +101,48 @@ class UnpackedDagWalkerTest extends FlatSpec {
     	Seq(),
     	Seq("HyperEdge 1"),
     	Seq("HyperEdge 2"),
-    	Seq("HyperEdge 3", "Hyperedge 1"),
+    	Seq("HyperEdge 3", "HyperEdge 1"),
     	Seq("HyperEdge 2", "HyperEdge 4"),
     	Seq("HyperEdge 2", "HyperEdge 5", "HyperEdge 1")
     ).sorted(order)
     
-    val expectedVerts = Set("Vertex A", "Vertex B", "Vertex C", "Vertex D")
+    val expectedVerts = List("Vertex A", "Vertex B", "Vertex C", "Vertex D").sorted
     
-    // not calling deep equals on strings! can we override with an implicit?
+    def listsEqual(a: Seq[Seq[String]], b: Seq[Seq[String]]): Boolean = {
+      if (a.size != b.size) {
+        println("Outer length %d != %d".format(a.size, b.size))
+        false
+      } else {
+        a.zip(b).forall{ case (seqA, seqB) => {
+          if (seqA.size != seqB.size) {
+            println("Inner length %d != %d".format(seqA.size, seqB.size))
+            false
+          } else {
+            seqA.zip(seqB).forall{ case (strA, strB) => {
+              if (strA != strB) {
+                println("Not equal: %s and %s".format(strA, strB))
+              }
+              strA == strB
+            }}
+          }
+        }}
+      }
+    }
+    
     for (i <- 0 until 1000) {
-        //println(i)
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
 	    diamond.unpackedWalker().foreach(10, {v => {
 	      verts += v.packed.value
 	      reals += v.realization
 	    }})
-	    assert(verts == expectedVerts, "Wrong vertices produced: " + verts)
+	    val vertList = verts.toList.sorted
+	    assert(vertList == expectedVerts, "Wrong vertices produced: " + verts)
 	    val realList = reals.toList.sorted(order)
-	    println(expectedReals)
-	    println(realList)
-	    assert(realList == expectedReals, "Wrong realizations produced: " + realList)
+	    //println("Expected: " + expectedReals)
+	    //println("Actual  : " + realList)
+	    // == was not calling deep equals on strings! can we override with an implicit?
+	    assert(listsEqual(realList, expectedReals), "Wrong realizations produced: " + realList)
     }
     timer.interrupt()
   }
