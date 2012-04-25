@@ -24,7 +24,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
 
     val dag: HyperDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker().iterator.toList
-    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
+    for (v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     assert(vertices(0).packed.value == "Vertex A")
@@ -50,7 +50,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
 
   it should "traverse a diamond with an iterator" in {
     val vertices = diamond.unpackedWalker().iterator.toList
-    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
+    for (v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     
@@ -74,7 +74,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
         // wait 5 seconds before detecting deadlock
         try { Thread.sleep(5000) } catch { case e => ; }
         val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
-        for ((thread: Thread, trace: Array[StackTraceElement]) <- m) {
+        for ( (thread: Thread, trace: Array[StackTraceElement]) <- m) {
           System.err.println(thread.getName)
           for(t <- trace) { System.err.println("   " + t.toString) } 
         }
@@ -82,7 +82,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
       }
     }
     timer.setDaemon(false)
-    timer.start
+    timer.start()
     
     val order = new Ordering[Seq[String]] {
       override def compare(a: Seq[String], b: Seq[String]): Int = {
@@ -109,7 +109,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val expectedVerts = Set("Vertex A", "Vertex B", "Vertex C", "Vertex D")
     
     // not calling deep equals on strings! can we override with an implicit?
-    for(i <- 0 until 1000) {
+    for (i <- 0 until 1000) {
         //println(i)
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
@@ -123,6 +123,6 @@ class UnpackedDagWalkerTest extends FlatSpec {
 	    println(realList)
 	    assert(realList == expectedReals, "Wrong realizations produced: " + realList)
     }
-    timer.interrupt
+    timer.interrupt()
   }
 }
