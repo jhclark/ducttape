@@ -2,6 +2,9 @@
 set -eo pipefail
 scriptDir=$(readlink -f $(dirname $0))
 
+# We don't want to assume ducttape is in the path for running test scripts
+export PATH=$scriptDir:$PATH
+
 tutorialDir=$(readlink -f syntax/tutorial)
 for tape in $tutorialDir/*/*.tape; do
     dir=$(dirname $tape)
