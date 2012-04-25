@@ -1,7 +1,6 @@
 language: scala
 scala:
-  - 2.9.2
-script: ./build.sh
+  - 2.9.1
 after_script:
   - ./test-unit.sh
   - ./test-regression.sh
