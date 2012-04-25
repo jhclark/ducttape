@@ -1,3 +1,14 @@
+April
+=====
+
+* Discuss how directories get their names (baseline is first; sorted by branch point name)
+* implicit naming
+* discuss how workflow versioning affects directory structure
+* Implement bash code versioning
+* Implement md5 hashing of input files
+
+* Make sure that no directory names will ever collide (e.g. flat vs hyper)
+
 Basics
 ======
 
@@ -7,6 +18,13 @@ Basics
 * Check that all output files were created successfully (and store MD5sum?)
 * Kill renegate jobs launched to the scheduler? We should really detect whether or not to resume...
 * Throw an error if all definitions of the same branch point don"t contain the same branch names
+
+* Allow using inputs as variables without implying temporal ordering
+* Why don't unbound inputs fail on workflow compilation?
+* Throw error on relative paths in config file? Or resolve them. Right now, they silently cause terrible things to happen
+* Define semantics of recursive config variables
+* Throw proper errors for poorly formed config variables
+* What do we do about branch points that refer to config variables that have branch points?
 
 Submitters
 ==========

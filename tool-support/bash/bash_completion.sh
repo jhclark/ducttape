@@ -22,12 +22,14 @@ _CompleteDucttape() {
       case "$curPartial" in
 	  -*) COMPREPLY=( $(compgen -W '--help') ) ;;
 	  *)
-	      completeMatches=$(ls --color=n -1 $curPartial*.tape 2>/dev/null)
+	      completeMatches="$(ls --color=n -1 $curPartial*.tape 2>/dev/null)"
 	      partialMatches=$(ls -d --color=n -1 $curPartial*/ 2>/dev/null)
-	  # Since we're using -o nospace, we have to append spaces using -S' ' to indicate
-	  # when a match is complete (as opposed to partial)
-	      COMPREPLY=( $(compgen -W "$partialMatches") )
+              # Since we're using -o nospace, we have to append spaces using -S' ' to indicate
+	      # when a match is complete (as opposed to partial)
 	      COMPREPLY=( ${COMPREPLY[@]} $(compgen -W "$completeMatches" -S ' ') )
+              echo >&2 "$completeMatches"
+              echo >&2 "${COMPREPLY[0]}"
+	      COMPREPLY=( ${COMPREPLY[@]} $(compgen -W "$partialMatches") )
 	      if [[ "$curPartial" == *".tape" ]]; then
 	      # Make sure proper files complete this fully (not as a partial match)
 		  COMPREPLY=( ${COMPREPLY[@]} "$curPartial " )
@@ -35,8 +37,10 @@ _CompleteDucttape() {
 	      ;;
       esac
   else
-      COMPREPLY=( "--purge" "--viz" )
+      COMPREPLY=( "--purge" "--viz" "--env" "--markDone" )
   fi
+
+  echo >&2 ${COMPREPLY[0]}
 
   return 0
 }

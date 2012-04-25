@@ -7,4 +7,5 @@ object Task {
     val name = "baseline"
     val branchPoint = NO_BRANCH_POINT
   }
+  val NO_REALIZATION = new Realization(Seq(NO_BRANCH))
 }

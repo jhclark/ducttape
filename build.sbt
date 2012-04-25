@@ -1,29 +1,9 @@
-// surviving sbt 0.10: http://eed3si9n.com/sbt-010-guide
+name := "ducttape"
 
-// ProGuard, for making a single, tiny JAR file
-seq(ProguardPlugin.proguardSettings :_*)
+version := "0.2"
 
-proguardOptions += keepMain("Ducttape")
-
-// end ProGuard
-
-name := "Ducttape"
-
-version := "0.1"
-
-scalaVersion := "2.9.0"
-
-//defaultExcludes ~= (filter: FileFilter => filter || "*~")
-
-//scalaSource in Compile := file("scala")
+scalaVersion := "2.9.2"
 
 docDirectory in Compile := file("scaladoc")
 
-unmanagedBase := file("lib")
-
 scalacOptions ++= Seq("-unchecked", "-deprecation")
-
-mainClass in (Compile, packageBin) := Some("Ducttape")
-
-mainClass in (Compile, run) := Some("Ducttape")
-

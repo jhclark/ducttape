@@ -6,6 +6,9 @@ import ducttape.hyperdag._
 import ducttape.hyperdag.walker.PackedMetaDagWalker
 import ducttape.hyperdag.walker.UnpackedMetaDagWalker
 
+import ducttape.hyperdag.walker.UnpackedDagWalker._
+import ducttape.hyperdag.walker._
+
 // an implementation of MetaHyperDAGs based on transforming
 // meta-edges into epsilon vertices (but these are hidden from the user)
 
@@ -16,9 +19,9 @@ import ducttape.hyperdag.walker.UnpackedMetaDagWalker
 //
 // TODO: Pass filters to dag walker
 class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
-                              private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[V],MetaEdge[M,H,E]],
-                              private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]],
-                              private[hyperdag] val phantomVertices: Set[PackedVertex[V]]) {
+                            private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[V],MetaEdge[M,H,E]],
+                            private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]],
+                            private[hyperdag] val phantomVertices: Set[PackedVertex[V]]) {
 
   // don't include epsilon vertices
   val size: Int = delegate.size - metaEdgesByEpsilon.size - phantomVertices.size
@@ -30,20 +33,21 @@ class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
 
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
-  def unpackedWalker[F](initFilterState: F, 
-                        constraintFilter: (PackedVertex[V], F, MultiSet[H], Seq[H]) => Option[F],
-                        vertexFilter: UnpackedMetaVertex[V,H,E] => Boolean
-                          = (_:UnpackedMetaVertex[V,H,E]) => true) = {
+  def unpackedWalker[D,F](constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+                          vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
+                          comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
+                          toD: H => D = new DefaultToD[H]) = {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
     // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
     // the burden on the filter
-    def selectionFilter(selection: MultiSet[H]) = true
-    def hedgeFilter(h: HyperEdge[H,E]) = !isEpsilon(h)
+    val epsilonHyperEdgeFilter = new HyperEdgeFilter[H,E] { // TODO: Rename as "mask"
+      override def apply(he: HyperEdge[H,E]) = !isEpsilon(he)
+    }
 
-    new UnpackedMetaDagWalker[V,M,H,E,F](this, selectionFilter, hedgeFilter, initFilterState,
-                                         constraintFilter, vertexFilter)
+    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, new DefaultSelectionFilter[D], epsilonHyperEdgeFilter,
+                                           constraintFilter, vertexFilter, comboTransformer, toD)
   }
 
   def inMetaEdges(v: PackedVertex[V]): Seq[MetaEdge[M,H,E]]

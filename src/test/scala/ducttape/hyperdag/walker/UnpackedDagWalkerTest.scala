@@ -23,8 +23,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val e2 = builder.addHyperEdge("HyperEdge 2", List((b,"")), c)
 
     val dag: HyperDag[String,String,String] = builder.build
-    val vertices = dag.unpackedWalker.iterator.toList
-    for(v: UnpackedVertex[String,String,String] <- vertices) {
+    val vertices = dag.unpackedWalker().iterator.toList
+    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     assert(vertices(0).packed.value == "Vertex A")
@@ -49,8 +49,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
   }
 
   it should "traverse a diamond with an iterator" in {
-    val vertices = diamond.unpackedWalker.iterator.toList
-    for(v: UnpackedVertex[String,String,String] <- vertices) {
+    val vertices = diamond.unpackedWalker().iterator.toList
+    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     
@@ -71,27 +71,57 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val timer = new Thread {
       override def run {
         import collection.JavaConversions._
-        try {
-          Thread.sleep(5000) // wait 5 seconds before detecting deadlock
-        } catch {
-          case e => ;
-        }
+        // wait 5 seconds before detecting deadlock
+        try { Thread.sleep(5000) } catch { case e => ; }
         val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
         for ((thread: Thread, trace: Array[StackTraceElement]) <- m) {
           System.err.println(thread.getName)
           for(t <- trace) { System.err.println("   " + t.toString) } 
         }
-        fail("Timed out")
+        fail("Timed out: Potential deadlock")
       }
     }
     timer.setDaemon(false)
     timer.start
     
+    val order = new Ordering[Seq[String]] {
+      override def compare(a: Seq[String], b: Seq[String]): Int = {
+        if (a.size == b.size) {
+          a.zip(b).find{case (aa,bb) => aa != bb} match {
+            case Some((aa, bb)) => aa.compareTo(bb)
+            case None => 0
+          }
+        } else {
+          a.size.compareTo(b.size)
+        }
+      }
+    }
+    
+    val expectedReals = List(
+    	Seq(),
+    	Seq("HyperEdge 1"),
+    	Seq("HyperEdge 2"),
+    	Seq("HyperEdge 3", "Hyperedge 1"),
+    	Seq("HyperEdge 2", "HyperEdge 4"),
+    	Seq("HyperEdge 2", "HyperEdge 5", "HyperEdge 1")
+    ).sorted(order)
+    
+    val expectedVerts = Set("Vertex A", "Vertex B", "Vertex C", "Vertex D")
+    
+    // not calling deep equals on strings! can we override with an implicit?
     for(i <- 0 until 1000) {
         //println(i)
-	    val result = new collection.mutable.ListBuffer[String]
-	    diamond.unpackedWalker.foreach(10, {v => result += v.packed.value})
-	    //println(result)
+	    val verts = new collection.mutable.HashSet[String]
+	    val reals = new collection.mutable.HashSet[Seq[String]]
+	    diamond.unpackedWalker().foreach(10, {v => {
+	      verts += v.packed.value
+	      reals += v.realization
+	    }})
+	    assert(verts == expectedVerts, "Wrong vertices produced: " + verts)
+	    val realList = reals.toList.sorted(order)
+	    println(expectedReals)
+	    println(realList)
+	    assert(realList == expectedReals, "Wrong realizations produced: " + realList)
     }
     timer.interrupt
   }

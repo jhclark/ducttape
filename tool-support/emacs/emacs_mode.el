@@ -21,12 +21,13 @@
 		    "config"
 		    "func"
 		    "group"
+		    "global"
 		    "package"
 		    "plan"
 		    "submitter"
 		    "task"
-		    "versioner") 'word) . font-lock-keyword-face)
-   ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'word) . font-lock-keyword-face)
+		    "versioner") 'words) . font-lock-keyword-face)
+   ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'words) . font-lock-keyword-face)
    ;( ,(regexp-opt '("Pi" "Infinity") 'word) . font-lock-constant-face)
 
    ;; see http://stackoverflow.com/questions/2970597/highlighting-correctly-in-an-emacs-major-mode

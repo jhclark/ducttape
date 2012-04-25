@@ -11,7 +11,9 @@ class BranchPointFactory {
 
   // creates a new BranchPoint if one isn't found
   private[workflow] def get(bpName: String): BranchPoint = {
-    pool.getOrElseUpdate(bpName, new BranchPoint { val name=bpName })
+    pool.getOrElseUpdate(bpName, new BranchPoint {
+      override val name = bpName
+    })
   }
   
   // throws if branch point name isn't found
@@ -21,5 +23,3 @@ class BranchPointFactory {
     case e: NoSuchElementException => throw new NoSuchBranchPointException(name)
   }
 }
-
-

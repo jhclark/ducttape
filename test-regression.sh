@@ -2,10 +2,11 @@
 set -eo pipefail
 scriptDir=$(dirname $0)
 
-dir=syntax/tutorial/1-basics
-
 echo "Running tests from: $dir"
-for tape in $dir/*.tape; do
-    echo "Running test: $dir"
-    $scriptDir/ducttape $tape
+for dir in dirs; do
+    for tape in syntax/tutorial/*/*.tape; do
+        echo "Running test: $dir"
+        $scriptDir/ducttape $tape -y purge '*' '*'
+        $scriptDir/ducttape $tape -y
+    done
 done

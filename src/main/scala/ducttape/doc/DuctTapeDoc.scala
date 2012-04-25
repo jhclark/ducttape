@@ -5,6 +5,7 @@ import io._
 import collection.JavaConversions._
 import collection._
 import System._
+import ducttape.util.Files
 
 trait Formatter {
   def header()
@@ -22,7 +23,7 @@ class Latex extends Formatter {
             \documentclass[10pt]{article}
             """+"\\"+"""usepackage[verbose, letterpaper, noheadfoot, margin=0.75in]{geometry}
 
-            \title{\textbf{DuctTape} by Example}
+            \title{\textbf{Ducttape} by Example}
             \author{Jonathan Clark}
             \date{}
 
@@ -33,17 +34,25 @@ class Latex extends Formatter {
             \tableofcontents
 
             \section{Introduction}
-            This is documentation for DuctTape.
+            This is documentation for Ducttape.
             """.stripMargin)
 
   }
+  
+  def escape(str: String) = str.replace("\\","\\\\").replace("_","-").replace("#","\\#").replace("$","\\$")
+
   def section(name: String) = println("""\section{%s}""".format(name))
+
   def subsection(name: String) = println("""\subsection{%s}""".format(name))
+
   def comment(content: Seq[String]) = {
     for(line <- content) {
-      println(line + """\\""")
+      val escaped = escape(line).trim()
+      if(!escaped.isEmpty)
+        println(escaped + """\\""")
     }
   }
+
   def code(content: Seq[String]) = {
     println("""\makebox[\textwidth]{\hrulefill}""")
     println("""\begin{verbatim}""")
@@ -51,12 +60,13 @@ class Latex extends Formatter {
     println("""\end{verbatim}""")
     println("""\makebox[\textwidth]{\hrulefill}""")
   }
+
   def footer() = println("""\end{document}""")
 }
 
 class Markdown extends Formatter {
   def header() = {
-    println("""DuctTape by Example
+    println("""Ducttape by Example
 
 By Jonathan Clark
 
@@ -142,7 +152,8 @@ object DuctTapeDoc {
       buffer += line
     }
     val COMMENT_PAT = """^\s*#(.*)$""".r
-    val lines = Source.fromFile(file).getLines.toSeq
+    val lines = Files.read(file)
+    // first line could be
     val title = lines.head.substring(1) // first line is always title
     f.subsection("%s (%s)".format(title, file.getName))
     for(line <- lines.drop(1)) line match {
