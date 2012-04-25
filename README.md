@@ -75,7 +75,7 @@ Emacs Mode
 To get syntax highlighting in emacs, add a line similar to the following in your ~/.emacs file:
 
 ```
-(load "/home/jhclark/software/ducttape/emacs_mode.el")
+(load "$PATH_TO_DUCTTAPE_HERE/tool-support/emacs/emacs_mode.el")
 ```
 
 Vim Mode
