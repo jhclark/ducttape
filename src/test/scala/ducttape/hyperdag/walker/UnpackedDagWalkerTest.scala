@@ -68,11 +68,12 @@ class UnpackedDagWalkerTest extends FlatSpec {
 	* of an unpacked DAG walker performs manual locking.
 	*/
   it should "travse a diamond with an asynchronous walker" in {
+    val DEADLOCK_TIMEOUT = 10000 // 10 sec
+    
     val timer = new Thread {
       override def run {
         import collection.JavaConversions._
-        // wait 5 seconds before detecting deadlock
-        try { Thread.sleep(5000) } catch { case e => ; }
+        try { Thread.sleep(DEADLOCK_TIMEOUT) } catch { case e => ; }
         val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
         for ( (thread: Thread, trace: Array[StackTraceElement]) <- m) {
           System.err.println(thread.getName)
