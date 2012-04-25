@@ -10,6 +10,5 @@ libs=$libs:$scriptDir/lib/commons-io-2.2.jar
 
 #     -XX:MaxJavaStackTraceDepth=25 \
 java -Xmx1g \
-     -XX:+UseCompressedOops \
      -cp $libs \
      Ducttape "$@"
