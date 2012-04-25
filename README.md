@@ -1,6 +1,8 @@
 Introduction
 ============
 
+[![Build Status](https://secure.travis-ci.org/jhclark/ducttape.png?branch=master)](http://travis-ci.org/jhclark/ducttape)
+
 This is the in-progress baking of Ducttape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is not yet suitable for production use.
 
 For a basic tutorial on the syntax of Ducttape that currently works, see [tutorial.md](https://github.com/jhclark/ducttape/blob/master/tutorial.md).
