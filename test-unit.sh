@@ -6,5 +6,5 @@ JAVA_OPTS="-XX:MaxJavaStackTraceDepth=7" \
     -cp lib/test/scalatest-1.7.1.jar:ducttape.jar \
     org.scalatest.tools.Runner \
     -p . -o \
-    -s PackedDagWalkerTest \
-    -s UnpackedDagWalkerTest
+    -s ducttape.hyperdag.walker.UnpackedDagWalkerTest \
+    -s ducttape.hyperdag.walker.UnpackedDagWalkerTest

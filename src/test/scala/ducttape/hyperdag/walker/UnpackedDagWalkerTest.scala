@@ -24,7 +24,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
 
     val dag: HyperDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker().iterator.toList
-    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
+    for (v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     assert(vertices(0).packed.value == "Vertex A")
@@ -50,7 +50,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
 
   it should "traverse a diamond with an iterator" in {
     val vertices = diamond.unpackedWalker().iterator.toList
-    for(v: UnpackedVertex[String,String,String,String] <- vertices) {
+    for (v: UnpackedVertex[String,String,String,String] <- vertices) {
       println(v)
     }
     
@@ -68,13 +68,14 @@ class UnpackedDagWalkerTest extends FlatSpec {
 	* of an unpacked DAG walker performs manual locking.
 	*/
   it should "travse a diamond with an asynchronous walker" in {
+    val DEADLOCK_TIMEOUT = 10000 // 10 sec
+    
     val timer = new Thread {
       override def run {
         import collection.JavaConversions._
-        // wait 5 seconds before detecting deadlock
-        try { Thread.sleep(5000) } catch { case e => ; }
+        try { Thread.sleep(DEADLOCK_TIMEOUT) } catch { case e => ; }
         val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
-        for ((thread: Thread, trace: Array[StackTraceElement]) <- m) {
+        for ( (thread: Thread, trace: Array[StackTraceElement]) <- m) {
           System.err.println(thread.getName)
           for(t <- trace) { System.err.println("   " + t.toString) } 
         }
@@ -82,7 +83,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
       }
     }
     timer.setDaemon(false)
-    timer.start
+    timer.start()
     
     val order = new Ordering[Seq[String]] {
       override def compare(a: Seq[String], b: Seq[String]): Int = {
@@ -101,28 +102,49 @@ class UnpackedDagWalkerTest extends FlatSpec {
     	Seq(),
     	Seq("HyperEdge 1"),
     	Seq("HyperEdge 2"),
-    	Seq("HyperEdge 3", "Hyperedge 1"),
+    	Seq("HyperEdge 3", "HyperEdge 1"),
     	Seq("HyperEdge 2", "HyperEdge 4"),
     	Seq("HyperEdge 2", "HyperEdge 5", "HyperEdge 1")
     ).sorted(order)
     
-    val expectedVerts = Set("Vertex A", "Vertex B", "Vertex C", "Vertex D")
+    val expectedVerts = List("Vertex A", "Vertex B", "Vertex C", "Vertex D").sorted
     
-    // not calling deep equals on strings! can we override with an implicit?
-    for(i <- 0 until 1000) {
-        //println(i)
+    def listsEqual(a: Seq[Seq[String]], b: Seq[Seq[String]]): Boolean = {
+      if (a.size != b.size) {
+        println("Outer length %d != %d".format(a.size, b.size))
+        false
+      } else {
+        a.zip(b).forall{ case (seqA, seqB) => {
+          if (seqA.size != seqB.size) {
+            println("Inner length %d != %d".format(seqA.size, seqB.size))
+            false
+          } else {
+            seqA.zip(seqB).forall{ case (strA, strB) => {
+              if (strA != strB) {
+                println("Not equal: %s and %s".format(strA, strB))
+              }
+              strA == strB
+            }}
+          }
+        }}
+      }
+    }
+    
+    for (i <- 0 until 1000) {
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
 	    diamond.unpackedWalker().foreach(10, {v => {
 	      verts += v.packed.value
 	      reals += v.realization
 	    }})
-	    assert(verts == expectedVerts, "Wrong vertices produced: " + verts)
+	    val vertList = verts.toList.sorted
+	    assert(vertList == expectedVerts, "Wrong vertices produced: " + verts)
 	    val realList = reals.toList.sorted(order)
-	    println(expectedReals)
-	    println(realList)
-	    assert(realList == expectedReals, "Wrong realizations produced: " + realList)
+	    //println("Expected: " + expectedReals)
+	    //println("Actual  : " + realList)
+	    // == was not calling deep equals on strings! can we override with an implicit?
+	    assert(listsEqual(realList, expectedReals), "Wrong realizations produced: " + realList)
     }
-    timer.interrupt
+    timer.interrupt()
   }
 }

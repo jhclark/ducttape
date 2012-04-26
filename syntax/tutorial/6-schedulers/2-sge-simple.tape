@@ -5,7 +5,7 @@ submitter sge :: vmem walltime q
               :: COMMANDS
               :: TASK REALIZATON CONFIGURATION {
   action run {
-    wrapper="job.sh"
+    wrapper="ducttape_job.sh"
     echo "#$ -S /bin/bash" >> $wrapper
     echo "#$ -q $q" >> $wrapper
     echo "#$ -l h_rt=$walltime" >> $wrapper

@@ -104,6 +104,7 @@ object ExecuteMode {
           } catch {
             case e: ExecutionException => {
               System.err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
+              System.exit(1)
             }
           }
         }
