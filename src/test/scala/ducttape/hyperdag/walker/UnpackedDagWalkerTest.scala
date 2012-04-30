@@ -73,13 +73,17 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val timer = new Thread {
       override def run {
         import collection.JavaConversions._
-        try { Thread.sleep(DEADLOCK_TIMEOUT) } catch { case e => ; }
-        val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
-        for ( (thread: Thread, trace: Array[StackTraceElement]) <- m) {
-          System.err.println(thread.getName)
-          for(t <- trace) { System.err.println("   " + t.toString) } 
+        try {
+          Thread.sleep(DEADLOCK_TIMEOUT)
+          val m: Seq[(Thread,Array[StackTraceElement])] = Thread.getAllStackTraces.toSeq
+          for ( (thread: Thread, trace: Array[StackTraceElement]) <- m) {
+            System.err.println(thread.getName)
+            for(t <- trace) { System.err.println("   " + t.toString) } 
+          }
+          fail("Timed out: Potential deadlock")
+        } catch {
+          case e: InterruptedException => ;
         }
-        fail("Timed out: Potential deadlock")
       }
     }
     timer.setDaemon(false)
