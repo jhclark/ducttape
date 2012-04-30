@@ -11,7 +11,7 @@ task moses
 
    # Compiler options
   :: compiler_threads=10
-  :: git_repo=www:/repos/git/Decoders/mosesdecoder.git
+  :: git_repo="www:/repos/git/Decoders/mosesdecoder.git"
 {
      git clone ${git_repo} .
 
