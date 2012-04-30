@@ -466,7 +466,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          }
          handleBranchPoint(branchPointName, branchSpecs)
        }
-       case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+       case SequentialBranchPoint(branchPointNameOpt: Option[_], 
                                   sequence: Sequence) => {
          val branchPointName: String = branchPointNameOpt match {
            case Some(name) => name
@@ -490,7 +490,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                  // XXX: Some(CONFIG_TASK_DEF) is a nasty hack
                  handleBranchPoint(branchPointName, branchSpecs, Some(CONFIG_TASK_DEF))
                }
-               case SequentialBranchPoint(branchPointNameOpt: Option[String], 
+               case SequentialBranchPoint(branchPointNameOpt: Option[_], 
                                           sequence: Sequence) => {
                  val branchPointName: String = branchPointNameOpt match {
                    case Some(name) => name
