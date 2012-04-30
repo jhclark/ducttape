@@ -1,9 +1,9 @@
 # Download and compile moses
 task moses 
    # Binaries
-   > decoder=dist/bin/moses
-   > mert=dist/bin/mert
-   > pro=dist/bin/pro
+   > decoder=mosesdecoder/dist/bin/moses
+   > mert=mosesdecoder/dist/bin/mert
+   > pro=mosesdecoder/dist/bin/pro
 
    # Dependencies
    :: modelblocks_dir=/free/lane/modelblocks
@@ -13,7 +13,8 @@ task moses
   :: compiler_threads=10
   :: git_repo="www:/repos/git/Decoders/mosesdecoder.git"
 {
-     git clone ${git_repo} .
+     git clone ${git_repo} mosesdecoder
+     cd mosesdecoder
 
      # Returns true iff the first parameter 
      # is the name of a defined variable
