@@ -6,8 +6,8 @@ task moses
    > pro=dist/bin/pro
 
    # Dependencies
-   < modelblocks_dir=/free/lane/modelblocks
-   < giza_dir=/tools/giza/v1.0.6
+   :: modelblocks_dir=/free/lane/modelblocks
+   :: giza_dir=/tools/giza/v1.0.6
 
    # Compiler options
   :: compiler_threads=10
