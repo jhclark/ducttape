@@ -4,7 +4,6 @@ import ducttape.util.MultiSet
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.UnpackedVertex
-import ducttape.hyperdag.AntiHyperEdge
 
 // these really better belong in companion objects
 // for UnpackedDagWalker and UnpackedMetaDagWalker
