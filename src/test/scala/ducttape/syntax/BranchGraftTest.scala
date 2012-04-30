@@ -11,7 +11,22 @@ class BranchGraftTest extends AbstractTest("branch graft",Grammar.branchGraft) {
       "$variableName@taskName[branchPointName:branchName]",
       "$variableName@taskName[branchPointName:*]",
       "$variableName@taskName[a:b,c:d]",
-      "$variableName@taskName[a1:b2,c3:*,d4:e5,f6:g7]"
+      "$variableName@taskName[a1:b2,c3:*,d4:e5,f6:g7]",
+      
+      "${variableName}@taskName[branchPointName:branchName]",
+      "${variableName}@taskName[branchPointName:*]",
+      "${variableName}@taskName[a:b,c:d]",
+      "${variableName}@taskName[a1:b2,c3:*,d4:e5,f6:g7]",
+      
+      "$variableName[branchPointName:branchName]",
+      "$variableName[branchPointName:*]",
+      "$variableName[a:b,c:d]",
+      "$variableName[a1:b2,c3:*,d4:e5,f6:g7]",
+      
+      "${variableName}[branchPointName:branchName]",
+      "${variableName}[branchPointName:*]",
+      "${variableName}[a:b,c:d]",
+      "${variableName}[a1:b2,c3:*,d4:e5,f6:g7]"   
   ) 
   
   def failureCases = Set(

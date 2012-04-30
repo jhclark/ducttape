@@ -174,8 +174,11 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
          case TaskVariable(srcTaskName, srcOutName) => {
            handleTaskVar(srcTaskName, srcOutName)
          }
-         case BranchGraft(srcOutName, srcTaskName, branchGraftElements) => {
-           handleTaskVar(srcTaskName, srcOutName)
+         case BranchGraft(srcOutName, srcTaskNameOption, branchGraftElements) => {
+           srcTaskNameOption match {
+             case Some(srcTaskName) => handleTaskVar(srcTaskName, srcOutName)
+             case None => ()
+           }
            grafts = branchGraftElements.map{ e => try {
                branchFactory(e.branchName, e.branchPointName)
              } catch {
