@@ -26,8 +26,8 @@ class MetaHyperDagBuilder[V,M,H,E](private val epsilonV: V = null,
   // this method allows sources to be optional, indicating that edges *may*
   // have phantom source vertices
   def addPhantomMetaEdge(m: M,
-                  hyperEdgeInfo: Seq[(H, Seq[(Option[PackedVertex[V]],E)])],
-                  sink: PackedVertex[V]): MetaEdge[M,H,E] = {
+		                 hyperEdgeInfo: Seq[(H, Seq[(Option[PackedVertex[V]],E)])],
+		                 sink: PackedVertex[V]): MetaEdge[M,H,E] = {
     val hyperEdgeInfoP = for( (h, edgeInfo) <- hyperEdgeInfo) yield {
       val edgeInfoP = for( (vOpt, e) <- edgeInfo) yield {
         vOpt match {
@@ -52,9 +52,9 @@ class MetaHyperDagBuilder[V,M,H,E](private val epsilonV: V = null,
 
     val meEpsilonV = delegate.addVertex(epsilonV)
     val hyperedges = new mutable.ArrayBuffer[HyperEdge[H,E]](hyperEdgeInfo.size)
-    for(heInfo: (H, Seq[(PackedVertex[V],E)]) <- hyperEdgeInfo) {
-      val(h, edgeInfo) = heInfo
-      for( (srcV, e) <- edgeInfo) assert(srcV != sink, "This meta-edge would create a cycle")
+    for (heInfo: (H, Seq[(PackedVertex[V],E)]) <- hyperEdgeInfo) {
+      val (h, edgeInfo) = heInfo
+      for ( (srcV, e) <- edgeInfo) assert(srcV != sink, "This meta-edge would create a cycle")
       val he = delegate.addHyperEdge(h, edgeInfo, meEpsilonV)
       hyperedges += he
     }
