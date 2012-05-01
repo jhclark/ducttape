@@ -78,30 +78,20 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
           val activeEdges = new mutable.ListBuffer[HyperEdge[H,E]]
           val metaParentReals = new mutable.ListBuffer[Seq[Seq[D]]]
           
-          def followPhantomChain(prev: Seq[PackedVertex[V]]): Seq[PackedVertex[V]] = {
-            dag.delegate.parents(v) match {
-                case Nil => None // skip the case of phantom parents if phantom has in-degree zero
-                case Seq(singleParent) if (dag.isPhantom(singleParent)) => { // get *its* parent if it has in-degree == 1
-                  // this parent will be an epsilon -- then get *ITS* parent
-                  followPhantomChain(singleParent)
-                }
-                case _ => {
-                  // phantom vertices with in-degree > 1 are disallowed (to maintain constraint that all metaedges are active)
-                  throw new RuntimeException("Phantom vertices with in-degree > 1 are not allowed")
-                }
+          dag.delegate.parents(raw.packed) match {
+            // skip the case of phantom parents
+            case Seq(singleParent) if (dag.isPhantom(singleParent)) => ;
+            case parents => {
+              assert(parents.size == raw.parentRealizations.size,
+                     "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
+              // for: parallel to number of incoming meta edges
+              for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[D]]) <- parents.zip(raw.parentRealizations)) {
+                val parentEpsilonUV: UnpackedVertex[V,H,E,D] = epsilons( (parentEpsilonV, parentEpsilonReals) )
+                // use this Seq[Seq[D]], which is parallel to the active hyperedge
+                activeEdges += parentEpsilonUV.edge.get
+                metaParentReals += parentEpsilonUV.parentRealizations
               }
-          }
-          
-          val directParents: Seq[PackedVertex[V]] = dag.delegate.parents(raw.packed)
-          val parents: Seq[PackedVertex[V]] = followPhantomChain(directParents)
-          assert(parents.size == raw.parentRealizations.size,
-                 "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
-          // for: parallel to number of incoming meta edges
-          for ( (parentEpsilonV: PackedVertex[_], parentEpsilonReals: Seq[Seq[D]]) <- parents.zip(raw.parentRealizations)) {
-            val parentEpsilonUV: UnpackedVertex[V,H,E,D] = epsilons( (parentEpsilonV, parentEpsilonReals) )
-            // use this Seq[Seq[D]], which is parallel to the active hyperedge
-            activeEdges += parentEpsilonUV.edge.get
-            metaParentReals += parentEpsilonUV.parentRealizations
+            }
           }
           Some(new UnpackedMetaVertex[V,H,E,D](raw.packed, activeEdges, raw.realization, metaParentReals, raw))
         }
