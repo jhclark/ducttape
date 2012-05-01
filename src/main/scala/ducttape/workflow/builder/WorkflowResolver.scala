@@ -80,7 +80,7 @@ private[builder] class WorkflowResolver(
        // add any edges in the MetaHyperDAG
        val paramVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(LiteralSpec,TaskDef)])](taskDef.params.size)
        for (paramSpec: Spec <- taskDef.params) {
-         resolveBranchPoint(taskDef, paramSpec, taskMap, branchPoints, branchPointsByTask, paramVals,
+         resolveBranchPoint(taskDef, paramSpec, taskMap)(branchPoints, branchPointsByTask, paramVals)(
            // params have no effect on temporal ordering, but can affect derivation of branches
            // therefore, params are *always* rooted at phantom vertices, no matter what (hence, None)
            recordParentsFunc = (branchInfo: BranchInfo, taskDef: Option[TaskDef])
@@ -90,7 +90,7 @@ private[builder] class WorkflowResolver(
 
        val inputVals = new mutable.ArrayBuffer[(Spec,Map[Branch,(Spec,TaskDef)])](taskDef.inputs.size)
        for (inSpec: Spec <- taskDef.inputs) {
-         resolveBranchPoint(taskDef, inSpec, taskMap, branchPoints, branchPointsByTask, inputVals,
+         resolveBranchPoint(taskDef, inSpec, taskMap)(branchPoints, branchPointsByTask, inputVals)(
              // make a note of what edges we'll need to add later
              recordParentsFunc = (branchInfo: BranchInfo, srcTaskDef: Option[TaskDef])
                => {parentsByBranch.getOrElseUpdate(branchInfo, {new mutable.HashSet}) += srcTaskDef},
@@ -220,18 +220,15 @@ private[builder] class WorkflowResolver(
      }
    }
    
-   
    // define branch resolution as a function that takes some callback functions
    // since we use it for both parameter and input file resolution,
    // but it behaves slightly different for each (parameters don't
    // imply a temporal ordering between vertices)
-   def resolveBranchPoint[SpecT](taskDef: TaskDef,
-                                 inSpec: Spec,
-                                 defMap: Map[String,TaskDef],
-                                 branchPoints: mutable.ArrayBuffer[BranchPoint],
+   def resolveBranchPoint[SpecT](taskDef: TaskDef, inSpec: Spec, taskMap: Map[String,TaskDef])
+                                (branchPoints: mutable.ArrayBuffer[BranchPoint],
                                  branchPointsByTask: mutable.HashMap[TaskDef,mutable.Set[BranchPoint]],
-                                 resolvedVars: mutable.ArrayBuffer[(Spec,Map[Branch,(SpecT,TaskDef)])],
-                                 recordParentsFunc: (BranchInfo,Option[TaskDef]) => Unit,
+                                 resolvedVars: mutable.ArrayBuffer[(Spec,Map[Branch,(SpecT,TaskDef)])])
+                                (recordParentsFunc: (BranchInfo,Option[TaskDef]) => Unit,
                                  resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, TaskDef, Seq[Branch]) ) = {
 
      def handleBranchPoint(branchPointName: String,
@@ -248,7 +245,7 @@ private[builder] class WorkflowResolver(
          val branchMap = new mutable.HashMap[Branch, (SpecT,TaskDef)]
          for (branchSpec <- branchSpecs) {
            val branch = branchFactory.get(branchSpec.name, branchPoint)
-           val (srcSpec, srcTaskDef, grafts) = resolveVarFunc(taskDef, defMap, branchSpec)
+           val (srcSpec, srcTaskDef, grafts) = resolveVarFunc(taskDef, taskMap, branchSpec)
            branchMap.put(branch, (srcSpec, srcTaskDef) )
            
            val branchInfo = new BranchInfo(branch, grafts)
@@ -270,7 +267,7 @@ private[builder] class WorkflowResolver(
      }
 
      def handleNonBranchPoint() {
-       val (srcSpec, srcTaskDef, grafts) = resolveVarFunc(taskDef, defMap, inSpec)
+       val (srcSpec, srcTaskDef, grafts) = resolveVarFunc(taskDef, taskMap, inSpec)
        resolvedVars.append( (inSpec, Map(Task.NO_BRANCH -> (srcSpec, srcTaskDef)) ) )
        
        val branchInfo = new BranchInfo(Task.NO_BRANCH, grafts)

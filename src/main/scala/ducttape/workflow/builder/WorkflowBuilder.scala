@@ -115,6 +115,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                 task: TaskTemplate,
                 branchInfo: BranchInfo,
                 parentTaskDefs: Set[Option[TaskDef]]): Seq[(Option[PackedVertex[TaskTemplate]],Seq[Spec])] = {
+    
     // create an edge within each hyperedge for each input associated with a task
     // so that we will know which realization to use at the source of each edge.
     // parameters may also be subject to branching, but will never point at a task directly
