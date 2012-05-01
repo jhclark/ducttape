@@ -20,7 +20,7 @@ import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
 import ducttape.syntax.ErrorBehavior._
 import ducttape.versioner._
-import ducttape.workflow.WorkflowBuilder
+import ducttape.workflow.builder.WorkflowBuilder
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.workflow.TaskTemplate

@@ -9,7 +9,7 @@ import ducttape.workflow.RealTask
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.RealizationPlan
 import ducttape.workflow.TaskTemplate
-import ducttape.workflow.WorkflowBuilder
+import ducttape.workflow.builder.WorkflowBuilder
 
 // TODO: Disconnect from CLI and move to workflow package
 object Plans {
