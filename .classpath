@@ -12,5 +12,6 @@
 	<classpathentry kind="lib" path="lib/webui/jetty-all-8.0.4.v20111024.jar"/>
 	<classpathentry kind="lib" path="lib/test/junit-4.10.jar"/>
 	<classpathentry kind="lib" path="lib/commons-io-2.2.jar"/>
+	<classpathentry kind="lib" path="lib/grizzled-slf4j_2.9.1-1-0.6.8.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

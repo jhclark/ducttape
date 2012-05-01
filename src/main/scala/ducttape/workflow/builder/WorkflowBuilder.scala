@@ -45,6 +45,7 @@ import scala.collection.Seq
 import scala.collection.Set
 import scala.collection.Map
 import scala.collection.mutable
+import grizzled.slf4j.Logging
 
 object WorkflowBuilder {
    // TODO: Better error reporting here?
@@ -65,7 +66,8 @@ object WorkflowBuilder {
  * This is where the real magic happens of turning an Abstract Syntax Tree
  * into an immutable HyperWorkflow that everything else can use to perform actions.
  */
-class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment], builtins: Seq[WorkflowDefinition]) {
+class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment], builtins: Seq[WorkflowDefinition])
+  extends Logging {
   
   import WorkflowBuilder._
   
@@ -95,14 +97,11 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
             ).toSet
             realizations += branchPoint -> branches
           } catch {
-            // TODO: Move to err2exception?
             case e: NoSuchBranchPointException => {
-              Console.err.println("ERROR: No such branch point: %s".format(e.msg))
-              sys.exit(1)
+              throw new FileFormatException("ERROR: No such branch point: %s".format(e.msg), ref)
             }
             case e: NoSuchBranchException => {
-              Console.err.println("ERROR: No such branch: %s".format(e.msg))
-              sys.exit(1)
+              throw new FileFormatException("ERROR: No such branch: %s".format(e.msg), ref)
             }
           }
         }
@@ -131,7 +130,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         specBranches.get(branchInfo.branch) match {
           case None => false
           case Some( (_, specParent: TaskDef) ) => {
-            //System.err.println("Comparing: %s %s %s".format(specParent, parentTaskDef, specParent == parentTaskDef))
+            debug("Comparing: %s %s %s".format(specParent, parentTaskDef, specParent == parentTaskDef))
             specParent == parentTaskDef
           }
         }
@@ -156,16 +155,16 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         // edges to reconstruct which inputs/parameters each realized task should use
         // the parent task *of the ConfigVariable* will be listed as the current task
         val ipSpecs = findInputSpecs(task.taskDef)
-        //System.err.println("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branchInfo, ipSpecs.toList))
-        //System.err.println("INPUT VALS: " + task.inputVals)
-        //System.err.println("Found config task def only")
+        debug("CURRENT BRANCH %s HAS IP SPECS FOR CONFIG: %s".format(branchInfo, ipSpecs.toList))
+        debug("INPUT VALS: " + task.inputVals)
+        debug("Found config task def only")
         edges.append( (None, ipSpecs) )
       }
       case Some(parentTaskDef) => {
       val parentVert = foundTasks.vertices(parentTaskDef.name)
       val ipSpecs = findInputSpecs(parentTaskDef)
       // add an edge for each parameter/input at task that originates from parentVert
-      //System.err.println("IP specs for branch point %s are: %s".format(branchPoint, ipSpecs))
+      debug("IP specs for branch point %s are: %s".format(branchInfo, ipSpecs))
       edges.append( (Some(parentVert), ipSpecs) )
      }
      case None => {
@@ -175,7 +174,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
        //
        // however, params may still need to be statically resolved later, which is why
        // we use findInputParamSpecs(). unlike literal paths/params, 
-       //System.err.println("Found literal paths or some type of params only")
+       debug("Found literal paths or some type of params only")
        val ipSpecs = findParamSpecs() ++ findInputSpecs(task.taskDef) // we are our own parent
          edges.append( (None, ipSpecs) )
      }
@@ -204,7 +203,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     for (v <- foundTasks.vertices.values) {
       val task: TaskTemplate = v.value
        
-      //System.err.println("Adding %s to HyperDAG".format(task))
+      debug("Adding %s to HyperDAG".format(task))
 
       // add one metaedge per branch point
       // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
@@ -218,10 +217,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         }
         if (!hyperedges.isEmpty) {
           // NOTE: The meta edges are not necessarily phantom, but just have that option
-          //System.err.println("Adding metaedge for branchPoint %s task %s to HyperDAG: Component hyperedges are: %s".format(branchPoint, task, hyperedges))
+          debug("Adding metaedge for branchPoint %s task %s to HyperDAG: Component hyperedges are: %s".format(branchPoint, task, hyperedges))
           dag.addPhantomMetaEdge(branchPoint, hyperedges, v)
         } else {
-          //System.err.println("No metaedge for branchPoint %s at task %s is needed (zero component hyperedges)".format(branchPoint, task))
+          debug("No metaedge for branchPoint %s at task %s is needed (zero component hyperedges)".format(branchPoint, task))
         }
       }
     }
