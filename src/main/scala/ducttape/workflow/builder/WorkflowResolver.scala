@@ -151,6 +151,18 @@ private[builder] class WorkflowResolver(
        }
      }
    }
+   
+   def resolveConfigVar(varName: String, taskDef: TaskDef, spec: Spec, src: TaskDef, grafts: Seq[Branch]) = {
+     confSpecs.get(varName) match {
+       // TODO: Does this TaskDef break line numbering for error reporting?
+       // TODO: Should we return? Or do we allow config files to point back into workflows?
+       case Some(confSpec) => (confSpec, CONFIG_TASK_DEF, grafts)
+       case None => throw new FileFormatException(
+           "Config variable %s required by input %s at task %s not found in config file.".
+             format(varName, spec.name, taskDef.name),
+           List(spec, src))
+     }
+   }
 
    // TODO: document what's going on here -- maybe move elsewhere
    // group parameters by (1) initial state and (2) items that change recursively
@@ -165,23 +177,18 @@ private[builder] class WorkflowResolver(
          val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
          (litSpec, src, Nil) // literals will never have a use for grafts
        }
-       case ConfigVariable(varName) => {
-         confSpecs.get(varName) match {
-           // TODO: Does this TaskDef break line numbering for error reporting?
-           // TODO: Should we return? Or do we allow config files to point back into workflows?
-           case Some(confSpec) => (confSpec, CONFIG_TASK_DEF, grafts)
-           case None => throw new FileFormatException(
-               "Config variable %s required by input %s at task %s not found in config file.".
-                 format(varName, spec.name, taskDef.name),
-               List(spec, src))
-         }
-       }
+       case ConfigVariable(varName) => resolveConfigVar(varName, taskDef, spec, src, grafts)
        case TaskVariable(srcTaskName, srcOutName) => {
          resolveTaskVar(mode)(taskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
        }
-       case BranchGraft(srcOutName, srcTaskName, branchGraftElements) => {
-         val (srcSpec, srcTask, prevGrafts) = {
-           resolveTaskVar(mode)(taskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+       case BranchGraft(srcOutName, srcTaskNameOpt, branchGraftElements) => {
+         val (srcSpec, srcTask, prevGrafts) = srcTaskNameOpt match {
+           case Some(srcTaskName) => {
+             resolveTaskVar(mode)(taskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+           }
+           case None => {
+             resolveConfigVar(srcOutName, taskDef, spec, src, grafts)
+           }
          }
          val resultGrafts = prevGrafts ++ branchGraftElements.map{ e => try {
              branchFactory(e.branchName, e.branchPointName)
