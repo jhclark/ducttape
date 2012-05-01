@@ -377,10 +377,20 @@ object Grammar {
               (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
               name("reference to task","""\[""".r,err(_),failure(_)) ~
               (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
-          )
+          ) |
+          (
+              (literal("$")~literal("{")~>name("branch graft variable","""}""".r,err(_),failure(_))<~(literal("}")|err("Missing closing } brace"))) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          ) |
+          (
+              (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          )          
       ) ^^ {
         case ((variable: String) ~ (task: String) ~ (seq: Seq[BranchGraftElement])) =>
-          new BranchGraft(variable,task,seq)
+          new BranchGraft(variable,Some(task),seq)
+        case ((variable: String) ~ (seq: Seq[BranchGraftElement])) =>
+          new BranchGraft(variable,None,seq)          
       } 
   )
   

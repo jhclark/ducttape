@@ -29,7 +29,3 @@ submitter sge :: vmem walltime q
     qsub -sync y $wrapper
   }
 }
-
-task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
-  echo hello
-}

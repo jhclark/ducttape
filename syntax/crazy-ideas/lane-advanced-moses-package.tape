@@ -6,14 +6,14 @@ task moses
    > pro=mosesdecoder/dist/bin/pro
 
    # Dependencies
-   < modelblocks_dir=/free/lane/modelblocks
-   < giza_dir=/tools/giza/v1.0.6
+   :: modelblocks_dir=/free/lane/modelblocks
+   :: giza_dir=/tools/giza/v1.0.6
 
    # Compiler options
   :: compiler_threads=10
-  :: git_repo=www:/repos/git/Decoders/mosesdecoder.git
+  :: git_repo="www:/repos/git/Decoders/mosesdecoder.git"
 {
-     git clone ${git_repo}
+     git clone ${git_repo} mosesdecoder
      cd mosesdecoder
 
      # Returns true iff the first parameter 

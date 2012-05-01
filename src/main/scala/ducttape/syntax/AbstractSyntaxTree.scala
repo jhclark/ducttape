@@ -90,11 +90,15 @@ object AbstractSyntaxTree {
   
   /** Type of a branch graft, in the right-hand side context of an assignment. */
   case class BranchGraft(val variableName: String,
-                         val taskName: String,
+                         val taskName: Option[String],
                          val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
     override def children = branchGraftElements
-    override def toString() = 
-      "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
+    override def toString() = {
+      taskName match {
+        case Some(taskName) => "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
+        case None           => "$%s%s".format(variableName,branchGraftElements.toString())
+      }
+    }
   }
   
   
