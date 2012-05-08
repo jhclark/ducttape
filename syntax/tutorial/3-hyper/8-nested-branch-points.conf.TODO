@@ -1,37 +1,37 @@
-# Adding branches from a config file
-src_test=( Test: baseline=mt08.src mt02=mt02.src )
-ref_test=( Test: baseline=mt08.?.norm mt02=mt02.norm )
+task uses_nested < a=$src_test b=$ref_test {
+  echo "I will be reading files called $a and $b and doing nothing useful with them"
+  cat $a >/dev/null
+  cat $b >/dev/null
+}
 
-# Adding multiple branches from a config file
-# Note: Requires multi-line definition not to look horrible
-# TODO: Another example with multiple language pairs (multiple config files, each which introduces a realization?)
-src_test=(
-  Test:
-  baseline=(
-    NumRefs:
-    oneRef=mt08.src
-    multiRef=mt08.src
+global {
+  # Adding branches from a config file
+  # TODO: Fail on redefinition
+  src_test=(Test: baseline=mt08.src mt02=mt02.src)
+  ref_test=(Test: baseline="mt08.?.norm" mt02=mt02.norm)
+
+  # Adding multiple branches from a config file
+  # TODO: Another example with multiple language pairs
+  #       (multiple config files, each which introduces a realization?)
+  src_test=(Test:
+    baseline=(NumRefs:
+      oneRef=mt08.src
+      multiRef=mt08.src
     )
-  mt02=(
-    NumRefs:
-    oneRef=mt02.src
-    multiRef=mt02.src
-    )
-  )
-ref_test=(
-  Test:
-  baseline=(
-    NumRefs:
-    baseline=mt08.1.ref
-    multiRef=mt08.?.ref
-  )
-  mt02=(
-    NumRefs:
-    baseline=mt02.1.ref
-    multiRef=mt02.?.ref
+    mt02=(NumRefs:
+      oneRef=mt02.src
+      multiRef=mt02.src
     )
   )
 
-#+baseline
-#  ref_test=mt08.?.norm
-#  src_test=mt08.src
+  ref_test=(Test:
+    baseline=(NumRefs:
+      baseline=mt08.1.ref
+      multiRef=mt08.?.ref
+    )
+    mt02=(NumRefs:
+      baseline=mt02.1.ref
+      multiRef=mt02.?.ref
+    )
+  )
+}
