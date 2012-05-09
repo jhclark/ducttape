@@ -26,7 +26,13 @@ class OutputAssignmentTest extends AbstractTest("output assignment",Grammar.outp
     "var=$variableName@taskName[branchPointName:*]",
     "a=$variableName@taskName[a:b,c:d]",
     "b=$variableName@taskName[a1:b2,c3:*,d4:e5,f6:g7]",
-      
+
+    // Shorthand branch graft
+    "in=@taskName[branchPointName:branchName]",
+    "var=@taskName[branchPointName:*]",
+    "a=@taskName[a:b,c:d]",
+    "b=@taskName[a1:b2,c3:*,d4:e5,f6:g7]",
+    
     // Task variable reference
     "c=$A_variable_Name__@foo",
     "dDt=$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_@barBar",
@@ -36,6 +42,16 @@ class OutputAssignmentTest extends AbstractTest("output assignment",Grammar.outp
     "q_687_abt=$A_variable_Name__",
     "a1_sauce=$ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567890_",
     "life_42=$abc",
+
+    // Shorthand task variable reference
+    "c=@foo",
+    "dDt=@barBar",
+    "e_1=@def",
+      
+    // Shorthand variable reference
+    "q_687_abt=@",
+    "a1_sauce=@",
+    "life_42=@",     
     
     // Unquoted literal
     "zip=A_variable_Name__",
