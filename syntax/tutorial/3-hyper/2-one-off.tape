@@ -4,7 +4,7 @@
 # "one off" experiments.
 
 # We start with a task much like the previous example
-task one_off_1 < in=(whichSize: smaller=small.txt bigger=big.txt) > out {
+task one_off_1 < in=(WhichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
 }
 
