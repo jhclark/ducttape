@@ -1,0 +1,39 @@
+# Can be overriden by user using environment variable
+PREFIX?=/usr/local
+DUCTTAPE=.
+
+compile:
+	${DUCTTAPE}/build.sh
+
+jar: compile
+	echo >&2 "JAR already built." # TODO: make compressed JAR
+
+test: jar
+	${DUCTTAPE}/test-unit.sh
+	${DUCTTAPE}/test-regression.sh
+
+doc:
+	${DUCTTAPE}/doc.sh
+
+scaladoc:
+	${DUCTTAPE}/scaladoc.sh
+
+install: jar
+	mkdir -p ${PREFIX}/bin ${PREFIX}/share/ducttape
+	cp ${DUCTTAPE}/ducttape ${PREFIX}/bin
+	cp ${DUCTTAPE}/ducttape.jar ${PREFIX}/bin
+	cp -r ${DUCTTAPE}/builtins ${PREFIX}/share/ducttape/
+	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim # TODO: System-wide
+	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el /usr/share/emacs/site-lisp/ducttape.el
+	echo '(load "/usr/share/emacs/site-lisp/ducttape.el")' >> ${PREFIX}/share/emacs/site-lisp/default.el # TODO: Only add once
+
+install-user:
+	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim
+	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el ~/.emacs.d/site-lisp/site-lisp/ducttape.el
+	echo '(load "~/.emacs.d/site-lisp/ducttape.el")' >> ~/.emacs # TODO: Only add once
+
+install-webui:
+	echo >&2 "TODO"
+
+uninstall:
+	rm ${PREFIX}/bin/ducttape
