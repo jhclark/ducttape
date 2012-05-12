@@ -1,0 +1,298 @@
+package ducttape.workflow.builder
+
+import WorkflowBuilder.InputMode
+import WorkflowBuilder.ParamMode
+import WorkflowBuilder.ResolveMode
+import ducttape.syntax.AbstractSyntaxTree.ASTType
+import ducttape.syntax.AbstractSyntaxTree.BranchGraft
+import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
+import ducttape.syntax.AbstractSyntaxTree.BranchPointRef
+import ducttape.syntax.AbstractSyntaxTree.Comments
+import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
+import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
+import ducttape.syntax.AbstractSyntaxTree.CrossProduct
+import ducttape.syntax.AbstractSyntaxTree.Literal
+import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
+import ducttape.syntax.AbstractSyntaxTree.PlanDefinition
+import ducttape.syntax.AbstractSyntaxTree.Sequence
+import ducttape.syntax.AbstractSyntaxTree.SequentialBranchPoint
+import ducttape.syntax.AbstractSyntaxTree.Spec
+import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
+import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import ducttape.syntax.AbstractSyntaxTree.TaskHeader
+import ducttape.syntax.AbstractSyntaxTree.TaskVariable
+import ducttape.syntax.AbstractSyntaxTree.Unbound
+import ducttape.syntax.AbstractSyntaxTree.VersionerDef
+import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
+import ducttape.syntax.AbstractSyntaxTreeException
+import ducttape.syntax.BashCode
+import ducttape.syntax.FileFormatException
+import ducttape.workflow.Branch
+import ducttape.workflow.BranchFactory
+import ducttape.workflow.BranchInfo
+import ducttape.workflow.BranchPoint
+import ducttape.workflow.BranchPointFactory
+import ducttape.workflow.HyperWorkflow
+import ducttape.workflow.NoSuchBranchException
+import ducttape.workflow.NoSuchBranchPointException
+import ducttape.workflow.RealizationPlan
+import ducttape.workflow.Task
+import ducttape.workflow.TaskTemplate
+import ducttape.workflow.ResolvableSpecType
+import ducttape.workflow.builder.WorkflowBuilder.BranchPointTree
+import ducttape.workflow.builder.WorkflowBuilder.BranchInfoTree
+import ducttape.workflow.builder.WorkflowBuilder.TerminalData
+import ducttape.util.BranchPrefixTreeMap
+import scala.collection.Seq
+import scala.collection.Set
+import scala.collection.Map
+import scala.collection.mutable
+import grizzled.slf4j.Logging
+
+// unlike WorkflowBuilder, we have no interaction with hyperdag framework here
+private[builder] class TaskTemplateBuilder(
+    wd: WorkflowDefinition,
+    confSpecs: Map[String,Spec],
+    branchPointFactory: BranchPointFactory,
+    branchFactory: BranchFactory) extends Logging {
+  
+  def findTasks(): FoundTasks = {
+    
+    val taskMap: Map[String,TaskDef] = wd.tasks.map { t: TaskDef => (t.name, t) } toMap
+    
+    val branchPoints = new mutable.ArrayBuffer[BranchPoint]
+    val parents: Map[TaskTemplate,BranchPointTree] = wd.tasks.map { taskDef: TaskDef =>
+      val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
+      val baselineTree = new BranchInfoTree(Task.NO_BRANCH)
+      tree.children += baselineTree
+
+      // parameters are different than file dependencies in that they do not
+      // add any temporal dependencies between tasks and therefore do not
+      // add any edges in the MetaHyperDAG
+      //
+      // TODO: XXX:
+      // params have no effect on temporal ordering, but can affect derivation of branches
+      // therefore, params are *always* rooted at phantom vertices, no matter what (hence, None)
+      val paramVals: Seq[ResolvableSpecType[LiteralSpec]] = taskDef.params.map { paramSpec: Spec =>
+      val mapping: Iterable[(Seq[Branch], (LiteralSpec, Option[TaskDef]) )]
+          = resolveBranchPoint(taskDef, paramSpec, taskMap)(
+              baselineTree, Seq(Task.NO_BRANCH), paramSpec)(resolveVarFunc=resolveParam)
+         new ResolvableSpecType(paramSpec, new BranchPrefixTreeMap(mapping))
+      }
+
+      val inputVals: Seq[ResolvableSpecType[Spec]] = taskDef.inputs.map { inSpec: Spec =>
+        val mapping: Iterable[(Seq[Branch], (Spec, Option[TaskDef]) )]
+          = resolveBranchPoint(taskDef, inSpec, taskMap)(
+              baselineTree, Seq(Task.NO_BRANCH), inSpec)(resolveVarFunc=resolveInput)
+        info("Got input vals for %s: %s".format(inSpec, mapping))
+        val trie = new BranchPrefixTreeMap(mapping)
+        info("Trie: " + trie)
+        new ResolvableSpecType(inSpec, trie)
+      }
+
+      val taskT = new TaskTemplate(taskDef, inputVals, paramVals)
+      (taskT, tree) // key, value for parents map
+    } toMap
+    
+    val taskTemplates: Seq[TaskTemplate] = parents.keys.toSeq
+    new FoundTasks(taskTemplates, parents, branchPoints)
+  }
+  
+  
+  // define branch resolution as a function that takes some callback functions
+  // since we use it for both parameter and input file resolution,
+  // but it behaves slightly different for each (parameters don't
+  // imply a temporal ordering between vertices)
+  //
+  // resolveBranchPoint first weeds out any branch points
+  // then calls a helper function (resolveVarFunc) to handle the specific
+  // sort of variable
+  def resolveBranchPoint[SpecT <: Spec]
+    (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef])
+    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curSpec: Spec)
+    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, Option[TaskDef], Seq[Branch]) )
+    : Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+
+    debug("Recursively resolving potential branch point: %s".format(curSpec))
+    
+    // create an internal node in the branch tree
+    def handleBranchPoint(branchPointName: String,
+                          branchSpecs: Seq[Spec],
+                          isFromConfig: Boolean = false,
+                          isFromSeq: Boolean = false)
+                          : Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+      
+      val branchPoint = branchPointFactory.get(branchPointName)
+      val bpTree: BranchPointTree = prevTree.getOrAdd(branchPoint)
+      
+      branchSpecs.flatMap { branchSpec: Spec => 
+        val branch = branchFactory.get(branchSpec.name, branchPoint)
+        val branchTree = bpTree.getOrAdd(branch)
+        val newHistory = branchHistory ++ Seq(branch)
+        resolveBranchPoint(taskDef, origSpec, taskMap)(branchTree, newHistory, branchSpec)(resolveVarFunc)
+      }
+    }
+
+    // create a leaf node in the branch tree
+    def handleNonBranchPoint(): Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+      // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
+      val (srcSpec, srcTaskDefOpt, grafts) = resolveVarFunc(taskDef, taskMap, curSpec)
+      
+      // store specs at this branch nesting along with its grafts
+      // this is used by the MetaHyperDAG to determine structure and temporal dependencies
+      val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, grafts)
+      data.origSpecs += origSpec
+      data.resolvedSpecs += srcSpec
+      
+      // yield tuples for runtime resolution of specs based on realization given to us by MetaHyperDAG walker
+      Iterable( (branchHistory, (srcSpec, srcTaskDefOpt)) )
+    }
+       
+    def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, inc: BigDecimal): Seq[LiteralSpec] = {
+      for (value <- start to end by inc) yield {
+        new LiteralSpec(bpName.toLowerCase + value.toString, new Literal(value.toString), dotVariable=false)
+      }
+    }
+    
+    def getName(branchPointNameOpt: Option[String], astElem: ASTType) = branchPointNameOpt match {
+      case Some(name) => name
+      case None => throw new FileFormatException("Branch point name is required", astElem)
+    }
+
+    curSpec.rval match {
+      case bp @ BranchPointDef(branchPointNameOpt, branchSpecz) => {
+        val branchSpecs = branchSpecz
+        val branchPointName = getName(branchPointNameOpt, bp)
+        handleBranchPoint(branchPointName, branchSpecs)
+      }
+      case bp @ SequentialBranchPoint(branchPointNameOpt: Option[_], sequence: Sequence) => {
+        val branchPointName = getName(branchPointNameOpt, bp)
+        val branchSpecs = generateBranchSpecs(branchPointName, sequence.start, sequence.end, sequence.increment)
+        handleBranchPoint(branchPointName, branchSpecs, isFromSeq=true)
+      }
+      case ConfigVariable(varName) => {
+        confSpecs.get(varName) match {
+          case Some(confSpec) => {
+            resolveBranchPoint(taskDef, origSpec, taskMap)(prevTree, branchHistory, confSpec)(resolveVarFunc)
+          }
+          case None => throw new FileFormatException(
+            "Config variable %s required by input %s at task %s not found in config file.".
+              format(varName, curSpec.name, taskDef.name),
+            curSpec)
+        }
+      }
+      case _ => handleNonBranchPoint()
+    }
+  }
+
+  // the resolved Spec is guaranteed to be a literal for params
+  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec)
+                          : (LiteralSpec, Option[TaskDef], Seq[Branch]) = {
+    resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)().asInstanceOf[(LiteralSpec,Option[TaskDef],Seq[Branch])]
+  }
+   
+  private def resolveInput(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec) = {
+    resolveNonBranchVar(InputMode())(taskDef, taskMap, spec)()
+  }
+  
+  // TODO: document what's going on here -- maybe move elsewhere
+  // group parameters by (1) initial state and (2) items that change recursively
+  // srcTaskDefDependency is only non-None if it implies a temporal dependency
+  // returns (srcSpec, srcTaskDefDependency, grafts)
+  private def resolveNonBranchVar(mode: ResolveMode)
+                                 (origTaskDef: TaskDef,
+                                  taskMap: Map[String,TaskDef], spec: Spec)
+                                 (curSpec: Spec = spec,
+                                  src: Option[TaskDef] = Some(origTaskDef),
+                                  grafts: Seq[Branch] = Nil)
+                                 : (Spec, Option[TaskDef], Seq[Branch]) = {
+    curSpec.rval match {
+      case Literal(litValue) => {
+        val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
+        (litSpec, None, Nil) // literals will never have a use for grafts
+      }
+      case ConfigVariable(varName) => resolveConfigVar(varName, origTaskDef, spec, src, grafts)
+      case TaskVariable(srcTaskName, srcOutName) => {
+        resolveTaskVar(mode)(origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+      }
+      case BranchGraft(srcOutName, srcTaskNameOpt, branchGraftElements) => {
+        val (srcSpec, srcTask, prevGrafts) = srcTaskNameOpt match {
+          case Some(srcTaskName) => {
+            resolveTaskVar(mode)(origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+          }
+          case None => resolveConfigVar(srcOutName, origTaskDef, spec, src, grafts)
+        }
+        val resultGrafts = prevGrafts ++ branchGraftElements.map{ e => try {
+            branchFactory(e.branchName, e.branchPointName)
+          } catch {
+            case ex: NoSuchBranchException => throw new FileFormatException(ex.getMessage, e)
+          }
+        }
+        (srcSpec, srcTask, resultGrafts)
+      }
+      case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
+      case SequentialBranchPoint(_,_) => {
+        throw new RuntimeException("Expected branches to be resolved by now")
+      }
+      case Unbound() => {
+        mode match {
+          case InputMode() => {
+            // make sure we didn't just refer to ourselves -- 
+            // referring to an unbound output is fine though (and usual)
+            if (src != Some(origTaskDef) || spec != curSpec) {
+              (curSpec, src, grafts)
+            } else {
+              throw new FileFormatException("Unbound input variable: %s".format(curSpec.name),
+                                            List(origTaskDef, curSpec))
+            }
+          }
+          case _ => throw new RuntimeException("Unsupported unbound variable: %s".format(curSpec.name))
+        }
+      }
+    }
+  }
+   
+  // helper for resolveNonBranchVar
+  def resolveTaskVar(mode: ResolveMode)
+                    (origTaskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec)
+                    (curSpec: Spec, prevTask: Option[TaskDef], grafts: Seq[Branch])
+                    (srcTaskName: String, srcOutName: String)
+                    : (Spec, Option[TaskDef], Seq[Branch]) = {
+     
+    taskMap.get(srcTaskName) match {
+      case Some(srcDef: TaskDef) => {
+        // determine where to search when resolving this variable's parent spec
+        val specSet = mode match {
+          case InputMode() => srcDef.outputs
+          case ParamMode() => srcDef.params
+        }
+        // search for the parent spec
+        specSet.find(outSpec => outSpec.name == srcOutName) match {
+          case Some(srcSpec) => resolveNonBranchVar(mode)(origTaskDef, taskMap, spec)(srcSpec, Some(srcDef), grafts)
+          case None => {
+            throw new FileFormatException(
+              "Output %s at source task %s for required by input %s at task %s not found. Candidate outputs are: %s".
+                format(srcOutName, srcTaskName, spec.name, origTaskDef.name, specSet.map(_.name).mkString(" ")),
+              List(spec, srcDef))
+          }
+        }
+      }
+      case None => {
+        throw new FileFormatException(
+          "Source task %s for input %s at task %s not found".
+            format(srcTaskName, spec.name, origTaskDef.name), spec)
+      }
+    }
+  }
+   
+  def resolveConfigVar(varName: String, taskDef: TaskDef, spec: Spec, src: Option[TaskDef], grafts: Seq[Branch]) = {
+    confSpecs.get(varName) match {
+      // TODO: Should we return? Or do we allow config files to point back into workflows?
+      case Some(confSpec) => (confSpec, None, grafts)
+      case None => throw new FileFormatException(
+          "Config variable %s required by input %s at task %s not found in config file.".
+            format(varName, spec.name, taskDef.name),
+          List(spec))
+    }
+  }
+}

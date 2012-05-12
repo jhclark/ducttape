@@ -6,6 +6,7 @@ import ducttape.util.MultiSet
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.hyperdag.HyperEdge
+import ducttape.hyperdag.meta.UnpackedChainedMetaVertex
 
 object Types {
   class HashMultiMap[A,B] extends mutable.HashMap[A,mutable.Set[B]] with mutable.MultiMap[A,B];
@@ -15,6 +16,6 @@ object Types {
   // See Phil Bagwell's work at EPFL on data sharing in immutable/persistent data structures
   type UnpackState = immutable.HashMap[BranchPoint, Branch]
   type PackedWorkVert = PackedVertex[TaskTemplate]
-  type UnpackedWorkVert = UnpackedMetaVertex[TaskTemplate,BranchInfo,Seq[Spec],Branch]
+  type UnpackedWorkVert = UnpackedChainedMetaVertex[TaskTemplate,BranchInfo,Seq[Spec],Branch]
   type WorkflowEdge = HyperEdge[BranchInfo,Seq[Spec]]
 }
