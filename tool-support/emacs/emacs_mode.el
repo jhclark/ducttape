@@ -26,7 +26,8 @@
 		    "plan"
 		    "submitter"
 		    "task"
-		    "versioner") 'words) . font-lock-keyword-face)
+		    "versioner"
+		    "switch" "default") 'words) . font-lock-keyword-face)
    ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'words) . font-lock-keyword-face)
    ;( ,(regexp-opt '("Pi" "Infinity") 'word) . font-lock-constant-face)
 
