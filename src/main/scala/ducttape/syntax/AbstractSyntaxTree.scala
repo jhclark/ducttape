@@ -43,7 +43,7 @@ object AbstractSyntaxTree {
   /** Type of a literal string value, in the right-hand side context of an assignment. */
   case class Literal(val value: String) extends RValue {
     override def children = Nil
-    override def toString() = "Literal='%s'".format(value)
+    override def toString() = "'%s'".format(value)
   }  
   
   /** Type of a variable reference, in the right-hand side context of an assignment. */
