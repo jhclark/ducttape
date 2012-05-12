@@ -1,0 +1,12 @@
+task has_branches :: in=(A: big=big.txt small=small.txt) {
+     wc -l ${in}
+#     echo "hello" > ${a}
+}
+
+#task bar :: a=@foo {
+#     echo ${a}
+#}
+
+task baz :: in=$in@has_branches[A:a2] {
+     echo ${in}
+}

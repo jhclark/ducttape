@@ -59,6 +59,20 @@ object AbstractSyntaxTree {
     override def toString() = "$%s@%s".format(value,taskName)
   }  
   
+  /** Type of a shorthand variable reference attached to a specific task, 
+   * in the right-hand side context of an assignment. */
+  case class ShorthandTaskVariable(val taskName: String) extends RValue {
+    override def children = Nil
+    override def toString() = "@%s".format(taskName)
+  }  
+  
+  /** Type of a shorthand global or config variable reference, 
+   * in the right-hand side context of an assignment. */
+  case class ShorthandConfigVariable() extends RValue {
+    override def children = Nil
+    override def toString() = "@"
+  }     
+  
   case class Sequence(val start: BigDecimal, 
                       val end: BigDecimal,
                       val increment: BigDecimal) extends ASTType {
@@ -101,7 +115,14 @@ object AbstractSyntaxTree {
     }
   }
   
-  
+  /** Type of a shorthand branch graft, in the right-hand side context of an assignment. */
+  case class ShorthandBranchGraft(val taskName: String,
+                         val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
+    override def children = branchGraftElements
+    override def toString() = {
+      "@%s%s".format(taskName,branchGraftElements.toString())
+    }
+  }  
   /**
    * Abstract specification of a variable name and its right hand side.
    */
