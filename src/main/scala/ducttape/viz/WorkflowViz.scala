@@ -1,6 +1,7 @@
 package ducttape.viz
 
 import collection._
+import ducttape.syntax.AbstractSyntaxTree.TaskDef
 
 object WorkflowViz {
   import ducttape.versioner._
@@ -16,11 +17,11 @@ object WorkflowViz {
     val str = new StringBuilder(1000)
     str ++= "digraph G {\n"
 
-    def getName(t: String, r: Realization) = GraphViz.escape("%s/%s".format(t, r.toString))
+    def getName(t: Option[TaskDef], r: Realization) = GraphViz.escape("%s/%s".format(t, r.toString))
 
     // first, list vertices
-    for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
-      val taskT: TaskTemplate = v.packed.value
+    for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
       val color = (task.name, task.realization) match {
         case t if completed(t) => "dodgerblue1"
@@ -28,18 +29,20 @@ object WorkflowViz {
         case t if failed(t) => "firebrick"
         case _ => "white"
       }
-      str ++= "\"%s\" [fillcolor=%s,style=filled];\n".format(getName(task.name, task.realization), color)
+      str ++= "\"%s\" [fillcolor=%s,style=filled];\n".format(getName(Some(task.taskDef), task.realization), color)
     }
 
     // now list edges
-    for(v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
-      val taskT: TaskTemplate = v.packed.value
+    for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
-      val child = getName(task.name, task.realization)
-      task.inputVals.map{ inputVal => getName(inputVal.srcTaskDef.name, inputVal.srcReal) }.toSet.foreach{parent: String => {
-        if(parent != child)
+      val child = getName(Some(task.taskDef), task.realization)
+      task.inputVals.map { inputVal =>
+        getName(inputVal.srcTaskDef, inputVal.srcReal)
+      }.toSet.foreach { parent: String =>
+        if (parent != child)
           str ++= "\"%s\" -> \"%s\";\n".format(parent, child) // TODO: Quote?
-      }}
+      }
     }
 
     str ++= "}\n"

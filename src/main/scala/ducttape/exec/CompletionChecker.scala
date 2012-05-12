@@ -9,11 +9,12 @@ import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
 import ducttape.workflow.RealTask
+import grizzled.slf4j.Logging
 
 // checks the state of a task directory to make sure things completed as expected
 // TODO: Return a set object with incomplete nodes that can be handed to future passes
 // so that completion checking is atomic
-object CompletionChecker {
+object CompletionChecker extends Logging {
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
@@ -26,15 +27,15 @@ object CompletionChecker {
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist"),
           ( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated")) ++
           
-      taskEnv.outputs.map{case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f))}
+      taskEnv.outputs.map { case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f)) }
     )
-    for( (cond, msg) <- conditions) {
-      if(!cond()) {
+    
+    conditions.forall { case (cond, msg) =>
+      val conditionHolds = cond()
+      if (!conditionHolds)
         System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
-        return false
-      }
+      conditionHolds
     }
-    return true
   }
 
   def isInvalidated(taskEnv: TaskEnvironment): Boolean = taskEnv.invalidatedFile.exists
@@ -46,12 +47,12 @@ object CompletionChecker {
   def forceCompletion(taskEnv: TaskEnvironment) {
     Files.write("0", taskEnv.exitCodeFile)
     val files = List(taskEnv.stdoutFile, taskEnv.stderrFile) ++ taskEnv.outputs.map{case (_,f) => new File(f)}
-    for(file <- files) {
-      if(!taskEnv.stdoutFile.exists) {
+    for (file <- files) {
+      if (!taskEnv.stdoutFile.exists) {
         Files.write("", taskEnv.stdoutFile)
       }
     }
-    if(!isComplete(taskEnv)) {
+    if (!isComplete(taskEnv)) {
       throw new RuntimeException("Failed to force completion of task")
     }
   }
@@ -62,7 +63,7 @@ object CompletionChecker {
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
 // the most recent result is untouched, invalid, partial, or complete
-class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor with Logging {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   private val _completed = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
@@ -82,7 +83,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
 
   
   override def visit(task: RealTask) {
-    System.err.println("Checking " + task)
+    info("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
 
     if (CompletionChecker.isComplete(taskEnv)) {

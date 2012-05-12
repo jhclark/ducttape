@@ -4,12 +4,15 @@ import ducttape.workflow.Branch
 import collection._
 import ducttape.workflow.BranchPoint
 import scala.math.Ordering
+import ducttape.workflow.Realization
 
 object PrefixTreeMap {
   // TODO: Refactor as builder and immutable version which is pre-sorted
-  private class TrieNode[K,SortK,V] {
+  private[util] class TrieNode[K,SortK,V] {
     var value: Option[V] = None
     val children = new mutable.HashMap[K,TrieNode[K,SortK,V]]
+    
+    override def toString() = "(" + value + " " + children.map { case (k,v) => k+":"+v }.mkString + ")"
   }
 }
 
@@ -24,7 +27,7 @@ class PrefixTreeMap[K,SortK,V](sorter: K => SortK)
   
   import PrefixTreeMap.TrieNode
   
-  private val trieRoot = new TrieNode[K,SortK,V]
+  private[util] val trieRoot = new TrieNode[K,SortK,V]
   
   {
     // TODO: Can we guarantee this before hand? Or make it otherwise faster?
@@ -41,9 +44,9 @@ class PrefixTreeMap[K,SortK,V](sorter: K => SortK)
           insert(remaining.drop(1), value, nextNode)
         }
       }
-      for( (keySet, value) <- sortedMapping) {
-        insert(keySet, value, trieRoot)
-      }
+    }
+    for( (keySet, value) <- sortedMapping) {
+      insert(keySet, value, trieRoot)
     }
   }
   
@@ -66,7 +69,13 @@ class PrefixTreeMap[K,SortK,V](sorter: K => SortK)
     query(this.trieRoot, superset.toSeq.sortBy(sorter), None)
   }
   
-  def apply(superset: Iterable[K]): V = get(superset).get 
+  def apply(superset: Iterable[K]): V = get(superset) match {
+    case Some(v) => v
+    case None => throw new NoSuchElementException(superset.toString + " :: " + trieRoot.toString)
+  }
+  def contains(superset: Iterable[K]): Boolean = get(superset).isDefined
+  
+  override def toString() = trieRoot.toString
 }
 
 class PrefixTreeSet[K,SortK](sorter: K => SortK)
@@ -75,7 +84,7 @@ class PrefixTreeSet[K,SortK](sorter: K => SortK)
   
   private[util] val delegate = new PrefixTreeMap[K,SortK,Null](sorter)(elements.map{(_, null)})
   
-  def apply(superset: Iterable[K]): Boolean = delegate.get(superset).isDefined
+  def apply(superset: Iterable[K]): Boolean = delegate.contains(superset)
 }
 
 object BranchPrefixTreeMap {
@@ -85,4 +94,13 @@ object BranchPrefixTreeMap {
 // can map from an active branch map Map[String,Branch]
 // to a value, such as the set of Specs associated with a particular branch
 class BranchPrefixTreeMap[V](mapping: Iterable[(Seq[Branch], V)])
-  extends PrefixTreeMap[Branch,String,V](BranchPrefixTreeMap.sorter)(mapping);
+  extends PrefixTreeMap[Branch,String,V](BranchPrefixTreeMap.sorter)(mapping) {
+  
+  def get(real: Realization): Option[V] = super.get(real.branches)
+  def apply(real: Realization): V = super.apply(real.branches)
+  // get the only element in the map
+  def only(): V = trieRoot.children.values.toSeq match {
+    case Seq(oneChild) => oneChild.value.get
+    case _ => throw new RuntimeException("Expected a single element")
+  }
+}

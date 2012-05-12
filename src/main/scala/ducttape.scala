@@ -44,10 +44,14 @@ import ducttape.cli.EnvironmentMode
 import ducttape.cli.Plans
 import ducttape.workflow.Visitors
 import ducttape.cli.ExecuteMode
+import ducttape.util.LogUtils
+import grizzled.slf4j.Logging
 
-object Ducttape {
+object Ducttape extends Logging {
   
   def main(args: Array[String]) {
+    LogUtils.initJavaLogging()
+    
     implicit val conf = new Config
     implicit val opts = new Opts(conf, args)
     if (opts.no_color || !Environment.hasTTY) {
@@ -65,7 +69,7 @@ object Ducttape {
     err.println(conf.resetColor)
 
     // make these messages optional with verbosity levels?
-    //println("Reading workflow from %s".format(file.getAbsolutePath))
+    info("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
     val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
     val confSpecs: Seq[ConfigAssignment] = ex2err(opts.config_file.value match {
       case Some(confFile) => {
@@ -143,15 +147,20 @@ object Ducttape {
     // so we need to make a second reverse pass on the unpacked DAG
     // to make sure all of the vertices contribute to a goal vertex
     
-    val plannedVertices = Plans.getPlannedVertices(workflow)
+    def getPlannedVertices(): Set[(String,Realization)] = {
+      val plannedVertices = Plans.getPlannedVertices(workflow)
+      if (plannedVertices.size > 0) {
+        System.err.println("Planned: " + plannedVertices)
+      }
+      plannedVertices
+    }
       
-    err.println("Checking for completed steps...")
-    if (plannedVertices.size > 0) err.println("Planned: " + plannedVertices)
-    // TODO: Refactor a bit? Only return the proper versioner? Make into on-demand method?
-    val cc: CompletionChecker = Visitors.visitAll(workflow, new CompletionChecker(dirs), plannedVertices)
-    //val workflowVersion = XXX
+    def getCompletedTasks(plannedVertices: Set[(String,Realization)]): CompletionChecker = {
+      System.err.println("Checking for completed steps...")
+      Visitors.visitAll(workflow, new CompletionChecker(dirs), plannedVertices)
+    }
     
-    def getPackageVersions() = {
+    def getPackageVersions(cc: CompletionChecker, plannedVertices: Set[(String,Realization)]) = {
       val packageFinder = new PackageFinder(dirs, cc.todo, workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, plannedVertices)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
@@ -163,8 +172,9 @@ object Ducttape {
     }
 
     def list {
+      val plannedVertices = getPlannedVertices()
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
-        val taskT: TaskTemplate = v.packed.value
+        val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         println("%s %s".format(task.name, task.realization))
         //println("Actual realization: " + v.realization)
@@ -172,6 +182,7 @@ object Ducttape {
     }
 
     def markDone {
+      val plannedVertices = getPlannedVertices()
       if (opts.taskName == None) {
         opts.exitHelp("mark_done requires a taskName", 1)
       }
@@ -183,7 +194,7 @@ object Ducttape {
 
       // TODO: Apply filters so that we do much less work to get here
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
-        val taskT: TaskTemplate = v.packed.value
+        val taskT: TaskTemplate = v.packed.value.get
         if (taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v)
           if (goalRealNames(task.realization.toString)) {
@@ -200,6 +211,8 @@ object Ducttape {
     }
 
     def viz {
+      val plannedVertices = getPlannedVertices()
+      
       err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
       println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, plannedVertices)))
@@ -212,11 +225,14 @@ object Ducttape {
     }
 
     // supports '*' as a task or realization
-    def getVictims(taskToKill: String, realsToKill: Set[String]): OrderedSet[RealTask] = {
+    def getVictims(taskToKill: String,
+                   realsToKill: Set[String],
+                   plannedVertices: Set[(String,Realization)]): OrderedSet[RealTask] = {
+      
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
-        val taskT: TaskTemplate = v.packed.value
+        val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         if (taskToKill == "*" || taskT.name == taskToKill) {
           if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
@@ -227,10 +243,10 @@ object Ducttape {
         } else {
           // was this task invalidated by its parent?
           // TODO: Can we propagate this in a more natural way
-          val isVictim = task.inputVals.exists{ inputVal => {
-            val parent = (inputVal.srcTaskDef.name, inputVal.srcReal)
+          val isVictim = task.antecedents.exists { case (srcName, srcReal) =>
+            val parent = (srcName, srcReal)
             victims(parent)
-          }}
+          }
           if (isVictim) {
             victims += ((task.name, task.realization))
             victimList += task
@@ -260,10 +276,13 @@ object Ducttape {
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
+      
+      val plannedVertices = getPlannedVertices()
+      
       err.println("Finding tasks to be invalidated: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill)
+      val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill, plannedVertices)
       val victimList: Seq[RealTask] = victims.toSeq
       
       // 2) prompt the user
@@ -297,15 +316,18 @@ object Ducttape {
       }
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
+      
+      val plannedVertices = getPlannedVertices()
+      
       err.println("Finding tasks to be purged: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victimList: Seq[RealTask] = getVictims(taskToKill, realsToKill).toSeq
+      val victimList: Seq[RealTask] = getVictims(taskToKill, realsToKill, plannedVertices).toSeq
       
       // 2) prompt the user
       import ducttape.cli.ColorUtils.colorizeDirs
       err.println("About to permenantly delete the following directories:")
-      val absDirs: Seq[File] = victimList.map{task: RealTask => dirs.assignDir(task) }
+      val absDirs: Seq[File] = victimList.map { task: RealTask => dirs.assignDir(task) }
       err.println(colorizeDirs(victimList).mkString("\n"))
       
       val answer = if (opts.yes) {
@@ -317,7 +339,7 @@ object Ducttape {
       }
 
       answer match {
-        case 'y' | 'Y' => absDirs.foreach{f: File => { err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) }}
+        case 'y' | 'Y' => absDirs.foreach { f: File => err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) }
         case _ => err.println("Doing nothing")
       }
     }
@@ -325,13 +347,22 @@ object Ducttape {
     // TODO: Have run() function in each mode?
     ex2err(opts.mode match {
       case "list" => list
-      case "env" => EnvironmentMode.run(workflow, plannedVertices, getPackageVersions())
+      case "env" => {
+        val plannedVertices = getPlannedVertices()
+        val cc = getCompletedTasks(plannedVertices)
+        val packageVersions = getPackageVersions(cc, plannedVertices)
+        EnvironmentMode.run(workflow, plannedVertices, packageVersions)
+      }
       case "mark_done" => markDone
       case "viz" => viz
       case "debug_viz" => debugViz
       case "invalidate" => invalidate
       case "purge" => purge
-      case _ => ExecuteMode.run(workflow, cc, plannedVertices, history, getPackageVersions)
+      case "exec" | _ => {
+        val plannedVertices = getPlannedVertices()
+        val cc = getCompletedTasks(plannedVertices)
+        ExecuteMode.run(workflow, cc, plannedVertices, history, { () => getPackageVersions(cc, plannedVertices) })
+      }
     })
   }
 }

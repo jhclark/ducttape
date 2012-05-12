@@ -38,8 +38,8 @@ object ExecuteMode {
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
       Visitors.visitAll(workflow, inputChecker, plannedVertices)
-      if(inputChecker.errors.size > 0) {
-        for(msg <- inputChecker.errors) {
+      if (inputChecker.errors.size > 0) {
+        for (msg <- inputChecker.errors) {
           System.err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
         }
         System.exit(1)

@@ -28,14 +28,15 @@ object EnvironmentMode {
 
     // TODO: Dont' apply plan filter?
     // TODO: Apply filters so that we do much less work to get here
-    var matchingTasks: Iterable[UnpackedWorkVert] = {
-      workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.filter{v: UnpackedWorkVert => v.packed.value.name == goalTaskName}
+    val matchingTasks: Iterable[UnpackedWorkVert] = {
+      workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.
+        filter { v: UnpackedWorkVert => v.packed.value.get.name == goalTaskName }
     }.toIterable
     System.err.println("Found %d vertices with matching task name".format(matchingTasks.size))
     
-    var matchingReals: Iterable[RealTask] = {
+    val matchingReals: Iterable[RealTask] = {
       matchingTasks.map { v: UnpackedWorkVert => {
-        val taskT: TaskTemplate = v.packed.value
+        val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         if (task.realization.toString == goalRealName) {
           Some(task)

@@ -87,7 +87,7 @@ class DirectoryArchitect(val flat: Boolean,
   def getInFile(mySpec: Spec,
                 realization: Realization,
                 srcSpec: Spec,
-                srcTaskDef: TaskDef,
+                srcTaskDefOpt: Option[TaskDef],
                 srcRealization: Realization): File = {
 
     // first, resolve the realization, if necessary
@@ -106,7 +106,11 @@ class DirectoryArchitect(val flat: Boolean,
     realizedRval match {
       case Literal(path) => resolveLiteralPath(path)
       // branches, variables, etc get matched on the src, which we already resolved
-      case _ => assignOutFile(srcSpec, srcTaskDef, srcRealization)
+      case _ => {
+        // non-literals *must* have a src task, else throw a MatchError
+        val srcTaskDef = srcTaskDefOpt match { case Some(name) => name }
+        assignOutFile(srcSpec, srcTaskDef, srcRealization) 
+      }
     }
   }
   

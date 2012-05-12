@@ -10,9 +10,10 @@ import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.RealizationPlan
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.builder.WorkflowBuilder
+import grizzled.slf4j.Logging
 
 // TODO: Disconnect from CLI and move to workflow package
-object Plans {
+object Plans extends Logging {
   def getPlannedVertices(workflow: HyperWorkflow)
                         (implicit conf: Config): Set[(String,Realization)] = {  
     
@@ -35,7 +36,7 @@ object Plans {
       
             // this is the most important place for us to pass the filter to unpackedWalker!
             workflow.unpackedWalker(branchFilter).foreach(numCores, { v: UnpackedWorkVert => {
-              val taskT: TaskTemplate = v.packed.value
+              val taskT: TaskTemplate = v.packed.value.get
               val task: RealTask = taskT.realize(v)
               candidates += (task.name, task.realization) -> task
             }})
@@ -52,24 +53,28 @@ object Plans {
             // initialize with all valid realizations of the goal vertex
             // (realizations have already been filtered during HyperDAG traversal)
             for (goalTask <- plan.goalTasks) {
-              val goalRealTasks: Iterable[RealTask] = candidates.filter{case ((tName, _), _) => tName == goalTask}.map(_._2)
-              System.err.println("Found %d realizations of goal task %s: %s".format(goalRealTasks.size, goalTask, goalRealTasks.map{_.realization}.mkString(" ")))
+              val goalRealTasks: Iterable[RealTask] = candidates.filter {
+                case ( (tName, _), _) => tName == goalTask
+              } map { _._2 }
+              System.err.println("Found %d realizations of goal task %s: %s".
+                format(goalRealTasks.size, goalTask, goalRealTasks.map{_.realization}.mkString(" ")))
               fronteir ++= goalRealTasks
             }
             
             val seen = new mutable.HashSet[RealTask]
             while (fronteir.size > 0) {
               val task: RealTask = fronteir.dequeue
-              //err.println("Tracing back from task " + task)
+              info("Tracing back from task " + task)
               // add all parents (aka antecedents) to frontier
               if (!seen(task)) {
                 try {
-                  val antTasks: Set[RealTask] = task.antecedents
-                    .filter{ case (taskName, _) => taskName != WorkflowBuilder.CONFIG_TASK_DEF.name }
-                    .map{case (taskName, real) => candidates(taskName, real)}
+                  val antTasks: Set[RealTask] = task.antecedents.
+                    map { case (taskName, real) => candidates(taskName, real) }
                   fronteir ++= antTasks
                 } catch {
-                  case e: NoSuchElementException => throw new RuntimeException("Error while trying to find antecedent tasks of %s".format(task), e)
+                  case e: NoSuchElementException => {
+                    throw new RuntimeException("Error while trying to find antecedent tasks of %s".format(task), e)
+                  }
                 }
               }
               // mark this task as seen
