@@ -24,9 +24,9 @@ class UnpackedMetaVertex[V,H,E,D](val packed: PackedVertex[V],
                                   val parentRealizations: Seq[Seq[Seq[D]]],
                                   private[hyperdag] val dual: UnpackedVertex[V,H,E,D]) {
   // TODO: More smearing of hash codes
-  override def hashCode = packed.id ^ realization.hashCode
+  override def hashCode() = packed.id ^ realization.hashCode
   override def equals(that: Any) = that match {
     case other: UnpackedMetaVertex[_,_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
-  override def toString = packed.toString + " (realization=" + realization.toString +")"
+  override def toString() = packed.toString + " (realization=" + realization.toString +")"
 }

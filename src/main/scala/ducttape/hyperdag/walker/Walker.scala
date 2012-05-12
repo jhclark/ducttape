@@ -9,15 +9,15 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
   private val self = this
 
   /** Get the next traversable item. Returns None when there are no more elements */
-  private[hyperdag] def take: Option[A]
+  private[hyperdag] def take(): Option[A]
 
   /** Callers must use this method to notify walker that caller is done with each
    *  item so that walker can traverse its dependends
    *  continue: False indicates that no dependents of the specified item should be traversed */
-  private[hyperdag] def complete(item: A, continue:Boolean = true)
+  private[hyperdag] def complete(item: A, continue: Boolean = true)
 
   /** Get a synchronous iterator (not appropriate for multi-threaded consumers) */
-  def iterator = new Iterator[A] {
+  def iterator() = new Iterator[A] {
     var nextItem: Option[A] = None
 
     override def hasNext: Boolean = {

@@ -6,6 +6,8 @@ import java.util.concurrent._
 import ducttape.hyperdag._
 import ducttape.util._
 
+import grizzled.slf4j.Logging
+
 
 /** the hedge filter allows us to hide certain hyperedges from
  *  the edge derivation (e.g. edges without a branch name / the default branch name)
@@ -32,13 +34,13 @@ import ducttape.util._
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
-        val selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
-        val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-        val constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
-        val vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-        val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-        val toD: H => D = new DefaultToD[H])
-  extends Walker[UnpackedVertex[V,H,E,D]] {
+        selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
+        hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+        vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
+        comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
+        toD: H => D = new DefaultToD[H])
+  extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
   // TODO: Factor this out into a class all its own?
   // TODO: Document why active vertices are isomorphic to hyperedges (or no hyperedge)
@@ -69,7 +71,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                        prevState: F,
                        callback: UnpackedVertex[V,H,E,D] => Unit) {
 
-      //err.println("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
+      info("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
       // hedgeFilter has already been applied
       if (i == filled.size) {
@@ -93,18 +95,18 @@ class UnpackedDagWalker[V,H,E,D,F](
           constraintFilter(v, prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
-              //System.err.println(i + " hyperedge: " + he)
-              //System.err.println(i + " pre-add combo=" + combo)
+              info(i + " hyperedge: " + he)
+              info(i + " pre-add combo=" + combo)
               combo ++= parentRealization
-              //System.err.println(i + " post-add combo=" + combo)
+              info(i + " post-add combo=" + combo)
               parentReals(i) = parentRealization
-              //System.err.println(i + " pre-recurse parentRealization=" + parentRealization.toList)
-              //System.err.println(i + " pre-recurse parentReals=" + parentReals.toList)
+              info(i + " pre-recurse parentRealization=" + parentRealization.toList)
+              info(i + " pre-recurse parentReals=" + parentReals.toList)
               unpack(i+1, iFixed, combo, parentReals, nextState, callback)
-              //System.err.println(i + " post-recurse parentRealization=" + parentRealization.toList)
-              //System.err.println(i + " pre-remove combo=" + combo)
+              info(i + " post-recurse parentRealization=" + parentRealization.toList)
+              info(i + " pre-remove combo=" + combo)
               combo --= parentRealization
-              //System.err.println(i + " post-remove combo=" + combo)
+              info(i + " post-remove combo=" + combo)
             }
           }
         }     
@@ -139,18 +141,19 @@ class UnpackedDagWalker[V,H,E,D,F](
   private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E,D]]
 
   // first, visit the roots, which are guaranteed not to be packed
-  for (root <- dag.roots.iterator) {
+  for (root <- dag.roots) {
     val actRoot = new ActiveVertex(root, None)
     val unpackedRoot = new UnpackedVertex[V,H,E,D](root, None, Nil, Nil)
     agenda.add(unpackedRoot)
     activeRoots += root -> actRoot
   }
+  info("Seeded unpacked HyperDAG walker with roots: %s".format(agenda))
 
   val waitingToTakeLock: AnyRef = new Object
   val agendaTakenLock: AnyRef = new Object
 
   // WARNING: may never return if complete() is not called as expected
-  // this is why take/compelte are protected and only foreach and iterator are exposed
+  // this is why take/complete are protected and only foreach and iterator are exposed
   // (use foreach to prevent this)
   override def take(): Option[UnpackedVertex[V,H,E,D]] = {
 
@@ -199,10 +202,11 @@ class UnpackedDagWalker[V,H,E,D,F](
     var result = getNext()
     // some extra machinery to handle vertex-level filtering
     while (result != None && !vertexFilter(result.get)) {
-      //System.err.println("U Vertex filter does not contain: " + result.get)
+      info("U Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
       result = getNext()
     }
+    info("Yielding: %s".format(result))
     result
   }
 
@@ -211,6 +215,8 @@ class UnpackedDagWalker[V,H,E,D,F](
             "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
     val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
 
+    info("Completing: %s".format(item))
+    
     // we always lock agenda & completed & taken jointly
     // we must hold on to our lock until all possible consequents
     // of "taken" have been added to the agenda. otherwise, we
@@ -253,7 +259,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                   agenda.add(unpackedV)
                   // TODO: We could sort the agenda here to impose different objectives...
                 })
-              //System.err.println("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
+              info("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
               activeCon.filled(iEdge) += item.realization
             }
           }

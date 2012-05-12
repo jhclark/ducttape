@@ -4,6 +4,7 @@ import ducttape.util.MultiSet
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.UnpackedVertex
+import ducttape.hyperdag.meta.UnpackedChainedMetaVertex
 
 // these really better belong in companion objects
 // for UnpackedDagWalker and UnpackedMetaDagWalker
@@ -39,8 +40,8 @@ trait ConstraintFilter[V,D,F] {
   val initState: F
 }
 
-class DefaultConstraintFilter[V,H,F] extends ConstraintFilter[V,H,F] {
-  override def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[H], parentRealization: Seq[H]) = Some(prevState)
+class DefaultConstraintFilter[V,D,F] extends ConstraintFilter[V,D,F] {
+  override def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]) = Some(prevState)
   private var nada: F = _ // syntactic cruft, just to get a null...
   override val initState: F = nada
 }
