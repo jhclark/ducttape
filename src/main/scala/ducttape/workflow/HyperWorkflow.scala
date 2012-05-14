@@ -11,17 +11,23 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
-import ducttape.hyperdag.walker._
 import ducttape.hyperdag.HyperEdge
-import grizzled.slf4j.Logging
 import ducttape.hyperdag.meta.PhantomMetaHyperDag
 import ducttape.hyperdag.meta.UnpackedMetaVertex
+import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
+import ducttape.hyperdag.walker.PackedPhantomMetaDagWalker
+import ducttape.hyperdag.walker.ComboTransformer
+import ducttape.hyperdag.walker.ConstraintFilter
+import ducttape.hyperdag.walker.MetaVertexFilter
+import ducttape.workflow.SpecTypes.SpecPair
+
+import grizzled.slf4j.Logging
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
   // - not specifying a branch point indicates that any value is acceptable
   // TODO: Multimap (just use typedef?)
-  class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]],
+  class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
                       val packageDefs: Map[String,PackageDef],
                       val plans: Seq[RealizationPlan],
                       val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
@@ -30,13 +36,13 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
                       val branchFactory: BranchFactory)
     extends Logging {
   
-  type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec],Branch,UnpackState]
+  type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair],Branch,UnpackState]
 
   def packedWalker: PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
     
   /** when used with an unpacker, causes anti-hyperedges to be recognized
    *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
-  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[Spec],Branch] with Logging {
+  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[SpecPair],Branch] with Logging {
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
         if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
@@ -130,8 +136,8 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
       }
     }
 
-    val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[Spec],Branch] {
-      override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[Spec],Branch]): Boolean = {
+    val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch] {
+      override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
         // TODO: Less extraneous Realization creation?
         plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) ) || plannedVertices.isEmpty
       } 

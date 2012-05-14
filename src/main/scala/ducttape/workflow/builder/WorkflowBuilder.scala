@@ -41,12 +41,12 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.Task
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.Types.PackedWorkVert
+import ducttape.workflow.SpecTypes.SpecPair
 import scala.collection.Seq
 import scala.collection.Set
 import scala.collection.Map
 import scala.collection.mutable
 import grizzled.slf4j.Logging
-import ducttape.util.PrefixTreeSet
 
 object WorkflowBuilder {
 
@@ -67,6 +67,11 @@ object WorkflowBuilder {
         child
       }
     }
+    
+    def specs: Iterable[SpecPair] = children.flatMap { child =>
+      child.terminalData.flatMap { data => data.specs } ++
+        child.children.flatMap { grandchild => grandchild.specs }
+    } 
     
     override def toString() = "(BP=" + branchPoint + ": " + children.mkString + ")"
   }
@@ -115,10 +120,9 @@ object WorkflowBuilder {
   private[builder] class TerminalData(
       val task: Option[TaskDef],
       val grafts: Seq[Branch]) {
-    val origSpecs = new mutable.ArrayBuffer[Spec]
-    val resolvedSpecs = new mutable.ArrayBuffer[Spec]
+    val specs = new mutable.ArrayBuffer[SpecPair]
     
-    override def toString() = "(%s %s %s)".format(task, grafts, resolvedSpecs)
+    override def toString() = "(%s %s %s)".format(task, grafts, specs)
   }
 }
 
@@ -137,7 +141,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   
   val branchPointFactory = new BranchPointFactory
   val branchFactory = new BranchFactory(branchPointFactory)
-  val dag = new PhantomMetaHyperDagBuilder[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]]()
+  val dag = new PhantomMetaHyperDagBuilder[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]]()
   
   def catcher[U](func: => U)(implicit ref: BranchPointRef) = try { func } catch {
     case e: NoSuchBranchPointException => {
@@ -197,10 +201,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     }.toSet ++ Set(emptyGraft)
 
     // create a hyperedge list in the format expected by the HyperDAG API
-    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]],Seq[Spec])])]
+    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]],Seq[SpecPair])])]
       = graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
         curNode.children.map { branchChild: BranchInfoTree =>
-          val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]],Seq[Spec])]
+          val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]],Seq[SpecPair])]
             = branchChild.children.map { bpChild =>
               // we have more than one branch point in a row: create a phantom
               val branchPhantomV: PackedVertex[Option[TaskTemplate]]
@@ -215,15 +219,15 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
           // NOTE: We attach the *original* specs to the plain edges in the HyperDAG
           // not the resolved specs. It is the BranchPrefixTreeMap's job to resolve these
           // in TaskTemplate.realize()
-          val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]],Seq[Spec])]
+          val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]],Seq[SpecPair])]
             = branchChild.terminalData.
               filter { case data => data.grafts == curGrafts }.
               map { data =>
                 data.task match {
                   // has a temporal dependency on a previous task
-                  case Some(taskDef: TaskDef) => (toVertex(taskDef), data.origSpecs)
+                  case Some(taskDef: TaskDef) => (toVertex(taskDef), data.specs)
                   // no temporal dependency
-                  case None => (specPhantomV, data.origSpecs)
+                  case None => (specPhantomV, data.specs)
                 }
               }
           val branchInfo = new BranchInfo(branchChild.branch, branchChild.terminalGrafts)

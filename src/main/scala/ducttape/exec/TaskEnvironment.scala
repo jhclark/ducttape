@@ -25,17 +25,17 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
   val inputs: Seq[(String, String)] = for (inputVal <- task.inputVals) yield {
-    val inFile = dirs.getInFile(inputVal.mySpec, task.realization,
-                                inputVal.srcSpec, inputVal.srcTaskDef, inputVal.srcReal)
+    val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
+                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal)
     //System.err.println("For inSpec %s with srcSpec %s and srcReal %s, got path: %s".format(inputVal.mySpec,inputVal.srcSpec,inputVal.srcReal,inFile))
-    (inputVal.mySpec.name, inFile.getAbsolutePath)
+    (inputVal.origSpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
   // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
   val params: Seq[(String,String)] = for (paramVal <- task.paramVals) yield {
     //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
-    (paramVal.mySpec.name, paramVal.srcSpec.rval.value)
+    (paramVal.origSpec.name, paramVal.srcSpec.rval.value)
   }
 
   // assign output paths

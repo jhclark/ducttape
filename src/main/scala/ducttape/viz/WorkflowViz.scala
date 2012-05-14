@@ -38,7 +38,7 @@ object WorkflowViz {
       val task: RealTask = taskT.realize(v)
       val child = getName(Some(task.taskDef), task.realization)
       task.inputVals.map { inputVal =>
-        getName(inputVal.srcTaskDef, inputVal.srcReal)
+        getName(inputVal.srcTask, inputVal.srcReal)
       }.toSet.foreach { parent: String =>
         if (parent != child)
           str ++= "\"%s\" -> \"%s\";\n".format(parent, child) // TODO: Quote?

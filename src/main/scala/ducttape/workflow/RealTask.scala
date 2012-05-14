@@ -23,8 +23,8 @@ class RealTask(val taskT: TaskTemplate,
 
   // the tasks and realizations that must temporally precede this task (due to having required input files)
    lazy val antecedents: Set[(String, Realization)] = inputVals.collect {
-     case inputVal if (inputVal.srcTaskDef.isDefined) => {
-       (inputVal.srcTaskDef.get.name, inputVal.srcReal)
+     case inputVal if (inputVal.srcTask.isDefined) => {
+       (inputVal.srcTask.get.name, inputVal.srcReal)
      }
    } toSet
 

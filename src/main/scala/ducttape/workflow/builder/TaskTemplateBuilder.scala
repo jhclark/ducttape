@@ -38,11 +38,11 @@ import ducttape.workflow.NoSuchBranchPointException
 import ducttape.workflow.RealizationPlan
 import ducttape.workflow.Task
 import ducttape.workflow.TaskTemplate
-import ducttape.workflow.ResolvableSpecType
 import ducttape.workflow.builder.WorkflowBuilder.BranchPointTree
 import ducttape.workflow.builder.WorkflowBuilder.BranchInfoTree
 import ducttape.workflow.builder.WorkflowBuilder.TerminalData
-import ducttape.util.BranchPrefixTreeMap
+import ducttape.workflow.SpecTypes.SpecPair
+import ducttape.workflow.SpecTypes.LiteralSpecPair
 import scala.collection.Seq
 import scala.collection.Set
 import scala.collection.Map
@@ -73,26 +73,28 @@ private[builder] class TaskTemplateBuilder(
       // TODO: XXX:
       // params have no effect on temporal ordering, but can affect derivation of branches
       // therefore, params are *always* rooted at phantom vertices, no matter what (hence, None)
-      val paramVals: Seq[ResolvableSpecType[LiteralSpec]] = taskDef.params.map { paramSpec: Spec =>
-      val mapping: Iterable[(Seq[Branch], (LiteralSpec, Option[TaskDef]) )]
-          = resolveBranchPoint(taskDef, paramSpec, taskMap)(
-              baselineTree, Seq(Task.NO_BRANCH), paramSpec)(resolveVarFunc=resolveParam)
-         new ResolvableSpecType(paramSpec, new BranchPrefixTreeMap(mapping))
+      for (paramSpec: Spec <- taskDef.params) {
+        resolveBranchPoint(taskDef, paramSpec, taskMap, isParam=true)(
+          baselineTree, Seq(Task.NO_BRANCH), paramSpec)(resolveVarFunc=resolveParam)
       }
 
-      val inputVals: Seq[ResolvableSpecType[Spec]] = taskDef.inputs.map { inSpec: Spec =>
-        val mapping: Iterable[(Seq[Branch], (Spec, Option[TaskDef]) )]
-          = resolveBranchPoint(taskDef, inSpec, taskMap)(
-              baselineTree, Seq(Task.NO_BRANCH), inSpec)(resolveVarFunc=resolveInput)
-        debug("Got input vals for %s: %s".format(inSpec, mapping))
-        val trie = new BranchPrefixTreeMap(mapping)
-        debug("Trie: " + trie)
-        new ResolvableSpecType(inSpec, trie)
+      for (inSpec: Spec <- taskDef.inputs) {
+        resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
+          baselineTree, Seq(Task.NO_BRANCH), inSpec)(resolveVarFunc=resolveInput)
       }
+      
+      val inputVals: Seq[SpecPair] = tree.specs.filter(_.isInput).map { spec =>
+        new SpecPair(spec.origSpec, spec.srcTask, spec.srcSpec, isParam=false)
+      }.toSeq
+      
+      val paramVals: Seq[LiteralSpecPair] = tree.specs.filter(_.isParam).map { spec =>
+        val literalSrcSpec = spec.srcSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed since isParam
+        new LiteralSpecPair(spec.origSpec, spec.srcTask, literalSrcSpec, isParam=true)
+      }.toSeq
 
       val taskT = new TaskTemplate(taskDef, inputVals, paramVals)
       (taskT, tree) // key, value for parents map
-    } toMap
+    }.toMap
     
     val taskTemplates: Seq[TaskTemplate] = parents.keys.toSeq
     new FoundTasks(taskTemplates, parents, branchPoints)
@@ -108,10 +110,9 @@ private[builder] class TaskTemplateBuilder(
   // then calls a helper function (resolveVarFunc) to handle the specific
   // sort of variable
   def resolveBranchPoint[SpecT <: Spec]
-    (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef])
+    (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef], isParam: Boolean)
     (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curSpec: Spec)
-    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, Option[TaskDef], Seq[Branch]) )
-    : Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
     debug("Recursively resolving potential branch point: %s".format(curSpec))
     
@@ -119,17 +120,16 @@ private[builder] class TaskTemplateBuilder(
     def handleBranchPoint(branchPointName: String,
                           branchSpecs: Seq[Spec],
                           isFromConfig: Boolean = false,
-                          isFromSeq: Boolean = false)
-                          : Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+                          isFromSeq: Boolean = false) {
       
       val branchPoint = branchPointFactory.get(branchPointName)
       val bpTree: BranchPointTree = prevTree.getOrAdd(branchPoint)
       
-      branchSpecs.flatMap { branchSpec: Spec => 
+      for (branchSpec: Spec <- branchSpecs) {
         val branch = branchFactory.get(branchSpec.name, branchPoint)
         val branchTree = bpTree.getOrAdd(branch)
         val newHistory = branchHistory ++ Seq(branch)
-        resolveBranchPoint(taskDef, origSpec, taskMap)(branchTree, newHistory, branchSpec)(resolveVarFunc)
+        resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(branchTree, newHistory, branchSpec)(resolveVarFunc)
       }
     }
 
@@ -141,8 +141,7 @@ private[builder] class TaskTemplateBuilder(
       // store specs at this branch nesting along with its grafts
       // this is used by the MetaHyperDAG to determine structure and temporal dependencies
       val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, grafts)
-      data.origSpecs += origSpec
-      data.resolvedSpecs += srcSpec
+      data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
       
       // yield tuples for runtime resolution of specs based on realization given to us by MetaHyperDAG walker
       Iterable( (branchHistory, (srcSpec, srcTaskDefOpt)) )
@@ -173,7 +172,7 @@ private[builder] class TaskTemplateBuilder(
       case ConfigVariable(varName) => {
         confSpecs.get(varName) match {
           case Some(confSpec) => {
-            resolveBranchPoint(taskDef, origSpec, taskMap)(prevTree, branchHistory, confSpec)(resolveVarFunc)
+            resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(prevTree, branchHistory, confSpec)(resolveVarFunc)
           }
           case None => throw new FileFormatException(
             "Config variable %s required by input %s at task %s not found in config file.".
