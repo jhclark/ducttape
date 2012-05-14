@@ -55,7 +55,7 @@ class TaskTemplate(val taskDef: TaskDef,
      
      val realization = new Realization(v.realization)
      
-     info("Realizing task template %s for realization %s".format(name, v.realization))
+     debug("Realizing task template %s for realization %s".format(name, v.realization))
 
      // TODO: do a bit of sanity checking, but now with prefix tree map
 //     for (branchPoint <- branchPoints) {
@@ -70,18 +70,18 @@ class TaskTemplate(val taskDef: TaskDef,
      // plain edges are associated with the *original* specs (e.g. branch points)
      // not with the final resolved specs!
      val spec2reals = new mutable.HashMap[Spec, Realization]
-     info("TaskTemplate %s: Have %d incoming active hyperedges".format(name, v.edges.size))
+     debug("TaskTemplate %s: Have %d incoming active hyperedges".format(name, v.edges.size))
      for ( (edgeBundleX, parentRealsByE: Seq[Seq[Branch]]) <- v.edges.zip(v.parentRealizations)) {
        val edgeBundle: Seq[Seq[Spec]] = edgeBundleX
        // TODO: Why would we ever have a null here?
        val edges = edgeBundle.zip(parentRealsByE).filter { case (e, eReals) => e != null }
-       info("TaskTemplate %s: Hyperedge %s has %d plain edges".format(name, edgeBundle, edges.size))
+       debug("TaskTemplate %s: Hyperedge %s has %d plain edges".format(name, edgeBundle, edges.size))
        for ( (specsX, srcRealX) <- edges) {
          val specs: Seq[Spec] = specsX
          val srcReal: Seq[Branch] = srcRealX
-         info("TaskTemplate %s: Edge has %d specs".format(name, specs.size))
+         debug("TaskTemplate %s: Edge has %d specs".format(name, specs.size))
          for (spec <- specs) {
-           info("TaskTemplate %s: Spec %s has source real: %s".format(name, spec, srcReal))
+           debug("TaskTemplate %s: Spec %s has source real: %s".format(name, spec, srcReal))
            spec2reals += spec -> new Realization(srcReal) // TODO: Pool realizations?
          }
        }
@@ -141,6 +141,12 @@ class TaskTemplate(val taskDef: TaskDef,
      // resolve the source spec/task for the selected branch
      def resolveVals[T <: Spec](values: Seq[ResolvableSpecType[T]]): Seq[ResolvedSpecType[T]] = {
        values.map { v => resolveVal(v.mySpec, v.mySpec, v.branchMap) }
+     }
+     
+     v.edges.zip(v.parentRealizations).map { case (hyperedgeElements, parentReals) =>
+       hyperedgeElements.zip(parentReals).map { case (e, parentReal) =>
+         val specsForParent: Seq[Spec] = e
+       }
      }
 
      val realInputVals: Seq[ResolvedSpec] = resolveVals(inputVals)

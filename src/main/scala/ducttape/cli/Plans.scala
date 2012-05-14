@@ -64,7 +64,7 @@ object Plans extends Logging {
             val seen = new mutable.HashSet[RealTask]
             while (fronteir.size > 0) {
               val task: RealTask = fronteir.dequeue
-              info("Tracing back from task " + task)
+              debug("Tracing back from task " + task)
               // add all parents (aka antecedents) to frontier
               if (!seen(task)) {
                 try {

@@ -54,12 +54,11 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   @tailrec
   private def followPhantomChain(v: UnpackedMetaVertex[Option[V],H,E,D], edge: E, parentReal: Seq[D])
                                 : (E, Seq[D]) = {
-    info("Follow phantom chain at " + v)
+    trace("Follow phantom chain at " + v)
     v.packed.value match {
       case Some(_) => (edge, parentReal)
       case None => {
-        //info("Phantoms: " + phantoms.keys)
-        //info("Zip: " + dag.delegate.parents(v.packed).zip(v.parentRealizations))
+        trace("Zip: " + dag.delegate.parents(v.packed).zip(v.parentRealizations))
 
         // use active hyperedges to find parents
         val parents: Seq[UnpackedMetaVertex[Option[V],H,E,D]]
@@ -72,7 +71,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
                 }
               }
             }
-        info("Parents of %s are: %s".format(v, parents))
+        trace("Parents of %s are: %s".format(v, parents))
         parents match {
           case Seq() => (edge, parentReal) // this is a root phantom vertex
           case Seq(singleUnpackedV) => {
@@ -101,7 +100,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
             map { case (hyperedge, parentReals, hyperEdge) =>
               val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) map {
                 case (parent, parentReal, edge) => {
-                  info("Begin backtracing phantom chain for " + parent)
+                  trace("Begin backtracing phantom chain for " + parent)
                   val unpackedV = unpackedMap( (parent, parentReal) )
                   val (finalEdge, finalParentReal) = followPhantomChain(unpackedV, edge, parentReal)
                   (finalEdge, finalParentReal)
@@ -121,12 +120,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
                "Parent size %d != parentReal.size %d".format(parentsSize, umv.parentRealizations.size))
         assert(parentsSize == mungedParentReals.size)
 
-        info("Yielding: " + umv.packed)
+        debug("Yielding: " + umv.packed)
         Some(new UnpackedChainedMetaVertex[V,H,E,D](umv.packed, mungedEdges, umv.realization, mungedParentReals, umv)) 
       }
       case None => {
         // phantom: save for later
-        info("Phantom skipping: " + umv)
+        debug("Phantom skipping: " + umv)
         delegate.complete(umv)
         unpackedMap += (umv.packed, umv.realization) -> umv
         recursiveTake()
@@ -135,7 +134,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   }
   
   override def complete(item: UnpackedChainedMetaVertex[V,H,E,D], continue: Boolean = true) = {
-    info("Completing " + item)
+    debug("Completing " + item)
     unpackedMap += (item.packed, item.realization.seq) -> item.dual
     delegate.complete(item.dual, continue)
   }

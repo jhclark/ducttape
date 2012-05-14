@@ -71,7 +71,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                        prevState: F,
                        callback: UnpackedVertex[V,H,E,D] => Unit) {
 
-      info("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
+      trace("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
       // hedgeFilter has already been applied
       if (i == filled.size) {
@@ -95,18 +95,18 @@ class UnpackedDagWalker[V,H,E,D,F](
           constraintFilter(v, prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
-              info(i + " hyperedge: " + he)
-              info(i + " pre-add combo=" + combo)
+              trace(i + " hyperedge: " + he)
+              trace(i + " pre-add combo=" + combo)
               combo ++= parentRealization
-              info(i + " post-add combo=" + combo)
+              trace(i + " post-add combo=" + combo)
               parentReals(i) = parentRealization
-              info(i + " pre-recurse parentRealization=" + parentRealization.toList)
-              info(i + " pre-recurse parentReals=" + parentReals.toList)
+              trace(i + " pre-recurse parentRealization=" + parentRealization.toList)
+              trace(i + " pre-recurse parentReals=" + parentReals.toList)
               unpack(i+1, iFixed, combo, parentReals, nextState, callback)
-              info(i + " post-recurse parentRealization=" + parentRealization.toList)
-              info(i + " pre-remove combo=" + combo)
+              trace(i + " post-recurse parentRealization=" + parentRealization.toList)
+              trace(i + " pre-remove combo=" + combo)
               combo --= parentRealization
-              info(i + " post-remove combo=" + combo)
+              trace(i + " post-remove combo=" + combo)
             }
           }
         }     
@@ -147,7 +147,7 @@ class UnpackedDagWalker[V,H,E,D,F](
     agenda.add(unpackedRoot)
     activeRoots += root -> actRoot
   }
-  info("Seeded unpacked HyperDAG walker with roots: %s".format(agenda))
+  debug("Seeded unpacked HyperDAG walker with roots: %s".format(agenda))
 
   val waitingToTakeLock: AnyRef = new Object
   val agendaTakenLock: AnyRef = new Object
@@ -202,11 +202,11 @@ class UnpackedDagWalker[V,H,E,D,F](
     var result = getNext()
     // some extra machinery to handle vertex-level filtering
     while (result != None && !vertexFilter(result.get)) {
-      info("U Vertex filter does not contain: " + result.get)
+      debug("U Vertex filter does not contain: " + result.get)
       complete(result.get, continue=false)
       result = getNext()
     }
-    info("Yielding: %s".format(result))
+    debug("Yielding: %s".format(result))
     result
   }
 
@@ -215,7 +215,7 @@ class UnpackedDagWalker[V,H,E,D,F](
             "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
     val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
 
-    info("Completing: %s".format(item))
+    debug("Completing: %s".format(item))
     
     // we always lock agenda & completed & taken jointly
     // we must hold on to our lock until all possible consequents
@@ -259,7 +259,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                   agenda.add(unpackedV)
                   // TODO: We could sort the agenda here to impose different objectives...
                 })
-              info("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
+              trace("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
               activeCon.filled(iEdge) += item.realization
             }
           }

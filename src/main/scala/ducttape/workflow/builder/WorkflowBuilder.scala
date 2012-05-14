@@ -184,7 +184,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     
     // the branch point associated with the meta edge being created
     val branchPoint = curNode.branchPoint
-    info("Task=%s %s: BranchPointTree is %s".format(task, debugNesting, curNode))
+    debug("Task=%s %s: BranchPointTree is %s".format(task, debugNesting, curNode))
     
     // we create a phantom vertex when:
     // 1) we need an imaginary home for config specs
@@ -233,18 +233,18 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       // don't include hyperedges with zero source vertices
       case (branchInfo, edges) => edges.size > 0
     }
-    info("Task=%s %s: Accumulated hyperedges: %s".format(task, debugNesting, hyperedges))
+    debug("Task=%s %s: Accumulated hyperedges: %s".format(task, debugNesting, hyperedges))
     
     if (!hyperedges.isEmpty) {
       // NOTE: The meta edges are not necessarily phantom, but just have that option
-      info("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
+      debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
             format(task, debugNesting, branchPoint, hyperedges))
             
       // TODO: Figure out how to track previous vertex and current vertex
       // eventually terminates at v --- but is phantom before that
       dag.addMetaEdge(branchPoint, hyperedges, sinkV)
     } else {
-      info("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
+      debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
             format(task, debugNesting, branchPoint))
     }
   }
@@ -279,7 +279,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // now build a graph representation by adding converting to (meta/hyper) edges
     for (v: PackedVertex[Option[TaskTemplate]] <- vertices.values) {
       val taskT: TaskTemplate = v.value.get
-      info("Adding %s to HyperDAG".format(taskT))
+      debug("Adding %s to HyperDAG".format(taskT))
       val nestedBranchInfo: BranchPointTree = foundTasks.parents(taskT)
       val specPhantomV: PackedVertex[Option[TaskTemplate]]
         = dag.addPhantomVertex(comment="Phantom:%s.literals".format(taskT.name))
@@ -298,7 +298,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // of time, prior to scheduling (but keep relationship info around)
     // (i.e. parameter dependencies should not imply temporal dependencies)
     val x = new HyperWorkflow(dag.build(), packageDefs, plans, submitters, versioners, branchPointFactory, branchFactory)
-    info("Workflow has %d vertices".format(x.dag.size))
+    debug("Workflow has %d vertices".format(x.dag.size))
     x
   }
 }

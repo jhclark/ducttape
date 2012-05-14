@@ -52,7 +52,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   private val epsilons = new mutable.HashMap[(PackedVertex[V],Seq[D]), UnpackedVertex[V,H,E,D]]
 
   override def complete(item: UnpackedMetaVertex[V,H,E,D], continue: Boolean = true) = {
-    info("Completing: " + item)
+    debug("Completing: " + item)
     delegate.complete(item.dual, continue)
   }
   
@@ -63,7 +63,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     @tailrec def skipEpsilonChain(): Option[UnpackedVertex[V,H,E,D]] = delegate.take() match {
       case None => None
       case Some(uv) if (dag.shouldSkip(uv.packed)) => {
-        info("Skipping: " + uv)
+        debug("Skipping: " + uv)
         delegate.complete(uv)
         if (dag.isEpsilon(uv.packed)) {
           // TODO: We'd really prefer not to store these...
@@ -96,11 +96,11 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     @tailrec def recursiveTake(): Option[UnpackedMetaVertex[V,H,E,D]] = getNext() match {
       case None => None
       case result @ Some(candidate) if (vertexFilter(candidate)) => {
-        info("Yielding: " + candidate)
+        debug("Yielding: " + candidate)
         result
       }
       case Some(candidate) => {
-        info("META Vertex filter does not contain: " + candidate)
+        debug("META Vertex filter does not contain: " + candidate)
         complete(candidate, continue=false)
         recursiveTake() 
       }

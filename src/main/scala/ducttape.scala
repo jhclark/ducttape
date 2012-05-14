@@ -69,7 +69,7 @@ object Ducttape extends Logging {
     err.println(conf.resetColor)
 
     // make these messages optional with verbosity levels?
-    info("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
+    debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
     val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
     val confSpecs: Seq[ConfigAssignment] = ex2err(opts.config_file.value match {
       case Some(confFile) => {

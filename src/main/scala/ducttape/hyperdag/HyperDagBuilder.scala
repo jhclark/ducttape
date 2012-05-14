@@ -17,7 +17,7 @@ class HyperDagBuilder[V,H,E] extends Logging {
   def addVertex(v: V, comment: Option[String] = None): PackedVertex[V] = {
     val pv = new PackedVertex[V](vertexId, v, comment)
     vertexId += 1
-    info("Add vertex: " + pv)
+    debug("Add vertex: " + pv)
     vertices += pv
     pv
   }
@@ -38,7 +38,7 @@ class HyperDagBuilder[V,H,E] extends Logging {
       outEdges.getOrElseUpdate(src, new mutable.ListBuffer) += he
     }
     inEdges.getOrElseUpdate(sink, new mutable.ListBuffer) += he
-    info("addHyperEdge: %s ===> %s".format(sources, sink))
+    debug("addHyperEdge: %s ===> %s".format(sources, sink))
     edges += he -> (sources, sink)
     he
   }
@@ -48,9 +48,9 @@ class HyperDagBuilder[V,H,E] extends Logging {
       case None => 0
       case Some(hyperedges) => hyperedges.size
     }
-    info(vertices)
-    info(vertices.toSeq.map{ v => (v, inDegree(v)) })
-    info(inEdges)
+    debug(vertices)
+    debug(vertices.toSeq.map{ v => (v, inDegree(v)) })
+    debug(inEdges)
     val roots = for (v <- vertices if inDegree(v) == 0) yield v
     assert(roots.size > 0 || vertices.size == 0, "No roots found for non-empty HyperDAG")
     new HyperDag[V,H,E](roots.toSeq, vertices.toSeq, inEdges.toMap, outEdges.toMap, edges.toMap)

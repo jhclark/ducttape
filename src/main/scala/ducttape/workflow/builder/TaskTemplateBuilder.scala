@@ -84,9 +84,9 @@ private[builder] class TaskTemplateBuilder(
         val mapping: Iterable[(Seq[Branch], (Spec, Option[TaskDef]) )]
           = resolveBranchPoint(taskDef, inSpec, taskMap)(
               baselineTree, Seq(Task.NO_BRANCH), inSpec)(resolveVarFunc=resolveInput)
-        info("Got input vals for %s: %s".format(inSpec, mapping))
+        debug("Got input vals for %s: %s".format(inSpec, mapping))
         val trie = new BranchPrefixTreeMap(mapping)
-        info("Trie: " + trie)
+        debug("Trie: " + trie)
         new ResolvableSpecType(inSpec, trie)
       }
 

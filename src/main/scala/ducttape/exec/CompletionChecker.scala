@@ -83,7 +83,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
 
   
   override def visit(task: RealTask) {
-    info("Checking " + task)
+    debug("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
 
     if (CompletionChecker.isComplete(taskEnv)) {

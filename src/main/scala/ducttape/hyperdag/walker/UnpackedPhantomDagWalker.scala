@@ -50,7 +50,7 @@ class UnpackedPhantomDagWalker[V,H,E,D,F](
     case Some(v) if (isPhantom(v)) => {
       // TODO: Here, we must do some mapping of edges when we skip
       delegate.complete(v)
-      info("Phantom skipping: " + v)
+      debug("Phantom skipping: " + v)
       this.take()
     }
     case Some(v) => {

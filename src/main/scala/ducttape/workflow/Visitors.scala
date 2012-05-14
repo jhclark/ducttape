@@ -12,11 +12,11 @@ object Visitors extends Logging {
       plannedVertices: Set[(String,Realization)],
       numCores: Int = 1): A = {
     
-    info("Visiting workflow")
+    debug("Visiting workflow")
     workflow.unpackedWalker(plannedVertices=plannedVertices).foreach(numCores, { v: UnpackedWorkVert =>
       val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
-      info("Visiting %s".format(task))
+      debug("Visiting %s".format(task))
       visitor.visit(task)
     })
     visitor

@@ -113,7 +113,7 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
               } else {
                 v.value.get
               }
-              info("Plan excludes: " + myReal.mkString(" ") + " at " + taskT)
+              debug("Plan excludes: " + myReal.mkString(" ") + " at " + taskT)
             }
             ok
           }
@@ -122,7 +122,7 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
         if (parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
-          info("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
+          debug("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
           // left operand determines return type (an efficient immutable.HashMap)
           val result: UnpackState = seen ++ parentReal.map{b: Branch => (b.branchPoint, b)}
           Some(result)

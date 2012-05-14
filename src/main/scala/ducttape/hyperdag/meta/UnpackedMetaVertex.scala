@@ -17,7 +17,10 @@ import ducttape.hyperdag.UnpackedVertex
  * Like UnpackedVertex, this interface explicitly avoids giving unpacked vertices as
  * parents so that we can eventually discard more of the explored space
  * the prevState can store information such as "what realizations does my parent have?"
- * NOTE: It's actually the incoming edges that are meta -- not the vertex itself */
+ * NOTE: It's actually the incoming edges that are meta -- not the vertex itself
+ * 
+ * parentRealizations is parallel with the edges -- the second layer of sequences is parallel
+ *   with the plain edges inside each hyperedge. The final sequence represents a realization. */
 class UnpackedMetaVertex[V,H,E,D](val packed: PackedVertex[V],
                                   val edges: Seq[HyperEdge[H,E]],
                                   val realization: Seq[D],
