@@ -3,13 +3,14 @@ package ducttape.exec
 import ducttape.workflow.RealTask
 import ducttape.workflow.Realization
 import java.io.File
+import grizzled.slf4j.Logging
 
 /**
  * Unlike the FullTaskEnvironment, does not require knowledge of packageVersions,
  * but does not provide full list of environment variables
  */
 class TaskEnvironment(val dirs: DirectoryArchitect,
-                      val task: RealTask) {
+                      val task: RealTask) extends Logging {
   
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
@@ -27,21 +28,23 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   val inputs: Seq[(String, String)] = for (inputVal <- task.inputVals) yield {
     val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
                                 inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal)
-    //System.err.println("For inSpec %s with srcSpec %s and srcReal %s, got path: %s".format(inputVal.mySpec,inputVal.srcSpec,inputVal.srcReal,inFile))
+    debug("For inSpec %s with srcSpec %s and srcReal %s, got path: %s".format(
+            inputVal.origSpec, inputVal.srcSpec, inputVal.srcReal, inFile))
     (inputVal.origSpec.name, inFile.getAbsolutePath)
   }
     
   // set param values (no need to know source active branches since we already resolved the literal)
   // TODO: Can we get rid of srcRealization or are we resolving parameters incorrectly sometimes?
   val params: Seq[(String,String)] = for (paramVal <- task.paramVals) yield {
-    //err.println("For paramSpec %s with srcSpec %s, got value: %s".format(paramSpec,srcSpec,srcSpec.rval.value))
+    debug("For paramSpec %s with srcSpec %s, got value: %s".format(
+             paramVal.origSpec, paramVal.srcSpec, paramVal.srcSpec.rval.value))
     (paramVal.origSpec.name, paramVal.srcSpec.rval.value)
   }
 
   // assign output paths
   val outputs: Seq[(String, String)] = for (outSpec <- task.outputs) yield {
     val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization)
-    //err.println("For outSpec %s got path: %s".format(outSpec, outFile))
+    debug("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
   
