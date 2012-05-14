@@ -75,7 +75,7 @@ Emacs Mode
 To get syntax highlighting in emacs, add a line similar to the following in your ~/.emacs file:
 
 ```
-(load "$PATH_TO_DUCTTAPE_HERE/tool-support/emacs/emacs_mode.el")
+(load "$PATH_TO_DUCTTAPE_HERE/tool-support/emacs/ducttape.el")
 ```
 
 Vim Mode
@@ -85,11 +85,13 @@ To get syntax highlighting in vim, copy (or symlink) the ducttape's vim syntax h
 
 ```
 $ mkdir -p ~/.vim/syntax
-$ cp vim_syntax.vim ~/.vim/syntax/ducctape.vim
+$ cp $PATH_TO_DUCTTAPE_HERE/tool-support/vim/ducttape.vim ~/.vim/syntax/ducctape.vim
 ```
 
 Then add a line to your ~/.vimrc to create an association with .tape files:
 
 ```
+syntax on
+filetype on
 au BufRead,BufNewFile *.tape set filetype=ducttape
 ```
