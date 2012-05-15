@@ -6,10 +6,11 @@ import ducttape.hyperdag.HyperDag
 import ducttape.viz.GraphViz
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import grizzled.slf4j.Logging
 
 @RunWith(classOf[JUnitRunner])
-class PackedDagWalkerTest extends FlatSpec {
-
+class PackedDagWalkerTest extends FlatSpec with Logging {
+  
   "A Packed DAG Walker" should "traverse a linear chain graph with an iterator" in {
 
     val builder = new HyperDagBuilder[String,String,String]
@@ -21,7 +22,7 @@ class PackedDagWalkerTest extends FlatSpec {
     val e2 = builder.addHyperEdge("HyperEdge 2", List((b,"")), c)
 
     val dag: HyperDag[String,String,String] = builder.build
-    println(dag.toGraphViz)
+    info(dag.toGraphViz)
     val vertices = for(v <- dag.packedWalker.iterator.toList) yield v.value
     assert(vertices(0) == "Vertex A")
     assert(vertices(1) == "Vertex B")
