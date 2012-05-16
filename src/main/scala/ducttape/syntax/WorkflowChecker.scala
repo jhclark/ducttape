@@ -16,11 +16,26 @@ class WorkflowChecker {
     val warnings = new mutable.ArrayBuffer[String]
     val errors = new mutable.ArrayBuffer[String]
     
-    for (task <- workflow.tasks) {
+    // check all task-like things declared with the task keyword
+    for (task <- workflow.tasks ++ workflow.packages) {
+      
+      val vars = new mutable.HashMap[String, Spec]
+      for (spec: Spec <- task.allSpecs) {
+        vars.get(spec.name) match {
+          case Some(prev) => {
+            errors += "Task variable %s originally defined at %s:%d redefined at %s:%d".
+                  format(prev.name, prev.declaringFile, prev.pos.line, spec.declaringFile, spec.pos.line)
+          }
+          case None => ;
+        }
+        vars += spec.name -> spec
+      }
+      
+      // don't allow branch points on outputs
       for (out <- task.outputs) {
         out.rval match {
           case _: BranchPointDef => {
-            errors += "Outputs may not define branch points at %s:%s".
+            errors += "Outputs may not define branch points at %s:%d".
               format(out.rval.declaringFile, out.rval.pos.line)
           }
           case _ => ;
@@ -28,12 +43,16 @@ class WorkflowChecker {
       }
     }
     
-    val globals = new mutable.HashSet[String]
+    val globals = new mutable.HashMap[String, Spec]
     for (a <- confSpecs) {
-      if (globals.contains(a.spec.name)) {
-        
+      globals.get(a.spec.name) match {
+        case Some(prev) => {
+          errors += "Global variable originally defined at %s:%d redefined at %s:%d".
+                format(prev.declaringFile, prev.pos.line, a.spec.declaringFile, a.spec.pos.line)
+        }
+        case None => ;
       }
-      globals += a.spec.name
+      globals += a.spec.name -> a.spec
     }
     
     (warnings, errors)

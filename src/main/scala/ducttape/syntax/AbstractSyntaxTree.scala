@@ -221,11 +221,11 @@ object AbstractSyntaxTree {
     lazy val inputs: Seq[Spec] = inputSpecList.flatMap{_.specs}
     lazy val outputs: Seq[Spec] = outputSpecList.flatMap{_.specs}
     lazy val params: Seq[Spec] = paramSpecList.flatMap{_.specs}
+    lazy val allSpecs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
     
     override lazy val endPos: Position = {
-      val specs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
       // TODO: Define ordering on positional so that we can find last column, too
-      val lastSpec: Spec = specs.maxBy[Int]{spec: Spec => spec.pos.line}
+      val lastSpec: Spec = allSpecs.maxBy[Int]{spec: Spec => spec.pos.line}
       lastSpec.pos
     }
     
