@@ -610,7 +610,10 @@ object Grammar {
         case _: ShorthandTaskVariable => throw new RuntimeException("A shorthand task variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
         case _: ShorthandConfigVariable => throw new RuntimeException("A shorthand global or config variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
         case _: ShorthandBranchGraft => throw new RuntimeException("A shorthand branch graft is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
-        case rhs: RValue      => new Spec(null,rhs,false)
+        
+        // anonymous branch: we allow literals, but nothing else
+        case rhs: Literal      => new Spec(rhs.value,rhs,false)
+        case rhs: RValue      => throw new RuntimeException("Only literals are allowed as anonymous branch points. Please prefix with 'var=...'")
       }
   )
 

@@ -126,6 +126,7 @@ private[builder] class TaskTemplateBuilder(
       val bpTree: BranchPointTree = prevTree.getOrAdd(branchPoint)
       
       for (branchSpec: Spec <- branchSpecs) {
+        debug("branchSpec = " + branchSpec)
         val branch = branchFactory.get(branchSpec.name, branchPoint)
         val branchTree = bpTree.getOrAdd(branch)
         val newHistory = branchHistory ++ Seq(branch)
