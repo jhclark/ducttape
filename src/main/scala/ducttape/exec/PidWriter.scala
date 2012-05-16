@@ -12,14 +12,18 @@ import ducttape.versioner.WorkflowVersionInfo
 
 class PidWriter(dirs: DirectoryArchitect,
                 version: WorkflowVersionInfo,
-                todo: Set[(String,Realization)]) extends UnpackedDagVisitor {
+                todo: Set[(String,Realization)],
+                remove: Boolean = false) extends UnpackedDagVisitor {
 
   override def visit(task: RealTask) {
     if (todo( (task.name, task.realization) )) {
       val taskEnv = new TaskEnvironment(dirs, task)
-      Files.write("%s:%d".format(version.hostname, version.pid), taskEnv.lockFile)
-      
-      Files.write(version.version.toString, taskEnv.versionFile)
+      if (!remove) {
+        Files.write("%s:%d".format(version.hostname, version.pid), taskEnv.lockFile)
+        Files.write(version.version.toString, taskEnv.versionFile)
+      } else {
+        taskEnv.lockFile.delete()
+      }
     }
   }
 }

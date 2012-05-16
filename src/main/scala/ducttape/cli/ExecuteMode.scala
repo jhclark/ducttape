@@ -95,7 +95,6 @@ object ExecuteMode {
           // Make a pass after moving partial output to write output files
           // claiming those directories as ours so that we can later start another ducttape process
           Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo), plannedVertices)
-  
           System.err.println("Executing tasks...")
           try {
             Visitors.visitAll(workflow,
@@ -106,6 +105,9 @@ object ExecuteMode {
               System.err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
               System.exit(1)
             }
+          } finally {
+            // release all of our locks, even if we go down in flames
+            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, remove=true), plannedVertices)
           }
         }
         case _ => System.err.println("Doing nothing")
