@@ -8,6 +8,9 @@
 		<pathelement location="${lib}/scalatest-1.6.1.jar"/>
 		<pathelement location="${lib}/scala-library.jar"/>
 		<pathelement location="${lib}/commons-lang3-3.1.jar"/>
+		<pathelement location="${lib}/grizzled-slf4j_2.9.1-1-0.6.8.jar"/>
+		<pathelement location="${lib}/slf4j-api-1.6.4.jar"/>
+		<pathelement location="${lib}/slf4j-jdk14-1.6.4.jar"/>
 		<pathelement location="${bin}"/>
 	</path>
 
