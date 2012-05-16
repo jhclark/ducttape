@@ -270,10 +270,17 @@ private[builder] class TaskTemplateBuilder(
         specSet.find(outSpec => outSpec.name == srcOutName) match {
           case Some(srcSpec) => resolveNonBranchVar(mode)(origTaskDef, taskMap, spec)(srcSpec, Some(srcDef), grafts)
           case None => {
-            throw new FileFormatException(
-              "Output %s at source task %s for required by input %s at task %s not found. Candidate outputs are: %s".
+            // give a very specific error if it was defined in the task but just not the correct output/param set
+            srcDef.allSpecs.find(outSpec => outSpec.name == srcOutName) match {
+              case Some(_) => throw new FileFormatException(
+              "Output %s at source task %s for required by input %s at task %s not found. It was declared at the source task, but has the wrong type. Candidates are: %s".
                 format(srcOutName, srcTaskName, spec.name, origTaskDef.name, specSet.map(_.name).mkString(" ")),
               List(spec, srcDef))
+              case None => throw new FileFormatException(
+              "Output %s at source task %s for required by input %s at task %s not found. Candidates are: %s".
+                format(srcOutName, srcTaskName, spec.name, origTaskDef.name, specSet.map(_.name).mkString(" ")),
+              List(spec, srcDef))
+            }
           }
         }
       }
