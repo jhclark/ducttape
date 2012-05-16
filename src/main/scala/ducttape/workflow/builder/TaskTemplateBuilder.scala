@@ -230,7 +230,7 @@ private[builder] class TaskTemplateBuilder(
         }
         (srcSpec, srcTask, resultGrafts)
       }
-      case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now")
+      case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now: " + curSpec.rval)
       case SequentialBranchPoint(_,_) => {
         throw new RuntimeException("Expected branches to be resolved by now")
       }

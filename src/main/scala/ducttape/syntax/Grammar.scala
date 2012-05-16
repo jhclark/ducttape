@@ -602,8 +602,6 @@ object Grammar {
 
 //  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
-
-  
   val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
         case assignment: AbstractSpec[_] => assignment

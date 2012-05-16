@@ -46,6 +46,7 @@ import ducttape.workflow.Visitors
 import ducttape.cli.ExecuteMode
 import ducttape.util.LogUtils
 import grizzled.slf4j.Logging
+import ducttape.syntax.WorkflowChecker
 
 object Ducttape extends Logging {
   
@@ -122,8 +123,14 @@ object Ducttape extends Logging {
     
     val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
     
-    val checker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
-    val (warnings, errors) = checker.check(wd)
+    val (warnings, errors) = {
+      val bashChecker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
+      val (warnings1, errors1) = bashChecker.check(wd)
+      
+      val workflowChecker = new WorkflowChecker
+      val (warnings2, errors2) = workflowChecker.check(wd, confSpecs)
+      (warnings1 ++ warnings2, errors1 ++ errors2)
+    }
     for (msg <- warnings) {
        err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
     }
