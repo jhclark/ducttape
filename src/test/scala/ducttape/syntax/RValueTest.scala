@@ -97,8 +97,7 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     
     // Anonymous branch point with bare rvalues
     "(foo)",
-    "(1 2)",
-    "((1..10) 7 42 (100..1000..100))"
+    "(1 2)"
   ) 
   
   def failureCases = Set(
@@ -123,7 +122,11 @@ class RValueTest extends AbstractTest("rvalue",Grammar.rvalue) {
     "\"\"\"This is a badly quoted string\"\"",
     "\"\"\"This is a badly quoted string'",
     "\"\"\"This is a badly quoted string''",
-    "\"\"\"This is a badly quoted string'''"    
+    "\"\"\"This is a badly quoted string'''"
   )
   
+  override def exceptionCases = Set(
+    // there's no good way of determining a name for these internal anonymous branches
+    "((1..10) 7 42 (100..1000..100))"    
+  )
 }
