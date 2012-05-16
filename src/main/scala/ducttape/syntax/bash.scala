@@ -132,6 +132,10 @@ object BashGrammar {
   def escapedChar: Parser[BashCode] = (literal("\\") ~ regex(".".r)) ^^ {
     case escaper ~ escaped => new BashCode(escaper + escaped)
   }
+  
+  def escapedNewline: Parser[BashCode] = literal("\\\n") ^^ {
+    case _ => new BashCode("\\\n")
+  }
 
   def stringLiteral: Parser[BashCode] = singleQuoteStringLiteral | doubleQuoteStringLiteral
 
@@ -221,7 +225,7 @@ object BashGrammar {
     case list => new BashCode(list.map(_.toString).mkString(""), list.flatMap(_.vars).toSet)
   }
 
-  def nonBlobElement: Parser[BashCode] = escapedChar | variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
+  def nonBlobElement: Parser[BashCode] = escapedChar | escapedNewline | variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
 
 // Done: Strings
 // Done: Comments
