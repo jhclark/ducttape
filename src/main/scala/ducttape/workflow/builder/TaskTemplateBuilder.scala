@@ -75,12 +75,12 @@ private[builder] class TaskTemplateBuilder(
       // therefore, params are *always* rooted at phantom vertices, no matter what (hence, None)
       for (paramSpec: Spec <- taskDef.params) {
         resolveBranchPoint(taskDef, paramSpec, taskMap, isParam=true)(
-          baselineTree, Seq(Task.NO_BRANCH), paramSpec, Nil)(resolveVarFunc=resolveParam)
+          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), paramSpec, Nil)(resolveVarFunc=resolveParam)
       }
 
       for (inSpec: Spec <- taskDef.inputs) {
         resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
-          baselineTree, Seq(Task.NO_BRANCH), inSpec, Nil)(resolveVarFunc=resolveInput)
+          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), inSpec, Nil)(resolveVarFunc=resolveInput)
       }
       
       val inputVals: Seq[SpecPair] = tree.specs.filter(_.isInput).map { spec =>
@@ -111,8 +111,9 @@ private[builder] class TaskTemplateBuilder(
   // sort of variable
   def resolveBranchPoint[SpecT <: Spec]
     (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef], isParam: Boolean)
-    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curSpec: Spec, prevGrafts: Seq[Branch])
-    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
+    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curTask: Option[TaskDef],
+     curSpec: Spec, prevGrafts: Seq[Branch])
+    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
     debug("Recursively resolving potential branch point: %s".format(curSpec))
     
@@ -131,14 +132,14 @@ private[builder] class TaskTemplateBuilder(
         val branchTree = bpTree.getOrAdd(branch)
         val newHistory = branchHistory ++ Seq(branch)
         resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-          branchTree, newHistory, branchSpec, prevGrafts)(resolveVarFunc)
+          branchTree, newHistory, curTask, branchSpec, prevGrafts)(resolveVarFunc)
       }
     }
 
     // create a leaf node in the branch tree
     def handleNonBranchPoint() {
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
-      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec)
+      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
       val allGrafts = myGrafts ++ prevGrafts
       debug("New grafts for %s: %s".format(origSpec, myGrafts))
       
@@ -146,7 +147,7 @@ private[builder] class TaskTemplateBuilder(
       // if it traced back to a parent's parameter, which is itself a branch point
       // if that's the case, we should continue recursing. otherwise, just add.
       srcSpec.rval match {
-        case _: Literal => {
+        case Literal(_) | Unbound() => {
           // store specs at this branch nesting along with its grafts
           // this is used by the MetaHyperDAG to determine structure and temporal dependencies
           val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, allGrafts)
@@ -156,8 +157,9 @@ private[builder] class TaskTemplateBuilder(
         }
         case _ => {
           // not a literal -- keep tracing through branch points
+          // note that we now recurse with a different curTask
           resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-            prevTree, branchHistory, srcSpec, allGrafts)(resolveVarFunc)
+            prevTree, branchHistory, srcTaskDefOpt, srcSpec, allGrafts)(resolveVarFunc)
         }
       }
     }
@@ -188,7 +190,7 @@ private[builder] class TaskTemplateBuilder(
         confSpecs.get(varName) match {
           case Some(confSpec) => {
             resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-              prevTree, branchHistory, confSpec, prevGrafts)(resolveVarFunc)
+              prevTree, branchHistory, curTask, confSpec, prevGrafts)(resolveVarFunc)
           }
           case None => throw new FileFormatException(
             "Config variable %s required by input %s at task %s not found in config file.".
@@ -201,13 +203,12 @@ private[builder] class TaskTemplateBuilder(
   }
 
   // the resolved Spec is guaranteed to be a literal for params
-  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec) = {
-    resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)()
-    //.asInstanceOf[(LiteralSpec,Option[TaskDef],Seq[Branch])] // could be branch point
+  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
+    resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)(src=curTask)
   }
    
-  private def resolveInput(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec) = {
-    resolveNonBranchVar(InputMode())(taskDef, taskMap, spec)()
+  private def resolveInput(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
+    resolveNonBranchVar(InputMode())(taskDef, taskMap, spec)(src=curTask)
   }
   
   // TODO: document what's going on here -- maybe move elsewhere
@@ -255,10 +256,11 @@ private[builder] class TaskTemplateBuilder(
         mode match {
           case InputMode() => {
             // make sure we didn't just refer to ourselves -- 
-            // referring to an unbound output is fine though (and usual)
+            // referring to an unbound output of a parent task is fine though (and usual)
             if (src != Some(origTaskDef) || spec != curSpec) {
               (curSpec, src, grafts)
             } else {
+              debug("Original task was %s and src is %s".format(origTaskDef, src))
               throw new FileFormatException("Unbound input variable: %s".format(curSpec.name),
                                             List(origTaskDef, curSpec))
             }
