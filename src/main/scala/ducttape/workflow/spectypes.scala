@@ -10,7 +10,10 @@ class SpecPairType[SpecT <: Spec](
     val srcSpec: SpecT,
     val isParam: Boolean) {
   def isInput = !isParam
-  override def toString() = "%s => %s (param=%s)".format(origSpec, srcSpec, isParam.toString) 
+  override def toString() = {
+    val t = srcTask.getOrElse("")
+    "%s => %s@%s".format(origSpec, srcSpec, t) 
+  }
 }
                                         
 // TaskTemplate is responsible for turning a Resolvable into a Resolved
