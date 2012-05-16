@@ -79,7 +79,7 @@ object WorkflowBuilder {
   /** alternates with BranchPointTree
    * branch will be baseline for the root vertex */
   private[builder] class BranchInfoTree(val branch: Branch) {
-    var terminalGrafts: Seq[Branch] = Seq() // no grafts by default
+
     
     // if populated at the root, indicates no branch points
     // specs, organized by which task they originate from
@@ -114,7 +114,7 @@ object WorkflowBuilder {
       }
     }
     
-    override def toString() = "(B=" + branch + "[" + terminalGrafts.mkString(",") + "] :: terminalData=" + terminalData.mkString(":") + " :: " + children.mkString + ")"
+    override def toString() = "(B=" + branch + " :: terminalData=" + terminalData.mkString(":") + " :: " + children.mkString + ")"
   }
   
   private[builder] class TerminalData(
@@ -216,9 +216,6 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
           // branches with no further branch points nested under them
           // get normal edges attached to them, which lead back to previous
           // tasks
-          // NOTE: We attach the *original* specs to the plain edges in the HyperDAG
-          // not the resolved specs. It is the BranchPrefixTreeMap's job to resolve these
-          // in TaskTemplate.realize()
           val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]],Seq[SpecPair])]
             = branchChild.terminalData.
               filter { case data => data.grafts == curGrafts }.
@@ -230,7 +227,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
                   case None => (specPhantomV, data.specs)
                 }
               }
-          val branchInfo = new BranchInfo(branchChild.branch, branchChild.terminalGrafts)
+          val branchInfo = new BranchInfo(branchChild.branch, curGrafts)
+          debug("Using grafts: " + curGrafts + " found nested edges: " + nestedBranchEdges + " and terminal edges: " + terminalEdges)
           (branchInfo, nestedBranchEdges ++ terminalEdges)
         }
     } filter {
@@ -240,12 +238,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     debug("Task=%s %s: Accumulated hyperedges: %s".format(task, debugNesting, hyperedges))
     
     if (!hyperedges.isEmpty) {
-      // NOTE: The meta edges are not necessarily phantom, but just have that option
       debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
             format(task, debugNesting, branchPoint, hyperedges))
-            
-      // TODO: Figure out how to track previous vertex and current vertex
-      // eventually terminates at v --- but is phantom before that
       dag.addMetaEdge(branchPoint, hyperedges, sinkV)
     } else {
       debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
@@ -260,16 +254,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // resolver has no knowledge of DAGs nor the dag builder
     val resolver = new TaskTemplateBuilder(wd, confSpecs, branchPointFactory, branchFactory)
     
-    // first, find *temporal* dependencies among tasks and store them as an edge map
+    // first, find temporal and structural dependencies among tasks and store them as an edge map
     // also, pre-resolve any non-temporal dependencies such as parameters
-    // e.g. parameters that introduce branch points will not become edges in the MetaHyperDAG
-    // in general, the MetaHyperDAG
     val foundTasks: FoundTasks = resolver.findTasks()
 
     // == we've just completed our first pass over the workflow file and linked everything together ==
 
     val vertices = new mutable.HashMap[String,PackedVertex[Option[TaskTemplate]]]
-    // TODO: Check for all inputs/outputs/param names being unique in this step
     for(tt <- foundTasks.taskTemplates) {
       if (vertices.contains(tt.name)) {
         val prev: TaskTemplate = vertices(tt.name).value.get

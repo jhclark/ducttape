@@ -75,12 +75,12 @@ private[builder] class TaskTemplateBuilder(
       // therefore, params are *always* rooted at phantom vertices, no matter what (hence, None)
       for (paramSpec: Spec <- taskDef.params) {
         resolveBranchPoint(taskDef, paramSpec, taskMap, isParam=true)(
-          baselineTree, Seq(Task.NO_BRANCH), paramSpec)(resolveVarFunc=resolveParam)
+          baselineTree, Seq(Task.NO_BRANCH), paramSpec, Nil)(resolveVarFunc=resolveParam)
       }
 
       for (inSpec: Spec <- taskDef.inputs) {
         resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
-          baselineTree, Seq(Task.NO_BRANCH), inSpec)(resolveVarFunc=resolveInput)
+          baselineTree, Seq(Task.NO_BRANCH), inSpec, Nil)(resolveVarFunc=resolveInput)
       }
       
       val inputVals: Seq[SpecPair] = tree.specs.filter(_.isInput).map { spec =>
@@ -111,7 +111,7 @@ private[builder] class TaskTemplateBuilder(
   // sort of variable
   def resolveBranchPoint[SpecT <: Spec]
     (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef], isParam: Boolean)
-    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curSpec: Spec)
+    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curSpec: Spec, prevGrafts: Seq[Branch])
     (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
     debug("Recursively resolving potential branch point: %s".format(curSpec))
@@ -130,22 +130,36 @@ private[builder] class TaskTemplateBuilder(
         val branch = branchFactory.get(branchSpec.name, branchPoint)
         val branchTree = bpTree.getOrAdd(branch)
         val newHistory = branchHistory ++ Seq(branch)
-        resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(branchTree, newHistory, branchSpec)(resolveVarFunc)
+        resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
+          branchTree, newHistory, branchSpec, prevGrafts)(resolveVarFunc)
       }
     }
 
     // create a leaf node in the branch tree
-    def handleNonBranchPoint(): Iterable[(Seq[Branch], (SpecT, Option[TaskDef]) )] = {
+    def handleNonBranchPoint() {
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
-      val (srcSpec, srcTaskDefOpt, grafts) = resolveVarFunc(taskDef, taskMap, curSpec)
+      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec)
+      val allGrafts = myGrafts ++ prevGrafts
+      debug("New grafts for %s: %s".format(origSpec, myGrafts))
       
-      // store specs at this branch nesting along with its grafts
-      // this is used by the MetaHyperDAG to determine structure and temporal dependencies
-      val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, grafts)
-      data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
-      
-      // yield tuples for runtime resolution of specs based on realization given to us by MetaHyperDAG walker
-      Iterable( (branchHistory, (srcSpec, srcTaskDefOpt)) )
+      // resolveVarFunc might have returned a branch point to us
+      // if it traced back to a parent's parameter, which is itself a branch point
+      // if that's the case, we should continue recursing. otherwise, just add.
+      srcSpec.rval match {
+        case _: Literal => {
+          // store specs at this branch nesting along with its grafts
+          // this is used by the MetaHyperDAG to determine structure and temporal dependencies
+          val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, allGrafts)
+          data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
+          
+          debug("Setting grafts for %s: %s".format(origSpec, allGrafts))
+        }
+        case _ => {
+          // not a literal -- keep tracing through branch points
+          resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
+            prevTree, branchHistory, srcSpec, allGrafts)(resolveVarFunc)
+        }
+      }
     }
        
     def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, inc: BigDecimal): Seq[LiteralSpec] = {
@@ -173,7 +187,8 @@ private[builder] class TaskTemplateBuilder(
       case ConfigVariable(varName) => {
         confSpecs.get(varName) match {
           case Some(confSpec) => {
-            resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(prevTree, branchHistory, confSpec)(resolveVarFunc)
+            resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
+              prevTree, branchHistory, confSpec, prevGrafts)(resolveVarFunc)
           }
           case None => throw new FileFormatException(
             "Config variable %s required by input %s at task %s not found in config file.".
@@ -186,9 +201,9 @@ private[builder] class TaskTemplateBuilder(
   }
 
   // the resolved Spec is guaranteed to be a literal for params
-  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec)
-                          : (LiteralSpec, Option[TaskDef], Seq[Branch]) = {
-    resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)().asInstanceOf[(LiteralSpec,Option[TaskDef],Seq[Branch])]
+  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec) = {
+    resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)()
+    //.asInstanceOf[(LiteralSpec,Option[TaskDef],Seq[Branch])] // could be branch point
   }
    
   private def resolveInput(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec) = {
@@ -207,6 +222,12 @@ private[builder] class TaskTemplateBuilder(
                                   grafts: Seq[Branch] = Nil)
                                  : (Spec, Option[TaskDef], Seq[Branch]) = {
     curSpec.rval match {
+      case BranchPointDef(_,_) | SequentialBranchPoint(_,_) => {
+        // we might have traced back through a TaskVariable into a parent's parameters,
+        // which can, in turn, define a branch point
+        // just return what we have and let resolveBranchPoint figure out the rest
+        (curSpec, src, grafts)
+      }
       case Literal(litValue) => {
         val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
         (litSpec, None, Nil) // literals will never have a use for grafts
@@ -229,10 +250,6 @@ private[builder] class TaskTemplateBuilder(
           }
         }
         (srcSpec, srcTask, resultGrafts)
-      }
-      case BranchPointDef(_,_) => throw new RuntimeException("Expected branches to be resolved by now: " + curSpec.rval)
-      case SequentialBranchPoint(_,_) => {
-        throw new RuntimeException("Expected branches to be resolved by now")
       }
       case Unbound() => {
         mode match {
