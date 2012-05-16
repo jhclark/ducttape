@@ -37,6 +37,11 @@ class Executor(val dirs: DirectoryArchitect,
   
         // the "run" action of the submitter will throw if the exit code is non-zero
         submitter.run(taskEnv)
+        
+        if (!CompletionChecker.isComplete(taskEnv)) {
+          observers.foreach(_.fail(this, task))
+          throw new BashException("Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath)
+        }
       } finally {
         // TODO: Factor out into listener/callback?
          taskEnv.lockFile.delete()

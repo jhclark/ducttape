@@ -81,7 +81,6 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
   def todo: OrderedSet[(String,Realization)] = _todo
   def broken: OrderedSet[(String,Realization)] = _broken
 
-  
   override def visit(task: RealTask) {
     debug("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
