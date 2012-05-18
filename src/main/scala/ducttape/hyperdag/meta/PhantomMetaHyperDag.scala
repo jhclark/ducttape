@@ -26,9 +26,10 @@ class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) 
                           vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
                           toD: H => D = new DefaultToD[H])
+                         (implicit ordering: Ordering[D])
                          : UnpackedPhantomMetaDagWalker[V,M,H,E,D,F] = {
     new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, selectionFilter, hedgeFilter,
-      constraintFilter, vertexFilter, comboTransformer, toD)
+      constraintFilter, vertexFilter, comboTransformer, toD)(ordering)
   }
   
   private[hyperdag] def removePhantoms(list: Traversable[PackedVertex[Option[V]]])

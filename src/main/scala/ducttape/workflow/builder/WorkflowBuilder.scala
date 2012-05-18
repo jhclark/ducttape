@@ -234,7 +234,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         debug("Using grafts: " + curGrafts + " found nested edges: " + nestedBranchEdges + " and terminal edges: " + terminalEdges)
         (branchInfo, nestedBranchEdges ++ terminalEdges)
       }
-    } filter {
+    }.filter {
       // don't include hyperedges with zero source vertices
       case (branchInfo, edges) => edges.size > 0
     }
