@@ -48,7 +48,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   private def getOnly[A](seq: Seq[A]): A = seq match {
     case Seq(only) => only
     case _ => throw new RuntimeException("phantom chains can only have single parents; " +
-        "expected exactly one element in: " + seq)
+          "expected exactly one element in: " + seq)
+  }
+  
+  private def getOnlySeq[A](seq: Seq[Seq[A]]): Seq[A] = seq match {
+    case Seq(only) => only
+    case _ => getOnly(seq.filter(!_.isEmpty))
   }
   
   @tailrec
@@ -65,8 +70,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
           = v.edges.zip(v.parentRealizations).
               flatMap { case (hyperedge, parentReals) => {
                 dag.delegate.sources(hyperedge).map { parent: PackedVertex[Option[V]] =>
-                  // TODO: XXX: We should we have empty realizations laying around anyway???
-                  val parentReal = getOnly(parentReals.filter(!_.isEmpty))
+                  val parentReal = getOnlySeq(parentReals)
                   val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal) )
                   uv
                 }
@@ -77,9 +81,9 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
           case Seq() => (edge, parentReal) // this is a root phantom vertex
           case Seq(singleUnpackedV) => {
             val myHyperEdge = getOnly(v.edges)
-            val myParentReals = getOnly(v.parentRealizations)
+            val myParentReals = getOnlySeq(v.parentRealizations)
             val myEdge = getOnly(myHyperEdge.e)
-            val myParentReal = getOnly(myParentReals)
+            val myParentReal = getOnlySeq(myParentReals)
             followPhantomChain(singleUnpackedV, myEdge, myParentReal)
           }
           case _ => throw new RuntimeException("Found more than one parent of a phantom vertex")
