@@ -64,8 +64,9 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         val parents: Seq[UnpackedMetaVertex[Option[V],H,E,D]]
           = v.edges.zip(v.parentRealizations).
               flatMap { case (hyperedge, parentReals) => {
-                dag.delegate.sources(hyperedge) map { parent: PackedVertex[Option[V]] =>
-                  val parentReal = getOnly(parentReals)
+                dag.delegate.sources(hyperedge).map { parent: PackedVertex[Option[V]] =>
+                  // TODO: XXX: We should we have empty realizations laying around anyway???
+                  val parentReal = getOnly(parentReals.filter(!_.isEmpty))
                   val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal) )
                   uv
                 }
