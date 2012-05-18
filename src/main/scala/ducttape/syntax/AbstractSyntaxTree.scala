@@ -43,7 +43,7 @@ object AbstractSyntaxTree {
   /** Type of a literal string value, in the right-hand side context of an assignment. */
   case class Literal(val value: String) extends RValue {
     override def children = Nil
-    override def toString() = "Literal='%s'".format(value)
+    override def toString() = "'%s'".format(value)
   }  
   
   /** Type of a variable reference, in the right-hand side context of an assignment. */
@@ -58,6 +58,20 @@ object AbstractSyntaxTree {
     override def children = Nil
     override def toString() = "$%s@%s".format(value,taskName)
   }  
+  
+  /** Type of a shorthand variable reference attached to a specific task, 
+   * in the right-hand side context of an assignment. */
+  case class ShorthandTaskVariable(val taskName: String) extends RValue {
+    override def children = Nil
+    override def toString() = "@%s".format(taskName)
+  }  
+  
+  /** Type of a shorthand global or config variable reference, 
+   * in the right-hand side context of an assignment. */
+  case class ShorthandConfigVariable() extends RValue {
+    override def children = Nil
+    override def toString() = "@"
+  }     
   
   case class Sequence(val start: BigDecimal, 
                       val end: BigDecimal,
@@ -90,14 +104,25 @@ object AbstractSyntaxTree {
   
   /** Type of a branch graft, in the right-hand side context of an assignment. */
   case class BranchGraft(val variableName: String,
-                         val taskName: String,
+                         val taskName: Option[String],
                          val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
     override def children = branchGraftElements
-    override def toString() = 
-      "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
+    override def toString() = {
+      taskName match {
+        case Some(taskName) => "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
+        case None           => "$%s%s".format(variableName,branchGraftElements.toString())
+      }
+    }
   }
   
-  
+  /** Type of a shorthand branch graft, in the right-hand side context of an assignment. */
+  case class ShorthandBranchGraft(val taskName: String,
+                         val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
+    override def children = branchGraftElements
+    override def toString() = {
+      "@%s%s".format(taskName,branchGraftElements.toString())
+    }
+  }  
   /**
    * Abstract specification of a variable name and its right hand side.
    */
@@ -196,11 +221,11 @@ object AbstractSyntaxTree {
     lazy val inputs: Seq[Spec] = inputSpecList.flatMap{_.specs}
     lazy val outputs: Seq[Spec] = outputSpecList.flatMap{_.specs}
     lazy val params: Seq[Spec] = paramSpecList.flatMap{_.specs}
+    lazy val allSpecs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
     
     override lazy val endPos: Position = {
-      val specs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
       // TODO: Define ordering on positional so that we can find last column, too
-      val lastSpec: Spec = specs.maxBy[Int]{spec: Spec => spec.pos.line}
+      val lastSpec: Spec = allSpecs.maxBy[Int]{spec: Spec => spec.pos.line}
       lastSpec.pos
     }
     

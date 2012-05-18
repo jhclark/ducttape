@@ -1,0 +1,27 @@
+# TODO: Flesh out this example
+
+# Using "Switch" statements are much like the "branchpoint"
+# statement, but allow several branches to pass through a
+# "default" path. Also, branch points enforce that all
+# branch points instances with the same name must have
+# exactly the same set of branches defined at each instance;
+# switch statements do not enforce this since they are more
+# like a conditional.
+
+switch my_task on WhichThing < a=foo > aOut :: paramA=bar {
+
+  # TODO: Need a better way of specifying individual inputs to packed realizations
+  # (later output references get too complicated otherwise)
+  branch thing1, thing2 :: param=$x {
+    ln -s $a $aOut
+  }
+
+  # TODO: How do we introduce new branchpoints inside a switch?
+  branch thing3 :: param=$x {
+    ln -s $a $aOut
+  }
+
+  default < b="hi" :: param=$paramA {
+    cat $a $b $aOut
+  }
+}

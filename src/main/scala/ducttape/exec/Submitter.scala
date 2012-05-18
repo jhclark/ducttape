@@ -28,7 +28,7 @@ class Submitter(submitters: Seq[SubmitterDef]) {
     val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find{ s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined", List(submitterSpec.mySpec, submitterSpec.srcSpec))
+      case None => throw new FileFormatException("Submitter %s not defined", List(submitterSpec.origSpec, submitterSpec.srcSpec))
     }
   }
   
@@ -50,11 +50,11 @@ class Submitter(submitters: Seq[SubmitterDef]) {
 
     // TODO: Check in ducttape/defaults for default submitters/versioners
 
-    val dotParams: Seq[ResolvedLiteralSpec] = taskEnv.task.paramVals.filter(_.mySpec.dotVariable)
-    val dotParamsEnv: Seq[(String,String)] = dotParams.map{ p => (p.mySpec.name, p.srcSpec.rval.value) }
+    val dotParams: Seq[ResolvedLiteralSpec] = taskEnv.task.paramVals.filter(_.origSpec.dotVariable)
+    val dotParamsEnv: Seq[(String,String)] = dotParams.map{ p => (p.origSpec.name, p.srcSpec.rval.value) }
     
     val runAction = {
-      val submitterDef = dotParams.find{p: ResolvedLiteralSpec => p.mySpec.name == "submitter"} match {
+      val submitterDef = dotParams.find{p: ResolvedLiteralSpec => p.origSpec.name == "submitter"} match {
         case Some(p) => getSubmitter(p)
         case None => getDefaultSubmitter("shell", taskEnv.task.taskDef)
       }

@@ -11,27 +11,38 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
-import ducttape.hyperdag.walker._
 import ducttape.hyperdag.HyperEdge
+import ducttape.hyperdag.meta.PhantomMetaHyperDag
+import ducttape.hyperdag.meta.UnpackedMetaVertex
+import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
+import ducttape.hyperdag.walker.PackedPhantomMetaDagWalker
+import ducttape.hyperdag.walker.ComboTransformer
+import ducttape.hyperdag.walker.ConstraintFilter
+import ducttape.hyperdag.walker.MetaVertexFilter
+import ducttape.workflow.SpecTypes.SpecPair
+
+import grizzled.slf4j.Logging
 
   // final type parameter TaskDef is for storing the source of input edges
   // each element of plan is a set of branches that are mutually compatible
   // - not specifying a branch point indicates that any value is acceptable
   // TODO: Multimap (just use typedef?)
-  class HyperWorkflow(val dag: MetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[Spec]],
+  class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
                       val packageDefs: Map[String,PackageDef],
                       val plans: Seq[RealizationPlan],
                       val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
                       val versioners: Seq[VersionerDef],
                       val branchPointFactory: BranchPointFactory,
-                      val branchFactory: BranchFactory) {
+                      val branchFactory: BranchFactory)
+    extends Logging {
+  
+  type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair],Branch,UnpackState]
 
-  def packedWalker = dag.packedWalker
-    
+  def packedWalker: PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
     
   /** when used with an unpacker, causes anti-hyperedges to be recognized
    *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
-  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[Spec],Branch] {
+  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[SpecPair],Branch] with Logging {
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
         if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
@@ -58,15 +69,15 @@ import ducttape.hyperdag.HyperEdge
 
   // TODO: Currently only used by initial pass to find goals
   // TODO: Document different use cases of planFilter vs plannedVertices
-  // TODO: Return type
   def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty,
-                     plannedVertices: Set[(String,Realization)] = Set.empty) = {
+                     plannedVertices: Set[(String,Realization)] = Set.empty)
+                     : UnpackedWalker = {
     
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    val globalBranchPointConstraint = new ConstraintFilter[TaskTemplate,Branch,UnpackState] {
+    val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],Branch,UnpackState] {
       override val initState = new UnpackState
       
-      override def apply(v: PackedVertex[TaskTemplate],
+      override def apply(v: PackedVertex[Option[TaskTemplate]],
                          seen: UnpackState,
                          real: MultiSet[Branch],
                          parentReal: Seq[Branch]): Option[UnpackState] = {
@@ -87,10 +98,10 @@ import ducttape.hyperdag.HyperEdge
         // TODO: This could be much more efficient if we only
         // checked which 
         def inPlan(myReal: Traversable[Branch]): Boolean = {
-          if(planFilter.size == 0) {
+          if (planFilter.size == 0) {
             true // size zero plan has special meaning
           } else {
-            val ok = myReal.forall{ realBranch: Branch => planFilter.get(realBranch.branchPoint) match {
+            val ok = myReal.forall { realBranch: Branch => planFilter.get(realBranch.branchPoint) match {
               // planFilter must explicitly mention a branch point
               case Some(planBranchesX: Set[_] /*Set[Branch]*/) => {
                 val planBranches: Set[Branch] = planBranchesX
@@ -101,22 +112,23 @@ import ducttape.hyperdag.HyperEdge
             }}
             // TODO: Store such messages somewhere to optionally give a verbose
             // description of why some tasks don't run?
-            if(!ok) {
+            if (!ok) {
               // TODO: XXX: Hack move to MetaHyperDAG
-              val taskT: TaskTemplate = if(v.value == null) {
-                dag.children(v).head.value
+              val taskT: TaskTemplate = if (v.value == null) {
+                dag.children(v).head.value.get
               } else {
-                v.value
+                v.value.get
               }
-              //Console.err.println("Plan excludes: "+myReal.mkString(" ")+ " at " + taskT)
+              debug("Plan excludes: " + myReal.mkString(" ") + " at " + taskT)
             }
             ok
           }
         }
-        if(parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
+        
+        if (parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
-          //System.err.println("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
+          debug("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
           // left operand determines return type (an efficient immutable.HashMap)
           val result: UnpackState = seen ++ parentReal.map{b: Branch => (b.branchPoint, b)}
           Some(result)
@@ -124,14 +136,20 @@ import ducttape.hyperdag.HyperEdge
       }
     }
 
-    val vertexFilter = new MetaVertexFilter[TaskTemplate,BranchInfo,Seq[Spec],Branch] {
-      override def apply(v: UnpackedWorkVert): Boolean = {
-        // TODO: Less extra work?
-        val task = v.packed.value.realize(v)
-        plannedVertices.contains( (task.name, task.realization) ) || plannedVertices.isEmpty
+    val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch] {
+      override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
+        // TODO: Less extraneous Realization creation?
+        plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) ) || plannedVertices.isEmpty
       } 
     }
-    def toD(branchInfo: BranchInfo): Branch = branchInfo.branch
-    dag.unpackedWalker[Branch,UnpackState](globalBranchPointConstraint, vertexFilter, BranchGraftComboTransformer, toD)
+    
+    // TODO: XXX: HACK: This shouldn't be called for nulls generated by epsilons
+    def toD(branchInfo: BranchInfo): Branch = if (branchInfo != null) branchInfo.branch else Task.NO_BRANCH
+    
+    dag.unpackedWalker[Branch,UnpackState](
+      constraintFilter=globalBranchPointConstraint,
+      vertexFilter=vertexFilter,
+      comboTransformer=BranchGraftComboTransformer,
+      toD=toD)
   }
 }

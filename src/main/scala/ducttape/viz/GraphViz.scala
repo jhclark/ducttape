@@ -6,7 +6,7 @@ import ducttape.util._
 
 object GraphViz {
 
-  def escape(str: String) = str.replace(' ', '_').replace("\"", "\\\"")
+  def escape(str: String) = str.replace("\"", "\\\"").replace("\n", "\\n")
   def compile(str: String, outFile: String) = {
     val temp = File.createTempFile("ducttape",".dot")
     Files.write(str, temp)

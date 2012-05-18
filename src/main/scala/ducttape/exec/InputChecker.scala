@@ -8,23 +8,29 @@ import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.workflow.Branch
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
+import ducttape.workflow.SpecTypes.ResolvedSpec
 import ducttape.util.Files
 
 class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
 
+  // TODO: Make this a list of exceptions that take ASTTypes
   val errors = new mutable.ArrayBuffer[String]
 
   override def visit(task: RealTask) {
-    val inSpecs: Seq[Spec] = task.inputVals.map(_.mySpec)
-    for(inSpec <- inSpecs) inSpec.rval match {
-      case Literal(path) => {
-        val file = dirs.resolveLiteralPath(path)
-        if(!file.exists) {
-          // TODO: Be specific about which file
-          errors += "Input file not found: %s required at unknown file at line %d".format(file.getAbsolutePath, inSpec.pos.line)
+    for (inSpec: ResolvedSpec <- task.inputVals) {
+      inSpec.srcSpec.rval match {
+        case Literal(path) => {
+          val file = dirs.resolveLiteralPath(path)
+          if (!file.exists) {
+            // TODO: Be specific about which file
+            errors += "Input file not found: %s required at %s:%d, defined at %s:%d".format(
+                         file.getAbsolutePath,
+                         inSpec.origSpec.declaringFile, inSpec.origSpec.pos.line,
+                         inSpec.srcSpec.declaringFile, inSpec.srcSpec.pos.line)
+          }
         }
+        case _ => ;
       }
-      case _ => ;
     }
   }
 }

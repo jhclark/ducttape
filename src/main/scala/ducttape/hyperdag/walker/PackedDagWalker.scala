@@ -32,9 +32,9 @@ class PackedDagWalker[V](dag: HyperDag[V,_,_]) extends Walker[PackedVertex[V]] {
     active += root -> actRoot
   }
 
-  def getCompleted(): Traversable[PackedVertex[V]] = for(act <- completed) yield act.v
-  def getRunning(): Traversable[PackedVertex[V]] = for(act <- taken) yield act.v
-  def getReady(): Traversable[PackedVertex[V]] = for(act <- agenda) yield act.v
+  def getCompleted(): Traversable[PackedVertex[V]] = for (act <- completed) yield act.v
+  def getRunning(): Traversable[PackedVertex[V]] = for (act <- taken) yield act.v
+  def getReady(): Traversable[PackedVertex[V]] = for (act <- agenda) yield act.v
 //  def getBlocked(): Traversable[PackedVertex[P]] = 
   
   override def take(): Option[PackedVertex[V]] = {

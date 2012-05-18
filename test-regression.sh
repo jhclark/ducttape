@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -eo pipefail
-scriptDir=$(readlink -f $(dirname $0))
+scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
 
 # We don't want to assume ducttape is in the path for running test scripts
 export PATH=$scriptDir:$PATH
 
-tutorialDir=$(readlink -f syntax/tutorial)
+tutorialDir=$(cd syntax/tutorial; pwd)
 for tape in $tutorialDir/*/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)

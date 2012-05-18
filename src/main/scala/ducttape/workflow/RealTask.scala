@@ -22,11 +22,11 @@ class RealTask(val taskT: TaskTemplate,
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
 
   // the tasks and realizations that must temporally precede this task (due to having required input files)
-   lazy val antecedents: Set[(String, Realization)] = {
-     for (inputVal <- inputVals) yield {
-       (inputVal.srcTaskDef.name, inputVal.srcReal) // TODO: change seq[branch] to realization?
+   lazy val antecedents: Set[(String, Realization)] = inputVals.collect {
+     case inputVal if (inputVal.srcTask.isDefined) => {
+       (inputVal.srcTask.get.name, inputVal.srcReal)
      }
-   }.filter{case (srcTaskDefName, _) => srcTaskDefName != taskT.name }.toSet
+   } toSet
 
   // TODO: Smear hash code better
    override def hashCode() = name.hashCode ^ realization.hashCode

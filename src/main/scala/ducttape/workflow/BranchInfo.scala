@@ -10,5 +10,7 @@ class BranchInfo(val branch: Branch, val grafts: Seq[Branch]) {
   override def equals(obj: Any) = obj match { // TODO: Take advantage of pooling
     case that: BranchInfo => this.branch == that.branch && this.grafts == that.grafts
   }
-  override def toString() = "%s[%s]".format(branch, grafts.mkString(","))
+  override def toString() = {
+    "%s[%s]".format(branch, grafts.mkString(","))
+  }
 }

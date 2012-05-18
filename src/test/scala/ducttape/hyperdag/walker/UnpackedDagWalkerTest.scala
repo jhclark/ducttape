@@ -8,9 +8,10 @@ import ducttape.hyperdag.HyperDag
 import ducttape.hyperdag.UnpackedVertex
 import org.junit.Test
 import scala.collection.JavaConversions
+import grizzled.slf4j.Logging
 
 @RunWith(classOf[JUnitRunner])
-class UnpackedDagWalkerTest extends FlatSpec {
+class UnpackedDagWalkerTest extends FlatSpec with Logging{
 
   "An Unpacked DAG Walker" should "traverse a linear chain graph with an iterator" in {
 
@@ -25,7 +26,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
     val dag: HyperDag[String,String,String] = builder.build
     val vertices = dag.unpackedWalker().iterator.toList
     for (v: UnpackedVertex[String,String,String,String] <- vertices) {
-      println(v)
+      debug(v)
     }
     assert(vertices(0).packed.value == "Vertex A")
     assert(vertices(1).packed.value == "Vertex B")
@@ -51,7 +52,7 @@ class UnpackedDagWalkerTest extends FlatSpec {
   it should "traverse a diamond with an iterator" in {
     val vertices = diamond.unpackedWalker().iterator.toList
     for (v: UnpackedVertex[String,String,String,String] <- vertices) {
-      println(v)
+      debug(v)
     }
     
     assert(vertices(0).packed.value == "Vertex A")
@@ -115,17 +116,17 @@ class UnpackedDagWalkerTest extends FlatSpec {
     
     def listsEqual(a: Seq[Seq[String]], b: Seq[Seq[String]]): Boolean = {
       if (a.size != b.size) {
-        println("Outer length %d != %d".format(a.size, b.size))
+        debug("Outer length %d != %d".format(a.size, b.size))
         false
       } else {
         a.zip(b).forall{ case (seqA, seqB) => {
           if (seqA.size != seqB.size) {
-            println("Inner length %d != %d".format(seqA.size, seqB.size))
+            debug("Inner length %d != %d".format(seqA.size, seqB.size))
             false
           } else {
             seqA.zip(seqB).forall{ case (strA, strB) => {
               if (strA != strB) {
-                println("Not equal: %s and %s".format(strA, strB))
+                debug("Not equal: %s and %s".format(strA, strB))
               }
               strA == strB
             }}
@@ -144,8 +145,8 @@ class UnpackedDagWalkerTest extends FlatSpec {
 	    val vertList = verts.toList.sorted
 	    assert(vertList == expectedVerts, "Wrong vertices produced: " + verts)
 	    val realList = reals.toList.sorted(order)
-	    //println("Expected: " + expectedReals)
-	    //println("Actual  : " + realList)
+	    //debug("Expected: " + expectedReals)
+	    //debug("Actual  : " + realList)
 	    // == was not calling deep equals on strings! can we override with an implicit?
 	    assert(listsEqual(realList, expectedReals), "Wrong realizations produced: " + realList)
     }

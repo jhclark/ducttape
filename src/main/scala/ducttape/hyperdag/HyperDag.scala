@@ -20,7 +20,7 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
                       private[hyperdag] val inEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],
                       private[hyperdag] val outEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],
                       private[hyperdag] val edges: Map[HyperEdge[H,E], (Seq[PackedVertex[V]],PackedVertex[V])]) {
-                       
+  
   val size: Int = vertices.size
 
   def packedWalker()
@@ -48,16 +48,46 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   def sink(e: HyperEdge[H,E]): PackedVertex[V]
     = edges(e)._2
 
-  def toGraphViz(): String = toGraphViz(vertices, parents, {v => v.toString}) 
+  def toGraphViz(): String = toGraphViz(vertices, inEdges, { v => v.toString }) 
 
   def toGraphViz(vertexList: Seq[PackedVertex[V]],
-                 parentsFunc: PackedVertex[V] => Seq[PackedVertex[V]],
-                 stringify: PackedVertex[V] => String): String = {
+                 inEdgesFunc: PackedVertex[V] => Seq[HyperEdge[H,E]],
+                 stringifyV: PackedVertex[V] => String): String = {
+      
+    // TODO: Expose these
+    // XXX: HACK
+    def stringifyH(h: H): String = if (h == null) "" else h.toString
+    def stringifyE(e: E): String = if (e == null) {
+      ""
+    } else if(e.isInstanceOf[Seq[_]]) {
+      val seq = e.asInstanceOf[Seq[_]]
+      seq.mkString("\n")
+    } else {
+      e.toString
+    }
+    def colorizeV(v: PackedVertex[V]): String = {
+      if (v.toString.startsWith("Phantom")) {
+        "grey"
+      } else if(v.toString.startsWith("Epsilon")) {
+        "cornsilk"
+      } else {
+        "white"
+      }  
+    }
+      
     val str = new StringBuilder(1000)
     str ++= "digraph G {\n"
     for (v: PackedVertex[V] <- vertexList) {
-      for (ant: PackedVertex[V] <- parentsFunc(v)) {
-        str ++= "\"%s\" -> \"%s\"\n".format(GraphViz.escape(stringify(ant)), GraphViz.escape(stringify(v)))
+      val color = colorizeV(v)
+      str ++= "\"%s\" [fillcolor=\"%s\",style=\"filled\"]\n".format(GraphViz.escape(stringifyV(v)), color)
+      for (he: HyperEdge[H,E] <- inEdgesFunc(v)) {
+        for ( (ant, e) <- sources(he).zip(he.e)) {
+          str ++= "\"%s\" -> \"%s\" [label=\"%s\"]\n".format(
+                  GraphViz.escape(stringifyV(ant)),
+                  GraphViz.escape(stringifyV(v)),
+                  GraphViz.escape(Seq(stringifyH(he.h),
+                                      stringifyE(e)).mkString("\n")))
+        }
       }
     }
     str ++= "}\n"

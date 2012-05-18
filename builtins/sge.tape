@@ -5,10 +5,28 @@ submitter sge :: vmem walltime q
               :: COMMANDS
               :: TASK REALIZATON CONFIGURATION {
   action run {
+  
+    # Returns true iff the first parameter 
+    # is the name of a defined variable
+    function var_defined {
+      eval '[[ ${!'$1'[@]} ]]'	     
+    }
+     
     wrapper="ducttape_job.sh"
     echo "#$ -S /bin/bash" >> $wrapper
-    echo "#$ -q $q" >> $wrapper
-    echo "#$ -l h_rt=$walltime" >> $wrapper
+    
+    if (var_defined q); then
+      echo "#$ -q $q" >> $wrapper
+    fi
+
+    if (var_defined vmem); then
+      echo "#$ -l virtual_free=$vmem" >> $wrapper
+    fi
+    
+    if (var_defined walltime); then
+      echo "#$ -l h_rt=$walltime" >> $wrapper
+    fi
+    
     echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
     echo "#$ -N $CONFIGURATION-$TASK-$REALIZATION" >> $wrapper
@@ -28,8 +46,4 @@ submitter sge :: vmem walltime q
     # Use SGE's -sync option to prevent qsub from immediately returning
     qsub -sync y $wrapper
   }
-}
-
-task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
-  echo hello
 }

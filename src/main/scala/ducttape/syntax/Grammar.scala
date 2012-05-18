@@ -337,10 +337,31 @@ object Grammar {
    * defined as a literal dollar sign ($) followed by a name.
    */
   val taskVariableReference: Parser[TaskVariable] = positioned(
-    ( ((literal("$")~literal("{"))~>name("task variable","""}""".r,err(_),failure(_))~((literal("}")|err("Missing closing } brace"))~literal("@")~>name("task name","""\s|\)|$""".r))) |
-      (literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task name","""\s|\)|$""".r)) )         
+    ( ((literal("$")~literal("{"))~>name("task variable","""}""".r,err(_),failure(_))~((literal("}")|err("Missing closing } brace"))~literal("@")~>name("task","""\s|\)|$""".r))) |
+      (literal("$")~>name("task variable","""@""".r,err(_),failure(_))~(literal("@")~>name("task","""\s|\)|$""".r)) )         
     ) ^^ {
       case (string: String) ~ (taskName: String) => new TaskVariable(taskName,string)
+    }
+  )  
+  
+  /**
+   * Shorthand reference to a variable attached to a specific task, 
+   * defined as a literal at symbol (@) followed by a name.
+   */
+  val shorthandTaskVariableReference: Parser[ShorthandTaskVariable] = positioned(
+    ( literal("@")~>name("task","""\s|\)|$""".r,failure(_),err(_))
+            
+    ) ^^ {
+      case (taskName: String) => new ShorthandTaskVariable(taskName)
+    }
+  )  
+  /**
+   * Shorthand reference to a variable, 
+   * defined as a literal at symbol (@).
+   */
+  val shorthandVariableReference: Parser[ShorthandConfigVariable] = positioned(
+    literal("@") ^^ {
+      case _ => new ShorthandConfigVariable()
     }
   )  
   
@@ -377,11 +398,37 @@ object Grammar {
               (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))<~literal("@")) ~
               name("reference to task","""\[""".r,err(_),failure(_)) ~
               (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
-          )
+          ) |
+          (
+              (literal("$")~literal("{")~>name("branch graft variable","""}""".r,err(_),failure(_))<~(literal("}")|err("Missing closing } brace"))) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          ) |
+          (
+              (literal("$")~>name("branch graft variable","""@""".r,err(_),failure(_))) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          )          
       ) ^^ {
         case ((variable: String) ~ (task: String) ~ (seq: Seq[BranchGraftElement])) =>
-          new BranchGraft(variable,task,seq)
+          new BranchGraft(variable,Some(task),seq)
+        case ((variable: String) ~ (seq: Seq[BranchGraftElement])) =>
+          new BranchGraft(variable,None,seq)          
       } 
+  )
+  
+  val shorthandBranchGraft: Parser[ShorthandBranchGraft] = positioned(
+      ( 
+          (
+              literal("@[")~err("In the interest of readability, shorthand syntax for branch grafts involving global variables and config variables is currently not allowed.")
+          ) |
+          ( 
+              literal("@") ~>
+              name("reference to task","""\[""".r,failure(_),failure(_)) ~
+              (literal("[")~>(rep1sep(branchGraftElement,literal(","))|err("Error while reading branch graft. This indicates one of three things: (1) You left out the closing bracket, or (2) you have a closing bracket, but there's nothing between opening and closing brackets, or (3) you have opening and closing brackets, and there's something between them, but that something is improperly formatted"))<~(literal("]")|err("Missing closing bracket"))) 
+          )
+      ) ^^ {
+        case ((task: String) ~ (seq: Seq[BranchGraftElement])) =>
+          new ShorthandBranchGraft(task,seq)        
+      }     
   )
   
   val sequence: Parser[Sequence] = positioned(
@@ -514,8 +561,11 @@ object Grammar {
   
   val rvalue: Parser[RValue] = {
     sequentialBranchPoint |
-    branchPoint           |    
+    branchPoint           |
+    shorthandBranchGraft  |
     branchGraft           |
+    shorthandTaskVariableReference |
+    shorthandVariableReference     |
     taskVariableReference |
     variableReference     |
     // Order is important here. 
@@ -543,18 +593,36 @@ object Grammar {
           err("Error in input variable assignment")
         )
       ) ^^ {
+        case (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
+        case (variableName: String) ~ (rhs: ShorthandConfigVariable) => new Spec(variableName,new ConfigVariable(variableName),false)
+        case (variableName: String) ~ (rhs: ShorthandBranchGraft) => new Spec(variableName, new BranchGraft(variableName,Some(rhs.taskName),rhs.branchGraftElements),false)
         case (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
   )
 
 //  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
-
-  
   val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
-        case assignment: Spec => assignment
-        case rhs: RValue      => new Spec(null,rhs,false)
+        case assignment: AbstractSpec[_] => assignment
+        case _: ShorthandTaskVariable => throw new RuntimeException("A shorthand task variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+        case _: ShorthandConfigVariable => throw new RuntimeException("A shorthand global or config variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+        case _: ShorthandBranchGraft => throw new RuntimeException("A shorthand branch graft is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+        
+        // anonymous branch: do our best to infer a reasonable branch name
+        case rhs: Literal => new Spec(rhs.value, rhs, false)
+        case rhs: TaskVariable => new Spec(rhs.value, rhs, false)
+        case rhs: BranchGraft => new Spec(rhs.variableName, rhs, false)
+        case rhs: BranchPointDef if (rhs.name.isDefined)
+           => new Spec(rhs.name.get, rhs, false)
+        case rhs: SequentialBranchPoint if (rhs.branchPointName.isDefined)
+          => new Spec(rhs.branchPointName.get, rhs ,false)
+        case rhs: RValue => {
+          throw new RuntimeException(
+              "Could not figure out how to extract a branch name from anonymous branch value %s of type %s.".
+                 format(rhs.toString, rhs.getClass.getName.toString) +
+          		"Please prefix with 'var=...'")
+        }
       }
   )
 
@@ -567,6 +635,10 @@ object Grammar {
         name("output variable","""[=\s]|\z""".r,failure(_),err(_)) ~ 
         opt("=" ~> (rvalue | err("Error in output variable assignment")))
       ) ^^ {
+        case (variableName: String) ~ Some(rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
+        case (variableName: String) ~ Some(rhs: ShorthandConfigVariable) => new Spec(variableName,new ConfigVariable(variableName),false)        
+        case (variableName: String) ~ Some(rhs: ShorthandBranchGraft) => new Spec(variableName, new BranchGraft(variableName,Some(rhs.taskName),rhs.branchGraftElements),false)
+        
         case (variableName: String) ~ Some(rhs: RValue) => new Spec(variableName,rhs,false)
         case (variableName: String) ~ None             => new Spec(variableName,Unbound(),false)
       }      
@@ -585,6 +657,16 @@ object Grammar {
           opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
         (rvalue | err("Error in parameter variable assignment"))
       ) ^^ {
+        case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),true)
+        case None            ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
+        
+        case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandConfigVariable) => new Spec(variableName,new ConfigVariable(variableName),true)        
+        case None            ~ (variableName: String) ~ (rhs: ShorthandConfigVariable) => new Spec(variableName,new ConfigVariable(variableName),false)        
+
+        case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandBranchGraft) => new Spec(variableName,new BranchGraft(variableName,Some(rhs.taskName),rhs.branchGraftElements),true)        
+        case None            ~ (variableName: String) ~ (rhs: ShorthandBranchGraft) => new Spec(variableName,new BranchGraft(variableName,Some(rhs.taskName),rhs.branchGraftElements),false)        
+        
+        
         case Some(_: String) ~ (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,true)
         case None           ~ (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
