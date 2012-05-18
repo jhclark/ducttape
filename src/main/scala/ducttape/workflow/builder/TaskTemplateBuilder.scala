@@ -115,7 +115,7 @@ private[builder] class TaskTemplateBuilder(
      curSpec: Spec, prevGrafts: Seq[Branch])
     (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
-    debug("Recursively resolving potential branch point: %s".format(curSpec))
+    debug("Task=%s: Recursively resolving potential branch point: %s @ %s".format(taskDef, curSpec, curTask))
     
     // create an internal node in the branch tree
     def handleBranchPoint(branchPointName: String,
@@ -141,7 +141,8 @@ private[builder] class TaskTemplateBuilder(
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
       val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
       val allGrafts = myGrafts ++ prevGrafts
-      debug("New grafts for %s: %s".format(origSpec, myGrafts))
+      debug("Resolved %s to potentially non-branch spec %s @ %s with grafts %s".format(
+        origSpec, srcSpec, srcTaskDefOpt, myGrafts))
       
       // resolveVarFunc might have returned a branch point to us
       // if it traced back to a parent's parameter, which is itself a branch point
@@ -153,7 +154,7 @@ private[builder] class TaskTemplateBuilder(
           val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, allGrafts)
           data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
           
-          debug("Setting grafts for %s: %s".format(origSpec, allGrafts))
+          //debug("Setting grafts for %s: %s".format(origSpec, allGrafts))
         }
         case _ => {
           // not a literal -- keep tracing through branch points
@@ -218,25 +219,28 @@ private[builder] class TaskTemplateBuilder(
   private def resolveNonBranchVar(mode: ResolveMode)
                                  (origTaskDef: TaskDef,
                                   taskMap: Map[String,TaskDef], spec: Spec)
-                                 (curSpec: Spec = spec,
-                                  src: Option[TaskDef] = Some(origTaskDef),
+                                 (curSpec: Spec=spec,
+                                  src: Option[TaskDef],
                                   grafts: Seq[Branch] = Nil)
                                  : (Spec, Option[TaskDef], Seq[Branch]) = {
     curSpec.rval match {
-      case BranchPointDef(_,_) | SequentialBranchPoint(_,_) => {
-        // we might have traced back through a TaskVariable into a parent's parameters,
-        // which can, in turn, define a branch point
-        // just return what we have and let resolveBranchPoint figure out the rest
-        (curSpec, src, grafts)
-      }
+      // we might have traced back through a TaskVariable into a parent's parameters,
+      // which can, in turn, define a branch point
+      // just return what we have and let resolveBranchPoint figure out the rest
+      case BranchPointDef(_,_) | SequentialBranchPoint(_,_) => (curSpec, src, grafts)
+      
+      // literals will never have a use for grafts
       case Literal(litValue) => {
-        val litSpec = curSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed
-        (litSpec, None, Nil) // literals will never have a use for grafts
+        val litSpec = curSpec.asInstanceOf[LiteralSpec]
+        val litSrc = if (src != Some(origTaskDef) || spec != curSpec) src else None
+        (litSpec, litSrc, Nil)
       }
+      
       case ConfigVariable(varName) => resolveConfigVar(varName, origTaskDef, spec, src, grafts)
-      case TaskVariable(srcTaskName, srcOutName) => {
-        resolveTaskVar(mode)(origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
-      }
+      
+      case TaskVariable(srcTaskName, srcOutName) => resolveTaskVar(mode)(
+        origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+      
       case BranchGraft(srcOutName, srcTaskNameOpt, branchGraftElements) => {
         val (srcSpec, srcTask, prevGrafts) = srcTaskNameOpt match {
           case Some(srcTaskName) => {
@@ -252,6 +256,7 @@ private[builder] class TaskTemplateBuilder(
         }
         (srcSpec, srcTask, resultGrafts)
       }
+      
       case Unbound() => {
         mode match {
           case InputMode() => {
@@ -268,6 +273,7 @@ private[builder] class TaskTemplateBuilder(
           case _ => throw new RuntimeException("Unsupported unbound variable: %s".format(curSpec.name))
         }
       }
+      
     }
   }
    
@@ -287,7 +293,10 @@ private[builder] class TaskTemplateBuilder(
         }
         // search for the parent spec
         specSet.find(outSpec => outSpec.name == srcOutName) match {
-          case Some(srcSpec) => resolveNonBranchVar(mode)(origTaskDef, taskMap, spec)(srcSpec, Some(srcDef), grafts)
+          case Some(srcSpec) => {
+            debug("Found parent of %s @ %s => %s @ %s".format(spec, srcTaskName, srcSpec, srcDef))
+            resolveNonBranchVar(mode)(origTaskDef, taskMap, spec)(srcSpec, Some(srcDef), grafts)
+          }
           case None => {
             // give a very specific error if it was defined in the task but just not the correct output/param set
             srcDef.allSpecs.find(outSpec => outSpec.name == srcOutName) match {
