@@ -51,6 +51,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
           "expected exactly one element in: " + seq)
   }
   
+  // TODO: XXX: HACK: Should we really have empty realizations floating around?
   private def getOnlySeq[A](seq: Seq[Seq[A]]): Seq[A] = seq match {
     case Seq(only) => only
     case _ => getOnly(seq.filter(!_.isEmpty))
@@ -71,8 +72,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
               flatMap { case (hyperedge, parentReals) => {
                 dag.delegate.sources(hyperedge).map { parent: PackedVertex[Option[V]] =>
                   val parentReal = getOnlySeq(parentReals)
-                  val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal) )
-                  uv
+                  try {
+                    val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal) )
+                    uv
+                  } catch {
+                    case e => debug("Unpack map currently has: " + unpackedMap.keySet); throw e
+                  }
                 }
               }
             }
