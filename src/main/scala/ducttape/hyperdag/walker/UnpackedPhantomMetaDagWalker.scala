@@ -51,44 +51,55 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
     case _ => throw new RuntimeException("phantom chains can only have single parents; " +
           "expected exactly one element in: " + seq)
   }
-  
-  // TODO: XXX: HACK: Should we really have empty realizations floating around?
-  private def getOnlySeq[A](seq: Seq[Seq[A]]): Seq[A] = seq match {
-    case Seq(only) => only
-    case _ => getOnly(seq.filter(!_.isEmpty))
-  }
-  
+
   @tailrec
   private def followPhantomChain(v: UnpackedMetaVertex[Option[V],H,E,D], edge: E, parentReal: Seq[D])
-                                : (E, Seq[D]) = {
+                                : Seq[(E, Seq[D])] = {
     trace("Follow phantom chain at " + v)
     v.packed.value match {
-      case Some(_) => (edge, parentReal)
+      case Some(_) => Seq( (edge, parentReal) )
       case None => {
-        trace("Zip: " + dag.delegate.parents(v.packed).zip(v.parentRealizations))
+        trace("Zip: " + v.edges.zip(v.parentRealizations))
 
         // use active hyperedges to find parents
         val parents: Seq[UnpackedMetaVertex[Option[V],H,E,D]]
           = v.edges.zip(v.parentRealizations).
               flatMap { case (hyperedge, parentReals) => {
-                dag.delegate.sources(hyperedge).map { parent: PackedVertex[Option[V]] =>
-                  val parentReal = getOnlySeq(parentReals)
-                  val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal.sorted(ordering)) )
-                  uv
+                dag.delegate.sources(hyperedge).zip(parentReals).map { case (parent, parentReal) =>
+                  // parent: PackedVertex[Option[V]]
+                  trace("Resolving hyperedge %s: parent is %s".format(hyperedge, parent))
+                  try {
+                    val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal.sorted(ordering)) )
+                    uv
+                  } catch {
+                    case e => {
+                      debug(unpackedMap.keySet.toSeq.map(_.toString).sorted.mkString("\n"))
+                      throw e
+                    }
+                  }                  
                 }
               }
             }
         trace("Parents of %s are: %s".format(v, parents))
         parents match {
-          case Seq() => (edge, parentReal) // this is a root phantom vertex
+          case Seq() => Seq( (edge, parentReal) ) // this is a root phantom vertex
           case Seq(singleUnpackedV) => {
+            
+            
+            // TODO: How do we expect epsilon vertices to get handled?
+            
+            
+            
+            
+            
+            
             val myHyperEdge = getOnly(v.edges)
-            val myParentReals = getOnlySeq(v.parentRealizations)
+            val myParentReals = getOnly(v.parentRealizations)
             val myEdge = getOnly(myHyperEdge.e)
-            val myParentReal = getOnlySeq(myParentReals)
+            val myParentReal = getOnly(myParentReals)
             followPhantomChain(singleUnpackedV, myEdge, myParentReal)
           }
-          case _ => throw new RuntimeException("Found more than one parent of a phantom vertex")
+          case _ => throw new RuntimeException("Found more than one parent of a phantom vertex: %s => %s".format(v,parents))
         }
       }
     }
@@ -105,12 +116,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         val parentInfo: Seq[(Seq[E], Seq[Seq[D]])]
           = zip3(umv.edges, umv.parentRealizations, umv.edges).
             map { case (hyperedge, parentReals, hyperEdge) =>
-              val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) map {
+              val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) flatMap {
                 case (parent, parentReal, edge) => {
                   trace("Begin backtracing phantom chain for " + parent)
                   val unpackedV = unpackedMap( (parent, parentReal.sorted(ordering)) )
-                  val (finalEdge, finalParentReal) = followPhantomChain(unpackedV, edge, parentReal)
-                  (finalEdge, finalParentReal)
+                  val leafParents: Seq[(E, Seq[D])] = followPhantomChain(unpackedV, edge, parentReal)
+                  leafParents
                 }
               }
               
@@ -137,6 +148,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         unpackedMap += (umv.packed, umv.realization.sorted(ordering)) -> umv
         recursiveTake()
       }
+      // (Phantom:tune_pro.literals:44,List(Alpha:baseline, Baseline:baseline, Beta:b01, Delta:baseline, Gamma:g05))
     }
   }
   
