@@ -18,16 +18,21 @@ class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
 
   override def visit(task: RealTask) {
     for (inSpec: ResolvedSpec <- task.inputVals) {
-      inSpec.srcSpec.rval match {
-        case Literal(path) => {
-          val file = dirs.resolveLiteralPath(path)
-          if (!file.exists) {
-            // TODO: Be specific about which file
-            errors += "Input file not found: %s required at %s:%d, defined at %s:%d".format(
-                         file.getAbsolutePath,
-                         inSpec.origSpec.declaringFile, inSpec.origSpec.pos.line,
-                         inSpec.srcSpec.declaringFile, inSpec.srcSpec.pos.line)
-          }
+      inSpec.srcTask match {
+        case Some(_) => ; // input will be generated during workflow execution
+        case None =>
+          inSpec.srcSpec.rval match {
+            case Literal(path) => {
+              val file = dirs.resolveLiteralPath(path)
+              if (!file.exists) {
+                // TODO: Be specific about which file
+                errors += "Input file not found: %s required at %s:%d, defined at %s:%d".format(
+                             file.getAbsolutePath,
+                             inSpec.origSpec.declaringFile, inSpec.origSpec.pos.line,
+                             inSpec.srcSpec.declaringFile, inSpec.srcSpec.pos.line)
+              }
+            }
+            case _ => throw new RuntimeException("Expected source file to be a literal")
         }
         case _ => ;
       }
