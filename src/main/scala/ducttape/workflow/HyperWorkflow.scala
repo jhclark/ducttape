@@ -128,7 +128,7 @@ import grizzled.slf4j.Logging
         if (parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
-          debug("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
+          trace("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
           // left operand determines return type (an efficient immutable.HashMap)
           val result: UnpackState = seen ++ parentReal.map{b: Branch => (b.branchPoint, b)}
           Some(result)

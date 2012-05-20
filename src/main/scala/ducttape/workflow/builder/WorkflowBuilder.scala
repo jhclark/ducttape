@@ -208,38 +208,45 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     }
 
     // create a hyperedge list in the format expected by the HyperDAG API
-    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])] = graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
-      curNode.children.map { branchChild: BranchInfoTree =>
-        val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = branchChild.children.map { bpChild =>
-          // we have more than one branch point in a row: create a phantom
-          val branchPhantomV: PackedVertex[Option[TaskTemplate]] = dag.addPhantomVertex(comment = "Phantom:" + branchChild.branch.toString + ".nestedBranch")
-          traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
-          (branchPhantomV, Nil)
-        }
-
-        // branches with no further branch points nested under them
-        // get normal edges attached to them, which lead back to previous
-        // tasks
-        val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = branchChild.terminalData.
-          filter { case data => data.grafts == curGrafts }.
-          map { data =>
-            data.task match {
-              // has a temporal dependency on a previous task
-              case Some(taskDef: TaskDef) => (toVertex(taskDef), data.specs)
-              // no temporal dependency
-              case None => (specPhantomV, data.specs)
+    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])] = {
+      graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
+        curNode.children.map { branchChild: BranchInfoTree =>
+          val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = {
+            branchChild.children.map { bpChild: BranchPointTree =>
+              // we have more than one branch point in a row: create a phantom
+              val branchPhantomV: PackedVertex[Option[TaskTemplate]]
+                = dag.addPhantomVertex(comment = "Phantom:%s.nestedBranch".format(branchChild.branch.toString))
+              traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
+              (branchPhantomV, Nil)
             }
           }
-        val branchInfo = new BranchInfo(branchChild.branch, curGrafts)
-        debug("Using grafts: " + curGrafts + " found nested edges: " + nestedBranchEdges + " and terminal edges: " + terminalEdges)
-        (branchInfo, nestedBranchEdges ++ terminalEdges)
+    
+          // branches with no further branch points nested under them
+          // get normal edges attached to them, which lead back to previous
+          // tasks
+          val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = branchChild.terminalData.
+            filter { case data => data.grafts == curGrafts }.
+            map { data: TerminalData =>
+              data.task match {
+                // has a temporal dependency on a previous task
+                case Some(taskDef: TaskDef) => (toVertex(taskDef), data.specs)
+                // no temporal dependency
+                case None => (specPhantomV, data.specs)
+              }
+            }
+          val branchInfo = new BranchInfo(branchChild.branch, curGrafts)
+          debug("Using grafts: %s found nested edges: %s and terminal edges: %s".format(
+            curGrafts, nestedBranchEdges, terminalEdges))
+          
+          (branchInfo, nestedBranchEdges ++ terminalEdges)
+        }
+      }.filter {
+        // don't include hyperedges with zero source vertices
+        case (branchInfo, edges) => edges.size > 0
       }
-    }.filter {
-      // don't include hyperedges with zero source vertices
-      case (branchInfo, edges) => edges.size > 0
     }
     debug("Task=%s %s: Accumulated hyperedges: %s".format(task, debugNesting, hyperedges))
-
+  
     if (!hyperedges.isEmpty) {
       debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
         format(task, debugNesting, branchPoint, hyperedges))
