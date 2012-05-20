@@ -11,6 +11,8 @@ class LogFormatter extends Formatter {
     val threadCache = new mutable.HashMap[Long,Thread]
     threadCache
     
+    val startTime = System.currentTimeMillis
+    
     def getThreadName(id: Long): String = threadCache.get(id) match {
       case Some(t) => t.getName
       case None => {
@@ -30,7 +32,7 @@ class LogFormatter extends Formatter {
     
     override def formatMessage(record: LogRecord): String = {
       "[%d] %s: %s [%s]: %s".format(
-          record.getMillis / 1000000000,
+          record.getMillis - startTime,
           record.getLevel,
           record.getLoggerName,
           getThreadName(record.getThreadID),
