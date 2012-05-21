@@ -156,20 +156,19 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   def buildPlans(planDefs: Seq[PlanDefinition]): Seq[RealizationPlan] = {
     planDefs.flatMap { planDef: PlanDefinition =>
       planDef.crossProducts.map { cross: CrossProduct =>
-        val realizations: Map[BranchPoint, Set[Branch]] = cross.value.map { implicit ref: BranchPointRef =>
+        val realizations: Map[BranchPoint, Set[String]] = cross.value.map { implicit ref: BranchPointRef =>
           catcher {
             val branchPoint: BranchPoint = branchPointFactory(ref.name)
-            val branches: Set[Branch] = ref.branchNames.flatMap { element: ASTType =>
-              {
-                element match {
-                  case l: Literal => List(branchFactory(l.value, branchPoint))
-                  case s: Sequence => {
-                    for (x: BigDecimal <- s.start to s.end by s.increment) yield {
-                      branchFactory(x.toString, branchPoint)
-                    }
+            // TODO: Change branches back to Branch after we get the baseline/branch name duality hammered out?
+            val branches: Set[String] = ref.branchNames.flatMap { element: ASTType =>
+              element match {
+                case l: Literal => Seq(l.value.toString)
+                case s: Sequence => {
+                  for (x: BigDecimal <- s.start to s.end by s.increment) yield {
+                    x.toString
                   }
-                  case e: ASTType => throw new AbstractSyntaxTreeException(e, "Element cannot be used to refer to a branch name")
                 }
+                case e: ASTType => throw new AbstractSyntaxTreeException(e, "Element cannot be used to refer to a branch name")
               }
             }.toSet
             (branchPoint, branches) // map entry

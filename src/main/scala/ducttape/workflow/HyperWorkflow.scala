@@ -75,7 +75,7 @@ import grizzled.slf4j.Logging
   // TODO: Document different use cases of planFilter vs plannedVertices
   // NOTE: realizationFailureCallback can be used to provide the user with
   //       useful information about why certain realizations are not produced
-  def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty,
+  def unpackedWalker(planFilter: Map[BranchPoint, Set[String]] = Map.empty,
                      plannedVertices: Set[(String,Realization)] = Set.empty,
                      realizationFailureCallback: => String => Unit = { x: String => ; })
                      : UnpackedWalker = {
@@ -110,12 +110,14 @@ import grizzled.slf4j.Logging
           } else {
             val ok = myReal.forall { realBranch: Branch => planFilter.get(realBranch.branchPoint) match {
               // planFilter must explicitly mention a branch point
-              case Some(planBranchesX: Set[_] /*Set[Branch]*/) => {
-                val planBranches: Set[Branch] = planBranchesX
-                planBranches.contains(realBranch)
+              case Some(planBranchesX: Set[_]) => {
+                val planBranches: Set[String] = planBranchesX
+                // TODO: Can move this dualistic baseline/name behavior somewhere more central?
+                planBranches.contains(realBranch.name) ||
+                  (realBranch.baseline && planBranches.contains("baseline"))
               }
               // otherwise it implies the baseline branch
-              case None => realBranch.name == Task.NO_BRANCH.name // compare *name*, not actual Baseline:baseline
+              case None => realBranch.baseline
             }}
             if (!ok) {
               realizationFailureCallback("Plan excludes realization: %s at %s".format(

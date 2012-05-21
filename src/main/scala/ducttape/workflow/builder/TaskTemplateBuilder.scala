@@ -126,9 +126,10 @@ private[builder] class TaskTemplateBuilder(
       val branchPoint = branchPointFactory.get(branchPointName)
       val bpTree: BranchPointTree = prevTree.getOrAdd(branchPoint)
       
-      for (branchSpec: Spec <- branchSpecs) {
+      for ( (branchSpec, idx) <- branchSpecs.zipWithIndex) {
         debug("branchSpec = " + branchSpec)
-        val branch = branchFactory.get(branchSpec.name, branchPoint)
+        val isBaseline = (idx == 0)
+        val branch = branchFactory.get(branchSpec.name, branchPoint, isBaseline)
         val branchTree = bpTree.getOrAdd(branch)
         val newHistory = branchHistory ++ Seq(branch)
         resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(

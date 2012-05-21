@@ -18,7 +18,13 @@ class Realization(val branches: Seq[Branch]) {
                                        case Seq() => Seq(Task.NO_BRANCH)
                                        case myBranches => myBranches 
                                      }
-    val names = branches.map{ branch => "%s.%s".format(branch.branchPoint.name, branch.name) }
+                                     
+    // write baseline branch to disk as "baseline" to allow for easier extensibility
+    // while maintaining semantics
+    val names = branches.map { branch =>
+      val displayName = if (branch.baseline) "baseline" else branch.name
+      "%s.%s".format(branch.branchPoint.name, displayName)
+    }
     names.mkString("-")
   }
 

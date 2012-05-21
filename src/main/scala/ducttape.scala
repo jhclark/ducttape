@@ -157,7 +157,7 @@ object Ducttape extends Logging {
     def getPlannedVertices(): Set[(String,Realization)] = {
       val plannedVertices = Plans.getPlannedVertices(workflow)
       if (plannedVertices.size > 0) {
-        System.err.println("Planned: " + plannedVertices)
+        System.err.println("Planned %s vertices".format(plannedVertices.size))
       }
       plannedVertices
     }
