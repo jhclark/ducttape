@@ -21,9 +21,7 @@ class PackageFinder(dirs: DirectoryArchitect,
         if(packageDefs.contains(packageSpec.name)) {
           packages += packageDefs(packageSpec.name)
         } else {
-          throw new FileFormatException(
-            "Undefined package %s".format(packageSpec.name),
-            List( (new File("unknown"), packageSpec.pos, packageSpec.pos.line) )) // TODO: XXX: filename
+          throw new FileFormatException("Undefined package %s".format(packageSpec.name), packageSpec)
         }
       }
     }
