@@ -3,7 +3,7 @@ task experiment_task : moses < in=/etc/passwd > out :: N=5 {
   $moses -version
 }
 
-package moses :: .versioner=svn .url="http://moses.svn.sourceforge.net/svnroot/moses" .rev=HEAD {
+package moses :: .versioner=svn .repo="http://moses.svn.sourceforge.net/svnroot/moses" .rev=HEAD {
   ./configure
   make -j16
 }
@@ -25,13 +25,13 @@ package moses :: .versioner=svn .url="http://moses.svn.sourceforge.net/svnroot/m
 
 # * "checkout" is run in a sandbox directory
 # * All other commands are run inside $dir
-versioner svn :: url rev {
+versioner svn :: repo rev {
   action checkout > dir {
-    svn co -r $rev $url .
+    svn co -r $rev $repo .
   }
   action repo_version > version {
-    svn info $url | awk -F': ' '/Revision/{print $2}' > $version
-    svn info $url | awk -F': ' '/Date/{print}' > $date
+    svn info $repo | awk -F': ' '/Revision/{print $2}' > $version
+    svn info $repo | awk -F': ' '/Date/{print}' > $date
   }
   # Used to confirm version after update/install
   action local_version > version date {  
