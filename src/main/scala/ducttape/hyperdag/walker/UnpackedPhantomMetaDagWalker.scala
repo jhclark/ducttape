@@ -52,7 +52,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
           "expected exactly one element in: " + seq)
   }
 
-  @tailrec
+  // note: cannot be @tailrec
   private def followPhantomChain(v: UnpackedMetaVertex[Option[V],H,E,D], edge: E, parentReal: Seq[D])
                                 : Seq[(E, Seq[D])] = {
     trace("Follow phantom chain at " + v)
@@ -62,44 +62,26 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         trace("Zip: " + v.edges.zip(v.parentRealizations))
 
         // use active hyperedges to find parents
-        val parents: Seq[UnpackedMetaVertex[Option[V],H,E,D]]
+        val parents: Seq[(E,UnpackedMetaVertex[Option[V],H,E,D])]
           = v.edges.zip(v.parentRealizations).
               flatMap { case (hyperedge, parentReals) => {
-                dag.delegate.sources(hyperedge).zip(parentReals).map { case (parent, parentReal) =>
+                import ducttape.util.Collections._
+                zip3(dag.delegate.sources(hyperedge), hyperedge.e, parentReals).map { case (parent, e, parentReal) =>
                   // parent: PackedVertex[Option[V]]
                   trace("Resolving hyperedge %s: parent is %s".format(hyperedge, parent))
-                  try {
-                    val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal.sorted(ordering)) )
-                    uv
-                  } catch {
-                    case e => {
-                      debug(unpackedMap.keySet.toSeq.map(_.toString).sorted.mkString("\n"))
-                      throw e
-                    }
-                  }                  
+                  val uv: UnpackedMetaVertex[Option[V],H,E,D] = unpackedMap( (parent, parentReal.sorted(ordering)) )
+                  (e, uv)
                 }
               }
             }
         trace("Parents of %s are: %s".format(v, parents))
         parents match {
-          case Seq() => Seq( (edge, parentReal) ) // this is a root phantom vertex
-          case Seq(singleUnpackedV) => {
-            
-            
-            // TODO: How do we expect epsilon vertices to get handled?
-            
-            
-            
-            
-            
-            
-            val myHyperEdge = getOnly(v.edges)
-            val myParentReals = getOnly(v.parentRealizations)
-            val myEdge = getOnly(myHyperEdge.e)
-            val myParentReal = getOnly(myParentReals)
-            followPhantomChain(singleUnpackedV, myEdge, myParentReal)
+          case Seq() => Seq( (edge, parentReal) ) // this is a leaf/terminal phantom vertex
+          case _ => {
+            parents.flatMap { case (e, unpackedV) =>
+              followPhantomChain(unpackedV, e, unpackedV.realization)
+            }
           }
-          case _ => throw new RuntimeException("Found more than one parent of a phantom vertex: %s => %s".format(v,parents))
         }
       }
     }
