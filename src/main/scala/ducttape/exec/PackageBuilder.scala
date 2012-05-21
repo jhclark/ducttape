@@ -12,7 +12,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
                      packageVersions: PackageVersioner) {
   
   def build(packages: Iterable[PackageDef]) {
-    for(myPackage: PackageDef <- packages) {
+    for (myPackage: PackageDef <- packages) {
       val buildEnv = new BuildEnvironment(dirs, packageVersions(myPackage.name), myPackage.name)
       System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
       // TODO: XXX: Can build ever interfere with another running workflow?

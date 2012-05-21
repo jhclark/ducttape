@@ -41,21 +41,21 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     
     val versionerName: String = dotVars.find{spec => spec.name == "versioner"} match {
       case Some(spec) => spec.asInstanceOf[LiteralSpec].rval.value
-      case None => throw new FileFormatException("No versioner specified for package %s".format(packageDef.name), List((packageDef.declaringFile, packageDef.pos)))
+      case None => throw new FileFormatException("No versioner specified for package %s".format(packageDef.name), packageDef)
     }
     val versionerDef = versionerDefs.get(versionerName) match {
       case Some(v) => v
-      case None => throw new FileFormatException("Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), List((packageDef.declaringFile, packageDef.pos)))
+      case None => throw new FileFormatException("Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), packageDef)
     }
    
     val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect{case x: ActionDef => x}.filter{_.keyword == "action"}
     val checkoutDef = actionDefs.find{a => a.name == "checkout"} match {
       case Some(v) => v
-      case None => throw new FileFormatException("Checkout action not defined for versioner '%s'".format(versionerName), List((packageDef.declaringFile, versionerDef.pos)))
+      case None => throw new FileFormatException("Checkout action not defined for versioner '%s'".format(versionerName), packageDef)
     }
     val repoVersionDef = actionDefs.find{a => a.name == "repo_version"} match {
       case Some(v) => v
-      case None => throw new FileFormatException("repo_version action not defined for versioner '%s'".format(versionerName), List((packageDef.declaringFile, versionerDef.pos)))
+      case None => throw new FileFormatException("repo_version action not defined for versioner '%s'".format(versionerName), packageDef)
     }
   }
   
@@ -79,12 +79,12 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exitCode = Shell.run(info.repoVersionDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
     if(exitCode != 0) {
-      throw new BashException("Action repo_version for versioner %s returned %s".format(info.versionerDef.name, exitCode))
+      throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
     }
     
     val repoVersion = Files.read(versionFile).headOption match {
       case Some(v) => v
-      case None => throw new BashException("Action repo_version for versioner %s returned a blank version".format(info.versionerDef.name))
+      case None => throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
     }
     
     System.err.println("Version is %s".format(repoVersion))
