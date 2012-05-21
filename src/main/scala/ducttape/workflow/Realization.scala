@@ -11,9 +11,10 @@ class Realization(val branches: Seq[Branch]) {
   private def realizationName(real: Map[String,Branch]): String = {
     
     // sort by branch point name and remove references to the baseline branch
+    // (removing all instances of baseline for any branch allows easier extensibility)
     val branches: Seq[Branch] = real.values.toSeq.
                                      sortBy(_.branchPoint.name).
-                                     filter { _ != Task.NO_BRANCH } match {
+                                     filterNot { _.baseline } match {
                                        // make sure we have at least baseline, if nothing else
                                        case Seq() => Seq(Task.NO_BRANCH)
                                        case myBranches => myBranches 
