@@ -37,9 +37,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
   
   class PackageVersionerInfo(val packageDef: PackageDef) {
     // TODO: Make a static check that all these dot variables are literal (not branch points, etc.)
-    val dotVars: Seq[LiteralSpec] = packageDef.params.filter{spec => spec.dotVariable}.map{_.asInstanceOf[LiteralSpec]}
+    val dotVars: Seq[LiteralSpec] = packageDef.params.filter { spec => spec.dotVariable }.map(_.asInstanceOf[LiteralSpec])
     
-    val versionerName: String = dotVars.find{spec => spec.name == "versioner"} match {
+    val versionerName: String = dotVars.find { spec => spec.name == "versioner" } match {
       case Some(spec) => spec.asInstanceOf[LiteralSpec].rval.value
       case None => throw new FileFormatException("No versioner specified for package %s".format(packageDef.name), List((packageDef.declaringFile, packageDef.pos)))
     }
@@ -48,12 +48,12 @@ class PackageVersioner(val dirs: DirectoryArchitect,
       case None => throw new FileFormatException("Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), List((packageDef.declaringFile, packageDef.pos)))
     }
    
-    val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect{case x: ActionDef => x}.filter{_.keyword == "action"}
-    val checkoutDef = actionDefs.find{a => a.name == "checkout"} match {
+    val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect{ case x: ActionDef => x }.filter(_.keyword == "action")
+    val checkoutDef = actionDefs.find { a => a.name == "checkout" } match {
       case Some(v) => v
       case None => throw new FileFormatException("Checkout action not defined for versioner '%s'".format(versionerName), List((packageDef.declaringFile, versionerDef.pos)))
     }
-    val repoVersionDef = actionDefs.find{a => a.name == "repo_version"} match {
+    val repoVersionDef = actionDefs.find { a => a.name == "repo_version" } match {
       case Some(v) => v
       case None => throw new FileFormatException("repo_version action not defined for versioner '%s'".format(versionerName), List((packageDef.declaringFile, versionerDef.pos)))
     }
@@ -74,11 +74,12 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exitCodeFile = new File(workDir, "exit_code.txt")
     
     // the environment also includes referenced dot variables from the package
-    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.dotVars.map{spec => (spec.name, spec.rval.value)}
+    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++
+              info.dotVars.map { spec => (spec.name, spec.rval.value) }
     
     val exitCode = Shell.run(info.repoVersionDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
-    if(exitCode != 0) {
+    if (exitCode != 0) {
       throw new BashException("Action repo_version for versioner %s returned %s".format(info.versionerDef.name, exitCode))
     }
     
@@ -121,7 +122,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     
     val exitCode = Shell.run(info.checkoutDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
-    if(exitCode != 0) {
+    if (exitCode != 0) {
       throw new BashException("Action repo_version for versioner %s returned %s".format(info.versionerDef.name, exitCode))
     }
     
