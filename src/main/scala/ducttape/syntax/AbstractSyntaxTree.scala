@@ -130,7 +130,10 @@ object AbstractSyntaxTree {
     override def children = Seq(rval)
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: AbstractSpec[_] => (other.name == this.name) }
-    override def toString() = "%s=%s".format(name, rval)
+    override def toString() = {
+      val displayName = if (dotVariable) "." + name else name
+      "%s=%s".format(displayName, rval)
+    }
   }
   type Spec = AbstractSpec[RValue]
   type LiteralSpec = AbstractSpec[Literal]
@@ -217,11 +220,11 @@ object AbstractSyntaxTree {
     private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
-    lazy val packages: Seq[Spec] = packageSpecList.flatMap{_.specs}
-    lazy val inputs: Seq[Spec] = inputSpecList.flatMap{_.specs}
-    lazy val outputs: Seq[Spec] = outputSpecList.flatMap{_.specs}
-    lazy val params: Seq[Spec] = paramSpecList.flatMap{_.specs}
-    lazy val allSpecs: Seq[Spec] = header.specsList.flatMap{ specs: Specs => specs.specs }
+    lazy val packages: Seq[Spec] = packageSpecList.flatMap(_.specs)
+    lazy val inputs: Seq[Spec] = inputSpecList.flatMap(_.specs)
+    lazy val outputs: Seq[Spec] = outputSpecList.flatMap(_.specs)
+    lazy val params: Seq[Spec] = paramSpecList.flatMap(_.specs)
+    lazy val allSpecs: Seq[Spec] = header.specsList.flatMap { specs: Specs => specs.specs }
     
     override lazy val endPos: Position = {
       // TODO: Define ordering on positional so that we can find last column, too
@@ -253,6 +256,18 @@ object AbstractSyntaxTree {
     
     // only has members for SubmitterDefs (but adding more info to the typesystem gets ridiculous)
     lazy val actions: Seq[ActionDef] = taskLikes.filter(_.keyword == "action")
+    
+    private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect { case x: TaskPackageNames => x }
+    private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect { case x: TaskInputs => x }
+    private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect { case x: TaskOutputs => x }
+    private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect { case x: TaskParams => x }
+    
+    // a few convenience methods:
+    lazy val packages: Seq[Spec] = packageSpecList.flatMap(_.specs)
+    lazy val inputs: Seq[Spec] = inputSpecList.flatMap(_.specs)
+    lazy val outputs: Seq[Spec] = outputSpecList.flatMap(_.specs)
+    lazy val params: Seq[Spec] = paramSpecList.flatMap(_.specs)
+    lazy val allSpecs: Seq[Spec] = header.specsList.flatMap { specs: Specs => specs.specs }
     
     override def children = Seq(comments, header) ++ blocks
     override def toString() = name
