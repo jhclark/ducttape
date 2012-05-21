@@ -249,7 +249,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     if (!hyperedges.isEmpty) {
       debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
         format(task, debugNesting, branchPoint, hyperedges))
-      dag.addMetaEdge(branchPoint, hyperedges, sinkV)
+      dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s".format(branchPoint.toString, task.name))
     } else {
       debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
         format(task, debugNesting, branchPoint))

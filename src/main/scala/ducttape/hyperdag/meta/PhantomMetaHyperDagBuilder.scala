@@ -20,8 +20,16 @@ class PhantomMetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null
   
   def addMetaEdge(m: M,
                   hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[Option[V]],E)])],
-                  sink: PackedVertex[Option[V]]): MetaEdge[M,H,E] = {
-    delegate.addMetaEdge(m, hyperEdgeInfo, sink)
+                  sink: PackedVertex[Option[V]],
+                  comment: Option[String]): MetaEdge[M,H,E] = {
+    delegate.addMetaEdge(m, hyperEdgeInfo, sink, comment)
+  }
+  
+  def addMetaEdge(m: M,
+                  hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[Option[V]],E)])],
+                  sink: PackedVertex[Option[V]],
+                  comment: String): MetaEdge[M,H,E] = {
+    delegate.addMetaEdge(m, hyperEdgeInfo, sink, Some(comment))
   }
   
   def build() = new PhantomMetaHyperDag[V,M,H,E](delegate.build())

@@ -24,11 +24,14 @@ class MetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null, epsil
   
   def addVertex(v: V, comment: Option[String] = None): PackedVertex[V] = delegate.addVertex(v, comment)
 
-  def addMetaEdge(m: M, hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[V],E)])], sink: PackedVertex[V]): MetaEdge[M,H,E] = {
+  def addMetaEdge(m: M,
+                  hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[V],E)])],
+                  sink: PackedVertex[V],
+                  comment: Option[String]): MetaEdge[M,H,E] = {
 
     // TODO: Don't always alternate between normal and epsilon vertices to save some memory
 
-    val meEpsilonV = delegate.addVertex(epsilonV, comment=Some("Epsilon:" + m.toString))
+    val meEpsilonV = delegate.addVertex(epsilonV, comment=comment)
     val hyperedges: Seq[HyperEdge[H,E]] = hyperEdgeInfo.map { heInfo =>
       val (h, edgeInfo) = heInfo
       edgeInfo.foreach { case (srcV, e) => assert(srcV != sink, "This meta-edge would create a cycle") }
