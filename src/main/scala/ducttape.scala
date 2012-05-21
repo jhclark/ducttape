@@ -187,6 +187,19 @@ object Ducttape extends Logging {
         //println("Actual realization: " + v.realization)
       }
     }
+    
+    // explain why certain realizations weren't generated (it's not always obvious)
+    def explain {
+      // TODO: More memory efficient uniquing strategy?
+      val seen = new mutable.HashSet[(Option[String],String)]
+      def explainCallback(planName: Option[String], msg: String) {
+        if (!seen( (planName, msg) )) {
+          System.err.println("%s: %s".format(planName.getOrElse("Anonymous"), msg))
+          seen += ((planName, msg))
+        }
+      }
+      Plans.getPlannedVertices(workflow, explainCallback)
+    }
 
     def markDone {
       val plannedVertices = getPlannedVertices()
@@ -354,6 +367,7 @@ object Ducttape extends Logging {
     // TODO: Have run() function in each mode?
     ex2err(opts.mode match {
       case "list" => list
+      case "explain" => explain
       case "env" => {
         val plannedVertices = getPlannedVertices()
         val cc = getCompletedTasks(plannedVertices)

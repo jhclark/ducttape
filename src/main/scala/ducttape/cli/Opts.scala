@@ -23,6 +23,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   
   val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
   val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
+  val explain = new Mode("explain", desc="Explains why realizations get filtered out by a given plan");
   val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
   val debug_viz = new Mode("debug_viz", desc="Output a GraphViz dot visualization of the packed MetaHyperDAG");
   val mark_done = new Mode("mark_done", desc="Mark a specific task/realization as complete (useful if some manual recovery or resumption was necessary)");

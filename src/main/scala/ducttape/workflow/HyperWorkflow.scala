@@ -40,9 +40,15 @@ import grizzled.slf4j.Logging
 
   def packedWalker: PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
     
-  /** when used with an unpacker, causes anti-hyperedges to be recognized
-   *  and handled properly (i.e. required if you want to use AntiHyperEdges) */
-  object BranchGraftComboTransformer extends ComboTransformer[BranchInfo,Seq[SpecPair],Branch] with Logging {
+  /** when used with an unpacker, causes hyperedge grafts to be recognized
+   *  and handled properly
+   *  
+   *  The branchFailureCallback can be used to provide feedback to the user on
+   *  why certain realizations were not produced. */
+  class BranchGraftComboTransformer(graftFailureCallback: => String => Unit)
+      extends ComboTransformer[BranchInfo,Seq[SpecPair],Branch]
+      with Logging {
+    
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
         if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
@@ -55,10 +61,8 @@ import grizzled.slf4j.Logging
             Some(copy)
           } else {
             // no corresponding edge was found in the derivation
-            // this anti-hyperedge cannot apply
-            //
-            // TODO: Note when corresponding edge not found
-            // to help user understand why no path is available
+            // this branch graft cannot apply
+            graftFailureCallback("Realization filtered by branch graft: %s".format(combo.view.mkString("-")))
             None
           }
         }
@@ -69,8 +73,11 @@ import grizzled.slf4j.Logging
 
   // TODO: Currently only used by initial pass to find goals
   // TODO: Document different use cases of planFilter vs plannedVertices
+  // NOTE: realizationFailureCallback can be used to provide the user with
+  //       useful information about why certain realizations are not produced
   def unpackedWalker(planFilter: Map[BranchPoint, Set[Branch]] = Map.empty,
-                     plannedVertices: Set[(String,Realization)] = Set.empty)
+                     plannedVertices: Set[(String,Realization)] = Set.empty,
+                     realizationFailureCallback: => String => Unit = { x: String => ; })
                      : UnpackedWalker = {
     
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
@@ -110,16 +117,9 @@ import grizzled.slf4j.Logging
               // otherwise it implies the baseline branch
               case None => realBranch.name == Task.NO_BRANCH.name // compare *name*, not actual Baseline:baseline
             }}
-            // TODO: Store such messages somewhere to optionally give a verbose
-            // description of why some tasks don't run?
             if (!ok) {
-              // TODO: XXX: Hack move to MetaHyperDAG
-              val taskT: TaskTemplate = if (v.value == null) {
-                dag.children(v).head.value.get
-              } else {
-                v.value.get
-              }
-              debug("Plan excludes: " + myReal.mkString(" ") + " at " + taskT)
+              realizationFailureCallback("Plan excludes realization: %s at %s".format(
+                myReal.mkString(" "), v.comment.getOrElse(v.value.getOrElse("Unknown"))))
             }
             ok
           }
@@ -136,9 +136,11 @@ import grizzled.slf4j.Logging
       }
     }
 
+    // this is only used if we've previously made a pass to determine which vertices we'll be running
     val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch] {
       override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
         // TODO: Less extraneous Realization creation?
+        realizationFailureCallback("Plan excludes vertex: %s".format(v))
         plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) ) || plannedVertices.isEmpty
       } 
     }
@@ -153,7 +155,7 @@ import grizzled.slf4j.Logging
     dag.unpackedWalker[Branch,UnpackState](
       constraintFilter=globalBranchPointConstraint,
       vertexFilter=vertexFilter,
-      comboTransformer=BranchGraftComboTransformer,
+      comboTransformer=new BranchGraftComboTransformer(realizationFailureCallback),
       toD=toD)(ordering)
   }
 }
