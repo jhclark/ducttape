@@ -55,6 +55,15 @@ class WorkflowChecker {
       globals += a.spec.name -> a.spec
     }
     
+    // don't allow globals to have a name
+    for (globalBlock <- workflow.globalBlocks) globalBlock.name match {
+      case None => ; // good
+      case Some(name) => {
+        errors += "Global variable block defined at %s:%d has a name. This is not allowed.".
+                format(globalBlock.declaringFile, globalBlock.pos.line, globalBlock.declaringFile)
+      }
+    }
+    
     (warnings, errors)
   }
 }

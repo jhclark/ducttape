@@ -296,19 +296,20 @@ object AbstractSyntaxTree {
   class WorkflowDefinition(val blocks: Seq[Block]) extends ASTType {
     override def children = blocks
     
-    lazy val plans: Seq[PlanDefinition] = blocks.collect{case x: PlanDefinition => x}
+    lazy val plans: Seq[PlanDefinition] = blocks.collect { case x: PlanDefinition => x }
     
-    private lazy val groupLikes: Seq[GroupDefinition] = blocks.collect{case x: GroupDefinition => x}
+    private lazy val groupLikes: Seq[GroupDefinition] = blocks.collect { case x: GroupDefinition => x }
     lazy val versioners: Seq[VersionerDef] = groupLikes.filter(_.keyword == "versioner")
     lazy val submitters: Seq[SubmitterDef] = groupLikes.filter(_.keyword == "submitter")
     
-    private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect{case x: ConfigDefinition => x}
-    lazy val configs: Seq[ConfigDefinition] = configLikes.filter{t: ConfigDefinition => t.keyword == "config"}
-    lazy val globals: Seq[ConfigAssignment] = configLikes.filter{t: ConfigDefinition => t.keyword == "global"}.flatMap{ _.lines}
+    private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect { case x: ConfigDefinition => x }
+    lazy val configs: Seq[ConfigDefinition] = configLikes.filter { t: ConfigDefinition => t.keyword == "config"}
+    lazy val globalBlocks: Seq[ConfigDefinition] = configLikes.filter { t: ConfigDefinition => t.keyword == "global"}
+    lazy val globals: Seq[ConfigAssignment] = globalBlocks.flatMap { _.lines }
     
-    private lazy val taskDefs: Seq[TaskDef] = blocks.collect{case x: TaskDef => x}
-    lazy val tasks: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "task"}
-    lazy val packages: Seq[TaskDef] = taskDefs.filter{t: TaskDef => t.keyword == "package"}
+    private lazy val taskDefs: Seq[TaskDef] = blocks.collect { case x: TaskDef => x }
+    lazy val tasks: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "task" }
+    lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
     
     override def toString() = blocks.mkString("\n\n")
   }  
