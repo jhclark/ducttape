@@ -14,10 +14,54 @@ import ducttape.util.Files
 import ducttape.util.Shell
 import ducttape.util.BashException
 
+object Versioners {
+  def getVersioner(packageDef: PackageDef, versionerDefs: Map[String, VersionerDef]): VersionerDef = {
+    val dotVars: Seq[LiteralSpec] = packageDef.params.filter { spec => spec.dotVariable }.map(_.asInstanceOf[LiteralSpec])
+  
+    val versionerName: String = dotVars.find { spec => spec.name == "versioner" } match {
+      case Some(spec) => spec.asInstanceOf[LiteralSpec].rval.value
+      case None => throw new FileFormatException(
+        "No versioner specified for package %s".format(packageDef.name), packageDef)
+    }
+    
+    val versionerDef: VersionerDef = versionerDefs.get(versionerName) match {
+      case Some(v) => v
+      case None => throw new FileFormatException(
+        "Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), packageDef)
+    }
+    versionerDef
+  }
+}
+
+// throws FileFormatException if required versioner, or actions are not defined
+class PackageVersionerInfo(val versionerDef: VersionerDef) { 
+  val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect { case x: ActionDef => x }.filter(_.keyword == "action")
+  val checkoutDef: ActionDef = actionDefs.find { a => a.name == "checkout" } match {
+    case Some(v) => v
+    case None => throw new FileFormatException(
+      "Checkout action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+  }
+  val repoVersionDef: ActionDef = actionDefs.find { a => a.name == "repo_version" } match {
+    case Some(v) => v
+    case None => throw new FileFormatException(
+      "repo_version action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+  }
+  val localVersionDef: ActionDef = actionDefs.find { a => a.name == "local_version" } match {
+    case Some(v) => v
+    case None => throw new FileFormatException(
+      "local_version action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+  }
+  
+  val versionerEnv: Seq[(String,String)] = {
+    val dotVars: Seq[LiteralSpec] = versionerDef.params.filter(_.dotVariable).map(_.asInstanceOf[LiteralSpec])
+    dotVars.map { spec => (spec.name, spec.rval.value) }
+  }
+}
+
 class PackageVersioner(val dirs: DirectoryArchitect,
                        val versioners: Seq[VersionerDef]) {
   
-  val versionerDefs = versioners.map{ v => (v.name, v) }.toMap
+  private val versionerDefs = versioners.map { v => (v.name, v) }.toMap
   
   // the following 3 fields get populated by findAlreadyBuilt()
   val packageVersions = new mutable.HashMap[String,String]
@@ -35,36 +79,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     packagesToBuild = notDone
   }
   
-  class PackageVersionerInfo(val packageDef: PackageDef) {
-    // TODO: Make a static check that all these dot variables are literal (not branch points, etc.)
-    val dotVars: Seq[LiteralSpec] = packageDef.params.filter { spec => spec.dotVariable }.map(_.asInstanceOf[LiteralSpec])
-    
-    val versionerName: String = dotVars.find { spec => spec.name == "versioner" } match {
-      case Some(spec) => spec.asInstanceOf[LiteralSpec].rval.value
-      case None => throw new FileFormatException(
-        "No versioner specified for package %s".format(packageDef.name), packageDef)
-    }
-    val versionerDef = versionerDefs.get(versionerName) match {
-      case Some(v) => v
-      case None => throw new FileFormatException(
-        "Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), packageDef)
-    }
-   
-    val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect{ case x: ActionDef => x }.filter(_.keyword == "action")
-    val checkoutDef = actionDefs.find { a => a.name == "checkout" } match {
-      case Some(v) => v
-      case None => throw new FileFormatException(
-        "Checkout action not defined for versioner '%s'".format(versionerName), packageDef)
-    }
-    val repoVersionDef = actionDefs.find { a => a.name == "repo_version" } match {
-      case Some(v) => v
-      case None => throw new FileFormatException(
-        "repo_version action not defined for versioner '%s'".format(versionerName), packageDef)
-    }
-  }
-  
   private def isAlreadyBuilt(packageDef: PackageDef): Boolean = {
-    val info = new PackageVersionerInfo(packageDef)
+    val versionerDef: VersionerDef = Versioners.getVersioner(packageDef, versionerDefs)
+    val info = new PackageVersionerInfo(versionerDef)
     
     // TODO: do static analysis on all actions
     // TODO: Assign inputs and outputs to actions
@@ -78,8 +95,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exitCodeFile = new File(workDir, "exit_code.txt")
     
     // the environment also includes referenced dot variables from the package
-    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++
-              info.dotVars.map { spec => (spec.name, spec.rval.value) }
+    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.versionerEnv
     
     val exitCode = Shell.run(info.repoVersionDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
@@ -113,7 +129,8 @@ class PackageVersioner(val dirs: DirectoryArchitect,
   }
   
   def checkout(packageDef: PackageDef, buildDir: File) {
-    val info = new PackageVersionerInfo(packageDef)
+    val versionerDef = Versioners.getVersioner(packageDef, versionerDefs)
+    val info = new PackageVersionerInfo(versionerDef)
     val repoVersion = packageVersions(packageDef.name)
     
     // TODO: Remove partial builds?
@@ -123,7 +140,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val stderrFile = new File(workDir, "checkout_stderr.txt")
     val exitCodeFile = new File(workDir, "checkout_exit_code.txt")
     
-    val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.dotVars.map{spec => (spec.name, spec.rval.value)}
+    val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.versionerEnv
     
     System.err.println("Checking out %s into %s via %s".format(
       packageDef.name, buildDir.getAbsolutePath, workDir.getAbsolutePath))
