@@ -114,13 +114,13 @@ class PackageVersioner(val dirs: DirectoryArchitect,
            info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
     }
     
-    System.err.println("Version is %s".format(repoVersion))
+    System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
     packageVersions += packageDef.name -> repoVersion
     
     val buildDir = dirs.assignBuildDir(packageDef.name, repoVersion)
     // TOOD: Far more aggressive checking to see if build completed
     val exists = buildDir.exists
-    System.err.println("Package %s: %s".format(packageDef.name, if (exists) "FOUND" else "NOT FOUND"))
+    System.err.println("Package %s: %s".format(packageDef.name, if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
     exists
     
     // 1) Get the version

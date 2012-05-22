@@ -5,6 +5,7 @@ import collection._
 import java.util.concurrent.ExecutionException
 import java.io.File
 
+import ducttape.syntax.FileFormatException
 import ducttape.exec.PackageBuilder
 import ducttape.versioner.WorkflowVersionInfo
 import ducttape.exec.PackageVersioner
@@ -39,10 +40,10 @@ object ExecuteMode {
       val inputChecker = new InputChecker(dirs)
       Visitors.visitAll(workflow, inputChecker, plannedVertices)
       if (inputChecker.errors.size > 0) {
-        // TODO: Migrate to ErrorUtils?
-        for (msg <- inputChecker.errors) {
-          System.err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+        for (e: FileFormatException <- inputChecker.errors) {
+          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
         }
+        System.err.println("%d errors".format(inputChecker.errors.size))
         System.exit(1)
       }
       
