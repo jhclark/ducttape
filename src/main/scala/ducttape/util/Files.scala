@@ -63,6 +63,18 @@ object Files {
     val from = new FileInputStream(src).getChannel
     to.transferFrom(from, 0, Long.MaxValue)
   }
+  
+  def isGlob(path: String) = path.contains("*") || path.contains("?")
+  
+  def glob(pattern: String): Seq[File] = isGlob(pattern) match {
+    case false => Seq(new File(pattern))
+    case true => {
+      // TODO: Perhaps we can find a Java implementation that behaves exactly as bash
+      // but for now, just use bash.
+      Shell.runGetOutputLines("ls -1 --color=no " + pattern, workDir=new File("."), env=Nil).
+        map { str => new File(str) }
+    }
+  }
 }
 
 object NullWriter extends Writer {
