@@ -16,6 +16,28 @@ import grizzled.slf4j.Logging
 // TODO: Disconnect from CLI and move to workflow package
 object Plans extends Logging {
   
+  def getCandidates(workflow: HyperWorkflow,
+                    plan: RealizationPlan,
+                    explainCallback: => (Option[String], String) => Unit) = {
+    val numCores = 1
+    // tasks only know about their parents in the form of (taskName, realization)
+    // not as references to their realized tasks. this lets them get garbage collected
+    // and reduces memory usage. however, we need all the candidate realized tasks on hand
+    // (pre-filtered by realization, but not by goal vertex) so that we can make
+    // a backward pass over the unpacked DAG
+    val candidates = new mutable.HashMap[(String,Realization), RealTask]
+
+    // this is the most important place for us to pass the filter to unpackedWalker!
+    workflow.unpackedWalker(plan.realizations,
+                            realizationFailureCallback=explainCallback.curried(plan.name)).
+      foreach(numCores, { v: UnpackedWorkVert =>
+        val taskT: TaskTemplate = v.packed.value.get
+        val task: RealTask = taskT.realize(v)
+        candidates += (task.name, task.realization) -> task
+    })
+    candidates
+  }
+  
   /**
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
@@ -32,32 +54,12 @@ object Plans extends Logging {
       }
       case _ => {
         System.err.println("Finding hyperpaths contained in plan...")
-        
-        def getCandidates(plan: RealizationPlan) = {
-          val numCores = 1
-          // tasks only know about their parents in the form of (taskName, realization)
-          // not as references to their realized tasks. this lets them get garbage collected
-          // and reduces memory usage. however, we need all the candidate realized tasks on hand
-          // (pre-filtered by realization, but not by goal vertex) so that we can make
-          // a backward pass over the unpacked DAG
-          val candidates = new mutable.HashMap[(String,Realization), RealTask]
-    
-          // this is the most important place for us to pass the filter to unpackedWalker!
-          workflow.unpackedWalker(plan.realizations,
-                                  realizationFailureCallback=explainCallback.curried(plan.name)).
-            foreach(numCores, { v: UnpackedWorkVert =>
-              val taskT: TaskTemplate = v.packed.value.get
-              val task: RealTask = taskT.realize(v)
-              candidates += (task.name, task.realization) -> task
-          })
-          candidates
-        }
-        
+         
         val vertexFilter = new mutable.HashSet[(String,Realization)]
         for (plan: RealizationPlan <- workflow.plans) {
           System.err.println("Finding vertices for plan: %s".format(plan.name))
           
-          val candidates = getCandidates(plan)
+          val candidates = getCandidates(workflow, plan, explainCallback)
           val fronteir = new mutable.Queue[RealTask]
           
           // initialize with all valid realizations of the goal vertex
@@ -95,10 +97,10 @@ object Plans extends Logging {
           System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
           
           // this is almost certainly not what the user intended
-          if (vertexFilter.isEmpty) {
+          if (seen.isEmpty) {
             throw new FileFormatException("Plan includes zero tasks", plan.planDef)
           }
-          vertexFilter ++= seen.map{task => (task.name, task.realization)}
+          vertexFilter ++= seen.map { task => (task.name, task.realization) }
         }
         System.err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
         vertexFilter
