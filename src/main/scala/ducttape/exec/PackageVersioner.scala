@@ -13,6 +13,7 @@ import java.io.File
 import ducttape.util.Files
 import ducttape.util.Shell
 import ducttape.util.BashException
+import grizzled.slf4j.Logging
 
 object Versioners {
   def getVersioner(packageDef: PackageDef, versionerDefs: Map[String, VersionerDef]): VersionerDef = {
@@ -34,7 +35,7 @@ object Versioners {
 }
 
 // throws FileFormatException if required versioner, or actions are not defined
-class PackageVersionerInfo(val versionerDef: VersionerDef) { 
+class PackageVersionerInfo(val versionerDef: VersionerDef) extends Logging { 
   val actionDefs: Seq[ActionDef] = versionerDef.blocks.collect { case x: ActionDef => x }.filter(_.keyword == "action")
   val checkoutDef: ActionDef = actionDefs.find { a => a.name == "checkout" } match {
     case Some(v) => v
@@ -51,15 +52,16 @@ class PackageVersionerInfo(val versionerDef: VersionerDef) {
     case None => throw new FileFormatException(
       "local_version action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
   }
+  val requiredParams: Set[String] = versionerDef.params.map(_.name).toSet
   
-  val versionerEnv: Seq[(String,String)] = {
-    val dotVars: Seq[LiteralSpec] = versionerDef.params.filter(_.dotVariable).map(_.asInstanceOf[LiteralSpec])
-    dotVars.map { spec => (spec.name, spec.rval.value) }
+  def getEnv(packageDef: PackageDef): Seq[(String,String)] = {
+    val packageDotParams: Seq[LiteralSpec] = packageDef.params.filter(_.dotVariable).map(_.asInstanceOf[LiteralSpec])
+    packageDotParams.map { spec => (spec.name, spec.rval.value) }
   }
 }
 
 class PackageVersioner(val dirs: DirectoryArchitect,
-                       val versioners: Seq[VersionerDef]) {
+                       val versioners: Seq[VersionerDef]) extends Logging {
   
   private val versionerDefs = versioners.map { v => (v.name, v) }.toMap
   
@@ -95,11 +97,12 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exitCodeFile = new File(workDir, "exit_code.txt")
     
     // the environment also includes referenced dot variables from the package
-    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.versionerEnv
+    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
+    debug("Environment for repo_version action is: " + env)
     
     val exitCode = Shell.run(info.repoVersionDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
-    if(exitCode != 0) {
+    if (exitCode != 0) {
       throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
         info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
     }
@@ -140,7 +143,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val stderrFile = new File(workDir, "checkout_stderr.txt")
     val exitCodeFile = new File(workDir, "checkout_exit_code.txt")
     
-    val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.versionerEnv
+    val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.getEnv(packageDef)
     
     System.err.println("Checking out %s into %s via %s".format(
       packageDef.name, buildDir.getAbsolutePath, workDir.getAbsolutePath))

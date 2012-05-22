@@ -63,6 +63,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
     }
   }
 
+  // TODO: Move to ErrorUtils?
   def exitHelp(msg: String, code: Int) {
     help
     System.err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))

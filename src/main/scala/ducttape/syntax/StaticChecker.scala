@@ -20,10 +20,10 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
   /**
    * Returns a tuple of (warnings, errors)
    */
-  def check(wd: WorkflowDefinition): (Seq[String], Seq[String]) = {
-    val warnings = new mutable.ArrayBuffer[String]
-    val errors = new mutable.ArrayBuffer[String]
-    for(task: TaskDef <- wd.tasks) {
+  def check(wd: WorkflowDefinition): (Seq[FileFormatException], Seq[FileFormatException]) = {
+    val warnings = new mutable.ArrayBuffer[FileFormatException]
+    val errors = new mutable.ArrayBuffer[FileFormatException]
+    for (task: TaskDef <- wd.tasks) {
       val (w, e) = check(task)
       warnings ++= w
       errors ++= e
@@ -35,23 +35,23 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
   /**
    * Returns a tuple of (warnings, errors)
    */
-  def check(taskDef: TaskDef): (Seq[String], Seq[String]) = {
-    val warnings = new mutable.ArrayBuffer[String]
-    val errors = new mutable.ArrayBuffer[String]
+  def check(taskDef: TaskDef): (Seq[FileFormatException], Seq[FileFormatException]) = {
+    val warnings = new mutable.ArrayBuffer[FileFormatException]
+    val errors = new mutable.ArrayBuffer[FileFormatException]
         
     // first check for things not allowed in ducttape
-    for(spec <- taskDef.inputs) spec.rval match {
+    for (spec <- taskDef.inputs) spec.rval match {
       case Literal(path) => {
-        if(path == "") {
-          errors += "Empty input name not allowed"
+        if (path == "") {
+          errors += new FileFormatException("Empty input name not allowed", spec)
         }
       }
       case _ => ;
     }
-    for(spec <- taskDef.outputs) spec.rval match {
+    for (spec <- taskDef.outputs) spec.rval match {
       case Literal(path) => {
-        if(path == "") {
-          errors += "Empty output name not allowed"
+        if (path == "") {
+          errors += new FileFormatException("Empty output name not allowed", spec)
         }
       }
       case _ => ;
@@ -64,14 +64,14 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
     val definedVars: Set[String] = taskDef.header.specsList.flatMap(_.specs.filterNot(_.dotVariable).map(_.name)).toSet
     
     // check for use of undeclared bash variables
-    for(usedVar <- usedVars) {
-      if(!definedVars.contains(usedVar)) {
+    for (usedVar <- usedVars) {
+      if (!definedVars.contains(usedVar)) {
         // TODO: Get position information from bash
         val msg = "Potential use of undefined variable: %s at task %s".format(usedVar, taskDef.name)
         undeclaredBehavior match {
           case Ignore => ;
-          case Warn => warnings += msg
-          case Error => errors += msg
+          case Warn => warnings += new FileFormatException(msg, taskDef)
+          case Error => errors += new FileFormatException(msg, taskDef)
         }
       }
     }
@@ -83,8 +83,8 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
         val msg = "Unused variable: %s at task %s".format(definedVar, taskDef.name)
         unusedBehavior match {
           case Ignore => ;
-          case Warn => warnings += msg
-          case Error => errors += msg
+          case Warn => warnings += new FileFormatException(msg, taskDef)
+          case Error => errors += new FileFormatException(msg, taskDef)
         }
       }
     }

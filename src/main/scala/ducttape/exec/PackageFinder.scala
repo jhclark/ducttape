@@ -8,19 +8,20 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.FileFormatException
 import java.io.File
 
-// dirs and versions are unimportant other than being required to generate the TaskEnvironment
-class PackageFinder(dirs: DirectoryArchitect,
-                    todo: Set[(String,Realization)],
+// TODO: Why 
+class PackageFinder(todo: Set[(String,Realization)],
                     packageDefs: Map[String,PackageDef]) extends UnpackedDagVisitor {
   
   val packages = new mutable.HashSet[PackageDef]
   
   override def visit(task: RealTask) {
-    if(todo((task.name, task.realization))) {
-      for(packageSpec: Spec <- task.packages) {
-        if(packageDefs.contains(packageSpec.name)) {
+    // TODO: Why do we need todo here? Isn't this enforced by the walker?
+    if (todo( (task.name, task.realization) )) {
+      for (packageSpec: Spec <- task.packages) {
+        if (packageDefs.contains(packageSpec.name)) {
           packages += packageDefs(packageSpec.name)
         } else {
+          // TODO: This should be checked by now...
           throw new FileFormatException("Undefined package %s".format(packageSpec.name), packageSpec)
         }
       }

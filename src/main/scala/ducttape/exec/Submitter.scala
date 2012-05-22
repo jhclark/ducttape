@@ -63,21 +63,23 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
       requiredParams.contains(litSpec.origSpec.name)
     }
     val dotParamsEnv: Seq[(String,String)] = dotParamsForSubmitter.map { p => (p.origSpec.name, p.srcSpec.rval.value) }
-    debug("Dot parameters going into environment are: " + dotParamsEnv)
+    debug("Dot parameters going into environment for run action are: " + dotParamsEnv)
     val runAction = getRunAction(submitterDef)
 
-    // TODO: Run also requires the real params from the task
-    
-    // TODO: Grab all dot params from this task
+    // note that run requires the entire environment from the original task
+    // since we might not be doing any wrapping at all
     val env: Seq[(String,String)] = Seq(
         ("TASK", taskEnv.task.name),
         ("REALIZATION", taskEnv.task.realization.toString),
-        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv
+        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv ++ taskEnv.env
         
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     // TODO: Any other mangling that might be necessary here?
     val code = runAction.commands.toString.replace("$COMMANDS", taskEnv.task.commands.toString).
                                            replace("${COMMANDS}", taskEnv.task.commands.toString)
+
+    debug("Code after nesting into run action is: %s".format(code))
+    debug("Execution environment is: %s".format(env))
     
     val exitCode = Shell.run(code, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
     Files.write("%d".format(exitCode), taskEnv.exitCodeFile)

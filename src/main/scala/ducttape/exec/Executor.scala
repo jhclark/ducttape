@@ -7,6 +7,7 @@ import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.workflow.HyperWorkflow
 import ducttape.util.BashException
+import grizzled.slf4j.Logging
 
 // workflow used for viz
 class Executor(val dirs: DirectoryArchitect,
@@ -16,7 +17,7 @@ class Executor(val dirs: DirectoryArchitect,
                val plannedVertices: Set[(String,Realization)],
                val alreadyDone: Set[(String,Realization)],
                val todo: Set[(String,Realization)],
-               observers: Seq[ExecutionObserver] = Nil) extends UnpackedDagVisitor {
+               observers: Seq[ExecutionObserver] = Nil) extends UnpackedDagVisitor with Logging {
   import ducttape.viz.WorkflowViz
   
   val submitter = new Submitter(workflow.submitters)
@@ -34,6 +35,8 @@ class Executor(val dirs: DirectoryArchitect,
           observers.foreach(_.fail(this, task))
           throw new BashException("Could not make directory: " + taskEnv.where.getAbsolutePath)
         }
+        
+        debug("Environment for %s is %s".format(task, taskEnv.env))
   
         // the "run" action of the submitter will throw if the exit code is non-zero
         submitter.run(taskEnv)

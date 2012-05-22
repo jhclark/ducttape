@@ -1,4 +1,6 @@
 package ducttape.exec
+
+import ducttape.util.BashException
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
@@ -16,7 +18,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
       val buildEnv = new BuildEnvironment(dirs, packageVersions(myPackage.name), myPackage.name)
       System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
       // TODO: XXX: Can build ever interfere with another running workflow?
-      if(buildEnv.buildDir.exists) {
+      if (buildEnv.buildDir.exists) {
          System.err.println("Removing incomplete package build: %s".format(buildEnv.buildDir.toString))
         Files.deleteDir(buildEnv.buildDir)
       }
@@ -31,11 +33,9 @@ class PackageBuilder(dirs: DirectoryArchitect,
       val buildCmds = Seq(myPackage.commands.toString)
       val env = Seq()
       val exitCode = Shell.run(buildCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
-      if(exitCode != 0) {
+      if (exitCode != 0) {
         // just bail out, this workflow is doomed without its tools
-        // TODO: Throw and then colorize output.
-        System.err.println("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
-        System.exit(1)
+        new BashException("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
       }
     }
   }

@@ -3,7 +3,9 @@ package ducttape.syntax
 import ducttape.exec.Submitter
 import ducttape.exec.Versioners
 import ducttape.exec.PackageVersionerInfo
+import ducttape.exec.UnpackedDagVisitor
 import ducttape.workflow.HyperWorkflow
+import ducttape.workflow.RealTask
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.AbstractSyntaxTree.Spec
@@ -14,16 +16,27 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.Literal
+import grizzled.slf4j.Logging
 
 import collection._
 
-class WorkflowChecker {
+/**
+ * Most checks can be done on the raw WorkflowDefinition.
+ * 
+ * Checks that require access to resolved parameters could be implemented
+ * in an unpacked workflow visitor.
+ */
+class WorkflowChecker(workflow: WorkflowDefinition,
+                      confSpecs: Seq[ConfigAssignment],
+                      builtins: Seq[WorkflowDefinition])
+    extends Logging {
   
-  def check(workflow: WorkflowDefinition, confSpecs: Seq[ConfigAssignment]): (Seq[String],Seq[String]) = {
+  // TODO: Break up into several methods
+  def check(): (Seq[FileFormatException],Seq[FileFormatException]) = {
     
     // TODO: Make into exceptions instead?
-    val warnings = new mutable.ArrayBuffer[String]
-    val errors = new mutable.ArrayBuffer[String]
+    val warnings = new mutable.ArrayBuffer[FileFormatException]
+    val errors = new mutable.ArrayBuffer[FileFormatException]
     
     // check all task-like things declared with the task keyword
     for (task: TaskDef <- workflow.tasks ++ workflow.packages) {
@@ -32,8 +45,9 @@ class WorkflowChecker {
       for (spec: Spec <- task.allSpecs) {
         vars.get(spec.name) match {
           case Some(prev) => {
-            errors += "Task variable %s originally defined at %s:%d redefined at %s:%d".
-                  format(prev.name, prev.declaringFile, prev.pos.line, spec.declaringFile, spec.pos.line)
+            errors += new FileFormatException("Task variable %s originally defined at %s:%d redefined at %s:%d".
+                  format(prev.name, prev.declaringFile, prev.pos.line, spec.declaringFile, spec.pos.line),
+                  List(prev, spec))
           }
           case None => ;
         }
@@ -44,8 +58,9 @@ class WorkflowChecker {
       for (out: Spec <- task.outputs) {
         out.rval match {
           case _: BranchPointDef => {
-            errors += "Outputs may not define branch points at %s:%d".
-              format(out.rval.declaringFile, out.rval.pos.line)
+            errors += new FileFormatException("Outputs may not define branch points at %s:%d".
+              format(out.rval.declaringFile, out.rval.pos.line),
+              List(out))
           }
           case _ => ;
         }
@@ -56,8 +71,9 @@ class WorkflowChecker {
     for (a: ConfigAssignment <- confSpecs) {
       globals.get(a.spec.name) match {
         case Some(prev) => {
-          errors += "Global variable originally defined at %s:%d redefined at %s:%d".
-                format(prev.declaringFile, prev.pos.line, a.spec.declaringFile, a.spec.pos.line)
+          errors += new FileFormatException("Global variable originally defined at %s:%d redefined at %s:%d".
+                format(prev.declaringFile, prev.pos.line, a.spec.declaringFile, a.spec.pos.line),
+                List(prev, a))
         }
         case None => ;
       }
@@ -68,70 +84,70 @@ class WorkflowChecker {
     for (globalBlock: ConfigDefinition <- workflow.globalBlocks) globalBlock.name match {
       case None => ; // good
       case Some(name) => {
-        errors += "Global variable block defined at %s:%d has a name. This is not allowed.".
-                format(globalBlock.declaringFile, globalBlock.pos.line, globalBlock.declaringFile)
+        errors += new FileFormatException("Global variable block defined at %s:%d has a name. This is not allowed.".
+                format(globalBlock.declaringFile, globalBlock.pos.line, globalBlock.declaringFile),
+                globalBlock)
       }
     }
     
     // check versioners to make sure they're sane
-    // TODO: Make a static check that all these dot variables are literal (not branch points, etc.)
     for (v: VersionerDef <- workflow.versioners) {
       {
         if (!v.packages.isEmpty)
-          errors += "Versioners cannot define packages: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("Versioners cannot define packages: Versioner '%s'".format(v.name), v)
         if (!v.inputs.isEmpty)
-          errors += "Versioners cannot define inputs: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("Versioners cannot define inputs: Versioner '%s'".format(v.name), v)
         if (!v.outputs.isEmpty)
-          errors += "Versioners cannot define outputs: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("Versioners cannot define outputs: Versioner '%s'".format(v.name), v)
       }
       
       val info = new PackageVersionerInfo(v)
       
-      //TODO: File:line info
       {
         val checkout: ActionDef = info.checkoutDef
         if (!checkout.packages.isEmpty)
-          errors += "The checkout action cannot define packages: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The checkout action cannot define packages: Versioner '%s'".format(v.name), checkout)
         if (!checkout.inputs.isEmpty)
-          errors += "The checkout action cannot define inputs: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The checkout action cannot define inputs: Versioner '%s'".format(v.name), checkout)
         if (checkout.outputs.map(_.name) != Seq("dir"))
-          errors += "The checkout action must define exactly one output called 'dir': Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The checkout action must define exactly one output called 'dir': Versioner '%s'".format(v.name), checkout)
         if (!checkout.params.isEmpty)
-          errors += "The checkout action cannot define parameters: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The checkout action cannot define parameters: Versioner '%s'".format(v.name), checkout)
       }
       
       {
         val repoVer: ActionDef = info.repoVersionDef
         if (!repoVer.packages.isEmpty)
-          errors += "The repo_version action cannot define packages: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The repo_version action cannot define packages: Versioner '%s'".format(v.name), repoVer)
         if (!repoVer.inputs.isEmpty)
-          errors += "The repo_version action cannot define inputs: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The repo_version action cannot define inputs: Versioner '%s'".format(v.name), repoVer)
         if (repoVer.outputs.map(_.name) != Seq("version"))
-          errors += "The repo_version action must define exactly one output called 'version': Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The repo_version action must define exactly one output called 'version': Versioner '%s'".format(v.name), repoVer)
         if (!repoVer.params.isEmpty)
-          errors += "The repo_version action cannot define parameters: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The repo_version action cannot define parameters: Versioner '%s'".format(v.name), repoVer)
       }
       
       {
         val localVer: ActionDef = info.localVersionDef
         if (!localVer.packages.isEmpty)
-          errors += "The local_version action cannot define packages: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The local_version action cannot define packages: Versioner '%s'".format(v.name), localVer)
         if (!localVer.inputs.isEmpty)
-          errors += "The local_version action cannot define inputs: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The local_version action cannot define inputs: Versioner '%s'".format(v.name), localVer)
         if (localVer.outputs.map(_.name).toSet != Set("version", "date"))
-          errors += "The local_version action must define exactly two outputs called 'version' and 'date': Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The local_version action must define exactly two outputs called 'version' and 'date': Versioner '%s'".format(v.name), localVer)
         if (!localVer.params.isEmpty)
-          errors += "The local_version action cannot define parameters: Versioner '%s'".format(v.name)
+          errors += new FileFormatException("The local_version action cannot define parameters: Versioner '%s'".format(v.name), localVer)
       }
     }
     
     // make sure that each package has defined all of the dot variables required by its versioner
-    val versionerDefs = workflow.versioners.map { v => (v.name, v) }.toMap
+    val versionerDefs = (workflow.versioners ++ builtins.flatMap(_.versioners)).map { v => (v.name, v) }.toMap
+    debug("Versioners are: " + versionerDefs)
     for (packageDef: PackageDef <- workflow.packages) {
       
       for (param <- packageDef.params) param.rval match {
         case _: Literal => ;
-        case _ => errors += "Package parameters must be literals: Package '%s'".format(packageDef.name)
+        case _ => errors += new FileFormatException("Package parameters must be literals: Package '%s'".format(packageDef.name), packageDef)
       }
       
       try {
@@ -143,16 +159,16 @@ class WorkflowChecker {
         val dotParams: Set[String] = packageDef.params.filter(_.dotVariable).map(_.name).toSet
         for (requiredParam: Spec <- versionerDef.params) {
           if (!dotParams.contains(requiredParam.name)) {
-            // TODO: file:line info
-            errors += "Package '%s' does not define dot parameter '%s' required by versioner '%s'".format(
-              packageDef.name, requiredParam.name, versionerDef.name)
+            errors += new FileFormatException(
+                "Package '%s' does not define dot parameter '%s' required by versioner '%s'".format(
+                   packageDef.name, requiredParam.name, versionerDef.name),
+                List(packageDef, requiredParam))
           }
         }
         
       } catch {
         case e: FileFormatException => {
-          // TODO: File:line info
-          errors += e.getMessage
+          errors += e
         }
       }
     }
@@ -160,5 +176,13 @@ class WorkflowChecker {
     // TODO: Check for each task having the params defined for each of its versioners
     
     (warnings, errors)
+  }
+  
+  val unpackedChecker = new UnpackedDagVisitor {
+    override def visit(task: RealTask) {
+      for (packageSpec: Spec <- task.packages) {
+        packageSpec
+      }
+    }
   }
 }

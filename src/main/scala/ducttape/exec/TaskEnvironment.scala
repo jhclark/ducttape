@@ -65,15 +65,14 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
                           task: RealTask) extends TaskEnvironment(dirs, task) {
   val packageNames: Seq[String] = task.packages.map(_.name)
   val packageBuilds: Seq[BuildEnvironment] = {
-    packageNames.map{name => {
+    packageNames.map { name =>
       val packageVersion = packageVersions(name)
       new BuildEnvironment(dirs, packageVersion, name)
-    }}
+    }
   }
   val packageEnvs: Seq[(String,String)] = {
     packageBuilds.map(build => (build.packageName, build.buildDir.getAbsolutePath) )
   }
 
-  // TODO: Add correct build paths to task env
   lazy val env = inputs ++ outputs ++ params ++ packageEnvs
 }

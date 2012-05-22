@@ -1,6 +1,7 @@
 package ducttape.cli
 
 import collection._
+import ducttape.syntax.FileFormatException
 import ducttape.workflow.Realization
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.BranchPoint
@@ -92,13 +93,14 @@ object Plans extends Logging {
           
           // everything we saw is required to execute this realization plan to its goal vertices
           System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
+          
+          // this is almost certainly not what the user intended
+          if (vertexFilter.isEmpty) {
+            throw new FileFormatException("Plan includes zero tasks", plan.planDef)
+          }
           vertexFilter ++= seen.map{task => (task.name, task.realization)}
         }
         System.err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
-        if (vertexFilter.isEmpty) {
-          System.err.println("%sERROR: Plan includes zero tasks%s".format(conf.errorColor, conf.resetColor))
-          System.exit(1)
-        }
         vertexFilter
       }
     }

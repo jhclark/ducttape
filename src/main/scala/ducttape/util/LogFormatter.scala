@@ -5,13 +5,14 @@ import java.util.logging.LogRecord
 
 import collection._
 import collection.JavaConversions._
+import java.lang.management.ManagementFactory
 
 class LogFormatter extends Formatter {
   
     val threadCache = new mutable.HashMap[Long,Thread]
     threadCache
     
-    val startTime = System.currentTimeMillis
+    val startTime = ManagementFactory.getRuntimeMXBean.getStartTime
     
     def getThreadName(id: Long): String = threadCache.get(id) match {
       case Some(t) => t.getName

@@ -39,6 +39,7 @@ object ExecuteMode {
       val inputChecker = new InputChecker(dirs)
       Visitors.visitAll(workflow, inputChecker, plannedVertices)
       if (inputChecker.errors.size > 0) {
+        // TODO: Migrate to ErrorUtils?
         for (msg <- inputChecker.errors) {
           System.err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
         }
@@ -100,11 +101,6 @@ object ExecuteMode {
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, workflow, plannedVertices, cc.completed, cc.todo),
                               plannedVertices, opts.jobs())
-          } catch {
-            case e: ExecutionException => {
-              System.err.println("%sERROR: %s%s".format(conf.errorColor, e.getMessage, conf.resetColor))
-              System.exit(1)
-            }
           } finally {
             // release all of our locks, even if we go down in flames
             Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, remove=true), plannedVertices)

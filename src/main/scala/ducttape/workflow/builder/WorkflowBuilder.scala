@@ -146,10 +146,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
   def catcher[U](func: => U)(implicit ref: BranchPointRef) = try { func } catch {
     case e: NoSuchBranchPointException => {
-      throw new FileFormatException("ERROR: No such branch point: %s".format(e.msg), ref)
+      throw new FileFormatException("No such branch point: %s".format(e.msg), ref)
     }
     case e: NoSuchBranchException => {
-      throw new FileFormatException("ERROR: No such branch: %s".format(e.msg), ref)
+      throw new FileFormatException("No such branch: %s".format(e.msg), ref)
     }
   }
 
@@ -174,7 +174,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
             (branchPoint, branches) // map entry
           }
         }.toMap
-        new RealizationPlan(planDef.name, cross.goals, realizations)
+        new RealizationPlan(planDef, cross.goals, realizations)
       }
     }
   }

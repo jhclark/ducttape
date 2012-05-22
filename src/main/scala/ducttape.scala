@@ -127,16 +127,18 @@ object Ducttape extends Logging {
       val bashChecker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
       val (warnings1, errors1) = bashChecker.check(wd)
       
-      val workflowChecker = new WorkflowChecker
-      val (warnings2, errors2) = workflowChecker.check(wd, confSpecs)
+      val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+      val (warnings2, errors2) = workflowChecker.check()
       (warnings1 ++ warnings2, errors1 ++ errors2)
     }
-    for (msg <- warnings) {
-       err.println("%sWARNING: %s%s".format(conf.warnColor, msg, conf.resetColor))
+    for (e: FileFormatException <- warnings) {
+      ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
     }
-    for (msg <- errors) {
-       err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+    for (e: FileFormatException <- errors) {
+      ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
     }
+    if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
+    if (errors.size > 0) System.err.println("%d errors".format(errors.size))
     if (errors.size > 0) {
       exit(1)
     }
@@ -168,7 +170,7 @@ object Ducttape extends Logging {
     }
     
     def getPackageVersions(cc: CompletionChecker, plannedVertices: Set[(String,Realization)]) = {
-      val packageFinder = new PackageFinder(dirs, cc.todo, workflow.packageDefs)
+      val packageFinder = new PackageFinder(cc.todo, workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, plannedVertices)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
