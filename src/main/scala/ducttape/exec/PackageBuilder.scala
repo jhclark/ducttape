@@ -34,7 +34,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
 
       // TODO: Check when the build code changes
       
-      System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
+      System.err.println("Building tool %s in %s".format(myPackage.name, buildEnv.buildDir))
       val buildCmds = Seq(myPackage.commands.toString)
       val env = Seq()
       val stdPrefix = "build " + myPackage.name

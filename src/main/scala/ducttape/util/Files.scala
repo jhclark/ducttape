@@ -41,6 +41,8 @@ object Files {
   // see http://stackoverflow.com/questions/7087743/how-to-rename-a-file-to-another-file-system
   def moveDir(src: File, dest: File) = org.apache.commons.io.FileUtils.moveDirectory(src, dest)
   def moveFile(src: File, dest: File) = org.apache.commons.io.FileUtils.moveFile(src, dest)
+  def moveFileToDir(src: File, dest: File, createDestDir: Boolean = true)
+    = org.apache.commons.io.FileUtils.moveFileToDirectory(src, dest, createDestDir)
 
   def ls(dir: File): Seq[File] = {
     val listing = dir.listFiles

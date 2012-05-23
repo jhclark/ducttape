@@ -90,29 +90,34 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     // TODO: Check actions to make sure the correct inputs/outputs/params are specified
     
     // TODO: Create an "ActionEnvironment" for these sorts of situations?
-    val workDir = dirs.getTempActionDir("versioner.repo_version")
-    val versionFile = new File(workDir, "repo_version.txt")
-    val stdoutFile = new File(workDir, "stdout.txt")
-    val stderrFile = new File(workDir, "stderr.txt")
-    val exitCodeFile = new File(workDir, "exit_code.txt")
-    
-    // the environment also includes referenced dot variables from the package
-    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
-    debug("Environment for repo_version action is: " + env)
-    
-    val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
-    val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
-    Files.write("%d".format(exitCode), exitCodeFile)
-    if (exitCode != 0) {
-      throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
-        info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
-    }
-    
-    val repoVersion = Files.read(versionFile).headOption match {
-      case Some(v) => v
-      case None => throw new BashException(
-        "Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(
-           info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
+    {
+      val workDir = dirs.getTempActionDir("versioner.repo_version")
+      val versionFile = new File(workDir, "repo_version.txt")
+      val stdoutFile = new File(workDir, "stdout.txt")
+      val stderrFile = new File(workDir, "stderr.txt")
+      val exitCodeFile = new File(workDir, "exit_code.txt")
+      
+      // the environment also includes referenced dot variables from the package
+      val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
+      debug("Environment for repo_version action is: " + env)
+      
+      val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
+      val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
+      Files.write("%d".format(exitCode), exitCodeFile)
+      if (exitCode != 0) {
+        throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
+          info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
+      }
+      
+      val repoVersion = Files.read(versionFile).headOption match {
+        case Some(v) => v
+        case None => throw new BashException(
+          "Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(
+             info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
+      }
+      
+      // workDir goes out of scope here as we delete it
+      Files.deleteDir(workDir)
     }
     
     System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
@@ -164,15 +169,15 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
     val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
-    Files.copyToDir(stdoutFile, buildDir)
-    Files.copyToDir(stderrFile, buildDir)
-    Files.copyToDir(exitCodeFile, buildDir)
+    Files.moveFileToDir(stdoutFile, buildDir)
+    Files.moveFileToDir(stderrFile, buildDir)
+    Files.moveFileToDir(exitCodeFile, buildDir)
+    
+    Files.deleteDir(workDir)
     
     if (exitCode != 0) {
       throw new BashException("Action checkout for versioner %s returned %s".format(
         info.versionerDef.name, exitCode))
     }
-    
-    // TODO: Move stdout, etc into build directory for archival?
   }
 }
