@@ -38,11 +38,9 @@ class PackageBuilder(dirs: DirectoryArchitect,
       val env = Seq()
       val stdPrefix = "build " + myPackage.name
       val exitCode = Shell.run(buildCmds, stdPrefix, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
-      debug("Exit code was " + exitCode)
       if (exitCode != 0) {
         // just bail out, this workflow is doomed without its tools
-        error("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
-        new BashException("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
+        throw new BashException("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
       }
     }
   }
