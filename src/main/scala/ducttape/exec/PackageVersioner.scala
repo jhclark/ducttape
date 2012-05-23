@@ -100,7 +100,8 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
     debug("Environment for repo_version action is: " + env)
     
-    val exitCode = Shell.run(info.repoVersionDef.commands.toString, workDir, env, stdoutFile, stderrFile)
+    val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
+    val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
     if (exitCode != 0) {
       throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
@@ -160,10 +161,11 @@ class PackageVersioner(val dirs: DirectoryArchitect,
       throw new BashException("Could not make directory: " + buildDir.getAbsolutePath)
     }
 
-    val exitCode = Shell.run(info.checkoutDef.commands.toString, workDir, env, stdoutFile, stderrFile)
+    val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
+    val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
     if (exitCode != 0) {
-      throw new BashException("Action repo_version for versioner %s returned %s".format(
+      throw new BashException("Action checkout for versioner %s returned %s".format(
         info.versionerDef.name, exitCode))
     }
     

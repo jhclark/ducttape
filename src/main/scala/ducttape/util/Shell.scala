@@ -11,19 +11,25 @@ import System._
 
 object Shell {
   def run(cmds: Seq[String],
+          stdPrefix: String,
           workDir: File,
           env: Seq[(String,String)],
           stdoutFile: File,
           stderrFile: File): Int = {
-    run(cmds.mkString("\n"), workDir, env, stdoutFile, stderrFile)
-  }
-
-  def run(cmd: String, workDir: File, env: Seq[(String,String)],
-          stdoutFile: File, stderrFile: File): Int = {
-    run(cmd, Some(workDir), env, Some(stdoutFile), Some(stderrFile))
+    run(cmds.mkString("\n"), stdPrefix, workDir, env, stdoutFile, stderrFile)
   }
 
   def run(cmd: String,
+          stdPrefix: String,
+          workDir: File,
+          env: Seq[(String,String)],
+          stdoutFile: File,
+          stderrFile: File): Int = {
+    run(cmd, stdPrefix, Some(workDir), env, Some(stdoutFile), Some(stderrFile))
+  }
+
+  def run(cmd: String,
+          stdPrefix: String,
           workDir: Option[File] = None,
           env: Seq[(String,String)] = Seq.empty,
           stdoutFile: Option[File] = None,
@@ -38,27 +44,28 @@ object Shell {
       bash.println(cmd)
       bash.close()
     }
-    def handleOut(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
+    def handleOut(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
       println(line)
       stdout.print(line) // no flush like println
       stdout.append('\n')
-    }}
-    def handleErr(x: InputStream) = { for(line <- Source.fromInputStream(x).getLines()) {
+    }
+    def handleErr(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
       err.println(line)
-      err.flush
+      err.flush()
       stderr.print(line)
       stderr.append('\n')
-    }}
+    }
     // pass env as varargs
     val code = Process("bash", workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
-            .exitValue()
-    stdout.close
-    stderr.close
+            .exitValue
+    stdout.close()
+    stderr.close()
     code
   }
 
   def runGetOutputLinesNoShell(cmd: String,
+                               stdPrefix: String,
                                workDir: File,
                                env: Seq[(String,String)],
                                stdin: Seq[String]
@@ -67,17 +74,17 @@ object Shell {
     // TODO: How do we handle 
     def provideIn(x: OutputStream) = {
       val procin = new PrintStream(x)
-      for(line <- stdin) procin.println(line)
+      for (line <- stdin) procin.println(line)
       procin.close
     }
-    var output = new mutable.ArrayBuffer[String]
+    val output = new mutable.ArrayBuffer[String]
     def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
     def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( err.println(_) ) } // TODO: flush?
     // pass env as varargs
     val code = Process(cmd, workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
             .exitValue
-    if(code != 0) {
+    if (code != 0) {
       // TODO: More specific exception?
       throw new RuntimeException("Command '%s' returned error code %d".format(cmd, code))
     }
@@ -85,6 +92,7 @@ object Shell {
   }
 
   def runGetOutputLines(cmd: String,
+                        stdPrefix: String,
                         workDir: File,
                         env: Seq[(String,String)]
                        ): Seq[String] = {
@@ -98,14 +106,14 @@ object Shell {
       bash.println(cmd)
       bash.close
     }
-    var output = new mutable.ArrayBuffer[String]
-    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( err.println(_) ) } // TODO: Flush?
+    val output = new mutable.ArrayBuffer[String]
+    def handleOut(x: InputStream) = Source.fromInputStream(x).getLines.foreach { output.append(_) }
+    def handleErr(x: InputStream) = Source.fromInputStream(x).getLines.foreach { err.println(_) } // TODO: Flush?
     // pass env as varargs
-    val code = Process("bash", workDir, env:_*)
-            .run(new ProcessIO(provideIn, handleOut, handleErr))
-            .exitValue
-    if(code != 0) {
+    val code = Process("bash", workDir, env:_*).
+                run(new ProcessIO(provideIn, handleOut, handleErr)).
+                exitValue
+    if (code != 0) {
       // TODO: More specific exception?
       throw new RuntimeException("Command '%s' returned error code %d".format(cmd, code))
     }
@@ -113,7 +121,7 @@ object Shell {
   }
 
   // TODO: Default arguments for workDir and env
-  def runGetOutput(cmd: String, workDir: File, env: Seq[(String,String)]): String = {
-    runGetOutputLines(cmd, workDir, env).mkString("\n")
+  def runGetOutput(cmd: String, stdPrefix: String, workDir: File, env: Seq[(String,String)]): String = {
+    runGetOutputLines(cmd, stdPrefix, workDir, env).mkString("\n")
   }
 }

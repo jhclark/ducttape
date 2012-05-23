@@ -71,7 +71,7 @@ object Files {
     case true => {
       // TODO: Perhaps we can find a Java implementation that behaves exactly as bash
       // but for now, just use bash.
-      Shell.runGetOutputLines("ls -1 --color=no " + pattern, workDir=new File("."), env=Nil).
+      Shell.runGetOutputLines("ls -1 --color=no " + pattern, stdPrefix="glob", workDir=new File("."), env=Nil).
         map { str => new File(str) }
     }
   }

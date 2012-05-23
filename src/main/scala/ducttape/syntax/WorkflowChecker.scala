@@ -99,6 +99,10 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           errors += new FileFormatException("Versioners cannot define inputs: Versioner '%s'".format(v.name), v)
         if (!v.outputs.isEmpty)
           errors += new FileFormatException("Versioners cannot define outputs: Versioner '%s'".format(v.name), v)
+        v.params.find { p => p.dotVariable && p.name == "submitter" } match {
+          case None => ;
+          case Some(spec) => errors += new FileFormatException("Versioners cannot define a submitter: Versioner '%s'".format(v.name), spec)
+        }
       }
       
       val info = new PackageVersionerInfo(v)
@@ -144,6 +148,11 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     val versionerDefs = (workflow.versioners ++ builtins.flatMap(_.versioners)).map { v => (v.name, v) }.toMap
     debug("Versioners are: " + versionerDefs)
     for (packageDef: PackageDef <- workflow.packages) {
+      
+      packageDef.params.find { p => p.dotVariable && p.name == "submitter" } match {
+        case None => ;
+        case Some(spec) => errors += new FileFormatException("Packages cannot define a submitter: Package '%s'".format(packageDef.name), spec)
+      }
       
       for (param <- packageDef.params) param.rval match {
         case _: Literal => ;

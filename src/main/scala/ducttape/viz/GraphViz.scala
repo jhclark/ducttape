@@ -19,6 +19,7 @@ object GraphViz {
   def compileXDot(dot: String): String = {
     // TODO: Check for dot existing
     Shell.runGetOutputLinesNoShell(cmd="dot -Txdot",
+                                   stdPrefix="compile_xdot",
                                    workDir=new File("."),
                                    env=Seq.empty,
                                    stdin=Seq(dot)).mkString("\n")

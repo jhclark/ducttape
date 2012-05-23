@@ -35,7 +35,8 @@ class PackageBuilder(dirs: DirectoryArchitect,
       System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
       val buildCmds = Seq(myPackage.commands.toString)
       val env = Seq()
-      val exitCode = Shell.run(buildCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
+      val stdPrefix = "build " + myPackage.name
+      val exitCode = Shell.run(buildCmds, stdPrefix, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if (exitCode != 0) {
         // just bail out, this workflow is doomed without its tools
         new BashException("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))

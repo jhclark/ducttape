@@ -81,7 +81,8 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     debug("Code after nesting into run action is: %s".format(code))
     debug("Execution environment is: %s".format(env))
     
-    val exitCode = Shell.run(code, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
+    val stdPrefix = taskEnv.task.name
+    val exitCode = Shell.run(code, stdPrefix, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
     Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
     if (exitCode != 0) {
       throw new BashException("Task %s/%s failed".format(taskEnv.task.name, taskEnv.task.realization))
