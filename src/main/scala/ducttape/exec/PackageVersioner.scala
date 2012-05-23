@@ -85,34 +85,37 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val versionerDef: VersionerDef = Versioners.getVersioner(packageDef, versionerDefs)
     val info = new PackageVersionerInfo(versionerDef)
     
-    // TODO: do static analysis on all actions
     // TODO: Assign inputs and outputs to actions
-    // TODO: Check actions to make sure the correct inputs/outputs/params are specified
     
     // TODO: Create an "ActionEnvironment" for these sorts of situations?
-    val workDir = dirs.getTempActionDir("versioner.repo_version")
-    val versionFile = new File(workDir, "repo_version.txt")
-    val stdoutFile = new File(workDir, "stdout.txt")
-    val stderrFile = new File(workDir, "stderr.txt")
-    val exitCodeFile = new File(workDir, "exit_code.txt")
-    
-    // the environment also includes referenced dot variables from the package
-    val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
-    debug("Environment for repo_version action is: " + env)
-    
-    val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
-    val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
-    Files.write("%d".format(exitCode), exitCodeFile)
-    if (exitCode != 0) {
-      throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
-        info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
-    }
-    
-    val repoVersion = Files.read(versionFile).headOption match {
-      case Some(v) => v
-      case None => throw new BashException(
-        "Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(
-           info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
+    val repoVersion: String = {
+      val workDir = dirs.getTempActionDir("versioner.repo_version")
+      val versionFile = new File(workDir, "repo_version.txt")
+      val stdoutFile = new File(workDir, "stdout.txt")
+      val stderrFile = new File(workDir, "stderr.txt")
+      val exitCodeFile = new File(workDir, "exit_code.txt")
+      
+      // the environment also includes referenced dot variables from the package
+      val env = Seq( ("version", versionFile.getAbsolutePath) ) ++ info.getEnv(packageDef)
+      debug("Environment for repo_version action is: " + env)
+      
+      val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
+      val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
+      Files.write("%d".format(exitCode), exitCodeFile)
+      if (exitCode != 0) {
+        throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
+          info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
+      }
+      
+      val repoVersion = Files.read(versionFile).headOption match {
+        case Some(v) => v
+        case None => throw new BashException(
+          "Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(
+             info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
+      }
+      
+      Files.deleteDir(workDir) // workDir goes out of scope here as we delete it
+      repoVersion
     }
     
     System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
@@ -123,13 +126,6 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exists = PackageBuilder.isBuildSuccessful(buildEnv)
     System.err.println("Package %s: %s".format(packageDef.name, if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
     exists
-    
-    // 1) Get the version
-    // 2) Save the repo version for later executor use
-    // 3) Check if we've built that version already
-    // 3) Create the appropriate directory later.
-    // 4) Checkout the package later.
-    // 5) Call the builder later.
   }
   
   def checkout(packageDef: PackageDef, buildDir: File) {
@@ -164,15 +160,15 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
     val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
-    Files.copyToDir(stdoutFile, buildDir)
-    Files.copyToDir(stderrFile, buildDir)
-    Files.copyToDir(exitCodeFile, buildDir)
+    Files.moveFileToDir(stdoutFile, buildDir)
+    Files.moveFileToDir(stderrFile, buildDir)
+    Files.moveFileToDir(exitCodeFile, buildDir)
+    
+    Files.deleteDir(workDir)
     
     if (exitCode != 0) {
       throw new BashException("Action checkout for versioner %s returned %s".format(
         info.versionerDef.name, exitCode))
     }
-    
-    // TODO: Move stdout, etc into build directory for archival?
   }
 }
