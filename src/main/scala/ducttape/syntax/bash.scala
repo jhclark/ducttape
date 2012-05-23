@@ -141,8 +141,8 @@ object BashGrammar {
 
   // never match any paired elements
   // nor any escape sequences
-  // and special case << for heredocs
-  def codeBlob: Parser[String] = (regex("[^{}()\"'#$<\\\\]*".r) ~ opt(regex("<[^<]".r) ~ codeBlob)) ^^ {
+  // and special case << for heredocs and process substitutions
+  def codeBlob: Parser[String] = (regex("[^{}()\"'#$<\\\\]*".r) ~ opt(regex("<[^<(]".r) ~ codeBlob)) ^^ {
     case blob ~ None => blob
     case blob1 ~ Some(re ~ blob2) => blob1 + re + blob2
   }
@@ -164,10 +164,22 @@ object BashGrammar {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
   
+  // process substitution: <(zcat x.gz)
+  def inProcessSub: Parser[BashCode] = (literal("<(") ~ bashBlock ~ literal(")")) ^^ {
+    case open ~ b ~ close => new BashCode(open + b + close, b.vars)
+  }
+  
+  // process substitution: <(zcat x.gz)
+  def outProcessSub: Parser[BashCode] = (literal(">(") ~ bashBlock ~ literal(")")) ^^ {
+    case open ~ b ~ close => new BashCode(open + b + close, b.vars)
+  }
+  
   // allow "echo $" or "echo $ cat" or "echo $;" to mean a literal dollar
   def dollarOnly: Parser[BashCode] = regex("""\$[ \t\r\n]+""".r) ^^ {
     case x => new BashCode(x)
   }
+  
+  // TODO: Warn on process substitutions since they don't error out properly
 
   /**
    * Bash positional and special parameters.
@@ -225,7 +237,8 @@ object BashGrammar {
     case list => new BashCode(list.map(_.toString).mkString(""), list.flatMap(_.vars).toSet)
   }
 
-  def nonBlobElement: Parser[BashCode] = escapedChar | escapedNewline | variableLike | parenSection | curlySection | stringLiteral | comment | heredoc
+  def nonBlobElement: Parser[BashCode] = escapedChar | escapedNewline | variableLike |
+    inProcessSub | outProcessSub | parenSection | curlySection | stringLiteral | comment | heredoc
 
 // Done: Strings
 // Done: Comments
