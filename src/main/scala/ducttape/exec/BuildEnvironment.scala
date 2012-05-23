@@ -5,4 +5,5 @@ class BuildEnvironment(val dirs: DirectoryArchitect, val packageVersion: String,
   val buildDir = dirs.assignBuildDir(packageName, packageVersion)
   val buildStdoutFile = new File(buildDir, "build_stdout.txt")
   val buildStderrFile = new File(buildDir, "build_stderr.txt")  
+  val buildExitCodeFile = new File(buildDir, "build_exit_code.txt")  
 }

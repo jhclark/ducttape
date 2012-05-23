@@ -15,6 +15,15 @@ import grizzled.slf4j.Logging
 // TODO: Return a set object with incomplete nodes that can be handed to future passes
 // so that completion checking is atomic
 object CompletionChecker extends Logging {
+  
+  def isExitCodeZero(exitCodeFile: File): Boolean = {
+    try {
+      Files.read(exitCodeFile)(0).trim == "0"
+    } catch {
+      case _ => false
+    }
+  } 
+  
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
@@ -22,7 +31,7 @@ object CompletionChecker extends Logging {
     val conditions: Seq[(() => Boolean, String)] = (
       Seq(( () => taskEnv.where.exists, "No previous output"),
           ( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
-          ( () => try { Files.read(taskEnv.exitCodeFile)(0).trim == "0" } catch { case _ => false }, "Non-zero exit code"),
+          ( () => isExitCodeZero(taskEnv.exitCodeFile), "Non-zero exit code"),
           ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist"),
           ( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated")) ++

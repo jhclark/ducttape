@@ -164,6 +164,10 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
     val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
+    Files.copyToDir(stdoutFile, buildDir)
+    Files.copyToDir(stderrFile, buildDir)
+    Files.copyToDir(exitCodeFile, buildDir)
+    
     if (exitCode != 0) {
       throw new BashException("Action checkout for versioner %s returned %s".format(
         info.versionerDef.name, exitCode))
