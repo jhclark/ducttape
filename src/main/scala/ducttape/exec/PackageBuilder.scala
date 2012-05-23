@@ -4,6 +4,7 @@ import ducttape.util.BashException
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
+import grizzled.slf4j.Logging
 
 /**
  * If we determine that a package is out of date (the requested version is not
@@ -11,7 +12,7 @@ import ducttape.syntax.AbstractSyntaxTree.PackageDef
  * a newly checked-out copy.
  */
 class PackageBuilder(dirs: DirectoryArchitect,
-                     packageVersions: PackageVersioner) {
+                     packageVersions: PackageVersioner) extends Logging {
   
   def build(packages: Iterable[PackageDef]) {
     for (myPackage: PackageDef <- packages) {
@@ -36,6 +37,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
       val buildCmds = Seq(myPackage.commands.toString)
       val env = Seq()
       val stdPrefix = "build " + myPackage.name
+      debug("Running build commands: " + buildCmds.mkString("\n"))
       val exitCode = Shell.run(buildCmds, stdPrefix, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
       if (exitCode != 0) {
         // just bail out, this workflow is doomed without its tools

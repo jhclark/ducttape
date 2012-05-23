@@ -17,8 +17,9 @@ import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import grizzled.slf4j.Logging
-
 import collection._
+import ducttape.workflow.Visitors
+import ducttape.workflow.Realization
 
 /**
  * Most checks can be done on the raw WorkflowDefinition.
@@ -34,7 +35,6 @@ class WorkflowChecker(workflow: WorkflowDefinition,
   // TODO: Break up into several methods
   def check(): (Seq[FileFormatException],Seq[FileFormatException]) = {
     
-    // TODO: Make into exceptions instead?
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
     
@@ -182,16 +182,37 @@ class WorkflowChecker(workflow: WorkflowDefinition,
       }
     }
     
-    // TODO: Check for each task having the params defined for each of its versioners
-    
     (warnings, errors)
   }
   
-  val unpackedChecker = new UnpackedDagVisitor {
-    override def visit(task: RealTask) {
-      for (packageSpec: Spec <- task.packages) {
-        packageSpec
+  // Grumble: It's only tractable to do this for the selection?
+  // Is there any way we can do this for tasks that use only literal submitters?
+  def checkUnpacked(hyperworkflow: HyperWorkflow,
+                    plannedVertices: Set[(String,Realization)]): (Seq[FileFormatException],Seq[FileFormatException]) = {
+    
+    val warnings = new mutable.ArrayBuffer[FileFormatException]
+    val errors = new mutable.ArrayBuffer[FileFormatException]
+    
+    val submitter = new Submitter(hyperworkflow.submitters)
+    val visitor = new UnpackedDagVisitor {
+      override def visit(task: RealTask) {
+        for (packageSpec: Spec <- task.packages) {
+          // TODO: Check for each task having the params defined for each of its versioners
+          packageSpec
+        }
+        
+        try {
+          submitter.getSubmitter(task)
+        } catch {
+          // throws if submitter is not defined
+          case e: FileFormatException => errors += e 
+        }
+      // TODO: Check to make sure each submitter is defined
       }
     }
+    
+    Visitors.visitAll(hyperworkflow, visitor, plannedVertices)
+    
+    (warnings, errors)
   }
 }
