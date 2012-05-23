@@ -201,13 +201,13 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           packageSpec
         }
         
+        // make sure each submitter is defined
         try {
           submitter.getSubmitter(task)
         } catch {
           // throws if submitter is not defined
           case e: FileFormatException => errors += e 
         }
-      // TODO: Check to make sure each submitter is defined
       }
     }
     

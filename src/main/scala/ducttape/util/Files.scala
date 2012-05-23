@@ -64,6 +64,8 @@ object Files {
     to.transferFrom(from, 0, Long.MaxValue)
   }
   
+  def copyToDir(src: File, destDir: File) = copy(src, new File(destDir, src.getName))
+
   def isGlob(path: String) = path.contains("*") || path.contains("?")
   
   def glob(pattern: String): Seq[File] = isGlob(pattern) match {
