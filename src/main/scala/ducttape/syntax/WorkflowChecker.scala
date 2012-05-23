@@ -203,7 +203,19 @@ class WorkflowChecker(workflow: WorkflowDefinition,
         
         // make sure each submitter is defined
         try {
-          submitter.getSubmitter(task)
+          // notice that the submitter may be defined inside a branch point
+          // such that it can't be resolved before unpacking
+          val taskSubmitter = submitter.getSubmitter(task)
+          val dotParams: Set[String] = task.params.filter(_.dotVariable).map(_.name).toSet
+          val requiredParams = taskSubmitter.params.filter(!_.dotVariable)
+          for (requiredParam <- requiredParams) {
+            if (!dotParams(requiredParam.name)) {
+              errors += new FileFormatException(
+                "Dot parameter '%s' required by submitter '%s' not defined by task '%s'".format(
+                   requiredParam.name, taskSubmitter.name, task.name),
+                List(task.taskDef, requiredParam))
+            }
+          }
         } catch {
           // throws if submitter is not defined
           case e: FileFormatException => errors += e 
