@@ -126,13 +126,6 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val exists = PackageBuilder.isBuildSuccessful(buildEnv)
     System.err.println("Package %s: %s".format(packageDef.name, if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
     exists
-    
-    // 1) Get the version
-    // 2) Save the repo version for later executor use
-    // 3) Check if we've built that version already
-    // 3) Create the appropriate directory later.
-    // 4) Checkout the package later.
-    // 5) Call the builder later.
   }
   
   def checkout(packageDef: PackageDef, buildDir: File) {
