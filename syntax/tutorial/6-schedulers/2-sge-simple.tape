@@ -3,7 +3,7 @@
 # TASK, REALIZATION, CONFIGURATION: variables passed by ducttape
 submitter sge :: vmem walltime q
               :: COMMANDS
-              :: TASK REALIZATON CONFIGURATION {
+              :: TASK REALIZATION CONFIGURATION {
   action run {
     wrapper="ducttape_job.sh"
     echo "#$ -S /bin/bash" >> $wrapper
