@@ -118,9 +118,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
     packageVersions += packageDef.name -> repoVersion
     
-    val buildDir = dirs.assignBuildDir(packageDef.name, repoVersion)
-    // TOOD: Far more aggressive checking to see if build completed
-    val exists = buildDir.exists
+    // TODO: Different messages depending on build failed, etc.
+    val buildEnv = new BuildEnvironment(dirs, repoVersion, packageDef.name)
+    val exists = PackageBuilder.isBuildSuccessful(buildEnv)
     System.err.println("Package %s: %s".format(packageDef.name, if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
     exists
     
