@@ -12,7 +12,9 @@ import ducttape.workflow.RealTask
 import ducttape.workflow.SpecTypes.ResolvedSpec
 import ducttape.util.Files
 
-class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
+import grizzled.slf4j.Logging
+
+class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor with Logging {
 
   val errors = new mutable.ArrayBuffer[FileFormatException]
 
@@ -27,6 +29,7 @@ class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor {
               val fileGlob: File = dirs.resolveLiteralPath(path)
               val globbedFiles: Seq[File] = Files.glob(fileGlob.getAbsolutePath)
               for (file <- globbedFiles) {
+                debug("Checking for file %s".format(file))
                 if (!file.exists) {
                   // TODO: Not FileFormatException
                   errors += new FileFormatException("Input file not found: %s required at %s:%d, defined at %s:%d".
