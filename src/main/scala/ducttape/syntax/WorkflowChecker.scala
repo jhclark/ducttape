@@ -207,7 +207,9 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           // such that it can't be resolved before unpacking
           val taskSubmitter = submitter.getSubmitter(task)
           val dotParams: Set[String] = task.params.filter(_.dotVariable).map(_.name).toSet
-          val requiredParams = taskSubmitter.params.filter(!_.dotVariable)
+          val requiredParams = taskSubmitter.params.filterNot(_.dotVariable).filterNot { spec =>
+            Submitter.SPECIAL_VARIABLES(spec.name)
+          }
           for (requiredParam <- requiredParams) {
             if (!dotParams(requiredParam.name)) {
               errors += new FileFormatException(

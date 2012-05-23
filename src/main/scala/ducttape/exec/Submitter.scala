@@ -21,6 +21,11 @@ import ducttape.workflow.SpecTypes._
 import grizzled.slf4j.Logging
 import ducttape.workflow.RealTask
 
+object Submitter {
+  // some special variables are passed without user intervention
+  val SPECIAL_VARIABLES = Set("COMMANDS", "TASK", "REALIZATION", "CONFIGURATION")
+}
+
 class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
   
   // TODO: Really, this should be resolved during workflow building and
