@@ -9,6 +9,8 @@ import ducttape.util.MutableOrderedSet
 import ducttape.workflow.RealTask
 import ducttape.versioner.TaskVersion
 
+import grizzled.slf4j.Logging
+
 /**
  * Moves incomplete or invalidated tasks to the attic before re-running them.
  * partial is a list of the task/realizations that have partial output that needs to be moved
@@ -18,11 +20,11 @@ import ducttape.versioner.TaskVersion
  */
 class PartialOutputMover(dirs: DirectoryArchitect,
                          partial: Set[(String,Realization)],
-                         broken: Set[(String,Realization)]) extends UnpackedDagVisitor {
+                         broken: Set[(String,Realization)]) extends UnpackedDagVisitor with Logging {
   
   override def visit(task: RealTask) {
     
-    System.err.println("Considering %s".format(task))
+    debug("Considering %s".format(task))
     
     if (partial( (task.name, task.realization) )) {
       val taskEnv = new TaskEnvironment(dirs, task)
