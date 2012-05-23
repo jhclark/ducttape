@@ -85,12 +85,10 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     val versionerDef: VersionerDef = Versioners.getVersioner(packageDef, versionerDefs)
     val info = new PackageVersionerInfo(versionerDef)
     
-    // TODO: do static analysis on all actions
     // TODO: Assign inputs and outputs to actions
-    // TODO: Check actions to make sure the correct inputs/outputs/params are specified
     
     // TODO: Create an "ActionEnvironment" for these sorts of situations?
-    {
+    val repoVersion: String = {
       val workDir = dirs.getTempActionDir("versioner.repo_version")
       val versionFile = new File(workDir, "repo_version.txt")
       val stdoutFile = new File(workDir, "stdout.txt")
@@ -116,8 +114,8 @@ class PackageVersioner(val dirs: DirectoryArchitect,
              info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
       }
       
-      // workDir goes out of scope here as we delete it
-      Files.deleteDir(workDir)
+      Files.deleteDir(workDir) // workDir goes out of scope here as we delete it
+      repoVersion
     }
     
     System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
