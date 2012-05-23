@@ -29,7 +29,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find { s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined", List(submitterSpec.origSpec, submitterSpec.srcSpec))
+      case None => throw new FileFormatException("Submitter %s not defined".format(submitterName), List(submitterSpec.origSpec, submitterSpec.srcSpec))
     }
   }
   

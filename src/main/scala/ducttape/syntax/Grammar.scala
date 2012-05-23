@@ -287,6 +287,7 @@ object Grammar {
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    * @param howToFailAtEnd Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
+  type NameParserType = (String, Regex, String=>Parser[Nothing], String=>Parser[Nothing]) => Parser[String]
   def name(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
@@ -305,6 +306,34 @@ object Grammar {
       | regex("""[A-Za-z_][A-Za-z0-9_]*""".r)
     )
   }
+
+
+
+  // TODO: XXX: Jon's gross hack to get branch names working in thesis workflow
+  // copied from name()
+  // XXX: duplicates code from name()
+  def branchName(title: String,
+      whatCanComeNext: Regex,
+      howToFailAtStart: (String)=>Parser[Nothing],
+      howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
+    ( // If the name starts with an illegal character, bail out and don't backtrack
+      regex("""[^A-Za-z0-9_]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+
+      // Else if the name contains only legal characters and the input ends, then parse it
+      | regex("""[A-Za-z0-9_]*$""".r)
+      
+      // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
+      | regex("""[A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+
+      // Finally, if the name contains only legal characters, 
+      //          and is followed by something that's allowed to follow it, then parse it!
+      | regex("""[A-Za-z0-9_]*""".r)
+    )
+  }
+
+
+
+
   
   val name: Parser[String] = {
     name("task","""\s""".r)
@@ -578,9 +607,10 @@ object Grammar {
   def basicAssignment(variableType: String,
                       howToFailAtStart: (String)=>Parser[Nothing],
                       howToFailAtEnd: (String)=>Parser[Nothing],
-                      howToFailAtEquals: (String)=>Parser[Nothing]): Parser[Spec] = positioned(
+                      howToFailAtEquals: (String)=>Parser[Nothing],
+                      nameParser: NameParserType = name): Parser[Spec] = positioned(
       ( ( // First, a variable name
-          name(variableType + " variable","""[=\s]|\z""".r,howToFailAtStart,howToFailAtEnd) <~ 
+          nameParser(variableType + " variable","""[=\s]|\z""".r,howToFailAtStart,howToFailAtEnd) <~ 
           ( // Next, the equals sign
             literal("=") | 
             // Or an error if the equals sign is missing
@@ -603,7 +633,7 @@ object Grammar {
 //  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
   val branchAssignment: Parser[Spec] = positioned(
-      (basicAssignment("branch",failure(_),failure(_),failure(_)) | rvalue) ^^ {
+      (basicAssignment("branch",failure(_),failure(_),failure(_),branchName) | rvalue) ^^ {
         case assignment: AbstractSpec[_] => assignment
         case _: ShorthandTaskVariable => throw new RuntimeException("A shorthand task variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
         case _: ShorthandConfigVariable => throw new RuntimeException("A shorthand global or config variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")

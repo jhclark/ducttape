@@ -147,7 +147,19 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     
     System.err.println("Checking out %s into %s via %s".format(
       packageDef.name, buildDir.getAbsolutePath, workDir.getAbsolutePath))
-    
+
+    debug("Making dir: " + workDir.getAbsolutePath)
+    workDir.mkdirs
+    if (!workDir.exists) {
+      throw new BashException("Could not make directory: " + workDir.getAbsolutePath)
+    }
+
+    debug("Making dir: " + buildDir.getAbsolutePath)
+    buildDir.mkdirs
+    if (!buildDir.exists) {
+      throw new BashException("Could not make directory: " + buildDir.getAbsolutePath)
+    }
+
     val exitCode = Shell.run(info.checkoutDef.commands.toString, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
     if (exitCode != 0) {

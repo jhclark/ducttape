@@ -19,7 +19,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
 
       // TODO: XXX: Can build ever interfere with another running workflow?
       if (buildEnv.buildDir.exists) {
-         System.err.println("Removing incomplete package build: %s".format(buildEnv.buildDir.toString))
+        System.err.println("Removing incomplete package build: %s".format(buildEnv.buildDir.toString))
         Files.deleteDir(buildEnv.buildDir)
       }
       
