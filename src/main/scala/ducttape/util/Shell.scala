@@ -7,7 +7,10 @@ import sys.process._
 import java.io._
 import java.net._
 
-object Shell {
+import grizzled.slf4j.Logging
+
+object Shell extends Logging {
+  
   def run(cmds: Seq[String],
           stdPrefix: String,
           workDir: File,
@@ -63,6 +66,7 @@ object Shell {
     val code = Process("bash", workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
             .exitValue
+    debug("Exit code is " + code)
     stdout.close()
     stderr.close()
     code
