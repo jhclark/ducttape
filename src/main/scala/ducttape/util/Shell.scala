@@ -7,8 +7,6 @@ import sys.process._
 import java.io._
 import java.net._
 
-import System._
-
 object Shell {
   def run(cmds: Seq[String],
           stdPrefix: String,
@@ -45,13 +43,19 @@ object Shell {
       bash.close()
     }
     def handleOut(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
-      println(line)
+      // avoid concatenation
+      System.out.print(stdPrefix)
+      System.out.print(": ")
+      System.out.println(line)
       stdout.print(line) // no flush like println
       stdout.append('\n')
     }
     def handleErr(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
-      err.println(line)
-      err.flush()
+      // avoid concatenation
+      System.err.print(stdPrefix)
+      System.err.print(": ")
+      System.err.println(line)
+      System.err.flush()
       stderr.print(line)
       stderr.append('\n')
     }
@@ -78,8 +82,13 @@ object Shell {
       procin.close
     }
     val output = new mutable.ArrayBuffer[String]
-    def handleOut(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( output.append(_) ) }
-    def handleErr(x: InputStream) = { Source.fromInputStream(x).getLines.foreach( err.println(_) ) } // TODO: flush?
+    def handleOut(x: InputStream) = Source.fromInputStream(x).getLines.foreach { output.append(_) }
+    def handleErr(x: InputStream) = Source.fromInputStream(x).getLines.foreach { line =>
+      // avoid concatenation
+      System.out.print(stdPrefix)
+      System.out.print(": ")
+      System.out.println(line)
+    }
     // pass env as varargs
     val code = Process(cmd, workDir, env:_*)
             .run(new ProcessIO(provideIn, handleOut, handleErr))
@@ -108,7 +117,11 @@ object Shell {
     }
     val output = new mutable.ArrayBuffer[String]
     def handleOut(x: InputStream) = Source.fromInputStream(x).getLines.foreach { output.append(_) }
-    def handleErr(x: InputStream) = Source.fromInputStream(x).getLines.foreach { err.println(_) } // TODO: Flush?
+    def handleErr(x: InputStream) = Source.fromInputStream(x).getLines.foreach { line =>
+      System.err.print(stdPrefix)
+      System.err.print(": ")
+      System.err.println(line)
+    }
     // pass env as varargs
     val code = Process("bash", workDir, env:_*).
                 run(new ProcessIO(provideIn, handleOut, handleErr)).
