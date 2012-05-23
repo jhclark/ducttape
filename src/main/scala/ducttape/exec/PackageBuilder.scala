@@ -16,12 +16,14 @@ class PackageBuilder(dirs: DirectoryArchitect,
   def build(packages: Iterable[PackageDef]) {
     for (myPackage: PackageDef <- packages) {
       val buildEnv = new BuildEnvironment(dirs, packageVersions(myPackage.name), myPackage.name)
-      System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
+
       // TODO: XXX: Can build ever interfere with another running workflow?
       if (buildEnv.buildDir.exists) {
          System.err.println("Removing incomplete package build: %s".format(buildEnv.buildDir.toString))
         Files.deleteDir(buildEnv.buildDir)
       }
+      
+      System.err.println("Checking out tool %s into %s".format(myPackage.name, buildEnv.buildDir))
       packageVersions.checkout(myPackage, buildEnv.buildDir)
 
       // TODO: XXX: Resolve the versioner and then get the checkout command
@@ -30,6 +32,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
       // TODO: Make sure package def didn't include packages, inputs, or outputs
       // TODO: Check when the build code changes
       
+      System.err.println("Building tools %s in %s".format(myPackage.name, buildEnv.buildDir))
       val buildCmds = Seq(myPackage.commands.toString)
       val env = Seq()
       val exitCode = Shell.run(buildCmds, buildEnv.buildDir, env, buildEnv.buildStdoutFile, buildEnv.buildStderrFile)
