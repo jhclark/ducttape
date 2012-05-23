@@ -123,33 +123,32 @@ object Ducttape extends Logging {
     
     val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
     
-    val (warnings, errors) = {
-      val bashChecker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
-      val (warnings1, errors1) = bashChecker.check(wd)
-      
-      val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
-      val (warnings2, errors2) = workflowChecker.check()
-      (warnings1 ++ warnings2, errors1 ++ errors2)
-    }
-    for (e: FileFormatException <- warnings) {
-      ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
-    }
-    for (e: FileFormatException <- errors) {
-      ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
-    }
-    if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
-    if (errors.size > 0) System.err.println("%d errors".format(errors.size))
-    if (errors.size > 0) {
-      exit(1)
+    // pass 1 error checking: directly use workflow AST
+    {
+      val (warnings, errors) = {
+        val bashChecker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
+        val (warnings1, errors1) = bashChecker.check(wd)
+        
+        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+        val (warnings2, errors2) = workflowChecker.check()
+        (warnings1 ++ warnings2, errors1 ++ errors2)
+      }
+      for (e: FileFormatException <- warnings) {
+        ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
+      }
+      for (e: FileFormatException <- errors) {
+        ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+      }
+      if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
+      if (errors.size > 0) System.err.println("%d errors".format(errors.size))
+      if (errors.size > 0) {
+        exit(1)
+      }
     }
     
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
-
-    // Check version information
-    val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
-    err.println("Have %d previous workflow versions".format(history.prevVersion))
-
+    
     // Our dag is directed from antecedents toward their consequents
     // After an initial forward pass that uses a realization filter
     // to generate vertices whose realizations are part of the plan
@@ -163,6 +162,27 @@ object Ducttape extends Logging {
       }
       plannedVertices
     }
+        
+    // pass 2 error checking: use unpacked workflow
+    {
+      val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+      val (warnings, errors) = workflowChecker.checkUnpacked(workflow, getPlannedVertices)
+      for (e: FileFormatException <- warnings) {
+        ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
+      }
+      for (e: FileFormatException <- errors) {
+        ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+      }
+      if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
+      if (errors.size > 0) System.err.println("%d errors".format(errors.size))
+      if (errors.size > 0) {
+        exit(1)
+      }
+    }
+    
+    // Check version information
+    val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
+    err.println("Have %d previous workflow versions".format(history.prevVersion))
       
     def getCompletedTasks(plannedVertices: Set[(String,Realization)]): CompletionChecker = {
       System.err.println("Checking for completed steps...")
