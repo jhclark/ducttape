@@ -19,6 +19,7 @@ import ducttape.util.Files
 import scala.collection.LinearSeq
 import ducttape.workflow.SpecTypes._
 import grizzled.slf4j.Logging
+import ducttape.workflow.RealTask
 
 class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
   
@@ -29,36 +30,41 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find { s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined".format(submitterName), List(submitterSpec.origSpec, submitterSpec.srcSpec))
+      case None => throw new FileFormatException("Submitter %s not defined".format(submitterName),
+                     List(submitterSpec.origSpec, submitterSpec.srcSpec))
     }
   }
   
   private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
     submitters.find { s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s)".format(submitterName, requiredBy.name), requiredBy)
+      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s)".format(
+                       submitterName, requiredBy.name), 
+                     requiredBy)
     }
   }
   
   private def getRunAction(submitterDef: SubmitterDef): ActionDef = {
-    submitterDef.actions.find { action => action.name == "run"} match {
+    submitterDef.actions.find { action => action.name == "run" } match {
       case Some(action: ActionDef) => action
-      case None => throw new FileFormatException("No 'run' action defined for submitter %s".format(submitterDef.name), submitterDef)
+      case None => throw new FileFormatException("No 'run' action defined for submitter %s".format(submitterDef.name), 
+                     submitterDef)
     }
   }
+  
+  def getSubmitter(task: RealTask): SubmitterDef = {
+      val allDotParams: Seq[ResolvedLiteralSpec] = task.paramVals.filter(_.origSpec.dotVariable)
+      allDotParams.find { p: ResolvedLiteralSpec => p.origSpec.name == "submitter" } match {
+        case Some(p) => getSubmitter(p)
+        case None => getDefaultSubmitter("shell", task.taskDef)
+      }
+    }
 
   def run(taskEnv: FullTaskEnvironment) {
-
-    // TODO: Check in ducttape/defaults for default submitters/versioners
-
-    val allDotParams: Seq[ResolvedLiteralSpec] = taskEnv.task.paramVals.filter(_.origSpec.dotVariable)
-    
-    val submitterDef = allDotParams.find { p: ResolvedLiteralSpec => p.origSpec.name == "submitter" } match {
-      case Some(p) => getSubmitter(p)
-      case None => getDefaultSubmitter("shell", taskEnv.task.taskDef)
-    }
+    val submitterDef: SubmitterDef = getSubmitter(taskEnv.task)
     val requiredParams: Set[String] = submitterDef.params.map(_.name).toSet
     // only include the dot params from the task that are explicitly requested by the submitter
+    val allDotParams: Seq[ResolvedLiteralSpec] = taskEnv.task.paramVals.filter(_.origSpec.dotVariable)
     val dotParamsForSubmitter: Seq[ResolvedLiteralSpec] = allDotParams.filter { litSpec: ResolvedLiteralSpec =>
       requiredParams.contains(litSpec.origSpec.name)
     }
