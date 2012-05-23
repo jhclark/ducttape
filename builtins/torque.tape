@@ -31,11 +31,11 @@ submitter torque :: vmem walltime q
 
     echo "$COMMANDS" >> $wrapper
 
-    echo "qsub $wrapper > jobid.txt"
+    qsub $wrapper > jobid.txt
 
     # TODO: XXX: FIXME: implement new submitter framework that handles Torque better
     UGLY_HARDCODED_DUCTTAPE_DIR=/home/jhclark/software/ducttape/builtins
     # TODO: Move this into new and improved submitter framework, once it's implemented
-    echo "$UGLY_HARDCODED_DUCTTAPE_DIR/pbs-wait-for-job.sh \$(cat jobid.txt)"
+    $UGLY_HARDCODED_DUCTTAPE_DIR/pbs-wait-for-job.sh $(cat jobid.txt)
   }
 }
