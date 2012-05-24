@@ -55,14 +55,16 @@ import grizzled.slf4j.Logging
           // no grafting required. do nothing
           Some(combo)
         } else {
-          if (he.h.grafts.forall(b => combo.contains(b))) {
+          if (he.h.grafts.forall { b => combo.contains(b) } ) {
             val copy = new MultiSet[Branch](combo)
-            he.h.grafts.foreach(b => copy.removeAll(b))
+            he.h.grafts.foreach { b => copy.removeAll(b) }
             Some(copy)
           } else {
             // no corresponding edge was found in the derivation
             // this branch graft cannot apply
-            graftFailureCallback("Realization filtered by branch graft: %s".format(combo.view.mkString("-")))
+            // TODO: Add commments to hyperedges? Or somehow get other context for this error message.
+            graftFailureCallback("Realization %s filtered by branch graft: %s".format(
+              combo.view.mkString("-"), he.h.grafts.mkString(",")))
             None
           }
         }
@@ -80,6 +82,7 @@ import grizzled.slf4j.Logging
                      realizationFailureCallback: => String => Unit = { x: String => ; })
                      : UnpackedWalker = {
     
+    // TODO: globalBranchPointConstraint is also the inPlanConstraint
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
     val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],Branch,UnpackState] {
       override val initState = new UnpackState
@@ -141,9 +144,16 @@ import grizzled.slf4j.Logging
     // this is only used if we've previously made a pass to determine which vertices we'll be running
     val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch] {
       override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
-        // TODO: Less extraneous Realization creation?
-        realizationFailureCallback("Plan excludes vertex: %s".format(v))
-        plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) ) || plannedVertices.isEmpty
+        if (plannedVertices.isEmpty) {
+          true
+        } else {
+          // TODO: Less extraneous Realization creation?
+          val included = plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) )
+          if (!included) {
+            realizationFailureCallback("Plan excludes vertex: %s".format(v))
+          }
+          included
+        }
       } 
     }
     
