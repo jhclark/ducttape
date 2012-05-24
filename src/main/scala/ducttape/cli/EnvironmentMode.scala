@@ -30,7 +30,7 @@ object EnvironmentMode {
     // TODO: Apply filters so that we do much less work to get here
     val matchingTasks: Iterable[UnpackedWorkVert] = {
       workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.
-        filter { v: UnpackedWorkVert => v.packed.value.get.name == goalTaskName }
+        filter { v: UnpackedWorkVert => goalTaskName == "*" || v.packed.value.get.name == goalTaskName }
     }.toIterable
     System.err.println("Found %d vertices with matching task name".format(matchingTasks.size))
     
@@ -38,7 +38,7 @@ object EnvironmentMode {
       matchingTasks.map { v: UnpackedWorkVert => {
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
-        if (task.realization.toString == goalRealName) {
+        if (goalRealName == "*" || task.realization.toString == goalRealName) {
           Some(task)
         } else {
           None
@@ -48,10 +48,12 @@ object EnvironmentMode {
     System.err.println("Found %d vertices with matching realizations".format(matchingReals.size))
     
     for (task: RealTask <- matchingReals) {
+      println(task.name + " " + task.realization + ":")
       val env = new FullTaskEnvironment(dirs, packageVersions, task)
       for ( (k,v) <- env.env) {
         println("%s=%s".format(k,v))
       }
+      println()
     }
   }
 }
