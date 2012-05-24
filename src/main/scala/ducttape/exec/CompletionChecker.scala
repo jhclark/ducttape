@@ -101,8 +101,11 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
       _todo += ((task.name, task.realization))
       
       if (CompletionChecker.isBroken(taskEnv)) {
+        debug("Broken: " + task)
         _broken += ((task.name, task.realization))
+        
       } else if (CompletionChecker.hasPartialOutput(taskEnv)) {
+        debug("Partially complete: " + task)
         _partial += ((task.name, task.realization))
       }
     }
