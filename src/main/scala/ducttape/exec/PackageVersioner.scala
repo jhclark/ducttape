@@ -157,6 +157,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
       throw new BashException("Could not make directory: " + buildDir.getAbsolutePath)
     }
 
+    debug("Running checkout commands: " + info.checkoutDef.comments.toString)
     val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
     val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
     Files.write("%d".format(exitCode), exitCodeFile)
