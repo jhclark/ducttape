@@ -48,7 +48,7 @@ class TaskTemplate(val taskDef: TaskDef,
    // realize this task by specifying which realizations should be used for this task and parent tasks
    def realize(v: UnpackedWorkVert): RealTask = {
      val realization = new Realization(v.realization)
-     debug("Realizing task template %s for realization %s".format(name, v.realization))
+     debug("Realizing task template %s for realization %s => %s".format(name, v.realization, realization))
      
      // get the specs that are active for this realization
      val specs: Seq[(SpecPair, Realization)] = {
