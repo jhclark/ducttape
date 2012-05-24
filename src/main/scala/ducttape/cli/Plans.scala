@@ -50,6 +50,12 @@ object Plans extends Logging {
     workflow.plans match {
       case Nil => {
         System.err.println("Using default one-off realization plan")
+        
+        // walk the one-off plan, for the benefit of the explainCallback
+        val numCores = 1
+        workflow.unpackedWalker(realizationFailureCallback=explainCallback.curried(Some("default one-off"))).
+          foreach(numCores, { v: UnpackedWorkVert => ; } )
+        
         Set.empty
       }
       case _ => {
@@ -69,7 +75,7 @@ object Plans extends Logging {
               case ( (tName, _), _) => tName == goalTask
             } map { _._2 }
             System.err.println("Found %d realizations of goal task %s: %s".
-              format(goalRealTasks.size, goalTask, goalRealTasks.map{_.realization}.mkString(" ")))
+              format(goalRealTasks.size, goalTask, goalRealTasks.map(_.realization).mkString(" ")))
             fronteir ++= goalRealTasks
           }
           
