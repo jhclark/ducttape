@@ -48,7 +48,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
       Files.write("%d".format(exitCode), buildEnv.buildExitCodeFile)
       if (exitCode != 0) {
         // just bail out, this workflow is doomed without its tools
-        throw new BashException("ERROR: Build task %s returned %s".format(myPackage.name, exitCode))
+        throw new BashException("Build task %s returned %s".format(myPackage.name, exitCode))
       }
     }
   }
