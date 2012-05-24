@@ -37,7 +37,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
   val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
 
-  val modes = Seq(exec, list, env, viz, debug_viz, mark_done, invalidate)
+  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate)
 
   // Positional arguments:
   private var _workflowFile = new File(".")
@@ -58,13 +58,14 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
     System.err.println("Usage: ducttape workflow.tape [--options] [mode [taskName [realizationNames...]]]")
     System.err.println("Available modes: %s (default) %s".format(modes.head.name, modes.drop(1).map(_.name).mkString(" ")))
     super.help
+    System.err.println()
 
     for (mode <- modes) {
       // TODO: Change visibility of init to protected instead of this hack...
       mode.parse(Array())
 
+      System.err.println("%s%s%s: %s".format(conf.modeColor, mode.name, conf.resetColor, mode.desc))
       if(mode.optCount > 1) {
-        System.err.println("%s%s mode:%s".format(conf.modeColor, mode.name, conf.resetColor))
         mode.help
       }
     }
