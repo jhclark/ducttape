@@ -35,7 +35,7 @@ object EnvironmentMode {
     System.err.println("Found %d vertices with matching task name".format(matchingTasks.size))
     
     val matchingReals: Iterable[RealTask] = {
-      matchingTasks.map { v: UnpackedWorkVert => {
+      matchingTasks.map { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         if (goalRealName == "*" || task.realization.toString == goalRealName) {
@@ -43,7 +43,7 @@ object EnvironmentMode {
         } else {
           None
         }
-      }}.filter(_ != None).map(_.get)
+      }.filter(_ != None).map(_.get)
     }
     System.err.println("Found %d vertices with matching realizations".format(matchingReals.size))
     
