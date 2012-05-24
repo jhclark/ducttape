@@ -95,7 +95,7 @@ object Ducttape extends Logging {
     }) ++ wd.globals
     
     val flat: Boolean = ex2err {
-      confSpecs.map(_.spec).find{ spec => spec.name == "ducttape_structure" } match {
+      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
         case Some(spec) => spec.rval match {
           case lit: Literal => lit.value.trim().toLowerCase match {
             case "flat" => true
