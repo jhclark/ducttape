@@ -30,6 +30,8 @@ class MultiSet[A] {
     }
   }
   
+  def find(func: A => Boolean): Option[A] = map.keys.find(func)
+  
   def removeAll(a: A) {
     map.remove(a)
   }
