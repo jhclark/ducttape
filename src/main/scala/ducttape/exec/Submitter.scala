@@ -92,7 +92,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     debug("Code after nesting into run action is: %s".format(code))
     debug("Execution environment is: %s".format(env))
     
-    val stdPrefix = taskEnv.task.name
+    val stdPrefix = "%s/%s".format(taskEnv.task.name, taskEnv.task.realization)
     val exitCode = Shell.run(code, stdPrefix, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
     Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
     if (exitCode != 0) {
