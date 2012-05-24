@@ -2,7 +2,7 @@
 # * All other commands are run inside $dir
 versioner git :: repo ref {
   action checkout > dir {
-    git clone $repo $dir
+    git clone --progress $repo $dir
   }
   action repo_version > version {
     git ls-remote $repo $ref | cut -f1 > $version
