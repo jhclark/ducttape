@@ -15,7 +15,14 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   // TODO: Do some reflection and object apply() magic on modes to enable automatic subtask names
   val exec = new Mode("exec", desc="Execute the workflow (default if no mode is specified)") {
   }
-  val jobs = IntOpt(desc="Number of concurrent jobs to run", default=1)
+  val jobs = {
+    // TODO: XXX: Defaults seem to be *BROKEN*
+    if (args.exists { arg => arg.startsWith("-j") || args.startsWith("--jobs")} ) {
+      IntOpt(desc="Number of concurrent jobs to run")  
+    } else {
+      IntOpt(desc="Number of concurrent jobs to run", default=1)
+    }
+  }
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
   val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
   val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
