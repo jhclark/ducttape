@@ -90,30 +90,15 @@ class DirectoryArchitect(val flat: Boolean,
                 srcTaskDefOpt: Option[TaskDef],
                 srcRealization: Realization): File = {
 
-    // first, resolve the realization, if necessary
-    // also, resolve through any ConfigVariables
-    // TODO: Move this into the realization unpacking code
-    val realizedRval = mySpec.rval match {
-      case BranchPointDef(_,_) => srcSpec.rval // the "source" internal to the branch declaration
-      case ConfigVariable(_) => srcSpec.rval // the "source" accoding to the config variable and internal to any branch declaration
-      case _ => mySpec.rval
-    }
-
-    //err.println("My realization is " + Task.realizationName(realization))
-    //err.println("Src realization is " + Task.realizationName(srcRealization))
-
-    // TODO: We should have already checked that this file exists by now?
-    realizedRval match {
-      case Literal(path) => resolveLiteralPath(path)
-      // branches , variables, etc get matched on the src, which we already resolved
-      case _ => {
-        // non-literals *must* have a src task
-        val srcTaskDef = srcTaskDefOpt match {
-            case Some(name) => name
-            case None => throw new RuntimeException("No source task found for spec %s with source %s ".format(mySpec, srcSpec))
-        }
-        assignOutFile(srcSpec, srcTaskDef, srcRealization) 
+    srcTaskDefOpt match {
+      // no source task? this better be a literal
+      case None => srcSpec.rval match {
+        case Literal(path) => resolveLiteralPath(path)
+        case _ => throw new RuntimeException("No source task found for spec %s with source %s ".format(mySpec, srcSpec))
       }
+      
+      // has a source task? just recover the output path in the same way as when we originally produced it
+      case Some(srcTaskDef) => assignOutFile(srcSpec, srcTaskDef, srcRealization) 
     }
   }
   
