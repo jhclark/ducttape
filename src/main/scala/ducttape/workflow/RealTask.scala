@@ -26,7 +26,7 @@ class RealTask(val taskT: TaskTemplate,
      case inputVal if (inputVal.srcTask.isDefined) => {
        (inputVal.srcTask.get.name, inputVal.srcReal)
      }
-   } toSet
+   }.toSet
 
   // TODO: Smear hash code better
    override def hashCode() = name.hashCode ^ realization.hashCode
