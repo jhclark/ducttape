@@ -28,8 +28,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   val inputs: Seq[(String, String)] = for (inputVal <- task.inputVals) yield {
     val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
                                 inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal)
-    debug("For inSpec %s with srcSpec %s and srcReal %s, got path: %s".format(
-            inputVal.origSpec, inputVal.srcSpec, inputVal.srcReal, inFile))
+    debug("For inSpec %s with srcSpec %s and srcReal %s with parent task %s, got path: %s".format(
+            inputVal.origSpec, inputVal.srcSpec, inputVal.srcReal, inputVal.srcTask, inFile))
     (inputVal.origSpec.name, inFile.getAbsolutePath)
   }
     
