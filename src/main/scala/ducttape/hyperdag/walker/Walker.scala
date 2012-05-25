@@ -47,48 +47,39 @@ trait Walker[A] extends Iterable[A] with Logging { // TODO: Should this be a Tra
     val pool = Executors.newFixedThreadPool(j)
     val tasks: Seq[Callable[Unit]] = (0 until j).map(i => new Callable[Unit] {
       override def call {
-        var running = true
-        while (running) {
-          val aOpt = try {
-            take()
-          } catch {
-            case t: Throwable => {
-              // TODO: More elegant way of erroring out?
-              t.printStackTrace()
-              System.exit(1)
-              throw t
-            }
-          }
-          aOpt match {
-            case Some(a) => {
-              var success = true
-              try {
-                debug("Executing callback for %s".format(a))
-                f(a)
-              } catch {
-                case t: Throwable => {
-                  success = false
-                  throw t
-                }
-              } finally {
-                // mark as complete, but don't run any dependencies
-                // TODO: Keep a list of tasks that failed?
-                debug("UNSUCCESSFUL, NOT CONTINUING: " + a)
+        try {
+          var running = true
+          while (running) {
+            take() match {
+              case Some(a) => {
+                var success = true
                 try {
-                  complete(a, continue=success)
+                  debug("Executing callback for %s".format(a))
+                  f(a)
                 } catch {
+                  // catch exceptions happening within the callback
                   case t: Throwable => {
-                    // TODO: More elegant way of erroring out?
-                    t.printStackTrace()
-                    System.exit(1)
+                    success = false
                     throw t
                   }
+                } finally {
+                  // mark as complete, but don't run any dependencies
+                  // TODO: Keep a list of tasks that failed?
+                  debug("UNSUCCESSFUL, NOT CONTINUING: " + a)
+                  complete(a, continue=success)
                 }
               }
+              case None => {
+                running = false
+              }
             }
-            case None => {
-              running = false
-            }
+          }
+        } catch {
+          // catch errors happening internal to the walker framework
+          case ie: InterruptedException => ;
+          case t: Throwable => {
+            pool.shutdownNow() // may hang forever otherwise
+            throw t
           }
         }
         trace("Worker thread %d of %d joined".format(i+1, j))
@@ -98,6 +89,7 @@ trait Walker[A] extends Iterable[A] with Logging { // TODO: Should this be a Tra
     // wait a few years or until all tasks complete
     val futures = pool.invokeAll(tasks, Long.MaxValue, TimeUnit.MILLISECONDS)
     pool.shutdown()
+    
     // call get on each future so that we propagate any exceptions
     futures.foreach(_.get)
   }
