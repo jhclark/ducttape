@@ -58,46 +58,48 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   
   private def getNext(): Option[UnpackedMetaVertex[V,H,E,D]] = {
     
-    epsilons.synchronized {
-      // never return epsilon vertices
-      @tailrec def takeSkippingEpsilons(): Option[UnpackedVertex[V,H,E,D]] = delegate.take() match {
-        case None => None
-        case result @ Some(uv) => {
-          if (dag.shouldSkip(uv.packed)) {
-            debug("Skipping: " + uv)
-            delegate.complete(uv)
-            if (dag.isEpsilon(uv.packed)) {
-              // TODO: We'd really prefer not to store these...
+    // never return epsilon vertices
+    @tailrec def takeSkippingEpsilons(): Option[UnpackedVertex[V,H,E,D]] = delegate.take() match {
+      case None => None
+      case result @ Some(uv) => {
+        if (dag.shouldSkip(uv.packed)) {
+          debug("Skipping: " + uv)
+          if (dag.isEpsilon(uv.packed)) {
+            // TODO: We'd really prefer not to store these...
+            epsilons.synchronized {
               epsilons += (uv.packed, uv.realization) -> uv
             }
-            takeSkippingEpsilons()
-          } else {
-            debug("Took non-epsilon vertex: " + uv)
-            result
           }
+          delegate.complete(uv)
+          takeSkippingEpsilons()
+        } else {
+          debug("Took non-epsilon vertex: " + uv)
+          result
         }
       }
+    }
       
-      takeSkippingEpsilons() match {
-        case None => None
-        case Some(raw: UnpackedVertex[_,_,_,_]) => {
-          trace("Begin unpacking new meta vertex: " + raw)
-  
-          val parents = dag.delegate.parents(raw.packed)
-          assert(parents.size == raw.parentRealizations.size,
-                 "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
-  
-          // these lists are all parallel to the number of incoming metaedges
-          val unpackedParents: Seq[UnpackedVertex[V,H,E,D]] = parents.zip(raw.parentRealizations).map {
+    takeSkippingEpsilons() match {
+      case None => None
+      case Some(raw: UnpackedVertex[_,_,_,_]) => {
+        trace("Begin unpacking new meta vertex: " + raw)
+
+        val parents = dag.delegate.parents(raw.packed)
+        assert(parents.size == raw.parentRealizations.size,
+               "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
+
+        // these lists are all parallel to the number of incoming metaedges
+        val unpackedParents: Seq[UnpackedVertex[V,H,E,D]] = epsilons.synchronized {
+            parents.zip(raw.parentRealizations).map {
             case (parentEpsilonV, parentEpsilonReals) => {
               epsilons( (parentEpsilonV, parentEpsilonReals) )
             }
           }
-          val activeEdges: Seq[HyperEdge[H,E]] = unpackedParents.map(unpacked => unpacked.edge.get)
-          val metaParentReals: Seq[Seq[Seq[D]]] = unpackedParents.map(unpacked => unpacked.parentRealizations)
-          val umv = new UnpackedMetaVertex[V,H,E,D](raw.packed, activeEdges, raw.realization, metaParentReals, raw)
-          Some(umv)
         }
+        val activeEdges: Seq[HyperEdge[H,E]] = unpackedParents.map(unpacked => unpacked.edge.get)
+        val metaParentReals: Seq[Seq[Seq[D]]] = unpackedParents.map(unpacked => unpacked.parentRealizations)
+        val umv = new UnpackedMetaVertex[V,H,E,D](raw.packed, activeEdges, raw.realization, metaParentReals, raw)
+        Some(umv)
       }
     }
   }
