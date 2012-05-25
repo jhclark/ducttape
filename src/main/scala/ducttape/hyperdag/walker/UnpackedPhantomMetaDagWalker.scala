@@ -86,7 +86,6 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
     }
   }
   
-  // this is only ever called from take(), where it is guaranteed to have a lock on unpackedMap
   @tailrec
   private def takeSkippingPhantoms(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = delegate.take() match {
     case None => None
@@ -97,22 +96,23 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         // we can have phantom vertex chains of arbitrary length
         // epsilons are already removed by our delegate
         import ducttape.util.Collections._
-        val parentInfo: Seq[(Seq[E], Seq[Seq[D]])]
-          = zip3(umv.edges, umv.parentRealizations, umv.edges).
-            map { case (hyperedge, parentReals, hyperEdge) =>
-              val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) flatMap {
-                case (parent, parentReal, edge) => {
-                  trace("Begin backtracing phantom chain for " + parent)
-                  val unpackedV = unpackedMap( (parent, parentReal.sorted(ordering)) )
-                  val leafParents: Seq[(E, Seq[D])] = followPhantomChain(unpackedV, edge, parentReal)
-                  leafParents
-                }
+        val parentInfo: Seq[(Seq[E], Seq[Seq[D]])] = unpackedMap.synchronized {
+          zip3(umv.edges, umv.parentRealizations, umv.edges).
+          map { case (hyperedge, parentReals, hyperEdge) =>
+            val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) flatMap {
+              case (parent, parentReal, edge) => {
+                trace("Begin backtracing phantom chain for " + parent)
+                val unpackedV = unpackedMap( (parent, parentReal.sorted(ordering)) )
+                val leafParents: Seq[(E, Seq[D])] = followPhantomChain(unpackedV, edge, parentReal)
+                leafParents
               }
-              
-              val finalEdges = munged.map(_._1)
-              val finalParentReals = munged.map(_._2)
-              (finalEdges, finalParentReals)
             }
+            
+            val finalEdges = munged.map(_._1)
+            val finalParentReals = munged.map(_._2)
+            (finalEdges, finalParentReals)
+          }
+        }
         val mungedEdges: Seq[Seq[E]] = parentInfo.map(_._1)
         val mungedParentReals: Seq[Seq[Seq[D]]] = parentInfo.map(_._2)
         
@@ -128,24 +128,22 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
       case None => {
         // phantom: save for later
         debug("Phantom skipping: " + umv)
+        unpackedMap.synchronized {
+          unpackedMap += (umv.packed, umv.realization.sorted(ordering)) -> umv
+        }
         delegate.complete(umv)
-        unpackedMap += (umv.packed, umv.realization.sorted(ordering)) -> umv
         takeSkippingPhantoms()
       }
     }
   }
   
-  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = {
-    unpackedMap.synchronized {
-      takeSkippingPhantoms()
-    }
-  }
-  
+  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = takeSkippingPhantoms()
+
   override def complete(item: UnpackedChainedMetaVertex[V,H,E,D], continue: Boolean = true) = {
+    debug("Completing " + item)
     unpackedMap.synchronized {
-      debug("Completing " + item)
       unpackedMap += (item.packed, item.realization.seq.sorted(ordering)) -> item.dual
-      delegate.complete(item.dual, continue)
     }
+    delegate.complete(item.dual, continue)
   }
 }
