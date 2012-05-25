@@ -4,8 +4,13 @@ versioner git :: repo ref {
   action checkout > dir {
     git clone --progress $repo $dir
   }
+  # This is perhaps more accurately called the "expected" version
   action repo_version > version {
-    git ls-remote $repo $ref | cut -f1 > $version
+    if [[ "$ref" == "HEAD" ]]; then
+      git ls-remote $repo $ref | cut -f1 > $version
+    else
+      echo "$ref" > $version
+    fi
   }
   # TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
   # Used to confirm version after checkout
