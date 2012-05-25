@@ -42,13 +42,16 @@ class Executor(val dirs: DirectoryArchitect,
         submitter.run(taskEnv)
         
         if (!CompletionChecker.isComplete(taskEnv)) {
+          val msg = "Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath
+          System.err.println("Failed %s: %s".format(task.name, msg))
           observers.foreach(_.fail(this, task))
-          throw new BashException("Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath)
+          throw new BashException(msg)
         }
       } finally {
         // TODO: Factor out into listener/callback?
          taskEnv.lockFile.delete()
       }
+      System.err.println("Completed %s".format(task.name))
     }
     observers.foreach(_.complete(this, task))
   }
