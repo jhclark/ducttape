@@ -47,14 +47,14 @@ class UnpackedPhantomDagWalker[V,H,E,D,F](
     
   override def take(): Option[UnpackedVertex[V,H,E,D]] = delegate.take() match {
     case None => None
-    case Some(v) if (isPhantom(v)) => {
-      // TODO: Here, we must do some mapping of edges when we skip
-      delegate.complete(v)
-      debug("Phantom skipping: " + v)
-      this.take()
-    }
     case Some(v) => {
-      throw new Error("Class Unimplemented") 
+      if (isPhantom(v)) {
+        delegate.complete(v)
+        debug("Phantom skipping: " + v)
+        this.take()
+      } else {
+        throw new Error("Class Unimplemented")
+      }
     }
   }
   
