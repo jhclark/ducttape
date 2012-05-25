@@ -44,8 +44,6 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   // been unpacked so that we can reclaim space. Could we refcount them?
   private val unpackedMap = new mutable.HashMap[(PackedVertex[Option[V]],Seq[D]), UnpackedMetaVertex[Option[V],H,E,D]]
   
-  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = recursiveTake()
-  
   private def getOnly[A](seq: Seq[A]): A = seq match {
     case Seq(only) => only
     case _ => throw new RuntimeException("phantom chains can only have single parents; " +
@@ -88,10 +86,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   }
   
   @tailrec
-  private def recursiveTake(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = delegate.take() match {
+  private def takeSkippingPhantoms(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = delegate.take() match {
     case None => None
     case Some(umv) => umv.packed.value match {
       case Some(packed) => {
+        trace("Begin unpacking chained meta vertex: " + umv)
+        
         // we can have phantom vertex chains of arbitrary length
         // epsilons are already removed by our delegate
         import ducttape.util.Collections._
@@ -120,7 +120,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
                "Parent size %d != parentReal.size %d".format(parentsSize, umv.parentRealizations.size))
         assert(parentsSize == mungedParentReals.size)
 
-        debug("Yielding: " + umv.packed)
+        debug("Yielding: " + umv)
         Some(new UnpackedChainedMetaVertex[V,H,E,D](umv.packed, mungedEdges, umv.realization, mungedParentReals, umv)) 
       }
       case None => {
@@ -128,11 +128,12 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         debug("Phantom skipping: " + umv)
         delegate.complete(umv)
         unpackedMap += (umv.packed, umv.realization.sorted(ordering)) -> umv
-        recursiveTake()
+        takeSkippingPhantoms()
       }
-      // (Phantom:tune_pro.literals:44,List(Alpha:baseline, Baseline:baseline, Beta:b01, Delta:baseline, Gamma:g05))
     }
   }
+  
+  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = takeSkippingPhantoms()
   
   override def complete(item: UnpackedChainedMetaVertex[V,H,E,D], continue: Boolean = true) = {
     debug("Completing " + item)
