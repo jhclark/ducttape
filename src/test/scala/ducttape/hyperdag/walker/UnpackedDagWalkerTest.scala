@@ -119,29 +119,29 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
         debug("Outer length %d != %d".format(a.size, b.size))
         false
       } else {
-        a.zip(b).forall{ case (seqA, seqB) => {
+        a.zip(b).forall { case (seqA, seqB) =>
           if (seqA.size != seqB.size) {
             debug("Inner length %d != %d".format(seqA.size, seqB.size))
             false
           } else {
-            seqA.zip(seqB).forall{ case (strA, strB) => {
+            seqA.zip(seqB).forall { case (strA, strB) =>
               if (strA != strB) {
                 debug("Not equal: %s and %s".format(strA, strB))
               }
               strA == strB
-            }}
+            }
           }
-        }}
+        }
       }
     }
     
     for (i <- 0 until 1000) {
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
-	    diamond.unpackedWalker().foreach(10, {v => {
+	    diamond.unpackedWalker().foreach(10, {v =>
 	      verts += v.packed.value
 	      reals += v.realization
-	    }})
+	    })
 	    val vertList = verts.toList.sorted
 	    assert(vertList == expectedVerts, "Wrong vertices produced: " + verts)
 	    val realList = reals.toList.sorted(order)
