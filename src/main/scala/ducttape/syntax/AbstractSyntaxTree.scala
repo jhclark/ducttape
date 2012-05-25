@@ -228,8 +228,12 @@ object AbstractSyntaxTree {
     
     override lazy val endPos: Position = {
       // TODO: Define ordering on positional so that we can find last column, too
-      val lastSpec: Spec = allSpecs.maxBy[Int]{spec: Spec => spec.pos.line}
-      lastSpec.pos
+      if (allSpecs.size == 0) {
+        header.pos
+      } else {
+        val lastSpec: Spec = allSpecs.maxBy[Int] { spec: Spec => spec.pos.line }
+        lastSpec.pos
+      } 
     }
     
     override def hashCode() = name.hashCode()
