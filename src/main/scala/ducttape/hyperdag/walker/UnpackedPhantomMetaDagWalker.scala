@@ -50,6 +50,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
           "expected exactly one element in: " + seq)
   }
 
+  // this is only ever called from takeSkippingPhantoms, where it is guaranteed to have a lock on unpackedMap
   // note: cannot be @tailrec
   private def followPhantomChain(v: UnpackedMetaVertex[Option[V],H,E,D], edge: E, parentReal: Seq[D])
                                 : Seq[(E, Seq[D])] = {
@@ -85,6 +86,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
     }
   }
   
+  // this is only ever called from take(), where it is guaranteed to have a lock on unpackedMap
   @tailrec
   private def takeSkippingPhantoms(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = delegate.take() match {
     case None => None
@@ -133,11 +135,17 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
     }
   }
   
-  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = takeSkippingPhantoms()
+  override def take(): Option[UnpackedChainedMetaVertex[V,H,E,D]] = {
+    unpackedMap.synchronized {
+      takeSkippingPhantoms()
+    }
+  }
   
   override def complete(item: UnpackedChainedMetaVertex[V,H,E,D], continue: Boolean = true) = {
-    debug("Completing " + item)
-    unpackedMap += (item.packed, item.realization.seq.sorted(ordering)) -> item.dual
-    delegate.complete(item.dual, continue)
+    unpackedMap.synchronized {
+      debug("Completing " + item)
+      unpackedMap += (item.packed, item.realization.seq.sorted(ordering)) -> item.dual
+      delegate.complete(item.dual, continue)
+    }
   }
 }
