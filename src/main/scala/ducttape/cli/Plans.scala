@@ -18,7 +18,8 @@ object Plans extends Logging {
   
   def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
-                    explainCallback: => (Option[String], String) => Unit) = {
+                    explainCallback: => (Option[String], String) => Unit)
+      : Map[(String,Realization), RealTask] = {
     val numCores = 1
     // tasks only know about their parents in the form of (taskName, realization)
     // not as references to their realized tasks. this lets them get garbage collected
@@ -63,10 +64,14 @@ object Plans extends Logging {
          
         val vertexFilter = new mutable.HashSet[(String,Realization)]
         for (plan: RealizationPlan <- workflow.plans) {
-          System.err.println("Finding vertices for plan: %s".format(plan.name))
+          val planName = plan.name.getOrElse("*anonymous*")
+          System.err.println("Finding vertices for plan: %s".format(planName))
           
-          val candidates = getCandidates(workflow, plan, explainCallback)
+          val candidates: Map[(String,Realization), RealTask] = getCandidates(workflow, plan, explainCallback)
           val fronteir = new mutable.Queue[RealTask]
+          
+          System.err.println("Have %d candidates matching plan's realizations: %s".format(
+              candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
           
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
@@ -100,7 +105,7 @@ object Plans extends Logging {
           }
           
           // everything we saw is required to execute this realization plan to its goal vertices
-          System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, plan.name))
+          System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, planName))
           
           // this is almost certainly not what the user intended
           if (seen.isEmpty) {
