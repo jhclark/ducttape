@@ -5,6 +5,7 @@ import java.util.concurrent._
 
 import ducttape.hyperdag._
 import ducttape.util._
+import annotation.tailrec
 
 import grizzled.slf4j.Logging
 
@@ -131,14 +132,16 @@ class UnpackedDagWalker[V,H,E,D,F](
     }
   } // end ActiveVertex
 
-  // TODO: Remove internal map synchronization
+  // NOTE: All synchronization is done via our 2 lock objects
   private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
-                   with mutable.SynchronizedMap[PackedVertex[V],ActiveVertex]
   private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
-                   with mutable.SynchronizedMap[HyperEdge[H,E],ActiveVertex]
-  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E,D]]//new ArrayBlockingQueue[UnpackedVertex[V,H,E,D]](dag.size)
-  private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E,D]]
-  private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]] with mutable.SynchronizedSet[UnpackedVertex[V,H,E,D]]
+  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E,D]]
+  private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
+  private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
+  
+  // XXX: O(unpacked_vertices)
+  // dedupe vertices, made necessary by realization mangling
+  private val seen = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
 
   // first, visit the roots, which are guaranteed not to be packed
   for (root <- dag.roots) {
@@ -157,35 +160,43 @@ class UnpackedDagWalker[V,H,E,D,F](
   // (use foreach to prevent this)
   override def take(): Option[UnpackedVertex[V,H,E,D]] = {
 
+    def poll() = { // atomically get both the size and any waiting vertex
+      agendaTakenLock.synchronized {
+        // after polling the agenda, we must update taken
+        // before releasing our lock
+        val key = Optional.toOption(agenda.poll())
+        val takenSize = taken.size
+        key match {
+          case Some(v) => taken += v
+          case None => ;
+        }
+        (key, takenSize)
+      }
+    }
+    
     // this method just handles getting the next vertex, if any
     // take() must also perform some vertex filtering before returning
     def getNext(): Option[UnpackedVertex[V,H,E,D]] = {
-      def poll() = { // atomically get both the size and any waiting vertex
-        val (key, takenSize) = agendaTakenLock.synchronized {
-          // after polling the agenda, we must update taken
-          // before releasing our lock
-          val key = Optional.toOption(agenda.poll())
-          val takenSize = taken.size
-          key match {
-            case Some(v) => taken += v
-            case None => ;
+      waitingToTakeLock.synchronized {
+        // poll until we get an item or there are no more items
+        @tailrec def pollUntilDone(): Option[UnpackedVertex[V,H,E,D]] = {
+          poll() match {
+            case (Some(key), _) => Some(key)
+            case (None, 0) => None // no key, no taken items: we're done
+            case (None, takenSize) => {
+              // keep trying, there could be more
+              debug("%d taken items are still outstanding, we may have work to do yet: %s".format(takenSize, taken))
+              // wait, releasing our lock until we're notified of changes
+              // in state of agenda and taken
+              waitingToTakeLock.wait()
+              debug("Received notification of newly completed item")
+              pollUntilDone() // try again
+            }
           }
-          (key, takenSize)
-        }        
-        (key, takenSize)
-      } // poll
-
-      val key: Option[UnpackedVertex[V,H,E,D]] = waitingToTakeLock.synchronized {
-        var (key: Option[UnpackedVertex[V,H,E,D]], takenSize: Int) = poll()
-        while (key == None && takenSize > 0) {
-          // wait, releasing our lock until we're notified of changes
-          // in state of agenda and taken
-          waitingToTakeLock.wait()
-          
-          val (key1, takenSize1) = poll()
-          key = key1
-          takenSize = takenSize1
         }
+        
+        val key = pollUntilDone()
+        // still holding waitingToTakeLock...  
         if (key != None) {
           // * notify other threads that both the agenda and waiting
           //   vertices might be empty
@@ -196,26 +207,26 @@ class UnpackedDagWalker[V,H,E,D,F](
         }
         key
       }
-      key
     } // getNext
     
-    var result = getNext()
-    // some extra machinery to handle vertex-level filtering
-    while (result != None && !vertexFilter(result.get)) {
-      debug("U Vertex filter does not contain: " + result.get)
-      complete(result.get, continue=false)
-      result = getNext()
+    // handle vertex-level filtering
+    @tailrec def getSkippingFiltered(): Option[UnpackedVertex[V,H,E,D]] = getNext() match {
+      case None => None
+      case Some(v) => {
+        if (!vertexFilter(v)) {
+          debug("Unpacked Vertex filter does not contain: " + v)
+          complete(v, continue=false)
+          getSkippingFiltered()
+        } else {
+          debug("Yielding: %s".format(v))
+          Some(v)
+        }
+      }
     }
-    debug("Yielding: %s".format(result))
-    result
+    getSkippingFiltered()
   }
 
   override def complete(item: UnpackedVertex[V,H,E,D], continue: Boolean = true) = {
-    require(activeRoots.contains(item.packed) || item.edge.exists(activeEdges.contains(_)),
-            "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
-    val key: ActiveVertex = activeRoots.getOrElse(item.packed, activeEdges(item.edge.get))
-
-    debug("Completing: %s".format(item))
     
     // we always lock agenda & completed & taken jointly
     // we must hold on to our lock until all possible consequents
@@ -225,8 +236,18 @@ class UnpackedDagWalker[V,H,E,D,F](
     // we kept take() waiting a bit longer, it would discover
     // new agenda items
     agendaTakenLock.synchronized {
-      taken -= item
-
+      require(activeRoots.contains(item.packed) || item.edge.exists(activeEdges.contains(_)),
+            "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
+      val key: ActiveVertex = activeRoots.getOrElse(item.packed, { activeEdges(item.edge.get) })
+      debug("Completing: %s".format(item))
+      
+      completed += item
+      val removed = taken.remove(item)
+      if (!removed) {
+        throw new RuntimeException("Completed item %s not found in taken set: %s".format(item, taken))
+      }
+      debug("Remaining taken vertices after completing %s: %s".format(item, taken))
+      
       if (continue) {
         // first, match fronteir vertices
         // note: consequent is an edge unlike the packed walker
@@ -238,7 +259,7 @@ class UnpackedDagWalker[V,H,E,D,F](
             val h = if (consequentE == null || consequentE.h == null) Seq() else Seq(consequentE.h)
             new ActiveVertex(consequentV, Some(consequentE))
           }
-          val activeCon: ActiveVertex = activeEdges.getOrElseUpdate(consequentE, newActiveVertex())
+          val activeCon: ActiveVertex = activeEdges.getOrElseUpdate(consequentE, { newActiveVertex() })
           
           val antecedents = dag.sources(consequentE)
           for (iEdge <- 0 until activeCon.filled.size) {
@@ -256,7 +277,16 @@ class UnpackedDagWalker[V,H,E,D,F](
                   // still have the lock on agenda...
                   // TODO: This agenda membership test could be slow O(n)
                   //assert(!agenda.contains(unpackedV) && !taken(unpackedV) && !completed(unpackedV));
-                  agenda.add(unpackedV)
+                  
+                  // TODO: Should we have to test for uniqueness like this?
+                  // NOTE: We only add it to the agenda if we haven't seen "one like it" before
+                  // this possibility is introduced by realization mangling
+                  if (!seen(unpackedV)) {
+                    debug("Adding new vertex to the agenda: " + unpackedV)
+                    debug("Seen: " + seen)
+                    agenda.add(unpackedV)
+                    seen += unpackedV
+                  }
                   // TODO: We could sort the agenda here to impose different objectives...
                 })
               trace("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
@@ -265,12 +295,10 @@ class UnpackedDagWalker[V,H,E,D,F](
           }
         }
       }
+    } // and... unlock the agenda and taken buffer
 
-      // finally visit this vertex
-      // still holding on to our lock...
-      completed += item
-    } // and... unlock the agenda and taken buffers
     waitingToTakeLock.synchronized {
+      debug("Notifying peer workers of newly completed item")
       waitingToTakeLock.notifyAll()
     }
   }
