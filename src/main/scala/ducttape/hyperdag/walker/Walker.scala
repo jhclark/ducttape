@@ -1,11 +1,13 @@
 package ducttape.hyperdag.walker
 
+import grizzled.slf4j.Logging
+
 /** A generalization of the iterator concept to allow parallel traversal
  *  of structured collections (e.g. DAGs). Callers can use a producer-consumer
  *  pattern to accomplish parallel traversal by calling take/complete.
  *  Implementations must be threadsafe and might take the form of an
  *  agenda-based traversal algorithm. */
-trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
+trait Walker[A] extends Iterable[A] with Logging { // TODO: Should this be a TraversableOnce?
   private val self = this
 
   /** Get the next traversable item. Returns None when there are no more elements */
@@ -41,15 +43,27 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
     import java.util.concurrent._
     import collection.JavaConversions._
 
+    // TODO: Write as tail recursion so that breaking out of the loop isn't as complicated
     val pool = Executors.newFixedThreadPool(j)
     val tasks: Seq[Callable[Unit]] = (0 until j).map(i => new Callable[Unit] {
       override def call {
         var running = true
-        while(running) {
-          take match {
+        while (running) {
+          val aOpt = try {
+            take()
+          } catch {
+            case t: Throwable => {
+              // TODO: More elegant way of erroring out?
+              t.printStackTrace()
+              System.exit(1)
+              throw t
+            }
+          }
+          aOpt match {
             case Some(a) => {
               var success = true
               try {
+                debug("Executing callback for %s".format(a))
                 f(a)
               } catch {
                 case t: Throwable => {
@@ -59,8 +73,17 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
               } finally {
                 // mark as complete, but don't run any dependencies
                 // TODO: Keep a list of tasks that failed?
-                //System.err.println("UNSUCCESSFUL, NOT CONTINUING: " + a)
-                complete(a, continue=success)
+                debug("UNSUCCESSFUL, NOT CONTINUING: " + a)
+                try {
+                  complete(a, continue=success)
+                } catch {
+                  case t: Throwable => {
+                    // TODO: More elegant way of erroring out?
+                    t.printStackTrace()
+                    System.exit(1)
+                    throw t
+                  }
+                }
               }
             }
             case None => {
@@ -68,13 +91,13 @@ trait Walker[A] extends Iterable[A] { // TODO: Should this be a TraversableOnce?
             }
           }
         }
-        //if(j>1) System.err.println("Worker thread %d of %d joined".format(i+1, j))
+        trace("Worker thread %d of %d joined".format(i+1, j))
       }
     })
     // start running tasks in thread pool
     // wait a few years or until all tasks complete
     val futures = pool.invokeAll(tasks, Long.MaxValue, TimeUnit.MILLISECONDS)
-    pool.shutdown
+    pool.shutdown()
     // call get on each future so that we propagate any exceptions
     futures.foreach(_.get)
   }
