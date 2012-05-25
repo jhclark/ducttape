@@ -12,5 +12,5 @@ class UnpackedVertex[V,H,E,D](val packed: PackedVertex[V],
   override def equals(that: Any) = that match {
     case other: UnpackedVertex[_,_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
-  override def toString() = packed.toString + " (realization=" + realization.toString +")"
+  override def toString() = "%s/%s".format(packed, realization.mkString("-"))
 }
