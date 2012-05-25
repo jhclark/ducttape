@@ -45,41 +45,50 @@ trait Walker[A] extends Iterable[A] with Logging { // TODO: Should this be a Tra
 
     // TODO: Write as tail recursion so that breaking out of the loop isn't as complicated
     val pool = Executors.newFixedThreadPool(j)
-    val tasks: Seq[Callable[Unit]] = (0 until j).map(i => new Callable[Unit] {
-      override def call {
-        try {
-          var running = true
-          while (running) {
-            take() match {
-              case Some(a) => {
-                var success = true
-                try {
-                  debug("Executing callback for %s".format(a))
-                  f(a)
-                } catch {
-                  // catch exceptions happening within the callback
-                  case t: Throwable => {
-                    success = false
-                    throw t
-                  }
-                } finally {
-                  // mark as complete, but don't run any dependencies
-                  // TODO: Keep a list of tasks that failed?
-                  debug("UNSUCCESSFUL, NOT CONTINUING: " + a)
-                  complete(a, continue=success)
-                }
-              }
-              case None => {
-                running = false
-              }
-            }
-          }
-        } catch {
-          // catch errors happening internal to the walker framework
-          case ie: InterruptedException => ;
+    
+    // kill the entire thread pool if there's an internal failure within the walker
+    def catchAndKillPool[T](func: => T):T = {
+      try {
+        func
+      } catch {
+          case ie: InterruptedException => throw ie
           case t: Throwable => {
             pool.shutdownNow() // may hang forever otherwise
             throw t
+          }
+        }
+    }
+    
+    val tasks: Seq[Callable[Unit]] = (0 until j).map(i => new Callable[Unit] {
+      override def call {
+        var running = true
+        while (running) {
+          catchAndKillPool { take() } match {
+            case Some(a) => {
+              var success = true
+              try {
+                debug("Executing callback for %s".format(a))
+                f(a)
+              } catch {
+                // catch exceptions happening within the callback
+                case t: Throwable => {
+                  success = false
+                  // this won't kill off the main thread until we
+                  // call get() on the Future object below
+                  throw t
+                }
+              } finally {
+                // mark as complete, but don't run any dependencies
+                // TODO: Keep a list of tasks that failed?
+                debug("UNSUCCESSFUL, NOT CONTINUING: " + a)
+                catchAndKillPool {
+                  complete(a, continue=success)
+                }
+              }
+            }
+            case None => {
+              running = false
+            }
           }
         }
         trace("Worker thread %d of %d joined".format(i+1, j))
