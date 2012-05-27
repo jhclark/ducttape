@@ -79,14 +79,14 @@ object Ducttape extends Logging {
       }
       case None => opts.config_name.value match {
         case Some(confName) => {
-          wd.configs.find{ case c: ConfigDefinition => c.name == Some(confName) } match {
+          wd.configs.find { case c: ConfigDefinition => c.name == Some(confName) } match {
             case Some(x) => x.lines
             case None => throw new DucttapeException("Configuration not found: %s".format(confName))
           }
         }
         case None => {
           // use anonymous config, if provided
-          wd.configs.find{ case c: ConfigDefinition => c.name == None } match {
+          wd.configs.find { case c: ConfigDefinition => c.name == None } match {
             case Some(x) => x.lines
             case None => Nil
           }
