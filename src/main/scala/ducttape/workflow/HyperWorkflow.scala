@@ -95,6 +95,8 @@ import grizzled.slf4j.Logging
         assert(seen != null)
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
+
+        trace("Applying constraint filter at %s for realization: %s".format(v, real.view.mkString("-")))
         
         // enforce that each branch point should atomically select one branch per hyperpath
         // through the (Meta)HyperDAG
