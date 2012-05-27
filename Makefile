@@ -1,6 +1,9 @@
 # Can be overriden by user using environment variable
-PREFIX?=/usr/local
 DUCTTAPE=.
+
+VERSION=0.2
+RELEASE_NAME=ducttape-${VERSION}-bleeding
+DIST=${DUCTTAPE}/dist/${RELEASE_NAME}
 
 compile:
 	${DUCTTAPE}/build.sh
@@ -15,25 +18,29 @@ test: jar
 doc:
 	${DUCTTAPE}/doc.sh
 
+# TODO: Throw SBT into git?
+dist:
+        # Make a minimal JAR containing all dependencies,
+        # but with unnecessary class files removed
+        rm ducttape.min.jar
+        sbt proguard
+        cp ducttape.min.jar ${DIST}/
+
+        fgrep -v DEV-ONLY ducttape > ${DIST}/ducttape
+
+        cp Makefile.dist ${DIST}/Makefile
+        cp logging.properties ${DIST}/
+        cp README.md ${DIST}/
+        cp LICENSE.txt ${DIST}/
+
+        cp -r ${DUCTTAPE}/tool-support ${DIST}/
+        cp -r ${DUCTTAPE}/examples ${DIST}/
+        cp -r ${DUCTTAPE}/syntax/tutorial ${DIST}/
+        find ${DIST}/syntax/tutorial -type f | egrep '\.TODO|\.XXX|.DEPRECATED' | xargs rm -rf
+        find ${DIST}/syntax/tutorial | fgrep /. | xargs rm -rf
+
+        cd ${DIST}
+        tar -cvzf ${RELEASE_NAME}.tgz ${RELEASE_NAME}
+
 scaladoc:
 	${DUCTTAPE}/scaladoc.sh
-
-install: jar
-	mkdir -p ${PREFIX}/bin ${PREFIX}/share/ducttape
-	cp ${DUCTTAPE}/ducttape ${PREFIX}/bin
-	cp ${DUCTTAPE}/ducttape.jar ${PREFIX}/bin
-	cp -r ${DUCTTAPE}/builtins ${PREFIX}/share/ducttape/
-	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim # TODO: System-wide
-	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el /usr/share/emacs/site-lisp/ducttape.el
-	echo '(load "/usr/share/emacs/site-lisp/ducttape.el")' >> ${PREFIX}/share/emacs/site-lisp/default.el # TODO: Only add once
-
-install-user:
-	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim
-	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el ~/.emacs.d/site-lisp/site-lisp/ducttape.el
-	echo '(load "~/.emacs.d/site-lisp/ducttape.el")' >> ~/.emacs # TODO: Only add once
-
-install-webui:
-	echo >&2 "TODO"
-
-uninstall:
-	rm ${PREFIX}/bin/ducttape
