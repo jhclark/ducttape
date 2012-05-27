@@ -8,11 +8,13 @@
 # In general, you'll probably want to clone these git repos locally and point these repo URLs
 # at your local machine: 1) so that you can pull just when you want and 2) so that you can edit the repos locally
 
-package cdec :: cores=16 .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=c929f781f24b2f0493aa00d45e6fe7ea4206242c {
+package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HEAD
+#.ref=c929f781f24b2f0493aa00d45e6fe7ea4206242c
+{
   autoreconf -ifv
   ./configure
-  (set +eo pipefail; make -j $cores; exit 0) # Hack around build bug
-  make -j $cores
+  # Note: Multi-core build is a bit broken and takes a few iterations to converge :-/
+  make
 
   # Build Adam Lopez' sa-extract
   (
@@ -128,8 +130,8 @@ task binarize_lm : cdec < arpa=@build_lm > klm :: .cpus=1 .walltime="0:30:00" .v
 task tune_pro : cdec
               < f_dev=@download e_dev=@download gra_dir=@extract_gra[DataSection:tune] klm=@binarize_lm
               > weights ini
-              :: num_refs=1 pro_iterations=30
-              :: cores=2 .cpus=32 .walltime="24:00:00" .vmem=64g .submitter=shell .q=normal {
+              :: num_refs=1 pro_iterations=30 replication=(OptReplication: 1..3)
+              :: cores=4 .cpus=4 .walltime="24:00:00" .vmem=64g .submitter=shell .q=normal {
 
   # sent-level grammar provided by input sents via markup
   echo "formalism=scfg" >> $ini
@@ -176,4 +178,8 @@ task score : multeval < hyps=$hyps@decode e_test=@download > scores
            :: tgt_lang=en
            :: .submitter=shell .q=shared .cpus=4 .walltime="0:15:00" .vmem=6g {
   $multeval/multeval.sh eval --refs $e_test --meteor.language $tgt_lang --threads 4 --hyps-baseline $hyps > $scores
+}
+
+plan {
+  reach score via (OptReplication: 1) * (AlignDir: s2t t2s) * (DataSection: tune test)
 }
