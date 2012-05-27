@@ -27,7 +27,7 @@ class Executor(val dirs: DirectoryArchitect,
   override def visit(task: RealTask) {
     if (todo( (task.name, task.realization) )) {
       val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
-      System.err.println("Running %s in %s".format(task.name, taskEnv.where.getAbsolutePath))
+      System.err.println("Running %s in %s".format(task, taskEnv.where.getAbsolutePath))
       try {  
         observers.foreach(_.begin(this, task))
         taskEnv.where.mkdirs
@@ -43,7 +43,7 @@ class Executor(val dirs: DirectoryArchitect,
         
         if (!CompletionChecker.isComplete(taskEnv)) {
           val msg = "Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath
-          System.err.println("Failed %s: %s".format(task.name, msg))
+          System.err.println("Failed %s: %s".format(task, msg))
           observers.foreach(_.fail(this, task))
           throw new BashException(msg)
         }
@@ -51,7 +51,7 @@ class Executor(val dirs: DirectoryArchitect,
         // TODO: Factor out into listener/callback?
          taskEnv.lockFile.delete()
       }
-      System.err.println("Completed %s".format(task.name))
+      System.err.println("Completed %s".format(task))
     }
     observers.foreach(_.complete(this, task))
   }
