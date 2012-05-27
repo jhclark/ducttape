@@ -131,6 +131,7 @@ private[builder] class TaskTemplateBuilder(
         val isBaseline = (idx == 0)
         val branch = branchFactory.get(branchSpec.name, branchPoint, isBaseline)
         val branchTree = bpTree.getOrAdd(branch)
+        trace("Found branch tree %s for branch spec: %s".format(branchTree.branch, branchSpec))
         val newHistory = branchHistory ++ Seq(branch)
         resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
           branchTree, newHistory, curTask, branchSpec, prevGrafts)(resolveVarFunc)
@@ -165,10 +166,12 @@ private[builder] class TaskTemplateBuilder(
         }
       }
     }
-       
+    
+    // generate the literal specs implied by a sequence branch point
     def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, inc: BigDecimal): Seq[LiteralSpec] = {
       for (value <- start to end by inc) yield {
-        new LiteralSpec(bpName.toLowerCase + value.toString, new Literal(value.toString), dotVariable=false)
+        debug("Generating literal spec from sequential branch element: %s".format(value))
+        new LiteralSpec(value.toString, new Literal(value.toString), dotVariable=false)
       }
     }
     
@@ -186,6 +189,7 @@ private[builder] class TaskTemplateBuilder(
       case bp @ SequentialBranchPoint(branchPointNameOpt: Option[_], sequence: Sequence) => {
         val branchPointName = getName(branchPointNameOpt, bp)
         val branchSpecs = generateBranchSpecs(branchPointName, sequence.start, sequence.end, sequence.increment)
+        debug("Generated sequence branch specs: " + branchSpecs)
         handleBranchPoint(branchPointName, branchSpecs, isFromSeq=true)
       }
       case ConfigVariable(varName) => {
