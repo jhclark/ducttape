@@ -70,7 +70,7 @@ object Plans extends Logging {
           val candidates: Map[(String,Realization), RealTask] = getCandidates(workflow, plan, explainCallback)
           val fronteir = new mutable.Queue[RealTask]
           
-          System.err.println("Have %d candidates matching plan's realizations: %s".format(
+          System.err.println("Have %d candidate tasks matching plan's realizations: %s".format(
               candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
           
           // initialize with all valid realizations of the goal vertex
