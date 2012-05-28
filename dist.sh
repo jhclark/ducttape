@@ -27,6 +27,7 @@ mkdir -p ${DIST}/examples
 cp -r ${DUCTTAPE}/examples/*.tape ${DIST}/examples
 
 cp -r ${DUCTTAPE}/tool-support ${DIST}/
+cp -r ${DUCTTAPE}/builtins ${DIST}/
 
 mkdir -p $DIST/tutorial
 tutorialDir=$DUCTTAPE/syntax/tutorial
