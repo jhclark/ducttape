@@ -1,6 +1,7 @@
 language: scala
 scala:
   - 2.9.2
+script: ./lib/scala/sbt compile
 after_script:
   - ./jar.sh
   - ./test-regression.sh
