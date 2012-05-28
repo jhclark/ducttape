@@ -40,4 +40,7 @@ done
     
 #find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~' | xargs rm -rf
 tar -C ${DIST_BASE} -cvzf ${DIST_BASE}/${RELEASE_NAME}.tgz ${RELEASE_NAME}
-    
+
+# Update symlink for regression testing
+cd $DIST_BASE
+ln -sf ${RELEASE_NAME} ducttape-current

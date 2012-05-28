@@ -22,5 +22,6 @@ release: jar
 test-unit:
 	${SBT} test
 
+# Run regression tests using the distribution version
 test-regression: dist
-	PATH=${DIST}:${PATH} ${DUCTTAPE}/test-regression.sh
+	PATH=${DUCTTAPE}/dist/ducttape-current:${PATH} ${DUCTTAPE}/test-regression.sh

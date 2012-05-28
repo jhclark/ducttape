@@ -1,7 +1,6 @@
 language: scala
-scala:
-  - 2.9.2
-script: ./lib/scala/sbt proguard test
+script: ./lib/scala/sbt test
 after_script:
-  - cp ducttape.min.jar ducttape.jar
-  - ./test-regression.sh
+  - ./lib/scala/sbt proguard
+  - ./dist.sh
+  - PATH=$PWD/dist/ducttape-current:$PATH ./test-regression.sh
