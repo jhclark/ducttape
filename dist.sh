@@ -11,6 +11,12 @@ DIST=${DIST_BASE}/${RELEASE_NAME}
 
 cd $scriptDir
 
+echo "Original JAR stats:"
+du -csh lib/*.jar lib/webui/*.jar lib/scala/scala-library-2.9.2.jar
+
+echo "Shrunken JAR stats:"
+du -csh ducttape.min.jar
+
 rm -rf ${DIST}
 mkdir -p ${DIST}
 cp ducttape.min.jar ${DIST}/ducttape.jar
