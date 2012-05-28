@@ -1,7 +1,7 @@
 language: scala
 scala:
   - 2.9.2
-script: ./lib/scala/sbt compile
+script: ./lib/scala/sbt proguard test
 after_script:
-  - ./jar.sh
+  - cp ducttape.min.jar ducttape.jar
   - ./test-regression.sh
