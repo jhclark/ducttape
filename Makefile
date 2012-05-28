@@ -1,46 +1,26 @@
 # Can be overriden by user using environment variable
 DUCTTAPE=.
-
-VERSION=0.2
-RELEASE_NAME=ducttape-${VERSION}-bleeding
-DIST=${DUCTTAPE}/dist/${RELEASE_NAME}
+SBT=${DUCTTAPE}/lib/scala/sbt
 
 compile:
-	${DUCTTAPE}/build.sh
+	${SBT} compile
 
-jar: compile
-	echo >&2 "JAR already built." # TODO: make compressed JAR
-
-test: jar
-	${DUCTTAPE}/test-unit.sh
-	${DUCTTAPE}/test-regression.sh
+# Make a minimal JAR containing all dependencies,
+# but with unnecessary class files removed
+jar:
+	rm ducttape.min.jar
+	${SBT} proguard
 
 doc:
 	${DUCTTAPE}/doc.sh
 
-# TODO: Throw SBT into git?
-dist:
-        # Make a minimal JAR containing all dependencies,
-        # but with unnecessary class files removed
-        rm ducttape.min.jar
-        sbt proguard
-        cp ducttape.min.jar ${DIST}/
-
-        fgrep -v DEV-ONLY ducttape > ${DIST}/ducttape
-
-        cp Makefile.dist ${DIST}/Makefile
-        cp logging.properties ${DIST}/
-        cp README.md ${DIST}/
-        cp LICENSE.txt ${DIST}/
-
-        cp -r ${DUCTTAPE}/tool-support ${DIST}/
-        cp -r ${DUCTTAPE}/examples ${DIST}/
-        cp -r ${DUCTTAPE}/syntax/tutorial ${DIST}/
-        find ${DIST}/syntax/tutorial -type f | egrep '\.TODO|\.XXX|.DEPRECATED' | xargs rm -rf
-        find ${DIST}/syntax/tutorial | fgrep /. | xargs rm -rf
-
-        cd ${DIST}
-        tar -cvzf ${RELEASE_NAME}.tgz ${RELEASE_NAME}
-
 scaladoc:
 	${DUCTTAPE}/scaladoc.sh
+
+release: jar
+
+test-unit:
+	${SBT} test
+
+test-regression: dist
+	PATH=${DIST}:${PATH} ${DUCTTAPE}/test-regression.sh

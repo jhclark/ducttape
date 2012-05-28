@@ -2,10 +2,13 @@
 set -eo pipefail
 scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
 
-# We don't want to assume ducttape is in the path for running test scripts
-export PATH=$scriptDir:$PATH
+# NOTE: This script requires ducttape to be in PATH
+# (see Makefile)
 
-tutorialDir=$(cd syntax/tutorial; pwd)
+echo >&2 $PATH
+DUCTTAPE=$(which ducttape)
+
+tutorialDir=$(cd $scriptDir/syntax/tutorial; pwd)
 for tape in $tutorialDir/*/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)
@@ -15,7 +18,7 @@ for tape in $tutorialDir/*/*.tape; do
         CMD=$customSh
     else
         # Just directly execute the .tape file with ducttape
-        CMD="$scriptDir/ducttape $tape"
+        CMD="$DUCTTAPE $tape"
     fi
     echo "==================="
     echo "Running test: $CMD"
