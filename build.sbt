@@ -18,7 +18,26 @@ parallelExecution in Test := false
 seq(ProguardPlugin.proguardSettings :_*)
 
 proguardOptions ++= Seq(
-  keepMain("Ducttape")
+  keepMain("Ducttape"),
+  //
+  // keep dynamically bound logger implementation
+  "-keep class org.slf4j.impl.StaticLoggerBinder",
+  "-keep class org.slf4j.impl.StaticMarkerBinder",
+  "-keep class org.slf4j.impl.StaticMDCBinder",
+  //
+  // shut up about classes that do introspection safely
+  "-dontnote", "org.apache.commons.lang3.ObjectUtils",
+  "-dontnote", "org.eclipse.jetty.jndi.DataSourceCloser",
+  "-dontnote", "org.eclipse.jetty.util.TypeUtil",
+  "-dontnote", "org.eclipse.jetty.util.log.Log",
+  "-dontnote", "org.eclipse.jetty.util.log.LoggerLog",
+  //
+  // preserve enums
+  """-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+  }
+  """
 )
 
 minJarPath := new File("ducttape.min.jar")
