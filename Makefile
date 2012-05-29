@@ -5,6 +5,14 @@ VERSION=0.2
 RELEASE_NAME=ducttape-${VERSION}-bleeding
 DIST=${DUCTTAPE}/dist/${RELEASE_NAME}
 
+clean:
+	echo >&2 "TODO"
+
+deep-clean:
+	# SBT likes to keep lots of garbage around
+	rm -rf ~/.ivy2 ~/.m2 ~/.sbt
+	sbt clean clean-files
+
 compile:
 	${DUCTTAPE}/build.sh
 
