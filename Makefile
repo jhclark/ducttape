@@ -2,6 +2,14 @@
 DUCTTAPE=.
 SBT=${DUCTTAPE}/lib/scala/sbt
 
+clean:
+	echo >&2 "TODO"
+
+deep-clean:
+	# SBT likes to keep lots of garbage around
+	rm -rf ~/.ivy2 ~/.m2 ~/.sbt
+	sbt clean clean-files
+
 compile:
 	${SBT} compile
 
