@@ -4,6 +4,11 @@
 # for the Kyoto Free Translation Task (KFTT)
 
 # You will likely have to edit the 'package' blocks such that the paths match your local environment
+# Some dependencies you should be aware of:
+# * curl
+# * python 2.7+
+# * cython 0.14.1+
+# * boost
 
 # In general, you'll probably want to clone these git repos locally and point these repo URLs
 # at your local machine: 1) so that you can pull just when you want and 2) so that you can edit the repos locally
