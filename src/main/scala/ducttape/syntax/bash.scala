@@ -212,7 +212,7 @@ object BashGrammar {
   def variable: Parser[BashCode] = {
     (literal("$") ~ variableName) |
     (literal("$") ~ literal("{") ~ variableName ~ literal("}")) |
-    (literal("$") ~ literal("{") ~ variableName ~ err("Missing closing } in bash variable reference"))
+    (literal("$") ~ literal("{") ~ variableName ~ failure("Missing closing } in bash variable reference"))
   } ^^ {
     case (dollar:String) ~ (name:String) => new BashCode(dollar + name, Set(name))
     case (dollar:String) ~ (open:String) ~ (name:String) ~ (close:String) => new BashCode(dollar + open + name + close, Set(name))
