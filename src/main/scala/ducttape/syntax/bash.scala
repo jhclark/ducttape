@@ -122,7 +122,7 @@ object BashGrammar {
     case open ~ dq ~ close => new BashCode(open + dq + close, dq.vars)
   }
 
-  def doubleQuoteContent: Parser[BashCode] = regex("[^$\"'\\\\]*".r) ~ opt(doubleQuoteSpecialContent ~ doubleQuoteContent) ^^ {
+  def doubleQuoteContent: Parser[BashCode] = regex("[^$\"\\\\]*".r) ~ opt(doubleQuoteSpecialContent ~ doubleQuoteContent) ^^ {
     case before ~ None => new BashCode(before)
     case before ~ Some(special ~ after) => new BashCode(before + special + after, special.vars ++ after.vars)
   }
