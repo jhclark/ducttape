@@ -35,11 +35,24 @@ object Files {
     }
   }
 
-  def deleteDir(dir: File) = org.apache.commons.io.FileUtils.deleteDirectory(dir)
-
   // Java's File.rename fails if moving between file systems
   // see http://stackoverflow.com/questions/7087743/how-to-rename-a-file-to-another-file-system
-  def moveDir(src: File, dest: File) = org.apache.commons.io.FileUtils.moveDirectory(src, dest)
+  // ..and Apache Commons IO is incapable of deleting/moving directories containing broken symlinks
+
+  //def deleteDir(dir: File) = org.apache.commons.io.FileUtils.deleteDirectory(dir)
+  def deleteDir(dir: File) {
+    // note: we ignore the exit code in case nothing was removed
+    Shell.run("rm -rf %s".format(dir.getAbsolutePath), "deleteDir")
+  }
+
+  //org.apache.commons.io.FileUtils.moveDirectory(src, dest)
+  def moveDir(src: File, dest: File) {
+    dest.getParentFile.mkdirs()
+    val result = Shell.run("mv %s %s".format(src.getAbsolutePath, dest.getAbsolutePath), "moveDir")
+    if (result != 0) {
+      throw new RuntimeException("Failed to move %s to %s".format(src.getAbsolutePath, dest.getAbsolutePath))
+    }
+  }
   def moveFile(src: File, dest: File) = org.apache.commons.io.FileUtils.moveFile(src, dest)
   def moveFileToDir(src: File, dest: File, createDestDir: Boolean = true)
     = org.apache.commons.io.FileUtils.moveFileToDirectory(src, dest, createDestDir)

@@ -160,26 +160,27 @@ object Ducttape extends Logging {
       if (plannedVertices.size > 0) {
         System.err.println("Planned %s vertices".format(plannedVertices.size))
       }
+
+      // pass 2 error checking: use unpacked workflow
+      {
+        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+        val (warnings, errors) = workflowChecker.checkUnpacked(workflow, plannedVertices)
+        for (e: FileFormatException <- warnings) {
+          ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
+        }
+        for (e: FileFormatException <- errors) {
+          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+        }
+        if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
+        if (errors.size > 0) System.err.println("%d errors".format(errors.size))
+        if (errors.size > 0) {
+          exit(1)
+        }
+      }
+
       plannedVertices
     }
-        
-    // pass 2 error checking: use unpacked workflow
-    {
-      val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
-      val (warnings, errors) = workflowChecker.checkUnpacked(workflow, getPlannedVertices)
-      for (e: FileFormatException <- warnings) {
-        ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
-      }
-      for (e: FileFormatException <- errors) {
-        ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
-      }
-      if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
-      if (errors.size > 0) System.err.println("%d errors".format(errors.size))
-      if (errors.size > 0) {
-        exit(1)
-      }
-    }
-    
+            
     // Check version information
     val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
     err.println("Have %d previous workflow versions".format(history.prevVersion))

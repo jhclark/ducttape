@@ -80,14 +80,17 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // note that run requires the entire environment from the original task
     // since we might not be doing any wrapping at all
     val env: Seq[(String,String)] = Seq(
-        ("TASK", taskEnv.task.name),
-        ("REALIZATION", taskEnv.task.realization.toString),
-        ("CONFIGURATION", taskEnv.dirs.confName.getOrElse(""))) ++ dotParamsEnv ++ taskEnv.env
+          ("TASK", taskEnv.task.name),
+          ("REALIZATION", taskEnv.task.realization.toString),        
+          ("CONFIGURATION", taskEnv.dirs.confName.getOrElse("")),
+          ("COMMANDS", taskEnv.task.commands.toString)) ++
+        dotParamsEnv ++ taskEnv.env
         
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
-    // TODO: Any other mangling that might be necessary here?
-    val code = runAction.commands.toString.replace("$COMMANDS", taskEnv.task.commands.toString).
-                                           replace("${COMMANDS}", taskEnv.task.commands.toString)
+    // TODO: Were there ever any quoting bugs here?
+    val code = runAction.commands.toString
+    //.replace("$COMMANDS", taskEnv.task.commands.toString).
+    //replace("${COMMANDS}", taskEnv.task.commands.toString)
 
     debug("Code after nesting into run action is: %s".format(code))
     debug("Execution environment is: %s".format(env))

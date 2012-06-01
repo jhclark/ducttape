@@ -47,6 +47,11 @@ class Executor(val dirs: DirectoryArchitect,
           observers.foreach(_.fail(this, task))
           throw new BashException(msg)
         }
+      } catch {
+        case e: Exception => {
+          System.err.println("Failed %s: %s".format(task, e.getMessage))
+          throw e
+        }
       } finally {
         // TODO: Factor out into listener/callback?
          taskEnv.lockFile.delete()
