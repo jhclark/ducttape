@@ -62,9 +62,11 @@ import grizzled.slf4j.Logging
           } else {
             // no corresponding edge was found in the derivation
             // this branch graft cannot apply
-            // TODO: Add commments to hyperedges? Or somehow get other context for this error message.
-            graftFailureCallback("Realization %s filtered by branch graft: %s".format(
-              combo.view.mkString("-"), he.h.grafts.mkString(",")))
+            graftFailureCallback {
+              val sinkName = heOpt.map { he => dag.sink(he).toString }.getOrElse("unknown")
+              "Realization %s feeding %s filtered by branch graft: %s".format(
+                combo.view.mkString("-"), sinkName, he.h.grafts.mkString(","))
+            }
             None
           }
         }
