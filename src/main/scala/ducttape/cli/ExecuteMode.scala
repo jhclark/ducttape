@@ -15,6 +15,7 @@ import ducttape.exec.CompletionChecker
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.Executor
 import ducttape.exec.PidWriter
+import ducttape.exec.LockManager
 import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
@@ -99,8 +100,9 @@ object ExecuteMode {
           Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo), plannedVertices)
           System.err.println("Executing tasks...")
           try {
+            val locker = new LockManager(myVersion)
             Visitors.visitAll(workflow,
-                              new Executor(dirs, packageVersions, workflow, plannedVertices, cc.completed, cc.todo),
+                              new Executor(dirs, packageVersions, locker, workflow, plannedVertices, cc.completed, cc.todo),
                               plannedVertices, opts.jobs())
           } finally {
             // release all of our locks, even if we go down in flames

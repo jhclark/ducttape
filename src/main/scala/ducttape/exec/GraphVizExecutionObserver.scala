@@ -22,26 +22,26 @@ class GraphVizExecutionObserver extends ExecutionObserver {
     }
   }
   
-  override def begin(exec: Executor, task: RealTask) {
-    running += ((task.name, task.realization))
+  override def begin(exec: Executor, taskEnv: FullTaskEnvironment) {
+    running += ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
       val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
   
-  override def fail(exec: Executor, task: RealTask) {
-    failed += ((task.name, task.realization))
-    running -= ((task.name, task.realization))
+  override def fail(exec: Executor, taskEnv: FullTaskEnvironment) {
+    failed += ((taskEnv.task.name, taskEnv.task.realization))
+    running -= ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
       val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
   
-  override def complete(exec: Executor, task: RealTask) {
-    completed += ((task.name, task.realization))
-    running -= ((task.name, task.realization))
+  override def succeed(exec: Executor, taskEnv: FullTaskEnvironment) {
+    completed += ((taskEnv.task.name, taskEnv.task.realization))
+    running -= ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
       val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)

@@ -25,6 +25,7 @@ object CompletionChecker extends Logging {
   } 
   
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
+    
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     // use a series of thunks so that we don't try to open non-existent files
