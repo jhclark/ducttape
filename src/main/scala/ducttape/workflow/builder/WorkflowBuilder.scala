@@ -192,7 +192,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         branchChild.children.map { bpChild: BranchPointTree =>
           // we have more than one branch point in a row: create a phantom
           val branchPhantomV: PackedVertex[Option[TaskTemplate]]
-            = dag.addPhantomVertex(comment = "Phantom:%s.nestedBranch".format(branchChild.branch.toString))
+            = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch".format(task.name, branchChild.branch.toString))
           traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
           (branchPhantomV, Nil)
         }
