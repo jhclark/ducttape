@@ -9,12 +9,14 @@ libs=""
 libs="$libs:$libDir/sqlitejdbc-v056.jar"
 libs="$libs:$libDir/scala-optparse-1.1.jar"
 libs="$libs:$libDir/commons-lang3-3.1.jar"
-libs="$libs:$libDir/scalatest-1.6.1.jar"
-libs="$libs:$libDir/webui/servlet-api-3.0.jar"
-libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
-libs="$libs:$libDir/junit-4.10.jar"
 libs="$libs:$libDir/commons-io-2.2.jar"
 libs="$libs:$libDir/grizzled-slf4j_2.9.1-1-0.6.8.jar"
+
+libs="$libs:$libDir/webui/servlet-api-3.0.jar"
+libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
+
+libs="$libs:$libDir/test/junit-4.10.jar"
+libs="$libs:$libDir/test/scalatest-1.6.1.jar"
 
 echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
