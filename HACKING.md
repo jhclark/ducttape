@@ -22,7 +22,7 @@ mkdir workspace # The directory to be used by your Scala Eclipse
 cd workspace
 git clone git:github.com/jhclark/ducttape.git
 mkdir ducttape/lib
-cp /path/to/scalatest-1.6.1.jar ducttape/lib
+cp /path/to/scalatest-1.7.1.jar ducttape/lib
 ```
 
 Now, open Eclipse using the workspace you just created.

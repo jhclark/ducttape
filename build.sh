@@ -3,8 +3,6 @@ set -ueo pipefail
 scriptDir=$(scala -e 'println(new java.io.File("'$(dirname $0)'").getAbsolutePath)')
 libDir=$scriptDir/lib
 
-$scriptDir/get_deps.sh
-
 libs=""
 libs="$libs:$libDir/sqlitejdbc-v056.jar"
 libs="$libs:$libDir/scala-optparse-1.1.jar"
