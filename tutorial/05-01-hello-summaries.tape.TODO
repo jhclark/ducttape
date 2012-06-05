@@ -1,3 +1,23 @@
+# Chapter 5: Summaries
+# Lesson 1:  What is a Summary?
+#
+# What we gain from summaries:
+# * Summaries are for small one-line bits of text, to be put into tables
+# * Unlike tasks, summaries can be run even before all of their component tasks have been completed
+# * Summaries help understand information that may be spread out over many branches
+# * Summaries may help flatten information
+# * Summary tables can be flattenned by realization as well, e.g.
+#   SummaryA
+#   =======
+#   PTFileSize | branch1 | 5G
+#              | branch2 | 2G
+#              | branch3 | 1G
+#   ROFileSize | branch1 | 5G
+#              | branch2 | 8G
+#              | branch3 | *running*
+#   LMFileSize | branch1-otherBranch2 | 15G
+#   etc...
+
 # TODO: Unfinished tutorial step
 
 # Reports enable you to run commands after a workflow has
