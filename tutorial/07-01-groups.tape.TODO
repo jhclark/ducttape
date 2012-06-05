@@ -1,3 +1,6 @@
+# Chapter 7: Future Plans
+# Lesson 1:  Group Blocks
+
 # To define a subworkflow in the same file:
 # NOTE: Packages are not allowed following group definition
 group TM < in1=x.txt > out1=$out@Y {

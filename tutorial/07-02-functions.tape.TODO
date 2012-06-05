@@ -1,3 +1,6 @@
+# Chapter 7: Future Plans
+# Lesson 2:  Functions
+
 # To define a "task function" in the same file
 func filter: cdec < in > out {
   cat < $in > $out
