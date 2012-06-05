@@ -1,4 +1,8 @@
-# 6) Using package versioning with SVN
+# Chapter 2: Packages
+# Lesson 4:  Understanding the SVN packge versioner
+#
+# TODO: Say a bit more...
+
 task experiment_task : moses < in=/etc/passwd > out :: N=5 {
   $moses -version
 }

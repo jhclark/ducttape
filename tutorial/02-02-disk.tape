@@ -1,4 +1,8 @@
-# 1) Using package versioning without any source code control / versioning system
+# Chapter 2: Packages
+# Lesson 2:  The evil disk versioner
+#
+# Using package versioning without any source code control / versioning system
+# 
 # Use this only if git and svn are completely foreign
 # concepts to you. Beyond just getting started with ducttape,
 # use of this versioner is discouraged.

@@ -1,4 +1,5 @@
-# Using package versioning
+# Chapter 2: Packages
+# Lesson 1:  Using package versioning
 #
 # * During R&D, software often changes while a workflow is running
 # * To reproduce a workflow, you need to know what version of
