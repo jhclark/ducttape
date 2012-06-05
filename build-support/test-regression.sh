@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
+rootDir=$scriptDir/..
 
 # NOTE: This script requires ducttape to be in PATH
 # (see Makefile)
@@ -8,7 +9,7 @@ scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
 echo >&2 $PATH
 DUCTTAPE=$(which ducttape)
 
-tutorialDir=$(cd $scriptDir/syntax/tutorial; pwd)
+tutorialDir=$(cd $rootDir/tutorial; pwd)
 for tape in $tutorialDir/*/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)

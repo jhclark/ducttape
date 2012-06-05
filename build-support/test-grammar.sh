@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
+scriptDir=$(cd $(dirname $0); pwd)
+rootDir=$scriptDir/..
 
 JAVA_OPTS="-XX:MaxJavaStackTraceDepth=7" scala -cp lib/scalatest-1.7.1.jar:bin/ \
     org.scalatest.tools.Runner \
