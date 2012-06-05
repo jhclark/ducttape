@@ -1,6 +1,10 @@
 # Chapter 6: Sumitters
 # Lesson 4:  The Full Torque Submitter (Planned)
 
+task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
+  echo hello
+}
+
 # This file is for systems such as PBS/Torque with the Built-in, Catalina, or Maui schedulers.
 
 # * The resource parameter vmem can be specified as .vmem at task declarations

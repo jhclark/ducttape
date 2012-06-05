@@ -1,6 +1,10 @@
 # Chapter 6: Submitters
 # Lesson 3:  Sun Grid Engine (Full Planned Version)
 
+task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
+  echo hello
+}
+
 # * The resource parameter vmem can be specified as .vmem at task declarations
 # * The "cmds" parameter is inserted as a direct string replacement by ducttape
 #   and contains the "payload" of this task

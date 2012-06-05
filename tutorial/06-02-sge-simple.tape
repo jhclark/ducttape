@@ -1,6 +1,10 @@
 # Chapter 6: Submitters
 # Lesson 2:  Sun Grid Engine (Simple)
 
+task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
+  echo hello
+}
+
 # cpus, vmem, walltime, q: these can be passed as parameters to each task: .cpus .vmem .walltime .q
 # COMMANDS: the bash commands from some task
 # TASK, REALIZATION, CONFIGURATION: variables passed by ducttape
@@ -31,8 +35,4 @@ submitter sge :: vmem walltime q
     # Use SGE's -sync option to prevent qsub from immediately returning
     qsub -sync y $wrapper
   }
-}
-
-task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
-  echo hello
 }
