@@ -1,3 +1,8 @@
+# Chapter 3: HyperWorkflows
+# Lesson 2:  The default one off plan
+#
+# TODO: What is a plan?
+#
 # Most HyperWorkflows involve more than one dimension of experimentation.
 # That is, there is more than one packed file/parameter among the workflow's
 # tasks. In this example, we will see how to run these variations as

@@ -1,3 +1,6 @@
+# Chapter 3: HyperWorkflows
+# Lesson 6:  Branch Grating
+
 # TODO: Unfinished tutorial step
 # TODO: Example of grafting multiple branches (from different branch points) using comma
 # TODO: Example of one input performing a graft and another input of the same task not grafting

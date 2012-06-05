@@ -1,3 +1,6 @@
+# Chapter 3: HyperWorkflows
+# Lesson 1:  What are HyperWorkflows?
+#
 # Experimentation often requires one to run similar sequences of tasks
 # in a variety of configurations. To compactly represent such workflows,
 # ducttape provides HyperWorkflows.

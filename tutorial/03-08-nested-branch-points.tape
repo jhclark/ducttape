@@ -1,3 +1,6 @@
+# Chapter 3: HyperWorkflows
+# Lesson 8:  Nested Branch Points
+
 task uses_nested < file=$ref_test :: N=$num_refs {
   echo "I will be reading file $file with $N refs"
   head -n $N $file

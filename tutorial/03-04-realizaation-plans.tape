@@ -1,3 +1,6 @@
+# Chapter 3: HyperWorkflows
+# Lesson 3:  Custom realization plans
+
 # We start with the same example from part 2
 task planned_1 < in=(whichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
