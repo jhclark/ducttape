@@ -2,5 +2,5 @@ language: scala
 script: ./lib/scala/sbt test
 after_script:
   - ./lib/scala/sbt proguard
-  - ./dist.sh
+  - ./build-support/dist.sh
   - PATH=$PWD/dist/ducttape-current:$PATH ./test-regression.sh

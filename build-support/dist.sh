@@ -3,13 +3,13 @@ set -eo pipefail
 shopt -s nullglob
 scriptDir=$(dirname $0)
 
-DUCTTAPE=$scriptDir
+DUCTTAPE=$scriptDir/..
 VERSION=0.2
 RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
 DIST_BASE=${DUCTTAPE}/dist
 DIST=${DIST_BASE}/${RELEASE_NAME}
 
-cd $scriptDir
+cd $DUCTTAPE
 
 echo "Original JAR stats:"
 du -csh lib/*.jar lib/webui/*.jar lib/scala/scala-library-2.9.2.jar
