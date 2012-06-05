@@ -1,4 +1,7 @@
-# 2) Writing output files
+
+
+# Chapter 1: Basics
+# Lesson 2:  Writing output files
 #
 # * Ducttape will assign the paths for the output files
 #   as something like ./hello-world-2/x and ./hello-world-2/y.txt

@@ -1,3 +1,8 @@
+# Chapter 1: Basics
+# Lesson 9:  Global variables
+#
+# TODO: Why are these useful?
+
 task hello_world :: who=$someone {
   echo hello $who
 }

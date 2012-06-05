@@ -1,4 +1,5 @@
-# 3) Reading input files
+# Chapter 1: Basics
+# Lesson 3:  Reading input files
 #
 # * This task takes 2 input files (a and b) and produces no output
 # * Ducttape will set the environment variables in $a and $b before invoking bash

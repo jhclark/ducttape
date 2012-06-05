@@ -1,4 +1,5 @@
-# 5) Using parameters
+# Chapter 1: Basics
+# Lesson 5:  Using parameters
 #
 # * Parameters are for variables that aren't files
 # * They are listed after inputs and outputs, using a double colon

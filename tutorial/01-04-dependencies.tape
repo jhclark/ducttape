@@ -1,4 +1,5 @@
-# 4) Running tasks with dependencies
+# Chapter 1: Basics
+# Lesson 4:  Running tasks with dependencies
 
 # First a step we already know about...
 task first > x {

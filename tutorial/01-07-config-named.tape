@@ -1,3 +1,8 @@
+# Chapter 1: Basics
+# Lesson 7:  Named configs
+#
+# Named configs allow... TODO
+
 task hello_world :: who=$someone {
   echo hello $who
 }
