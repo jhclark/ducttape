@@ -10,7 +10,7 @@ echo >&2 $PATH
 DUCTTAPE=$(which ducttape)
 
 tutorialDir=$(cd $rootDir/tutorial; pwd)
-for tape in $tutorialDir/*/*.tape; do
+for tape in $tutorialDir/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)
     customSh=$dir/$basefile.sh
