@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
-scriptDir=$(dirname $0)
+scriptDir=$(cd $(dirname $0); pwd)
+rootDir=$scriptDir/..
 
-libs=$scriptDir/ducttape.jar
-libs=$libs:$scriptDir/lib/scala-library.jar
+libs=$rootDir/ducttape.jar
+libs=$libs:$rootDir/lib/scala-library.jar
 
 docdir=doc
 mkdir -p $docdir

@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -ueo pipefail
 scriptDir=$(scala -e 'println(new java.io.File("'$(dirname $0)'").getAbsolutePath)')
-libDir=$scriptDir/lib
+rootDir=$scriptDir/..
+libDir=$rootDir/lib
+
+# NOTE: This build file is intended primarily for builds
+# where SBT cannot be used (i.e. there is no Internet connection)
+# Subtitle: If you're not Lane, consider just running "sbt"
 
 libs=""
 libs="$libs:$libDir/sqlitejdbc-v056.jar"
@@ -17,17 +22,15 @@ libs="$libs:$libDir/test/junit-4.10.jar"
 libs="$libs:$libDir/test/scalatest-1.7.1.jar"
 
 echo >&2 "Building source..."
-mkdir -p $scriptDir/bin
-find $scriptDir/src/main/scala $scriptDir/src/test/scala \
+mkdir -p $rootDir/bin
+find $rootDir/src/main/scala $rootDir/src/test/scala \
   | egrep '\.scala$' \
   | xargs scalac \
     -Dscala.timings=true \
     -unchecked -deprecation -cp $libs  \
-    -d $scriptDir/bin/ \
-  | $scriptDir/build-support/color_scalac.awk
+    -d $rootDir/bin/ \
+  | $rootDir/build-support/color_scalac.awk
 
 echo >&2 "Building JAR..."
-(cd $scriptDir/bin; zip -qr $scriptDir/ducttape.jar *)
+(cd $rootDir/bin; zip -qr $rootDir/ducttape.jar *)
 
-#echo >&2 "Building One JAR to Rule Them All..."
-#java -jar $scriptDir/lib/proguard-4.7.jar @ducttape.proguard
