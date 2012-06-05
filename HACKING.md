@@ -69,3 +69,47 @@ Scaladoc
 ========
 
 Source code should be commented using ScalaDoc standards. See https://wiki.scala-lang.org/display/SW/Scaladoc.
+
+
+
+
+
+Building
+========
+
+```bash
+./build-support/sbt compile
+./build-support/jar.sh
+```
+
+This will produce ducttape.jar.
+
+Documentation
+=============
+
+To generate the tutorial documentation as doc/doc.pdf:
+```bash
+./build-support/doc.sh
+```
+
+
+To generate scaladoc:
+```bash
+./build-support/scaladoc.sh
+```
+
+Testing
+=======
+
+To test low level data structures, run:
+
+```bash
+TODO (Currently Eclipse JUnit is used)
+```
+
+To test high-level functionality, run:
+
+```
+./test-regression.sh
+```
+This will run all of the example files associated with the tutorial, which also serve as regression tests.
