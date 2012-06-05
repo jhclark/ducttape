@@ -25,6 +25,11 @@ package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.gi
 # * All other commands are run inside $dir
 # * As we will see with inline branches, specializations such as checkout and update
 #   inherit all of their parent's parameters so that update has visibility of $repo and $rev
+# * repo_version should return an *absolute* revision identifier. This identifier should include any branch information,
+#   if relevant.
+# * local_version should return current *absolute* revision relative to the repository from 
+#   which the tool was checked out. This version should *never* be a relative, mutable
+#   revision identifier such as HEAD or TRUNK.
 versioner git :: repo ref {
   action checkout > dir {
     git clone $repo $dir
