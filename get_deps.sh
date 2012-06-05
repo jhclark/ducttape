@@ -4,7 +4,7 @@ scriptDir=$(dirname 0)
 
 #mkdir -p $scriptDir/lib/
 #cd $scriptDir/lib/
-#scalatest=scalatest-1.6.1
+#scalatest=scalatest-1.7.1
 #if [ ! -e $scalatest.jar ]; then
 #    echo >&2 "Retrieving library $scalatest"
 #    scalatestUrl=http://www.scalatest.org/releases/$scalatest.zip
