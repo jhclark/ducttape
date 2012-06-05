@@ -1,3 +1,6 @@
+# Chapter 6: Submitters
+# Lesson 2:  Sun Grid Engine (Simple)
+
 # cpus, vmem, walltime, q: these can be passed as parameters to each task: .cpus .vmem .walltime .q
 # COMMANDS: the bash commands from some task
 # TASK, REALIZATION, CONFIGURATION: variables passed by ducttape

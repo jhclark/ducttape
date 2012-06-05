@@ -1,3 +1,6 @@
+# Chapter 6: Submitters
+# Lesson 3:  Sun Grid Engine (Full Planned Version)
+
 # * The resource parameter vmem can be specified as .vmem at task declarations
 # * The "cmds" parameter is inserted as a direct string replacement by ducttape
 #   and contains the "payload" of this task
