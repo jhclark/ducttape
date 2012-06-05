@@ -48,6 +48,12 @@ Console
 
 If you wish to develop from the command line, you should use either the emacs or vi syntax highlighting mode that is distributed with Scala.
 
+To build ducttape from the command line, use:
+
+```
+./build-support/sbt compile
+```
+
 
 Scala Style
 ===========
