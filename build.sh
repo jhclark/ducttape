@@ -24,7 +24,7 @@ find $scriptDir/src/main/scala $scriptDir/src/test/scala \
     -Dscala.timings=true \
     -unchecked -deprecation -cp $libs  \
     -d $scriptDir/bin/ \
-  | $scriptDir/color_scalac.awk
+  | $scriptDir/build-support/color_scalac.awk
 
 echo >&2 "Building JAR..."
 (cd $scriptDir/bin; zip -qr $scriptDir/ducttape.jar *)
