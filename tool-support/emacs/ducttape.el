@@ -25,6 +25,7 @@
 		    "package"
 		    "plan"
 		    "submitter"
+                    "summary"
 		    "task"
 		    "versioner"
 		    "switch" "default") 'words) . font-lock-keyword-face)
