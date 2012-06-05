@@ -4,4 +4,4 @@ echo 'echo "$@" >> qsub.log' > qsub
 trap "rm qsub" EXIT
 chmod a+x qsub
 
-ducttape 2-sge-simple.tape "$@"
+ducttape 01-02-sge-simple.tape "$@"

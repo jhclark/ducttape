@@ -1,1 +1,1 @@
-ducttape 7-config-named.tape -c World "$@"
+ducttape 01-07-config-named.tape -c World "$@"
