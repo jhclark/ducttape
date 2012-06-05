@@ -4,8 +4,8 @@
 	<property name="bin"  location="bin"/>
 
 	<path id="classpath.test">
-		<pathelement location="${lib}/junit-4.10.jar"/>
-		<pathelement location="${lib}/scalatest-1.6.1.jar"/>
+		<pathelement location="${lib}/test/junit-4.10.jar"/>
+		<pathelement location="${lib}/test/scalatest-1.7.1.jar"/>
 		<pathelement location="${lib}/scala-library.jar"/>
 		<pathelement location="${lib}/commons-lang3-3.1.jar"/>
 		<pathelement location="${lib}/grizzled-slf4j_2.9.1-1-0.6.8.jar"/>
