@@ -5,7 +5,7 @@ Introduction
 
 This is the in-progress baking of Ducttape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is alpha quality. Proceed with caution and report bugs regularly.
 
-Want to learn how to use Ducttape? Read [tutorial.md](https://github.com/jhclark/ducttape/blob/master/tutorial/tutorial.md).
+Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
 Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/xHACKING.md).
 
