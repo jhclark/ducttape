@@ -16,16 +16,11 @@ libs="$libs:$libDir/webui/servlet-api-3.0.jar"
 libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
 
 libs="$libs:$libDir/test/junit-4.10.jar"
-libs="$libs:$libDir/test/scalatest-1.6.1.jar"
+libs="$libs:$libDir/test/scalatest-1.7.1.jar"
 
 echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
-if [ "$1" == "no-test" ] ; then
-    dirs=$scriptDir/src/main/scala
-else
-    dirs=$scriptDir/src/main/scala $scriptDir/src/test/scala
-fi
-find $dirs \
+find $scriptDir/src/main/scala $scriptDir/src/test/scala \
   | egrep '\.scala$' \
   | xargs scalac \
     -Dscala.timings=true \
