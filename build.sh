@@ -18,7 +18,12 @@ libs="$libs:$libDir/grizzled-slf4j_2.9.1-1-0.6.8.jar"
 
 echo >&2 "Building source..."
 mkdir -p $scriptDir/bin
-find $scriptDir/src/main/scala $scriptDir/src/test/scala \
+if [ "$1" == "no-test" ] ; then
+    dirs=$scriptDir/src/main/scala
+else
+    dirs=$scriptDir/src/main/scala $scriptDir/src/test/scala
+fi
+find $dirs \
   | egrep '\.scala$' \
   | xargs scalac \
     -Dscala.timings=true \
