@@ -4,15 +4,26 @@ scriptDir=$(cd $(dirname $0); pwd)
 rootDir=$scriptDir/..
 
 libs=$rootDir/ducttape.jar
-libs=$libs:$rootDir/lib/scala-library.jar
+#libs=$rootDir/bin
+libs=$libs:$rootDir/lib/scala/scala-library-2.9.2.jar # DEV-ONLY
 
-docdir=doc
-mkdir -p $docdir
-# TODO: JAR path?
-java -cp $libs ducttape.doc.DuctTapeDoc ./syntax/tutorial --latex > $docdir/doc.tex
-java -cp $libs ducttape.doc.DuctTapeDoc ./syntax/tutorial --markdown > $docdir/doc.md
+libs=$libs:$rootDir/lib/scala-optparse-1.1.jar # DEV-ONLY
+libs=$libs:$rootDir/lib/commons-lang3-3.1.jar # DEV-ONLY
+libs=$libs:$rootDir/lib/commons-io-2.2.jar # DEV-ONLY
+libs=$libs:$rootDir/lib/grizzled-slf4j_2.9.1-1-0.6.8.jar # DEV-ONLY
+
+# Use slf4j's java.util logger (at runtime only) # DEV-ONLY
+libs=$libs:$rootDir/lib/slf4j-api-1.6.4.jar # DEV-ONLY
+libs=$libs:$rootDir/lib/slf4j-jdk14-1.6.4.jar # DEV-ONLY
+
+
+docdir=tutorial
+#mkdir -p $docdir
+
+java -cp $libs ducttape.doc.DucttapeDoc ./tutorial --latex > $docdir/tutorial.tex
+java -cp $libs ducttape.doc.DucttapeDoc ./tutorial --markdown > $docdir/TUTORIAL.md
 cd $docdir
-pdflatex doc.tex
-pdflatex doc.tex # Get the table of contents right
+pdflatex tutorial.tex
+pdflatex tutorial.tex # Get the table of contents right
 
-echo >&2 "Tutorial documentation written to: $docdir/doc.pdf and $docdir/doc.md"
+echo >&2 "Tutorial documentation written to: $docdir/tutorial.pdf and $docdir/TUTORIAL.md"
