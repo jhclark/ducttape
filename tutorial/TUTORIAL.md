@@ -358,6 +358,13 @@ versioner git :: repo ref {
 }
 ```
 
+Adapting for Your Environment
+-----------------------------
+
+Currently, system specific modifications such as where prefix, etc is located is recommended to be done by copying the build scripts. This may seem bad, but build system and repository system already abstract fairly complicated operations. Each package should generally contain small scripts, which act more or less like configuration files.
+
+However, it is considered best practice to have variables for such things on each package block rather than buried in the commands. For example, you should make it easy to modify the number of cores used in the build for make -j, scons -j, bjam -j, etc.
+
 HyperWorkflows
 ==============
 
@@ -669,4 +676,73 @@ submitter sge :: vmem walltime q
   }
 }
 ```
+
+Appendix A: Directory Structure
+-------------------------------
+
+Destination Directory
+---------------------
+
+$DEST is by default the $PWD from which you run ducttape This may become configurable at some point.
+
+You can also define inside your config the value "ducttape.dest _ dir=/my/directory" as the destination directory.
+
+Packages
+--------
+
+Packages get built in $DEST/ducttape.packages/$PACKAGE _ NAME/$PACKAGE _ VERSION
+
+The Attic
+---------
+
+Partial output or invalidated output from previous runs gets moved to $DEST/ducttape.attic/$TASK _ NAME/$REALIZATON _ NAME/$WORKFLOW _ VERSION. This may help prevent accidental deletion of data and can help diagnose issues if tasks fail repeatedly. The workflow version is incremented every time the workflow is executed.
+
+"Flat" Structure
+----------------
+
+Iff the "ducttape.structure=flat" directive is in your configuration, tasks will be stored in $DEST/$TASK _ NAME. We refer to this directory as $TASK.
+
+The bash code in your task block will start off with its cwd as $TASK and its output files including ducttape _ stdout.txt, ducttape _ exit _ code.txt, and ducttape _ version.txt, ducttape _ submitter.sh will be written there. If you re-run the workflow, any partial output may be moved to The Attic (see above).
+
+If you later choose to switch to "ducttape.structure=hyper", you will need to follow the special instructions below.
+
+"Hyper" Structure
+-----------------
+
+If you do not specify the structure or "ducttape.structure=hyper" is in your configuration, tasks will be stored in $DEST/$TASK _ NAME/$REALIZATION _ NAME. We refer to this directory as $TASK.
+
+Just as in the flat structure, the bash code in your task block will start off with its cwd as $TASK and its output files including ducttape _ stdout.txt, ducttape _ exit _ code.txt, and ducttape _ version.txt, ducttape _ submitter.sh will be written there. If you re-run the workflow, any partial output may be moved to The Attic (see above).
+
+Config Directories
+------------------
+
+A basic workflow without any configs (the configuration blocks using the "config" keyword") or an anonymous config such as "config {}" will have the the structure defined by flat or hyper above. However, each config is housed in its own top-level directory under which all tasks live.
+
+For the "flat" structure, this makes the $TASK directory: $DEST/$CONF _ NAME/$TASK _ NAME
+
+For the "hyper" structure, this makes the $TASK directory: $DEST/$CONF _ NAME/$TASK _ NAME/$REALIZATION _ NAME
+
+Transitioning from "Flat" to "Hyper"
+------------------------------------
+
+If you started with a flat structure and want to use hyper, ducttape will detect that you changed your structure preference and warn you that the directory structures are incompatible. You'll need to add a special transitional directory as the destination of hyperworkflow tasks, so set "ducttape.transitional _ dir=/my/director/hyperdir". We will refer to this directory as $TRANS. Your original flat tasks won't be moved, but all new tasks will be placed in $TRANS.
+
+For the new hyper structure, this makes the $TASK directory: $TRANS/$TASK _ NAME/$REALIZATION _ NAME Or if a conf name is specified: $TRANS/$CONF _ NAME/$TASK _ NAME/$REALIZATION _ NAME
+
+Your original flat tasks will be symlinked into $TRANS as: $TRANS/$TASK _ NAME/baseline - >  $DEST/$TASK _ NAME, since each flat task represents the baseline branch of the Baseline branch point in a hyperworkflow.
+
+TODO: This README file needs to be updated.
+
+Job control
+-----------
+
+Q. What if I want to change the structure of a workflow while it is running? A. No problem. Any tasks that are currently running will always continue to run. All other tasks defined in the previous version of the workflow, but not defined by the new version of the workflow will be cancelled by default (this can be overridden -- it might be useful to override if you want to submit several different sets of one-off experiments). Tasks that were defined in the old version of the workflow and are now redefined by new version of the workflow workflow will replace their old definitions (therefore, the old version of the tasks and all of its dependencies will be cancelled).
+
+Why? Ducttape workflows are submitted to an always-running daemon. There is always one daemon per machine, and you are responsible for making sure you submit jobs from one head node per cluster (ducttape makes some attemps to complain if multiple daemons are pointed at the same directory on a shared filesystem).
+
+Q. What if I want to change the input files to a workflow while it is running? A. Ducttape can't guarantee the success of doing this  while  the workflow is running. A currently-executing step might be using the file you intend to replace. If you're confident this is not the case, go for it. But we warned. See below for details on switching out input files.
+
+Q. What if I want to change the input files when a workflow is partially completed / between runs? A. Just as ducttape manages the versions of the software packages in your workflow, it also checks if file versions differ (via a SHA1 or other heuristics). If they differ, you have 2 options: 1) Instruct ducttape to invalidate and rerun all tasks (and dependents) that use the changed input or 2) Instruct ducttape to ignore the change. In the latter case, ducttape will remember the change and keep a note of it (in case you notice strange inconsistencies later).
+
+TODO: Make example inputs workflows that are part of the tutorial instead of just throwing words at this issue. (These are then unit tests as well).
 
