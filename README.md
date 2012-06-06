@@ -7,7 +7,7 @@ This is the in-progress baking of Ducttape, a workflow management system for res
 
 Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
-Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/xHACKING.md).
+Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
 
 Design Principles
 =================
