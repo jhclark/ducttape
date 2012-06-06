@@ -14,7 +14,9 @@ libs="$libs:$libDir/scala-optparse-1.1.jar"
 libs="$libs:$libDir/commons-lang3-3.1.jar"
 libs="$libs:$libDir/commons-io-2.2.jar"
 libs="$libs:$libDir/grizzled-slf4j_2.9.1-1-0.6.8.jar"
-
+libs="$libs:$libDir/pegdown-1.1.0.jar"
+libs="$libs:$libDir/parboiled-core-1.0.2.jar"
+libs="$libs:$libDir/parboiled-java-1.0.2.jar"
 libs="$libs:$libDir/webui/servlet-api-3.0.jar"
 libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
 
