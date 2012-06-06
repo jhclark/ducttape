@@ -1,5 +1,6 @@
 package ducttape.doc
 
+import org.pegdown.PegDownProcessor
 import java.io._
 import io._
 import collection.JavaConversions._
@@ -9,6 +10,8 @@ import ducttape.util.Files
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import org.pegdown.ast.RootNode
+import org.pegdown.ast.Visitor
 
 trait Formatter {
   def header()
@@ -58,6 +61,7 @@ class Latex(headerFile: File) extends Formatter {
   def footer() = println("""\end{document}""")
 }
 
+// this formatter *writes* markdown
 class Markdown(headerFile: File) extends Formatter {
   def header() = {
     println(Files.read(headerFile).mkString("\n"))
@@ -88,10 +92,63 @@ class Markdown(headerFile: File) extends Formatter {
   def footer() = {}
 }
 
+// this visitor *reads* markdown
+class MarkdownVisitor(formatter: Formatter) extends PickyMarkdownVisitor {
+  import org.pegdown.ast._
+  
+//  override def visit(node: AbbreviationNode) {}
+//  override def visit(node: AutoLinkNode) {}
+//  override def visit(node: BlockQuoteNode) {}
+//  override def visit(node: BulletListNode) {}
+  override def visit(node: CodeNode) = formatter.code(node.getText.split("\n"))
+//  override def visit(node: DefinitionListNode) {}
+//  override def visit(node: DefinitionNode) {}
+//  override def visit(node: DefinitionTermNode) {}
+// override def visit(node: EmphNode) = visitChildren(node)
+//  override def visit(node: ExpImageNode) {}
+//  override def visit(node: ExpLinkNode) {}
+  override def visit(node: HeaderNode) = formatter.subsection(flattenChildren(node))
+//  override def visit(node: HtmlBlockNode) {}
+//  override def visit(node: InlineHtmlNode) {}
+//  override def visit(node: ListItemNode) {}
+//  override def visit(node: MailLinkNode) {}
+//  override def visit(node: OrderedListNode) {}
+  override def visit(node: ParaNode) = formatter.comment(Seq(flattenChildren(node)))
+//  override def visit(node: QuotedNode) {}
+//  override def visit(node: ReferenceNode) {}
+//  override def visit(node: RefImageNode) {}
+//  override def visit(node: RefLinkNode) {}
+  override def visit(node: RootNode) = visitChildren(node)
+//  override def visit(node: SimpleNode) {}
+//  override def visit(node: SpecialTextNode) = formatter.comment(node.getText.split("\n"))
+//  override def visit(node: StrongNode) {}
+//  override def visit(node: SuperNode) = visitChildren(node)
+//  override def visit(node: TableBodyNode) {}
+//  override def visit(node: TableCellNode) {}
+//  override def visit(node: TableColumnNode) {}
+//  override def visit(node: TableHeaderNode) {}
+//  override def visit(node: TableNode) {}
+//  override def visit(node: TableRowNode) {}
+//  override def visit(node: VerbatimNode) {}
+//  override def visit(node: WikiLinkNode) {}
+
+  override def visit(node: TextNode) = formatter.comment(node.getText.split("\n"))
+  
+  // general catch all for custom Node implementations    
+  override def visit(node: Node) {}
+  
+  def flattenChildren(node: SuperNode): String
+    = node.getChildren.collect {
+      case child: TextNode => child.getText
+      case child: SuperNode => flattenChildren(child)
+    }.mkString(" ")
+  def visitChildren(node: SuperNode) = node.getChildren.foreach(_.accept(this))
+}
+
 object DucttapeDoc {
   def main(args: Array[String]) {
     if(args.size != 2) {
-      err.println("Usage: DuctTapeDoc ./tutorial/ [--latex|--markdown]")
+      err.println("Usage: DucttapeDoc ./tutorial/ [--latex|--markdown]")
       exit(1)
     }
     val docRoot = new File(args(0))
@@ -109,7 +166,10 @@ object DucttapeDoc {
       sortWith { (e1,e2) => e1.getName < e2.getName }
       
     System.err.println("Found %d files in : %s".format(tapeAndMarkdownFiles.size, docRoot.getAbsolutePath))
-      
+    
+    val markdownProcessor = new PegDownProcessor
+    val markdownVisitor = new MarkdownVisitor(f)
+    
     var prevSectionName = ""
     for (file <- tapeAndMarkdownFiles) {
       
@@ -145,7 +205,10 @@ object DucttapeDoc {
         System.err.println("Processing %s: %s".format(sectionName, lessonName))
         handleFile(sectionName, lessonName, workflow, file)
       } else {
-        System.err.println("Ignoring markdown file: " + file.getAbsolutePath)
+        System.err.println("Parsing markdown file: " + file.getAbsolutePath)
+        
+        val markdown: RootNode = markdownProcessor.parseMarkdown(Files.read(file).mkString("\n").toCharArray)
+        markdown.accept(markdownVisitor)
       }
     }
     f.footer()

@@ -16,6 +16,11 @@ libs=$libs:$rootDir/lib/grizzled-slf4j_2.9.1-1-0.6.8.jar # DEV-ONLY
 libs=$libs:$rootDir/lib/slf4j-api-1.6.4.jar # DEV-ONLY
 libs=$libs:$rootDir/lib/slf4j-jdk14-1.6.4.jar # DEV-ONLY
 
+# JARs for markdown parsing
+libs=$libs:$rootDir/lib/doc/parboiled-core-1.0.2.jar
+libs=$libs:$rootDir/lib/doc/parboiled-java-1.0.2.jar
+libs=$libs:$rootDir/lib/doc/pegdown-1.1.0.jar
+libs=$libs:$rootDir/lib/doc/asm-all-3.3.1.jar
 
 docdir=tutorial
 #mkdir -p $docdir
