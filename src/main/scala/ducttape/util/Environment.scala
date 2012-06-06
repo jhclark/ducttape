@@ -3,6 +3,7 @@ import java.io.File
 import scala.annotation.tailrec
 
 object Environment {
+  val PWD = new File(".")
   def getJarFile = new File(Environment.getClass.getProtectionDomain.getCodeSource.getLocation.getPath)
   def getJarDir = getJarFile.getParentFile
   

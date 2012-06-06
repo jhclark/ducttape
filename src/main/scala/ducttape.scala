@@ -109,8 +109,28 @@ object Ducttape extends Logging {
     }
     if (flat) System.err.println("Using structure: flat")
         
+    // TODO: Make sure conf specs include the workflow itself!
+    
     implicit val dirs: DirectoryArchitect = {
-      val workflowBaseDir = opts.workflowFile.getAbsoluteFile.getParentFile
+      
+      val workflowBaseDir: File = {
+        opts.output.value match {
+          // output directory was specified on the command line: use that first
+          case Some(outputDir) => new File(outputDir)
+          case None => {
+            val confOutputDir = confSpecs.map(_.spec).find { spec => spec.name == "ducttape_output" }
+            confOutputDir match {
+              case Some(spec) => spec.rval match {
+                // output directory was specified in the configuration file: use that next
+                case lit: Literal => new File(lit.value.trim())
+                case _ => throw new FileFormatException("ducttape output directive must be a literal", spec)
+              }
+              // if unspecified, use PWD as the output directory
+              case None => Environment.PWD
+            }
+          }
+        }
+      }
       val confNameOpt = opts.config_file.value match {
         case Some(confFile) => Some(Files.basename(confFile, ".conf"))
         case None => opts.config_name.value match {
