@@ -21,10 +21,14 @@ for tape in $tutorialDir/*.tape; do
         # Just directly execute the .tape file with ducttape
         CMD="$DUCTTAPE $tape"
     fi
+    output=$(mktemp -d $tape.XXXXXX)
     echo "==================="
     echo "Running test: $CMD"
+    echo "Output: $output"
     echo "==================="
     cd $dir
-    $CMD -y purge '*' '*'
-    $CMD -y
+    $CMD -y -O $output
+
+    # Remove output, if test was successful
+    rm -rf $output
 done
