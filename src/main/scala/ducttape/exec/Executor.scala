@@ -32,6 +32,10 @@ class Executor(val dirs: DirectoryArchitect,
       // first, acquire a lock
       System.err.println("Acquiring lock for %s".format(task))
       locker.acquireLock(taskEnv)
+
+      // Note: If we just acquired the lock,
+      // the LockManager will have just written ducttape_version.txt for us as well.
+      // and moved any previous partial output
       
       try {
         // this task could have been completed by another ducttape process

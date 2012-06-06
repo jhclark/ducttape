@@ -24,6 +24,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
           val Array(hostname, pid) = line.split(":")
           (hostname, pid.toInt)
         }
+        // throw MatchError if file is malformed
       }
     } catch {
       case _ => throw new RuntimeException("Corrupt lock file: " + file.getAbsolutePath)
@@ -36,6 +37,12 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
    * process to either complete a task or fail to complete it before we can acquire a lock
    */
   @tailrec final def acquireLock(taskEnv: TaskEnvironment) {
+    
+    
+    // TODO: XXX: We need to move partial output *atomically*
+    // as part of this operation!!!
+    
+    
     // check if lock belongs to us
     // if not, wait for it and then claim it
     if (taskEnv.lockFile.exists) {

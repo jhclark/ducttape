@@ -20,8 +20,10 @@ class PidWriter(dirs: DirectoryArchitect,
     if (todo( (task.name, task.realization) )) {
       val taskEnv = new TaskEnvironment(dirs, task)
       if (!remove) {
+        // TODO: Only write the lock if someone else doesn't own it!
         locker.writeLock(taskEnv)
       } else {
+        // TODO: Only release the lock if we own it!
         locker.releaseLock(taskEnv)
       }
     }

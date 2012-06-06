@@ -65,6 +65,9 @@ object ExecuteMode {
       for (packageName <- packageVersions.packagesToBuild) {
         System.err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
       }
+      for ( (task, real) <- cc.locked) {
+        System.err.println("%sWAIT FOR LOCK:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+      }
       for ( (task, real) <- cc.todo) {
         System.err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
       }
