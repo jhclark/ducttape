@@ -199,7 +199,9 @@ object AbstractSyntaxTree {
   } 
   
   /** Defines a block of ducttape code, such as a task definition. */
-  trait Block extends ASTType;
+  trait Block extends ASTType {
+    val comments: Comments
+  }
   
   /**
    * Short for "TaskDefinition". Abbreviated due to its pervasiveness in the code.
