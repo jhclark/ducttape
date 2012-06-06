@@ -2,7 +2,7 @@
 
 # Chapter 1: Basics
 # Lesson 1:  Running a single command
-#
+
 # Syntax:
 # * This is just a single command that writes output to stdout and stderr
 # * Lines that begin with # are comments
