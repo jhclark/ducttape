@@ -6,6 +6,7 @@ import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.Unbound
 import ducttape.syntax.AbstractSyntaxTree.Literal
+import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.util.Environment
@@ -75,12 +76,14 @@ class DirectoryArchitect(val flat: Boolean,
 
   def isAbsolute(path: String) = new File(path).isAbsolute
 
-  def resolveLiteralPath(path: String): File = {
+  def resolveLiteralPath(spec: LiteralSpec): File = {
+    val path = spec.rval.value
     isAbsolute(path) match {
       case true => new File(path)
-      // relative paths are resolved relative to the workflow base dir (where the .tape file resides)
-      // since the config directory might not even exist yet
-      case false => new File(workflowBaseDir, path) // resolve relative paths relative to the workflow file (baseDir)
+      // relative paths are resolved relative to the directory
+      // **of the file in which this literal was declared**
+      // this could be the workflow file or the config file
+      case false => new File(spec.declaringFile.getParentFile, path)
     }
   }
   
@@ -93,7 +96,8 @@ class DirectoryArchitect(val flat: Boolean,
     srcTaskDefOpt match {
       // no source task? this better be a literal
       case None => srcSpec.rval match {
-        case Literal(path) => resolveLiteralPath(path)
+        // gah, erasure!
+        case Literal(path) => resolveLiteralPath(srcSpec.asInstanceOf[LiteralSpec])
         case _ => throw new RuntimeException("No source task found for spec %s with source %s ".format(mySpec, srcSpec))
       }
       
