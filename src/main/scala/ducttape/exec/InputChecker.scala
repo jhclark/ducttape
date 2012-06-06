@@ -26,7 +26,8 @@ class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor with Log
           inSpec.srcSpec.rval match {
             case Literal(path) => {
               // detect and handle globs
-              val fileGlob: File = dirs.resolveLiteralPath(path)
+              val literalSpec = inSpec.srcSpec.asInstanceOf[LiteralSpec]
+              val fileGlob: File = dirs.resolveLiteralPath(literalSpec)
               val globbedFiles: Seq[File] = Files.glob(fileGlob.getAbsolutePath)
               for (file <- globbedFiles) {
                 debug("Checking for file %s".format(file))
