@@ -22,3 +22,5 @@ results.txt
 log
 tmp/
 /*.tape
+!./lib/**/*.jar
+!./lib/**
