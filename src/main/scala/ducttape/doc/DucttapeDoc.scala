@@ -99,7 +99,7 @@ class MarkdownVisitor(formatter: Formatter) extends PickyMarkdownVisitor {
 //  override def visit(node: AbbreviationNode) {}
 //  override def visit(node: AutoLinkNode) {}
 //  override def visit(node: BlockQuoteNode) {}
-//  override def visit(node: BulletListNode) {}
+  override def visit(node: BulletListNode) = formatter.comment(Seq("* " + flattenChildren(node)))
   override def visit(node: CodeNode) = formatter.code(node.getText.split("\n"))
 //  override def visit(node: DefinitionListNode) {}
 //  override def visit(node: DefinitionNode) {}
@@ -252,7 +252,7 @@ object DucttapeDoc {
     val SHEBANG_PAT = """^#!.*""".r
     val CHAPTER_PAT = """^#\s*Chapter\s+[0-9]+:.*""".r
     val LESSON_PAT = """^#\s*Lesson\s+[0-9]+:.*""".r
-    val COMMENT_PAT = """^\s*#(.*)$""".r
+    val COMMENT_PAT = """^#(.*)$""".r
     for (line <- Files.read(workflowFile)) line match {
       case SHEBANG_PAT() => ;
       case CHAPTER_PAT() => ;
