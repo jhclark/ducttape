@@ -94,22 +94,23 @@ object ExecuteMode {
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
   
+          val locker = new LockManager(myVersion)
+          
           System.err.println("Moving previous partial output to the attic...")
           // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken), plannedVertices)
+          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), plannedVertices)
           
           // Make a pass after moving partial output to write output files
           // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo), plannedVertices)
+          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker), plannedVertices)
           System.err.println("Executing tasks...")
           try {
-            val locker = new LockManager(myVersion)
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, locker, workflow, plannedVertices, cc.completed, cc.todo),
                               plannedVertices, opts.jobs())
           } finally {
             // release all of our locks, even if we go down in flames
-            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, remove=true), plannedVertices)
+            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker, remove=true), plannedVertices)
           }
         }
         case _ => System.err.println("Doing nothing")

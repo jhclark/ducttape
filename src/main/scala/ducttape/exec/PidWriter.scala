@@ -13,8 +13,8 @@ import ducttape.versioner.WorkflowVersionInfo
 class PidWriter(dirs: DirectoryArchitect,
                 version: WorkflowVersionInfo,
                 todo: Set[(String,Realization)],
+                locker: LockManager,
                 remove: Boolean = false) extends UnpackedDagVisitor {
-  val locker = new LockManager(version)
 
   override def visit(task: RealTask) {
     if (todo( (task.name, task.realization) )) {
