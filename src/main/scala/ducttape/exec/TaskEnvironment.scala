@@ -53,8 +53,15 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   val stderrFile = new File(where, "ducttape_stderr.txt")
   val exitCodeFile = new File(where, "ducttape_exit_code.txt")
   val versionFile = new File(where, "ducttape_version.txt")
-  val lockFile = new File(where, "ducttape.LOCK")
+
+  // TODO: XXX: Do we still need this file?
   val invalidatedFile = new File(where, "ducttape.INVALIDATED")
+
+  // the lock file *must* be placed outside of the where directory
+  // since we must sequentially acquire the lock and *then* atomically move
+  // the where directory to the attic (including its exact inode, in case
+  // any running processes still have that inode open)
+  val lockFile = new File(where.getParentFile, "%s.LOCK".format(where.getName))
 }
 
 /**

@@ -36,11 +36,18 @@ class PartialOutputMover(dirs: DirectoryArchitect,
     } else if (partial( (task.name, task.realization) )) {
       System.err.println("Moving %s to the attic".format(task))
       val taskEnv = new TaskEnvironment(dirs, task)
-      val version = TaskVersion.read(taskEnv.versionFile)
-      val origDir = dirs.assignDir(task)
-      val atticDir = dirs.assignAtticDir(task, version)
-      Files.moveDir(origDir, atticDir)
+      PartialOutputMover.moveToAttic(taskEnv)
     }
+  }
+}
 
+object PartialOutputMover {
+  def moveToAttic(taskEnv: TaskEnvironment) {
+    val task = taskEnv.task
+
+    val version = TaskVersion.read(taskEnv.versionFile)
+    val origDir = taskEnv.dirs.assignDir(task)
+    val atticDir = taskEnv.dirs.assignAtticDir(task, version)
+    Files.moveDir(origDir, atticDir)
   }
 }

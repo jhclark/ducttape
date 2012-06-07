@@ -20,11 +20,20 @@ class PidWriter(dirs: DirectoryArchitect,
     if (todo( (task.name, task.realization) )) {
       val taskEnv = new TaskEnvironment(dirs, task)
       if (!remove) {
-        // TODO: Only write the lock if someone else doesn't own it!
-        locker.writeLock(taskEnv)
+        // NOTE: We can never end up deadlocked,
+        // since the original workflow will eventually terminate,
+        // which implies that the next workflow will eventually begin running
+        //
+        // We must be clear about the semantics of what happens when a task
+        // is locked when a workflow is launched:
+        // 1) if the task completes successfully, the previous version will be used
+        // 2) if the task fails, the first workflow who acquires the lock
+        //    will run it (WARNING: it's the user's responsibility to
+        //    make sure all currently running versions will provide
+        //    *consistent* output)
+        locker.maybeAcquireLock(taskEnv)
       } else {
-        // TODO: Only release the lock if we own it!
-        locker.releaseLock(taskEnv)
+        locker.maybeReleaseLock(taskEnv)
       }
     }
   }

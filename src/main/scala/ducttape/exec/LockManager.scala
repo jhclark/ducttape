@@ -2,16 +2,23 @@ package ducttape.exec
 
 import ducttape.workflow.RealTask
 import ducttape.util.Files
+import ducttape.util.Optional
 import ducttape.versioner.WorkflowVersionInfo
-import scala.annotation.tailrec
+
 import java.io.File
+import java.nio.channels.FileLock
+import java.io.RandomAccessFile
+
 import grizzled.slf4j.Logging
+
+import collection._
 
 // see also PidWriter
 class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with Logging {
   
-  val LOCK_POLLING_TIMEOUT_SECS = 30
-
+  // key is absolute path to file
+  val locks = new mutable.HashMap[String, FileLock]
+  
   override def begin(exec: Executor, taskEnv: FullTaskEnvironment) = acquireLock(taskEnv)
   override def fail(exec: Executor, taskEnv: FullTaskEnvironment)  = releaseLock(taskEnv)
   override def succeed(exec: Executor, taskEnv: FullTaskEnvironment) = releaseLock(taskEnv)
@@ -36,43 +43,97 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
    * when the workflow began running. However, sometimes we must wait for another ducttape
    * process to either complete a task or fail to complete it before we can acquire a lock
    */
-  @tailrec final def acquireLock(taskEnv: TaskEnvironment) {
+  def acquireLock(taskEnv: TaskEnvironment) {
     
-    
-    // TODO: XXX: We need to move partial output *atomically*
-    // as part of this operation!!!
-    
-    
-    // check if lock belongs to us
-    // if not, wait for it and then claim it
+    // try to figure out (in a non-strict way) whether we will likely
+    // need to wait on the lock and give the user some feedback
+    // if we do
     if (taskEnv.lockFile.exists) {
       val (hostname, pid) = readLockFile(taskEnv.lockFile)
-      if (hostname == version.hostname && pid.toInt == version.pid) {
-        // success!
-        debug("Sucessfully acquired lock: " + taskEnv.lockFile)
-        return;
-      } else {
-        // we're still waiting on the lock from some other process
-        debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
-        Thread.sleep(LOCK_POLLING_TIMEOUT_SECS * 1000)
-        acquireLock(taskEnv)
-      }
-    } else {
-      debug("Claiming newly released lock: " + taskEnv.lockFile)
-      writeLock(taskEnv)
-      debug("Checking to ensure locking was successful: " + taskEnv.lockFile)
-      acquireLock(taskEnv)
+      debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
     }
-  }
-  
-  def writeLock(taskEnv: TaskEnvironment) {
+    
+    val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
+
+    // TODO: How do we decide whether to remove or skip?
+
+    // use the OS's file locking mechanism
+    // NOTE: This is valid only on the same machine -- not across network filesystems such as NFS!
+    // this will block until our JVM acquires the lock
+    val lock = raFile.getChannel.lock()
+    locks.synchronized {
+      locks += taskEnv.lockFile.getAbsolutePath -> lock
+    }
+    
+    // XXX: Usually locks are used with a try-finally block
+    // can we use some callback function here to make this a bit cleaner?
+    
     debug("Writing lock: " + taskEnv.lockFile)
     Files.write("%s:%d".format(version.hostname, version.pid), taskEnv.lockFile)
+    debug("Sucessfully acquired lock: " + taskEnv.lockFile)
+
+    // did this task already get completed while we were waiting?
+    if (!CompletionChecker.isComplete(taskEnv)) {
+      // We need to cleanup if someone else previously held this lock
+      // (specifically, we need the workflow version to match our version)
+      if (taskEnv.versionFile.exists) {
+        val versionMatches: Boolean = {
+          try {
+            val oldVersion = Files.read(taskEnv.versionFile).head.toInt
+            oldVersion == version.version
+          } catch {
+            case _ => false
+          }
+        }
+
+        // move old output to attic (if any)
+        if (!versionMatches) {
+          PartialOutputMover.moveToAttic(taskEnv)
+        }
+      }
+    }
+
+    // write the version file *after* removing any previous partial output
     Files.write(version.version.toString, taskEnv.versionFile)
   }
-  
+
   def releaseLock(taskEnv: TaskEnvironment) {
     debug("Releasing lock: " + taskEnv.lockFile)
-    taskEnv.lockFile.delete()
+    
+    locks.synchronized {
+      val lock = locks(taskEnv.lockFile.getAbsolutePath)
+      taskEnv.lockFile.delete()
+      locks -= taskEnv.lockFile.getAbsolutePath
+      lock.release()
+    }
+  }
+
+  // acquire the lock iff nobody else holds it
+  def maybeAcquireLock(taskEnv: TaskEnvironment) {
+    val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
+    Optional.toOption(raFile.getChannel.tryLock()) match {
+      case Some(lock) => {
+        debug("Successfully got an early lock on: " + taskEnv.lockFile)
+        locks.synchronized {
+          locks += taskEnv.lockFile.getAbsolutePath -> lock
+        }
+      }
+      case None => debug("Did not get an early lock on: " + taskEnv.lockFile)
+    }
+  }
+
+  // release the lock iff we hold it
+  def maybeReleaseLock(taskEnv: TaskEnvironment) {
+    locks.synchronized {
+      locks.get(taskEnv.lockFile.getAbsolutePath) match {
+        case None => debug("No need to release lock (it's not ours): " + taskEnv.lockFile)
+        case Some(lock) => {
+          debug("Releasing lock (as part of cleanup): " + taskEnv.lockFile)
+          taskEnv.lockFile.delete()
+          locks -= taskEnv.lockFile.getAbsolutePath
+          lock.release()
+        }
+      }
+    }
   }
 }
