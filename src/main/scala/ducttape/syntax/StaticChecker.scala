@@ -2,6 +2,7 @@ package ducttape.syntax
 
 import collection._
 import ducttape.syntax.AbstractSyntaxTree._
+import annotation.tailrec
 
 object ErrorBehavior extends Enumeration {
   type ErrorBehavior = Value
@@ -19,6 +20,54 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
     
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
+    
+    // make sure that branch points are coherent throughout the workflow
+    def findBranchPoints(node: ASTType): Seq[BranchPointDef] = {
+      val myBranchPoints: Seq[BranchPointDef] = node match {
+        case bp: BranchPointDef => Seq(bp)
+        case _ => Nil
+      }
+      myBranchPoints ++ node.children.flatMap(findBranchPoints(_))
+    }
+    
+    // map from branch point name to the first example branch point of that name
+    val branchPoints = new mutable.HashMap[String, BranchPointDef]
+    for (branchPoint: BranchPointDef <- findBranchPoints(wd)) {
+      val name = branchPoint.name match {
+        case None => errors += new FileFormatException("Anonymous branch points are not yet supported", branchPoint)
+        case Some(name) => {
+          branchPoints.get(name) match {
+            case None => branchPoints += name -> branchPoint
+            case Some(prevBranchPoint) => {
+              if (branchPoint.specs.isEmpty) {
+                errors += new FileFormatException("Illegal branch point with zero branches", branchPoint)
+              } else {
+              
+                // 1) make sure baseline branch has the same name as the last time we saw it
+                val baseline = branchPoint.specs.head
+                val prevBaseline = prevBranchPoint.specs.head
+                if (baseline.name != prevBaseline.name) {
+                  errors += new FileFormatException("All occurrences of a branch point must have the same baseline branch " +
+                      "(The baseline branch is the first branch): '%s' != '%s'".format(baseline.name, prevBaseline.name),
+                    List(branchPoint, prevBranchPoint))
+                }
+                
+                
+                // 2) make sure the branch point has the same set of branches as the last time we saw it
+                val branchNames = branchPoint.specs.map(_.name).toSet
+                val prevBranchNames = prevBranchPoint.specs.map(_.name).toSet
+                if (branchNames != prevBranchNames) {
+                  errors += new FileFormatException("All occurrences of a branch point must have the same set of branch names: " +
+                      "%s != %s".format(branchNames, prevBranchNames),
+                    List(branchPoint, prevBranchPoint))
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
     
     // check for unsupported block types that are in the grammar, but
     // not yet implemented
@@ -50,7 +99,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
     }
     
     for (task: TaskDef <- wd.tasks) {
-      val (w, e) = check(task)
+      val (w, e) = checkTaskDef(task)
       warnings ++= w
       errors ++= e
     }
@@ -61,7 +110,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
   /**
    * Returns a tuple of (warnings, errors)
    */
-  def check(taskDef: TaskDef): (Seq[FileFormatException], Seq[FileFormatException]) = {
+  def checkTaskDef(taskDef: TaskDef): (Seq[FileFormatException], Seq[FileFormatException]) = {
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
         
