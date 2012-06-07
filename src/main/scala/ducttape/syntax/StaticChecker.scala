@@ -96,6 +96,15 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
           case _ => throw new RuntimeException("Unrecognized task-like block type: " + taskLike.keyword)
         }
       }
+      
+      case configLike: ConfigDefinition => {
+        configLike.keyword match {
+          case "global" => ;
+          case "config" => ;
+        }
+      }
+      
+      case plan: PlanDefinition => ;
     }
     
     for (task: TaskDef <- wd.tasks) {
