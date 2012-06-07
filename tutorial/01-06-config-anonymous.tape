@@ -11,4 +11,5 @@ task hello_anonymous_world :: who=$someone {
 # this creates no additional directory structure
 config {
   someone=world
+  ducttape_structure=flat
 }
