@@ -142,11 +142,7 @@ task param_step < in=/etc/passwd > out :: N=5 {
 
 ```
 task no_dep :: X=$N@param_step {
-```
-
-echo "X=$N" # a bug! this would be caught by ducttape's static analysis of bash
-
-```
+  #echo "X=$N" # a bug! this would be caught by ducttape's static analysis of bash
   echo "X=$X"
 }
 global {
@@ -161,7 +157,7 @@ Basics: Anonymous configs
  TODO: More documentation
 
 ```
-task hello_world :: who=$someone {
+task hello_anonymous_world :: who=$someone {
   echo hello $who
 }
 ```
@@ -182,11 +178,15 @@ Basics: Named configs
  Named configs allow... TODO
 
 ```
-task hello_world :: who=$someone {
+task hello_named_world :: who=$someone {
   echo hello $who
 }
-// an named configuration block
-// all tasks will be nested under an additional subdirectory called "World"
+```
+
+ an named configuration block
+ all tasks will be nested under an additional subdirectory called "World"
+
+```
 config World {
   someone=world
 }
@@ -202,7 +202,7 @@ Basics: External config files
  TODO: Why are these useful?
 
 ```
-task hello_world :: who=$someone {
+task hello_external_world :: who=$someone {
   echo hello $who
 }
 global {
@@ -217,19 +217,18 @@ Basics: Global variables
  TODO: Why are these useful?
 
 ```
-task hello_world :: who=$someone {
+task hello_global_world :: who=$someone {
   echo hello $who
 }
-// a block of global variables
-// these are variables that should
-// be shared among *all* configs
+```
+
+ a block of global variables
+ these are variables that should
+ be shared among *all* configs
+
+```
 global {
   someone=world
-```
-
- Remember, the ducttape_structure global is a special directive to ducttape
-
-```
   ducttape_structure=flat
 }
 ```
@@ -265,7 +264,7 @@ Packages: Using package versioning
  * in, out, and N are shown only to illustrate syntax
 
 ```
-task lunchtime : lunchpy {
+task lunchtime_with_git : lunchpy {
   $lunchpy/lunch.py Indian Mexican Italian
 }
 ```
@@ -275,14 +274,11 @@ task lunchtime : lunchpy {
  * git
  * svn
 
-```
-package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
-```
-
- We don't actually need to compile anything for python code,
+ Note: We don't actually need to compile anything for python code,
  but for the sake of example we'll make this program run a bit faster
 
 ```
+package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
   python -m compileall .
 }
 ```
@@ -312,12 +308,8 @@ task lunchtime : lunchpy {
 
 ```
 package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
-```
-
- We don't actually need to compile anything for python code,
- but for the sake of example we'll make this program run a bit faster
-
-```
+  # We don't actually need to compile anything for python code,
+  # but for the sake of example we'll make this program run a bit faster
   python -m compileall .
 }
 ```
@@ -345,12 +337,8 @@ versioner git :: repo ref {
   action repo_version > version {
     git ls-remote $repo $ref | cut -f1 > $version
   }
-```
-
- TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
- Used to confirm version after checkout
-
-```
+  # TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
+  # Used to confirm version after checkout
   action local_version > version date {
     git rev-parse HEAD > $version
     git log -1 | awk '/^Date/{$1=""; print}' > $date
@@ -475,11 +463,7 @@ HyperWorkflows: Sequence Branch Points
 
 ```
 task run_several_times > x :: trial=(WhichTrial: 1..10) {
-```
-
- Use bash's built-in random number generator
-
-```
+  # Use bash's built-in random number generator
   echo $RANDOM > $x
 }
 ```
@@ -510,23 +494,15 @@ task planned_2 < in=$out@planned_1 :: N=(N: one=1 two=2) M=(M: 1..10) {
 
 ```
 plan Basics {
-```
-
- 4 experiments/realizations: the branches one and two with with all branches of whichSize
- The * operator indicates a cross-product
- The "score" indicates that score is the goal task ("target" in GNU Make lingo)
- and only dependencies of that task should be run
-
-```
+  # 4 experiments/realizations: the branches one and two with with all branches of whichSize
+  # The * operator indicates a cross-product
+  # The "score" indicates that score is the goal task ("target" in GNU Make lingo)
+  # and only dependencies of that task should be run
   reach planned_2 via (whichSize: smaller) * (N: one two) * (M: 1..10)
-```
-
- * 2 experiments/realizations: just the large model (e.g. if it takes much longer to run)
- * "planned_1 and planned_2" indicates that those 2 tasks are the goal tasks
-   This is used only to demonstrate syntax. Since planned_1 is a parent of planned_2,
-   mentioning it has no effect in this case
-
-```
+  # * 2 experiments/realizations: just the large model (e.g. if it takes much longer to run)
+  # * "planned_1 and planned_2" indicates that those 2 tasks are the goal tasks
+  #   This is used only to demonstrate syntax. Since planned_1 is a parent of planned_2,
+  #   mentioning it has no effect in this case
   reach planned_1, planned_2 via (whichSize: bigger) * (N: one) * (M: 2 8)
 }
 ```
@@ -568,13 +544,9 @@ task uses_nested < file=$ref_test :: N=$num_refs {
   head -n $N $file
 }
 global {
-```
-
- Adding multiple branches from a config file
- TODO: Another example with multiple language pairs
-       (multiple config files, each which introduces a realization?)
-
-```
+  # Adding multiple branches from a config file
+  # TODO: Another example with multiple language pairs
+  #       (multiple config files, each which introduces a realization?)
   num_refs=(
     Test:
     baseline=(
@@ -604,6 +576,19 @@ global {
 }
 ```
 
+Running Multiple Instances (Processes) of Ducttape
+--------------------------------------------------
+
+Ducttape supports running processs of itself for the same workflow and config. It uses file-based locking to ensure that the processes don't touch the same task at the same time. Ducttape ensures that these workflows will not deadlock each other.
+
+For example, if process A of the workflow starts running first, and then process B starts running later, process B will only rerun any tasks that were planned by process A iff they failed; otherwise, process B will reuse the output generated by process B. If you desire to invalidate the output of process A, you must first kill process A.
+
+However, if there are 3 or more processs of ducttape running at the same time, Ducttape does not guarantee which process will begin running the task first. For example, say process A starts first, and processs B and C start later. Then if some task T fails, either process B or process C will non-deterministically take it over and begin running it.
+
+For this reason, this functionality of having multiple processs is primarily useful for 2 purposes:
+
+* Adding additional realizations to the workflow's plan without modifying the workflow Fixing outright bugs in tasks that will definitely cause certain tasks to fail. This  allows the second process to continue running these doomed tasks and their dependents  to complete the workflow.
+
 Submitters
 ==========
 
@@ -615,12 +600,18 @@ Submitters: Shell
  to directly typing each tasks' commands on the command line
 
 ```
-task hello {
+task hello_shell {
   echo hello
 }
-submitter sge :: COMMANDS /* the bash commands from some task */ {
+```
+
+ $COMMANDS are the bash commands from some task
+ In this case, the variable will contain "echo hello"
+
+```
+submitter shell :: COMMANDS {
   action run > exit_code {
-    $COMMANDS
+    eval $COMMANDS
   }
 }
 ```
@@ -629,7 +620,7 @@ Submitters: Sun Grid Engine (Simple)
 ------------------------------------
 
 ```
-task hello :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
+task hello_sge :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
   echo hello
 }
 ```
@@ -650,28 +641,16 @@ submitter sge :: vmem walltime q
     echo "#$ -j y" >> $wrapper
     echo "#$ -o localhost:$PWD/job.out" >> $wrapper
     echo "#$ -N $CONFIGURATION-$TASK-$REALIZATION" >> $wrapper
-```
-
- Bash flags aren't necessarily passed into the scheduler
- so we must re-initialize them
-
-```
+    # Bash flags aren't necessarily passed into the scheduler
+    # so we must re-initialize them
     echo "set -e # stop on errors" >> $wrapper
     echo "set -o pipefail # stop on pipeline errors" >> $wrapper
     echo "set -u # stop on undeclared variables" >> $wrapper
     echo "set -x # show each command as it is executed" >> $wrapper
-```
-
- The current working directory will also be changed by most schedulers
-
-```
+    # The current working directory will also be changed by most schedulers
     echo "cd $PWD" >> $wrapper
     echo "$COMMANDS" >> $wrapper
-```
-
- Use SGE's -sync option to prevent qsub from immediately returning
-
-```
+    # Use SGE's -sync option to prevent qsub from immediately returning
     qsub -sync y $wrapper
   }
 }
