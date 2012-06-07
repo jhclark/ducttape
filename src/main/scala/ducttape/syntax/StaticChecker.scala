@@ -1,12 +1,7 @@
 package ducttape.syntax
 
 import collection._
-import ducttape.syntax.AbstractSyntaxTree.TaskDef
-import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
-import ducttape.syntax.AbstractSyntaxTree.Literal
-import ducttape.syntax.AbstractSyntaxTree.PlanDefinition
-import ducttape.syntax.AbstractSyntaxTree.CrossProduct
-import ducttape.syntax.AbstractSyntaxTree.BranchPointRef
+import ducttape.syntax.AbstractSyntaxTree._
 
 object ErrorBehavior extends Enumeration {
   type ErrorBehavior = Value
@@ -21,8 +16,39 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
    * Returns a tuple of (warnings, errors)
    */
   def check(wd: WorkflowDefinition): (Seq[FileFormatException], Seq[FileFormatException]) = {
+    
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
+    
+    // check for unsupported block types that are in the grammar, but
+    // not yet implemented
+    for (block <- wd.blocks) block match {
+      case funcCall: CallDefinition => errors += new FileFormatException("Function calls are not supported yet", funcCall)
+  
+      case groupLike: GroupDefinition => {
+        groupLike.keyword match {
+          case "group" => errors += new FileFormatException("Group blocks are not supported yet", groupLike)
+          case "summary" => errors += new FileFormatException("Summary blocks are not supported yet", groupLike)
+          case "branchpoint" => errors += new FileFormatException("Branchpoint blocks are not supported yet", groupLike)
+          case "submitter" => ;
+          case "versioner" => ;
+        }
+      }
+
+      case taskLike: TaskDef => {
+        taskLike.keyword match {
+          case "baseline" => errors += new FileFormatException("Baseline blocks are not supported yet", taskLike)
+          case "branch" => errors += new FileFormatException("Branch blocks are not supported yet", taskLike)
+          case "action" => errors += new FileFormatException("Action blocks are not supported yet", taskLike)
+          case "of" => errors += new FileFormatException("'of' blocks are not supported yet", taskLike)
+          case "func" => errors += new FileFormatException("Function definitions are not supported yet", taskLike)
+          case "package" => ;
+          case "task" => ;
+          case _ => throw new RuntimeException("Unrecognized task-like block type: " + taskLike.keyword)
+        }
+      }
+    }
+    
     for (task: TaskDef <- wd.tasks) {
       val (w, e) = check(task)
       warnings ++= w
