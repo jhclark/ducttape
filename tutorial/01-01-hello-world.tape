@@ -22,7 +22,7 @@ task hello_world {
   echo >&2 hello
 }
 
+# The ducttape_structure global is a special directive to ducttape (ignore it for now)
 global {
-  # The ducttape_structure global is a special directive to ducttape (ignore it for now)
   ducttape_structure=flat
 }
