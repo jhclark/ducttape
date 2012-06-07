@@ -24,10 +24,12 @@
 		    "global"
 		    "package"
 		    "plan"
+		    "reach"
 		    "submitter"
                     "summary"
 		    "task"
 		    "versioner"
+		    "via"
 		    "switch" "default") 'words) . font-lock-keyword-face)
    ( ,(regexp-opt '("checkout" "update" "local_version" "repo_version") 'words) . font-lock-keyword-face)
    ;( ,(regexp-opt '("Pi" "Infinity") 'word) . font-lock-constant-face)
