@@ -21,7 +21,7 @@ for tape in $tutorialDir/*.tape; do
         # Just directly execute the .tape file with ducttape
         CMD="$DUCTTAPE $tape"
     fi
-    output=$(mktemp -d tmp.regression.$tape.XXXXXX)
+    output=$(mktemp -d $tape.XXXXXX.regression.TMP)
     echo "==================="
     echo "Running test: $CMD"
     echo "Output: $output"
