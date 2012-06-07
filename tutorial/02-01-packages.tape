@@ -5,7 +5,7 @@
 # * To reproduce a workflow, you need to know what version of
 #   the software you ran
 # * in, out, and N are shown only to illustrate syntax
-task lunchtime : lunchpy {
+task lunchtime_with_git : lunchpy {
   $lunchpy/lunch.py Indian Mexican Italian
 }
 
@@ -13,9 +13,10 @@ task lunchtime : lunchpy {
 # The following versioners are built-in to ducttape and implemented under $DUCTTAPE/builtins:
 # * git
 # * svn
+#
+# Note: We don't actually need to compile anything for python code,
+# but for the sake of example we'll make this program run a bit faster
 package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
-  # We don't actually need to compile anything for python code,
-  # but for the sake of example we'll make this program run a bit faster
   python -m compileall .
 }
 

@@ -3,7 +3,7 @@
 #
 # TODO: More documentation
 
-task hello_world :: who=$someone {
+task hello_anonymous_world :: who=$someone {
   echo hello $who
 }
 

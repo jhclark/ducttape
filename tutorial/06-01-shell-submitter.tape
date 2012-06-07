@@ -4,12 +4,14 @@
 # Using the shell submitter is equivalent
 # to directly typing each tasks' commands on the command line
 
-task hello {
+task hello_shell {
   echo hello
 }
 
-submitter sge :: COMMANDS /* the bash commands from some task */ {
+# $COMMANDS are the bash commands from some task
+# In this case, the variable will contain "echo hello"
+submitter shell :: COMMANDS {
   action run > exit_code {
-    $COMMANDS
+    eval $COMMANDS
   }
 }

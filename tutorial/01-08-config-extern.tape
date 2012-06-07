@@ -3,7 +3,7 @@
 #
 # TODO: Why are these useful?
 
-task hello_world :: who=$someone {
+task hello_external_world :: who=$someone {
   echo hello $who
 }
 
