@@ -332,7 +332,10 @@ object AbstractSyntaxTree {
     lazy val tasks: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "task" }
     lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
     
+    def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)
+    
     override def toString() = blocks.mkString("\n\n")
-  }  
-  
+    
+    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks)
+  }
 }

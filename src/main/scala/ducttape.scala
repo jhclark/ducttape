@@ -68,31 +68,58 @@ object Ducttape extends Logging {
     err.println("%sDuctTape v0.2".format(conf.headerColor))
     err.println("%sBy Jonathan Clark".format(conf.byColor))
     err.println(conf.resetColor)
-
+    
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
-    val wd: WorkflowDefinition = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
-    val confSpecs: Seq[ConfigAssignment] = ex2err(opts.config_file.value match {
-      case Some(confFile) => {
-        err.println("Reading workflow configuration: %s".format(confFile))
-        GrammarParser.readConfig(new File(confFile))
-      }
-      case None => opts.config_name.value match {
-        case Some(confName) => {
-          wd.configs.find { case c: ConfigDefinition => c.name == Some(confName) } match {
-            case Some(x) => x.lines
-            case None => throw new DucttapeException("Configuration not found: %s".format(confName))
+    val wd: WorkflowDefinition = {
+      val workflowOnly = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
+      
+      val confStuff: WorkflowDefinition = ex2err(opts.config_file.value match {
+        case Some(confFile) => {
+          // TODO: Make sure workflow doesn't have anonymous conf?
+          workflowOnly.anonymousConfig match {
+            case Some(c) => throw new FileFormatException("Workflow cannot define anonymous config block if config file is used", c)
+            case None => ;
           }
+          
+          err.println("Reading workflow configuration: %s".format(confFile))
+          GrammarParser.readConfig(new File(confFile))
+        }
+        case None => new WorkflowDefinition(Nil)
+      })
+      
+      workflowOnly ++ confStuff
+    }
+    
+    val confNameOpt = opts.config_file.value match {
+      case Some(confFile) => Some(Files.basename(confFile, ".conf"))
+      case None => opts.config_name.value match {
+        case Some(confName) => Some(confName)
+        case None => None
+      }
+    }
+    
+    val confSpecs: Seq[ConfigAssignment] = {
+      opts.config_file.value match {
+        // use anonymous conf from config file, if any
+        case Some(_) => wd.anonymousConfig match {
+          case Some(c) => c.lines
+          case None => Nil
         }
         case None => {
-          // use anonymous config, if provided
-          wd.configs.find { case c: ConfigDefinition => c.name == None } match {
-            case Some(x) => x.lines
+          // otherwise, use the conf the user requested, if any
+          confNameOpt match {
+            case Some(name) => {
+              wd.configs.find { case c: ConfigDefinition => c.name == confNameOpt } match {
+                case Some(x) => x.lines
+                case None => throw new DucttapeException("Configuration not found: %s".format(name))
+              }
+            }
             case None => Nil
           }
         }
       }
-    }) ++ wd.globals
+    } ++ wd.globals
     
     val flat: Boolean = ex2err {
       confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
@@ -129,13 +156,6 @@ object Ducttape extends Logging {
               case None => Environment.PWD
             }
           }
-        }
-      }
-      val confNameOpt = opts.config_file.value match {
-        case Some(confFile) => Some(Files.basename(confFile, ".conf"))
-        case None => opts.config_name.value match {
-          case Some(confName) => Some(confName)
-          case None => None
         }
       }
       new DirectoryArchitect(flat, workflowBaseDir, confNameOpt)
