@@ -62,6 +62,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
           }
         }
         
+        Files.mkdirs(taskEnv.lockFile.getParentFile)
         val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
     
         debug("Waiting for lock: %s".format(taskEnv.lockFile))        
@@ -125,6 +126,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
       debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
       if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
         
+        Files.mkdirs(taskEnv.lockFile.getParentFile)
         val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
         Optional.toOption(raFile.getChannel.tryLock()) match {
           case Some(lock) => {
