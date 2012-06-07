@@ -115,7 +115,10 @@ object Ducttape extends Logging {
                 case None => throw new DucttapeException("Configuration not found: %s".format(name))
               }
             }
-            case None => Nil
+            case None => wd.anonymousConfig match {
+              case Some(c) => c.lines
+              case None => Nil
+            }
           }
         }
       }
