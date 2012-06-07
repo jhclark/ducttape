@@ -20,6 +20,7 @@ import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.versioner.WorkflowVersionHistory
+import ducttape.util.Files
 
 object ExecuteMode {
   
@@ -89,6 +90,9 @@ object ExecuteMode {
           // create a new workflow version
           val configFile: Option[File] = opts.config_file.value.map(new File(_))
           val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
+          
+          // before doing *anything* else, make sure our output directory exists, so that we can lock things
+          Files.mkdirs(dirs.confBaseDir)
           
           System.err.println("Retreiving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)

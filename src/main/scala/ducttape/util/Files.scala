@@ -92,6 +92,13 @@ object Files {
         map { str => new File(str) }
     }
   }
+  
+  def mkdirs(dir: File) {
+    dir.mkdirs()
+    if (!dir.exists) {
+      throw new IOException("Could not create directory: " + dir.getAbsolutePath)
+    }
+  }
 }
 
 object NullWriter extends Writer {
