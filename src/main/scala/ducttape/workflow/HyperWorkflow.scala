@@ -119,8 +119,9 @@ import grizzled.slf4j.Logging
               // planFilter must explicitly mention a branch point
               case Some(planBranchesX: Set[_]) => {
                 val planBranches: Set[String] = planBranchesX
-                // TODO: Can move this dualistic baseline/name behavior somewhere more central?
-                planBranches.contains(realBranch.name) ||
+                // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
+                planBranches.contains("*") ||
+                  planBranches.contains(realBranch.name) ||
                   (realBranch.baseline && planBranches.contains("baseline"))
               }
               // otherwise it implies the baseline branch
