@@ -19,6 +19,7 @@ import ducttape.exec.LockManager
 import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
+import ducttape.workflow.PlanPolicy
 import ducttape.versioner.WorkflowVersionHistory
 import ducttape.util.Files
 
@@ -26,7 +27,7 @@ object ExecuteMode {
   
   def run(workflow: HyperWorkflow,
           cc: CompletionChecker,
-          plannedVertices: Set[(String, Realization)],
+          planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
           getPackageVersions: () => PackageVersioner)
          (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
@@ -40,7 +41,7 @@ object ExecuteMode {
       
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
-      Visitors.visitAll(workflow, inputChecker, plannedVertices)
+      Visitors.visitAll(workflow, inputChecker, planPolicy)
       if (inputChecker.errors.size > 0) {
         for (e: FileFormatException <- inputChecker.errors) {
           ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
@@ -102,19 +103,19 @@ object ExecuteMode {
           
           System.err.println("Moving previous partial output to the attic...")
           // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), plannedVertices)
+          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
           
           // Make a pass after moving partial output to write output files
           // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker), plannedVertices)
+          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker), planPolicy)
           System.err.println("Executing tasks...")
           try {
             Visitors.visitAll(workflow,
-                              new Executor(dirs, packageVersions, locker, workflow, plannedVertices, cc.completed, cc.todo),
-                              plannedVertices, opts.jobs())
+                              new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
+                              planPolicy, opts.jobs())
           } finally {
             // release all of our locks, even if we go down in flames
-            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker, remove=true), plannedVertices)
+            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker, remove=true), planPolicy)
           }
         }
         case _ => System.err.println("Doing nothing")

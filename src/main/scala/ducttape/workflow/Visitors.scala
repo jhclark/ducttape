@@ -9,11 +9,11 @@ object Visitors extends Logging {
   def visitAll[A <: UnpackedDagVisitor](
       workflow: HyperWorkflow,
       visitor: A,
-      plannedVertices: Set[(String,Realization)],
+      planPolicy: PlanPolicy,
       numCores: Int = 1): A = {
     
     debug("Visiting workflow")
-    workflow.unpackedWalker(plannedVertices=plannedVertices).foreach(numCores, { v: UnpackedWorkVert =>
+    workflow.unpackedWalker(planPolicy).foreach(numCores, { v: UnpackedWorkVert =>
       val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
       debug("Visiting %s".format(task))

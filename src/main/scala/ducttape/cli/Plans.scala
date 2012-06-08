@@ -6,6 +6,10 @@ import ducttape.workflow.Realization
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.Branch
+import ducttape.workflow.PlanPolicy
+import ducttape.workflow.OneOff
+import ducttape.workflow.PatternFilter
+import ducttape.workflow.VertexFilter
 import ducttape.workflow.RealTask
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.RealizationPlan
@@ -29,7 +33,7 @@ object Plans extends Logging {
     val candidates = new mutable.HashMap[(String,Realization), RealTask]
 
     // this is the most important place for us to pass the filter to unpackedWalker!
-    workflow.unpackedWalker(plan.realizations,
+    workflow.unpackedWalker(PatternFilter(plan.realizations),
                             realizationFailureCallback=explainCallback.curried(plan.name)).
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
@@ -46,7 +50,7 @@ object Plans extends Logging {
   def getPlannedVertices(workflow: HyperWorkflow,
                          explainCallback: => (Option[String], String) => Unit
                            = { (plan: Option[String], msg: String) => ; })
-                        (implicit conf: Config): Set[(String,Realization)] = {  
+                        (implicit conf: Config): PlanPolicy = {
     
     workflow.plans match {
       case Nil => {
@@ -54,10 +58,11 @@ object Plans extends Logging {
         
         // walk the one-off plan, for the benefit of the explainCallback
         val numCores = 1
-        workflow.unpackedWalker(realizationFailureCallback=explainCallback.curried(Some("default one-off"))).
+        workflow.unpackedWalker(OneOff(),
+                                realizationFailureCallback=explainCallback.curried(Some("default one-off"))).
           foreach(numCores, { v: UnpackedWorkVert => ; } )
         
-        Set.empty
+        OneOff()
       }
       case _ => {
         System.err.println("Finding hyperpaths contained in plan...")
@@ -114,7 +119,7 @@ object Plans extends Logging {
           vertexFilter ++= seen.map { task => (task.name, task.realization) }
         }
         System.err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
-        vertexFilter
+        VertexFilter(vertexFilter)
       }
     }
   }

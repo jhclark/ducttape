@@ -20,6 +20,7 @@ import grizzled.slf4j.Logging
 import collection._
 import ducttape.workflow.Visitors
 import ducttape.workflow.Realization
+import ducttape.workflow.PlanPolicy
 
 /**
  * Most checks can be done on the raw WorkflowDefinition.
@@ -188,7 +189,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
   // Grumble: It's only tractable to do this for the selection?
   // Is there any way we can do this for tasks that use only literal submitters?
   def checkUnpacked(hyperworkflow: HyperWorkflow,
-                    plannedVertices: Set[(String,Realization)]): (Seq[FileFormatException],Seq[FileFormatException]) = {
+                    planPolicy: PlanPolicy): (Seq[FileFormatException],Seq[FileFormatException]) = {
     
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
@@ -225,7 +226,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
       }
     }
     
-    Visitors.visitAll(hyperworkflow, visitor, plannedVertices)
+    Visitors.visitAll(hyperworkflow, visitor, planPolicy)
     
     (warnings, errors)
   }

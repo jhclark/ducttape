@@ -23,17 +23,22 @@ import ducttape.workflow.SpecTypes.SpecPair
 
 import grizzled.slf4j.Logging
 
-  // final type parameter TaskDef is for storing the source of input edges
-  // each element of plan is a set of branches that are mutually compatible
-  // - not specifying a branch point indicates that any value is acceptable
-  // TODO: Multimap (just use typedef?)
-  class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
-                      val packageDefs: Map[String,PackageDef],
-                      val plans: Seq[RealizationPlan],
-                      val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
-                      val versioners: Seq[VersionerDef],
-                      val branchPointFactory: BranchPointFactory,
-                      val branchFactory: BranchFactory)
+trait PlanPolicy;
+case class OneOff() extends PlanPolicy;
+case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;
+case class PatternFilter(planFilter: Map[BranchPoint, Set[String]]) extends PlanPolicy;
+
+// final type parameter TaskDef is for storing the source of input edges
+// each element of plan is a set of branches that are mutually compatible
+// - not specifying a branch point indicates that any value is acceptable
+// TODO: Multimap (just use typedef?)
+class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
+                    val packageDefs: Map[String,PackageDef],
+                    val plans: Seq[RealizationPlan],
+                    val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?
+                    val versioners: Seq[VersionerDef],
+                    val branchPointFactory: BranchPointFactory,
+                    val branchFactory: BranchFactory)
     extends Logging {
   
   type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair],Branch,UnpackState]
@@ -51,22 +56,22 @@ import grizzled.slf4j.Logging
     
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
-        debug {
+        trace {
           val sink = dag.delegate.delegate.sink(he)
           "Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, sink, combo)
         }
         if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
           // no grafting required. do nothing
-          debug("No grafting required")
+          trace("No grafting required")
           Some(combo)
         } else {
           if (he.h.grafts.forall { branch => combo.contains(branch) } ) {
             val copy = new MultiSet[Branch](combo)
             he.h.grafts.foreach { branch => copy.removeAll(branch) }
-            debug("Applied grafts: %s => %s".format(combo.keys, copy.keys))
+            trace("Applied grafts: %s => %s".format(combo.keys, copy.keys))
             Some(copy)
           } else {
-            debug("Filtered by branch graft")
+            trace("Filtered by branch graft")
             // no corresponding edge was found in the derivation
             // this branch graft cannot apply
             graftFailureCallback {
@@ -86,8 +91,7 @@ import grizzled.slf4j.Logging
   // TODO: Document different use cases of planFilter vs plannedVertices
   // NOTE: realizationFailureCallback can be used to provide the user with
   //       useful information about why certain realizations are not produced
-  def unpackedWalker(planFilter: Map[BranchPoint, Set[String]] = Map.empty,
-                     plannedVertices: Set[(String,Realization)] = Set.empty,
+  def unpackedWalker(policy: PlanPolicy,
                      realizationFailureCallback: => String => Unit = { x: String => ; })
                      : UnpackedWalker = {
     
@@ -108,10 +112,6 @@ import grizzled.slf4j.Logging
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
         
-        debug {
-          // check if real is inconsistent with seen?
-        }
-
         trace("Applying constraint filter at %s for realization: %s".format(v, real.view.mkString("-")))
         
         // enforce that each branch point should atomically select one branch per hyperpath
@@ -132,28 +132,37 @@ import grizzled.slf4j.Logging
         // TODO: This could be much more efficient if we only
         // checked which 
         def inPlan(myReal: Traversable[Branch]): Boolean = {
-          if (planFilter.size == 0) {
-            true // size zero plan has special meaning
-          } else {
-            val ok = myReal.forall { realBranch: Branch =>
-              planFilter.get(realBranch.branchPoint) match {
-                // planFilter must explicitly mention a branch point
-                case Some(planBranchesX: Set[_]) => {
-                  val planBranches: Set[String] = planBranchesX
-                  // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
-                  planBranches.contains("*") ||
+          policy match {
+            // just accept everything for now since vertex filter
+            // will take care of keeping things manageable
+            case VertexFilter(_) => true
+            case OneOff() => {
+              debug("Checking if no more than one branch point selected a non-baseline branch (default one-off policy)")
+              val nonBaselines = myReal.count { realBranch: Branch => !realBranch.baseline }
+              nonBaselines <= 1
+            }
+            case PatternFilter(planFilter: Map[BranchPoint, Set[String]]) => {
+              val ok = myReal.forall { realBranch: Branch =>
+                planFilter.get(realBranch.branchPoint) match {
+                  // planFilter must explicitly mention a branch point
+                  case Some(planBranchesX: Set[_]) => {
+                    debug("Checking for explicit plan match")
+                    val planBranches: Set[String] = planBranchesX
+                    // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
+                    planBranches.contains("*") ||
                     planBranches.contains(realBranch.name) ||
                     (realBranch.baseline && planBranches.contains("baseline"))
+                  }
+                  // otherwise it implies the baseline branch
+                  case None => realBranch.baseline
                 }
-                // otherwise it implies the baseline branch
-                case None => realBranch.baseline
               }
+              if (!ok) {
+                realizationFailureCallback("Plan excludes realization: %s at %s".format(
+                  myReal.mkString(" "), v.comment.getOrElse(v.value.getOrElse("Unknown"))))
+              }
+              ok
             }
-            if (!ok) {
-              realizationFailureCallback("Plan excludes realization: %s at %s".format(
-                myReal.mkString(" "), v.comment.getOrElse(v.value.getOrElse("Unknown"))))
-            }
-            ok
           }
         }
         
@@ -172,15 +181,17 @@ import grizzled.slf4j.Logging
     // this is only used if we've previously made a pass to determine which vertices we'll be running
     val vertexFilter = new MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch] {
       override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
-        if (plannedVertices.isEmpty) {
-          true
-        } else {
-          // TODO: Less extraneous Realization creation?
-          val included = plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) )
-          if (!included) {
-            realizationFailureCallback("Plan excludes vertex: %s".format(v))
+        policy match {
+          case VertexFilter(plannedVertices) => {
+            // TODO: Less extraneous Realization creation?
+            val included = plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) )
+            if (!included) {
+              realizationFailureCallback("Plan excludes vertex: %s".format(v))
+            }
+            included
           }
-          included
+          // if we're not using the vertex filter, just pass through
+          case _ => true
         }
       } 
     }

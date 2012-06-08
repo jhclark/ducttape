@@ -6,6 +6,7 @@ import ducttape.util.Files
 import ducttape.workflow.Realization
 import ducttape.workflow.RealTask
 import ducttape.workflow.HyperWorkflow
+import ducttape.workflow.PlanPolicy
 import ducttape.util.BashException
 import grizzled.slf4j.Logging
 
@@ -13,9 +14,9 @@ import grizzled.slf4j.Logging
 class Executor(val dirs: DirectoryArchitect,
 //               versions: WorkflowVersioner,
                val packageVersioner: PackageVersioner,
+               val planPolicy: PlanPolicy,
                val locker: LockManager,
                val workflow: HyperWorkflow,
-               val plannedVertices: Set[(String,Realization)],
                val alreadyDone: Set[(String,Realization)],
                val todo: Set[(String,Realization)],
                observers: Seq[ExecutionObserver] = Nil) extends UnpackedDagVisitor with Logging {

@@ -9,7 +9,7 @@ object WorkflowViz {
   import ducttape.workflow.Types._
 
   def toGraphViz(workflow: HyperWorkflow,
-                 plannedVertices: Set[(String,Realization)],
+                 planPolicy: PlanPolicy,
                  completed: Set[(String,Realization)] = Set.empty,
                  running: Set[(String,Realization)] = Set.empty,
                  failed: Set[(String,Realization)] = Set.empty) = {
@@ -20,7 +20,7 @@ object WorkflowViz {
     def getName(t: Option[TaskDef], r: Realization) = GraphViz.escape("%s/%s".format(t, r.toString))
 
     // first, list vertices
-    for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+    for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
       val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
       val color = (task.name, task.realization) match {
@@ -33,7 +33,7 @@ object WorkflowViz {
     }
 
     // now list edges
-    for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+    for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
       val taskT: TaskTemplate = v.packed.value.get
       val task: RealTask = taskT.realize(v)
       val child = getName(Some(task.taskDef), task.realization)

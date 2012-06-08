@@ -28,6 +28,8 @@ import ducttape.workflow.RealTask
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.Branch
 import ducttape.workflow.RealizationPlan
+import ducttape.workflow.PlanPolicy
+import ducttape.workflow.VertexFilter
 import ducttape.workflow.Types._
 import ducttape.util.Files
 import ducttape.util.OrderedSet
@@ -198,16 +200,19 @@ object Ducttape extends Logging {
     // so we need to make a second reverse pass on the unpacked DAG
     // to make sure all of the vertices contribute to a goal vertex
     
-    def getPlannedVertices(): Set[(String,Realization)] = {
-      val plannedVertices = Plans.getPlannedVertices(workflow)
-      if (plannedVertices.size > 0) {
-        System.err.println("Planned %s vertices".format(plannedVertices.size))
+    def getPlannedVertices(): PlanPolicy = {
+      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow)
+      planPolicy match {
+        case VertexFilter(plannedVertices) => {
+          System.err.println("Planned %s vertices".format(plannedVertices.size))
+        }
+        case _ => ;
       }
 
       // pass 2 error checking: use unpacked workflow
       {
         val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
-        val (warnings, errors) = workflowChecker.checkUnpacked(workflow, plannedVertices)
+        val (warnings, errors) = workflowChecker.checkUnpacked(workflow, planPolicy)
         for (e: FileFormatException <- warnings) {
           ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
         }
@@ -221,21 +226,21 @@ object Ducttape extends Logging {
         }
       }
 
-      plannedVertices
+      planPolicy
     }
             
     // Check version information
     val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
     err.println("Have %d previous workflow versions".format(history.prevVersion))
       
-    def getCompletedTasks(plannedVertices: Set[(String,Realization)]): CompletionChecker = {
+    def getCompletedTasks(planPolicy: PlanPolicy): CompletionChecker = {
       System.err.println("Checking for completed steps...")
-      Visitors.visitAll(workflow, new CompletionChecker(dirs), plannedVertices)
+      Visitors.visitAll(workflow, new CompletionChecker(dirs), planPolicy)
     }
     
-    def getPackageVersions(cc: CompletionChecker, plannedVertices: Set[(String,Realization)]) = {
+    def getPackageVersions(cc: CompletionChecker, planPolicy: PlanPolicy) = {
       val packageFinder = new PackageFinder(cc.todo, workflow.packageDefs)
-      Visitors.visitAll(workflow, packageFinder, plannedVertices)
+      Visitors.visitAll(workflow, packageFinder, planPolicy)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
       err.println("Checking for already built packages...")
@@ -245,8 +250,8 @@ object Ducttape extends Logging {
     }
 
     def list {
-      val plannedVertices = getPlannedVertices()
-      for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      val planPolicy = getPlannedVertices()
+      for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         println("%s %s".format(task.name, task.realization))
@@ -268,7 +273,7 @@ object Ducttape extends Logging {
     }
 
     def markDone {
-      val plannedVertices = getPlannedVertices()
+      val planPolicy = getPlannedVertices()
       if (opts.taskName == None) {
         opts.exitHelp("mark_done requires a taskName", 1)
       }
@@ -279,7 +284,7 @@ object Ducttape extends Logging {
       val goalRealNames = opts.realNames.toSet
 
       // TODO: Apply filters so that we do much less work to get here
-      for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         if (taskT.name == goalTaskName) {
           val task: RealTask = taskT.realize(v)
@@ -297,11 +302,11 @@ object Ducttape extends Logging {
     }
 
     def viz {
-      val plannedVertices = getPlannedVertices()
+      val planPolicy = getPlannedVertices()
       
       err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
-      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, plannedVertices)))
+      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, planPolicy)))
     }
 
     def debugViz {
@@ -313,11 +318,11 @@ object Ducttape extends Logging {
     // supports '*' as a task or realization
     def getVictims(taskToKill: String,
                    realsToKill: Set[String],
-                   plannedVertices: Set[(String,Realization)]): OrderedSet[RealTask] = {
+                   planPolicy: PlanPolicy): OrderedSet[RealTask] = {
       
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
-      for (v: UnpackedWorkVert <- workflow.unpackedWalker(plannedVertices=plannedVertices).iterator) {
+      for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
         if (taskToKill == "*" || taskT.name == taskToKill) {
@@ -363,12 +368,12 @@ object Ducttape extends Logging {
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
       
-      val plannedVertices = getPlannedVertices()
+      val planPolicy = getPlannedVertices()
       
       err.println("Finding tasks to be invalidated: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill, plannedVertices)
+      val victims: OrderedSet[RealTask] = getVictims(taskToKill, realsToKill, planPolicy)
       val victimList: Seq[RealTask] = victims.toSeq
       
       // 2) prompt the user
@@ -403,12 +408,12 @@ object Ducttape extends Logging {
       val taskToKill = opts.taskName.get
       val realsToKill = opts.realNames.toSet
       
-      val plannedVertices = getPlannedVertices()
+      val planPolicy = getPlannedVertices()
       
       err.println("Finding tasks to be purged: %s for realizations: %s".format(taskToKill, realsToKill))
 
       // 1) Accumulate the set of changes
-      val victimList: Seq[RealTask] = getVictims(taskToKill, realsToKill, plannedVertices).toSeq
+      val victimList: Seq[RealTask] = getVictims(taskToKill, realsToKill, planPolicy).toSeq
       
       // 2) prompt the user
       import ducttape.cli.ColorUtils.colorizeDirs
@@ -435,10 +440,10 @@ object Ducttape extends Logging {
       case "list" => list
       case "explain" => explain
       case "env" => {
-        val plannedVertices = getPlannedVertices()
-        val cc = getCompletedTasks(plannedVertices)
-        val packageVersions = getPackageVersions(cc, plannedVertices)
-        EnvironmentMode.run(workflow, plannedVertices, packageVersions)
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+        val packageVersions = getPackageVersions(cc, planPolicy)
+        EnvironmentMode.run(workflow, planPolicy, packageVersions)
       }
       case "mark_done" => markDone
       case "viz" => viz
@@ -446,9 +451,9 @@ object Ducttape extends Logging {
       case "invalidate" => invalidate
       case "purge" => purge
       case "exec" | _ => {
-        val plannedVertices = getPlannedVertices()
-        val cc = getCompletedTasks(plannedVertices)
-        ExecuteMode.run(workflow, cc, plannedVertices, history, { () => getPackageVersions(cc, plannedVertices) })
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+        ExecuteMode.run(workflow, cc, planPolicy, history, { () => getPackageVersions(cc, planPolicy) })
       }
     })
   }

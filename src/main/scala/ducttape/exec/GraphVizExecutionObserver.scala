@@ -6,6 +6,7 @@ import ducttape.viz.WorkflowViz
 import ducttape.util.Files
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.RealTask
+import ducttape.workflow.PlanPolicy
 
 class GraphVizExecutionObserver extends ExecutionObserver {
   
@@ -17,7 +18,7 @@ class GraphVizExecutionObserver extends ExecutionObserver {
   override def init(exec: Executor) {
     completed ++= exec.alreadyDone
     exec.dirs.xdotFile.synchronized {
-      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
+      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.planPolicy, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
@@ -25,7 +26,7 @@ class GraphVizExecutionObserver extends ExecutionObserver {
   override def begin(exec: Executor, taskEnv: FullTaskEnvironment) {
     running += ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
-      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
+      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.planPolicy, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
@@ -34,7 +35,7 @@ class GraphVizExecutionObserver extends ExecutionObserver {
     failed += ((taskEnv.task.name, taskEnv.task.realization))
     running -= ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
-      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
+      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.planPolicy, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
@@ -43,7 +44,7 @@ class GraphVizExecutionObserver extends ExecutionObserver {
     completed += ((taskEnv.task.name, taskEnv.task.realization))
     running -= ((taskEnv.task.name, taskEnv.task.realization))
     exec.dirs.xdotFile.synchronized {
-      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.plannedVertices, completed, running, failed)
+      val viz = WorkflowViz.toGraphViz(exec.workflow, exec.planPolicy, completed, running, failed)
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
