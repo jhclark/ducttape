@@ -3,6 +3,12 @@ import collection._
 import sys.ShutdownHookThread
 import java.io.File
 import java.util.concurrent.ExecutionException
+import ducttape.db.WorkflowDatabase
+import ducttape.db.TaskInfo
+import ducttape.db.PackageInfo
+import ducttape.db.InputInfo
+import ducttape.db.OutputInfo
+import ducttape.db.ParamInfo
 import ducttape.exec.CompletionChecker
 import ducttape.exec.Executor
 import ducttape.exec.InputChecker
@@ -454,6 +460,31 @@ object Ducttape extends Logging {
       case "debug_viz" => debugViz
       case "invalidate" => invalidate
       case "purge" => purge
+      case "populate" => {
+        System.err.println("Repopulating status database...")
+        val db = new WorkflowDatabase(dirs.dbFile)
+        db.addTask(new TaskInfo("tok", "Baseline.baseline", "running",  Seq(), Seq(new InputInfo("file", new File("/some/path"), None)), Seq(), Seq()))
+        db.addTask(new TaskInfo("extract_gra_dev", "Baseline.baseline", "blocked", Seq(), Seq(), Seq(), Seq()))
+        db.addTask(new TaskInfo("extract_gra_test", "Baseline.baseline", "blocked", Seq(), Seq(), Seq(), Seq()))
+        db.addTask(new TaskInfo("tune", "Baseline.baseline", "done", Seq(), Seq(), Seq(), Seq()))
+        db.addTask(new TaskInfo("decode", "Baseline.baseline", "failed", Seq(), Seq(), Seq(), Seq()))
+        db.commit()
+      }
+      case "status" => {
+        val db = new WorkflowDatabase(dirs.dbFile)
+        for (task: TaskInfo <- db.getTasks) {
+          System.out.println("%s/%s: %s".format(task.name, task.realName, task.status))
+          for (input: InputInfo <- task.inputs) {
+            System.out.println("  < %s: %s".format(input.name, input.path))
+          }
+          for (output: OutputInfo <- task.outputs) {
+            System.out.println("  > %s: %s".format(output.name, output.path))
+          }
+          for (param: ParamInfo <- task.params) {
+            System.out.println("  :: %s: %s".format(param.name, param.value))
+          }
+        }
+      }
       case "exec" | _ => {
         val planPolicy = getPlannedVertices()
         val cc = getCompletedTasks(planPolicy)

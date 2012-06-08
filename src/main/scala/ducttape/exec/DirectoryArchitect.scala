@@ -30,6 +30,7 @@ class DirectoryArchitect(val flat: Boolean,
   def assignVersionDir(version: Int) = new File(versionHistoryDir, version.toString)
   
   val xdotFile = new File(confBaseDir, ".xdot")
+  val dbFile = new File(confBaseDir, ".db")
 
   def assignPackedDir(taskName: String, relativeTo: File = confBaseDir): File = {
     new File(relativeTo, taskName).getAbsoluteFile

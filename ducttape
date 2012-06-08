@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -eo pipefail
-scriptDir=$(dirname $0)
+set -ueo pipefail
+scriptDir=$(cd $(dirname $0); pwd)
 
 #libs=$scriptDir/bin
 libs=$scriptDir/ducttape.jar
 libs=$libs:$scriptDir/lib/scala/scala-library-2.9.2.jar # DEV-ONLY
 
+libs=$libs:$scriptDir/lib/sqlitejdbc-v056.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/scala-optparse-1.1.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/commons-lang3-3.1.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/commons-io-2.2.jar # DEV-ONLY
