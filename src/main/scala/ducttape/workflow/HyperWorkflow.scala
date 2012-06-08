@@ -51,15 +51,22 @@ import grizzled.slf4j.Logging
     
     override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
       case Some(he) => {
+        debug {
+          val sink = dag.delegate.delegate.sink(he)
+          "Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, sink, combo)
+        }
         if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
           // no grafting required. do nothing
+          debug("No grafting required")
           Some(combo)
         } else {
-          if (he.h.grafts.forall { b => combo.contains(b) } ) {
+          if (he.h.grafts.forall { branch => combo.contains(branch) } ) {
             val copy = new MultiSet[Branch](combo)
-            he.h.grafts.foreach { b => copy.removeAll(b) }
+            he.h.grafts.foreach { branch => copy.removeAll(branch) }
+            debug("Applied grafts: %s => %s".format(combo.keys, copy.keys))
             Some(copy)
           } else {
+            debug("Filtered by branch graft")
             // no corresponding edge was found in the derivation
             // this branch graft cannot apply
             graftFailureCallback {
@@ -89,6 +96,9 @@ import grizzled.slf4j.Logging
     val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],Branch,UnpackState] {
       override val initState = new UnpackState
       
+      // real: the current realization of this vertex
+      // seen: the non-local derivation state we pass around (more efficient to access than real)
+      // parentReal: the realization at the parent, which we are proposing to add (traverse)
       override def apply(v: PackedVertex[Option[TaskTemplate]],
                          seen: UnpackState,
                          real: MultiSet[Branch],
@@ -97,14 +107,24 @@ import grizzled.slf4j.Logging
         assert(seen != null)
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
+        
+        debug {
+          // check if real is inconsistent with seen?
+        }
 
         trace("Applying constraint filter at %s for realization: %s".format(v, real.view.mkString("-")))
         
         // enforce that each branch point should atomically select one branch per hyperpath
         // through the (Meta)HyperDAG
-        def violatesChosenBranch(newBranch: Branch) = seen.get(newBranch.branchPoint) match {
-          case None => false // no branch chosen yet
-          case Some(prevChosenBranch) => newBranch != prevChosenBranch
+        def violatesChosenBranch(seen: UnpackState, newBranch: Branch) = seen.get(newBranch.branchPoint) match {
+          case None => {
+            trace("No branch chosen yet for: " + newBranch.branchPoint)
+            false // no branch chosen yet
+          }
+          case Some(prevChosenBranch) => {
+            trace("Enforcing constraint: %s == %s or bust".format(newBranch, prevChosenBranch))
+            newBranch != prevChosenBranch
+          }
         }
         
         // TODO: Save a copy of which planFilters we haven't
@@ -115,18 +135,20 @@ import grizzled.slf4j.Logging
           if (planFilter.size == 0) {
             true // size zero plan has special meaning
           } else {
-            val ok = myReal.forall { realBranch: Branch => planFilter.get(realBranch.branchPoint) match {
-              // planFilter must explicitly mention a branch point
-              case Some(planBranchesX: Set[_]) => {
-                val planBranches: Set[String] = planBranchesX
-                // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
-                planBranches.contains("*") ||
-                  planBranches.contains(realBranch.name) ||
-                  (realBranch.baseline && planBranches.contains("baseline"))
+            val ok = myReal.forall { realBranch: Branch =>
+              planFilter.get(realBranch.branchPoint) match {
+                // planFilter must explicitly mention a branch point
+                case Some(planBranchesX: Set[_]) => {
+                  val planBranches: Set[String] = planBranchesX
+                  // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
+                  planBranches.contains("*") ||
+                    planBranches.contains(realBranch.name) ||
+                    (realBranch.baseline && planBranches.contains("baseline"))
+                }
+                // otherwise it implies the baseline branch
+                case None => realBranch.baseline
               }
-              // otherwise it implies the baseline branch
-              case None => realBranch.baseline
-            }}
+            }
             if (!ok) {
               realizationFailureCallback("Plan excludes realization: %s at %s".format(
                 myReal.mkString(" "), v.comment.getOrElse(v.value.getOrElse("Unknown"))))
@@ -135,12 +157,13 @@ import grizzled.slf4j.Logging
           }
         }
         
-        if (parentReal.exists(violatesChosenBranch) || !inPlan(real.view ++ parentReal.view)) {
+        if (parentReal.exists { branch => violatesChosenBranch(seen, branch) }
+            || !inPlan(real.view ++ parentReal.view)) {
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
-          trace("Extending seen: " + seen + " with " + parentReal + "Combo was: " + real)
           // left operand determines return type (an efficient immutable.HashMap)
-          val result: UnpackState = seen ++ parentReal.map{b: Branch => (b.branchPoint, b)}
+          val result: UnpackState = seen ++ parentReal.map { b: Branch => (b.branchPoint, b) }
+          trace("Extending seen: " + seen.values + " with " + parentReal + "; Combo was " + real.keys + " ==> " + result.values)
           Some(result)
         }
       }
