@@ -74,8 +74,6 @@ object Plans extends Logging {
     // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
     //   realizations that shouldn't be selected.
     debug("Finding graft relaxations...")
-    // TODO: Implement a first pass in which we use grafts to slightly increase the breadth
-    // of realizations explored by pass 2
     // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
     val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
     
