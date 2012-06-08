@@ -89,6 +89,10 @@ object Ducttape extends Logging {
         }
         case None => new WorkflowDefinition(Nil)
       })
+      if (!confStuff.globals.isEmpty) {
+        throw new FileFormatException("Please use 'config' instead of 'global' in configuration files",
+            confStuff.globals.toList)
+      }
       
       workflowOnly ++ confStuff
     }
