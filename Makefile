@@ -7,17 +7,6 @@ DUCTTAPE_LIBDIR:=${DUCTTAPE}/lib
 DUCTTAPE_LIBS:=${DUCTTAPE_LIBDIR}/sqlitejdbc-v056.jar:${DUCTTAPE_LIBDIR}/scala-optparse-1.1.jar:${DUCTTAPE_LIBDIR}/commons-lang3-3.1.jar:${DUCTTAPE_LIBDIR}/commons-io-2.2.jar:${DUCTTAPE_LIBDIR}/grizzled-slf4j_2.9.1-1-0.6.8.jar:${DUCTTAPE_LIBDIR}/pegdown-1.1.0.jar:${DUCTTAPE_LIBDIR}/parboiled-core-1.0.2.jar:${DUCTTAPE_LIBDIR}/parboiled-java-1.0.2.jar:${DUCTTAPE_LIBDIR}/webui/servlet-api-3.0.jar:${DUCTTAPE_LIBDIR}/webui/jetty-all-8.0.4.v20111024.jar:${DUCTTAPE_LIBDIR}/test/junit-4.10.jar:${DUCTTAPE_LIBDIR}/test/scalatest-1.7.1.jar
 
 
-clean:
-	echo >&2 "TODO"
-
-# SBT likes to keep lots of garbage around
-deep-clean:
-	rm -rf ~/.ivy2 ~/.m2 ~/.sbt
-	sbt clean clean-files
-
-sbt:
-	${SBT} compile
-
 scalac:
 	echo >&2 "Building source..."
 	mkdir -p ${DUCTTAPE}/bin
@@ -28,6 +17,9 @@ scalac:
 	    -unchecked -deprecation -cp ${DUCTTAPE_LIBS}  \
 	    -d ${DUCTTAPE}/bin/ \
 	  | ${DUCTTAPE}/build-support/color_scalac.awk
+
+sbt:
+	${SBT} compile
 
 jar: ${DUCTTAPE}/ducttape.jar
 
@@ -56,3 +48,12 @@ test-unit:
 # Run regression tests using the distribution version
 test-regression: dist
 	PATH=${DUCTTAPE}/dist/ducttape-current:${PATH} ${DUCTTAPE}/test-regression.sh
+
+clean:
+	echo >&2 "TODO"
+
+# SBT likes to keep lots of garbage around
+deep-clean:
+	rm -rf ~/.ivy2 ~/.m2 ~/.sbt
+	sbt clean clean-files
+
