@@ -7,6 +7,7 @@ import ducttape.util.MultiSet
 import ducttape.workflow.Types.UnpackState
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.Types.WorkflowEdge
+import ducttape.workflow.Types.PackedWorkVert
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
@@ -24,9 +25,12 @@ import ducttape.workflow.SpecTypes.SpecPair
 import grizzled.slf4j.Logging
 
 trait PlanPolicy;
-case class OneOff() extends PlanPolicy;
+case class OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) extends PlanPolicy;
 case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;
-case class PatternFilter(planFilter: Map[BranchPoint, Set[String]]) extends PlanPolicy;
+case class PatternFilter(
+    planFilter: Map[BranchPoint, Set[String]],
+    graftRelaxations: Map[PackedWorkVert, Set[Branch]]
+  ) extends PlanPolicy;
 
 // final type parameter TaskDef is for storing the source of input edges
 // each element of plan is a set of branches that are mutually compatible
@@ -127,6 +131,19 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
           }
         }
         
+        def isGraftDependency(graftRelaxations: Map[PackedWorkVert, Set[Branch]],
+            v: PackedWorkVert,
+            branch: Branch): Boolean = {
+          debug("Checking graft dependencies for " + v)
+          graftRelaxations.get(v) match {
+            case None => false
+            case Some(grafts: Set[Branch]) => {
+              debug("Found graft relaxation for %s due to branch graft".format(v, branch))
+              grafts.contains(branch)
+            }
+          }
+        }
+        
         // TODO: Save a copy of which planFilters we haven't
         // violated yet in the state?
         // TODO: This could be much more efficient if we only
@@ -136,22 +153,28 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
             // just accept everything for now since vertex filter
             // will take care of keeping things manageable
             case VertexFilter(_) => true
-            case OneOff() => {
-              debug("Checking if no more than one branch point selected a non-baseline branch (default one-off policy)")
-              val nonBaselines = myReal.count { realBranch: Branch => !realBranch.baseline }
+            case OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) => {
+              trace("Checking if no more than one branch point selected a non-baseline branch (default one-off policy)")
+              // note: graft dependencies don't count toward one non-baseline branch
+              val nonBaselines = myReal.count {
+                realBranch: Branch => !realBranch.baseline && !isGraftDependency(graftRelaxations, v, realBranch)
+              }
               nonBaselines <= 1
             }
-            case PatternFilter(planFilter: Map[BranchPoint, Set[String]]) => {
+            case PatternFilter(planFilter: Map[BranchPoint, Set[String]],
+                               graftRelaxations: Map[PackedWorkVert, Set[Branch]]) => {
               val ok = myReal.forall { realBranch: Branch =>
                 planFilter.get(realBranch.branchPoint) match {
                   // planFilter must explicitly mention a branch point
                   case Some(planBranchesX: Set[_]) => {
                     debug("Checking for explicit plan match")
                     val planBranches: Set[String] = planBranchesX
+                    
                     // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
                     planBranches.contains("*") ||
-                    planBranches.contains(realBranch.name) ||
-                    (realBranch.baseline && planBranches.contains("baseline"))
+                      planBranches.contains(realBranch.name) ||
+                      isGraftDependency(graftRelaxations, v, realBranch) ||
+                      (realBranch.baseline && planBranches.contains("baseline"))
                   }
                   // otherwise it implies the baseline branch
                   case None => realBranch.baseline
