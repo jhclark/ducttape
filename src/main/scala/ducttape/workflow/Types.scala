@@ -6,6 +6,7 @@ import ducttape.util.MultiSet
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.hyperdag.HyperEdge
+import ducttape.hyperdag.meta.MetaEdge
 import ducttape.hyperdag.meta.UnpackedChainedMetaVertex
 import ducttape.workflow.SpecTypes.SpecPair
 
@@ -16,7 +17,9 @@ object Types {
   // By using Scala's fast immutable sets, we save big on space complexity while keeping reasonable time
   // See Phil Bagwell's work at EPFL on data sharing in immutable/persistent data structures
   type UnpackState = immutable.HashMap[BranchPoint, Branch]
-  type PackedWorkVert = PackedVertex[TaskTemplate]
+  
+  type PackedWorkVert = PackedVertex[Option[TaskTemplate]]
   type UnpackedWorkVert = UnpackedChainedMetaVertex[TaskTemplate,BranchInfo,Seq[SpecPair],Branch]
   type WorkflowEdge = HyperEdge[BranchInfo,Seq[SpecPair]]
+  type WorkflowMetaEdge = MetaEdge[BranchPoint, BranchInfo, Seq[SpecPair]]
 }

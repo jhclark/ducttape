@@ -192,7 +192,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         branchChild.children.map { bpChild: BranchPointTree =>
           // we have more than one branch point in a row: create a phantom
           val branchPhantomV: PackedVertex[Option[TaskTemplate]]
-            = dag.addPhantomVertex(comment = "Phantom:%s.nestedBranch".format(branchChild.branch.toString))
+            = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch".format(task.name, branchChild.branch.toString))
           traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
           (branchPhantomV, Nil)
         }
@@ -255,10 +255,21 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
     // add a meta-edge for each unique graft set
     for (curGrafts: Seq[Branch] <- graftSet) {
+      val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
+      val graftedBranches: Set[Branch] = curGrafts.toSet
+      
       // create a hyperedge list in the format expected by the HyperDAG API
       // NOTE: getHyperEdges is mutually recursive with traverse()
       val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])]
-        = getHyperEdges(task, specPhantomV, curNode, debugNesting, curGrafts)
+        = getHyperEdges(task, specPhantomV, curNode, debugNesting, curGrafts).filter {
+            case (branchInfo, vertexInfo) => {
+              // if this branch's branch point is named in our current graft set,
+              // make sure the branch name matches
+              // this isn't strictly necessary, but removes some unnecessary edges from the HyperDAG
+              // (that makes debugging easier)
+              !graftedBranchPoints.contains(branchInfo.branch.branchPoint) || graftedBranches.contains(branchInfo.branch)
+            }
+          }
       
       debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, curGrafts, debugNesting, hyperedges))
       

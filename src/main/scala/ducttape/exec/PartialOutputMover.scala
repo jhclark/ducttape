@@ -22,25 +22,39 @@ import grizzled.slf4j.Logging
  */
 class PartialOutputMover(dirs: DirectoryArchitect,
                          partial: Set[(String,Realization)],
-                         broken: Set[(String,Realization)]) extends UnpackedDagVisitor with Logging {
+                         broken: Set[(String,Realization)],
+                         locker: LockManager) extends UnpackedDagVisitor with Logging {
   
   override def visit(task: RealTask) {
     
     debug("Considering %s".format(task))
     
-    if (broken( (task.name, task.realization) )) {
-      System.err.println("Removing broken partial output for %s".format(task))
-      val origDir = dirs.assignDir(task)
-      Files.deleteDir(origDir)
-      
-    } else if (partial( (task.name, task.realization) )) {
-      System.err.println("Moving %s to the attic".format(task))
-      val taskEnv = new TaskEnvironment(dirs, task)
-      val version = TaskVersion.read(taskEnv.versionFile)
-      val origDir = dirs.assignDir(task)
-      val atticDir = dirs.assignAtticDir(task, version)
-      Files.moveDir(origDir, atticDir)
+    val taskEnv = new TaskEnvironment(dirs, task)
+    val gotLock = locker.maybeAcquireLock(taskEnv)
+    
+    if (gotLock) {
+      if (broken( (task.name, task.realization) )) {
+        System.err.println("Removing broken partial output for %s".format(task))
+        val origDir = dirs.assignDir(task)
+        Files.deleteDir(origDir)
+        
+      } else if (partial( (task.name, task.realization) )) {
+        System.err.println("Moving %s to the attic".format(task))
+        PartialOutputMover.moveToAttic(taskEnv)
+      }
+    } else {
+      debug("Couldn't immediately get a lock for %s. We'll let the other process keep using it for now and try again later".format(task))
     }
+  }
+}
 
+object PartialOutputMover {
+  def moveToAttic(taskEnv: TaskEnvironment) {
+    val task = taskEnv.task
+
+    val version = TaskVersion.read(taskEnv.versionFile)
+    val origDir = taskEnv.dirs.assignDir(task)
+    val atticDir = taskEnv.dirs.assignAtticDir(task, version)
+    Files.moveDir(origDir, atticDir)
   }
 }

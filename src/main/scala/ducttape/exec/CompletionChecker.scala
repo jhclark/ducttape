@@ -25,6 +25,7 @@ object CompletionChecker extends Logging {
   } 
   
   def isComplete(taskEnv: TaskEnvironment): Boolean = {
+    
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     // use a series of thunks so that we don't try to open non-existent files
@@ -68,6 +69,7 @@ object CompletionChecker extends Logging {
   
   def hasPartialOutput(taskEnv: TaskEnvironment) = taskEnv.where.exists
   def isBroken(taskEnv: TaskEnvironment) = taskEnv.where.exists && !taskEnv.versionFile.exists
+  def isLocked(taskEnv: TaskEnvironment) = taskEnv.lockFile.exists
 }
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
@@ -79,6 +81,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
   private val _partial = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
   private val _todo = new MutableOrderedSet[(String,Realization)]
   private val _broken = new MutableOrderedSet[(String,Realization)]
+  private val _locked = new MutableOrderedSet[(String,Realization)]
 
   // what is the workflow version of the completed version that we'll be reusing?
   private val _foundVersions = new mutable.HashMap[(String,Realization), Int]
@@ -89,6 +92,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
   def partial: OrderedSet[(String,Realization)] = _partial
   def todo: OrderedSet[(String,Realization)] = _todo
   def broken: OrderedSet[(String,Realization)] = _broken
+  def locked: OrderedSet[(String,Realization)] = _locked
 
   override def visit(task: RealTask) {
     debug("Checking " + task)
@@ -103,6 +107,10 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
       if (CompletionChecker.isBroken(taskEnv)) {
         debug("Broken: " + task)
         _broken += ((task.name, task.realization))
+        
+      } else if (CompletionChecker.isLocked(taskEnv)) {
+        debug("Locked: " + task)
+        _locked += ((task.name, task.realization))
         
       } else if (CompletionChecker.hasPartialOutput(taskEnv)) {
         debug("Partially complete: " + task)

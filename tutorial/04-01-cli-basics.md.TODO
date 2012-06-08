@@ -1,0 +1,14 @@
+# This section describes how to use some of the functions of ducttape's Command Line Interface
+
+# TODO: Give some example commands about how to generate dot files and PDF files that visualize workflows
+# Show how to use the web UI and run things on the user-space always-running daemon
+
+# We should discuss:
+--purge
+* Single realization
+* Multiple realizations
+* With star
+
+--invalidate
+
+--mark_done

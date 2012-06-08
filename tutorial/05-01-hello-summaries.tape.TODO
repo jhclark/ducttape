@@ -1,0 +1,73 @@
+# Chapter 5: Summaries
+# Lesson 1:  What is a Summary?
+#
+# What we gain from summaries:
+# * Summaries are for small one-line bits of text, to be put into tables
+# * Unlike tasks, summaries can be run even before all of their component tasks have been completed
+# * Summaries help understand information that may be spread out over many branches
+# * Summaries may help flatten information
+# * Summary tables can be flattenned by realization as well, e.g.
+#   SummaryA
+#   =======
+#   PTFileSize | branch1 | 5G
+#              | branch2 | 2G
+#              | branch3 | 1G
+#   ROFileSize | branch1 | 5G
+#              | branch2 | 8G
+#              | branch3 | *running*
+#   LMFileSize | branch1-otherBranch2 | 15G
+#   etc...
+
+# TODO: Unfinished tutorial step
+
+# Reports enable you to run commands after a workflow has
+# been (partially) completed and emit key-value pairs 
+# for use in an ASCII or Latex table or even a plot.
+#
+# You can give reports names to create reports
+# for debugging, status checking, or publication.
+#
+# For reports that can be reported incrementally as progress indiators,
+# use +status. Status can only be reported on a per-task basis and does not accept names like reports
+
+# what about a simple step with only a report?  
+# TODO: Do we need a special marker on the task name so that we expect nested elements?
+task some_task < a > x {
+  cat $a > $x
+}
+
+summary sizes {
+   using some_task > FileSize {
+    du -sh $x > $FileSize
+  }
+}
+
+summary status {
+  using some_task > LinesCompleted {
+   wc -l < $x > $LinesCompleted
+  }
+}
+
+
+
+task mert: cdec < f e > weights {
+  ssd=/scratch/$USER/$PBS_JOBID
+  cp $f $ssd/f
+  cp $e $ssd/e
+  cd $ssd
+  $cdec/dpmert/dist-dpmert.pl $ssd/f $ssd/e $weights
+  # Copy logs back at end of job...
+}
+
+# Scenario: You'd like to see in-progress tuning scores,
+# but your job is running on a remote machine's local SSD
+summary mert_ssd {
+  using mert > DevScore {
+    # The following code gets run on the machine the job is executing on (by ducttape magic)
+    # And it has all of the same environment variables that the task does
+    # ...but it starts out in the default working directory, not the SSD
+    cd /scratch/$USER/$PBS_JOBID
+    ls -t run.raw.*.gz | head -n1 | xargs fast_score -m ibm_bleu -r ref1 -r ref2 > $DevScore
+  }
+}
+

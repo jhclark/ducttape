@@ -15,16 +15,19 @@ import ducttape.exec.CompletionChecker
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.Executor
 import ducttape.exec.PidWriter
+import ducttape.exec.LockManager
 import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
+import ducttape.workflow.PlanPolicy
 import ducttape.versioner.WorkflowVersionHistory
+import ducttape.util.Files
 
 object ExecuteMode {
   
   def run(workflow: HyperWorkflow,
           cc: CompletionChecker,
-          plannedVertices: Set[(String, Realization)],
+          planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
           getPackageVersions: () => PackageVersioner)
          (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
@@ -38,7 +41,7 @@ object ExecuteMode {
       
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
-      Visitors.visitAll(workflow, inputChecker, plannedVertices)
+      Visitors.visitAll(workflow, inputChecker, planPolicy)
       if (inputChecker.errors.size > 0) {
         for (e: FileFormatException <- inputChecker.errors) {
           ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
@@ -64,6 +67,9 @@ object ExecuteMode {
       for (packageName <- packageVersions.packagesToBuild) {
         System.err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
       }
+      for ( (task, real) <- cc.locked) {
+        System.err.println("%sWAIT FOR LOCK:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+      }
       for ( (task, real) <- cc.todo) {
         System.err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
       }
@@ -86,25 +92,30 @@ object ExecuteMode {
           val configFile: Option[File] = opts.config_file.value.map(new File(_))
           val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
           
+          // before doing *anything* else, make sure our output directory exists, so that we can lock things
+          Files.mkdirs(dirs.confBaseDir)
+          
           System.err.println("Retreiving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
   
+          val locker = new LockManager(myVersion)
+          
           System.err.println("Moving previous partial output to the attic...")
           // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken), plannedVertices)
+          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
           
           // Make a pass after moving partial output to write output files
           // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo), plannedVertices)
+          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker), planPolicy)
           System.err.println("Executing tasks...")
           try {
             Visitors.visitAll(workflow,
-                              new Executor(dirs, packageVersions, workflow, plannedVertices, cc.completed, cc.todo),
-                              plannedVertices, opts.jobs())
+                              new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
+                              planPolicy, opts.jobs())
           } finally {
             // release all of our locks, even if we go down in flames
-            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, remove=true), plannedVertices)
+            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker, remove=true), planPolicy)
           }
         }
         case _ => System.err.println("Doing nothing")

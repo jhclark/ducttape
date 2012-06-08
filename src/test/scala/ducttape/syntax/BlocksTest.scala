@@ -1,42 +1,29 @@
 package ducttape.syntax
+
 import ducttape.util.AbstractTest
+import ducttape.util.Files
 import ducttape.syntax.GrammarParser.Parser
 import java.io.File
-import java.io.FileFilter
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import scala.collection.mutable.Set
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
-class BlocksTest extends AbstractTest("blocks",Grammar.blocks) {
+class BlocksTest extends AbstractTest("blocks", Grammar.blocks) {
 
-  
   def successCases = {
 
-    val tutorialDir:File = new java.io.File("syntax/tutorial")
-
-    val tapeFilter:FileFilter = new FileFilter() {
-      def accept(file:File) = {
-        file.getName().endsWith(".tape")
-      }
-    }
-
-    val dirFilter:FileFilter = new FileFilter() {
-      def accept(file:File) = {
-        file.isDirectory()
-      }
-    }
-  
-    val set:Set[String] = Set.empty[String]
-    tutorialDir.listFiles(dirFilter).foreach(childDir =>
-      childDir.listFiles(tapeFilter).foreach(tapeFile => {
-        
-        val source = Source.fromFile(tapeFile)
-        set.add(source.mkString)
-        source.close()
-      })
-    )
+    val tutorialDir = new File("tutorial")
+    val set: Set[String] = Set.empty[String]
+    Files.ls(tutorialDir).filter(_.getName.endsWith(".tape")).foreach(tapeFile => {       
+      val source = Source.fromFile(tapeFile)
+      set.add(source.mkString)
+      source.close()
+    })
+    
+    if (set.isEmpty)
+      fail("No tutorial files found in " + tutorialDir.getAbsolutePath)
     
     set
   }

@@ -3,9 +3,11 @@ Travis CI Build Status: [![Build Status](https://secure.travis-ci.org/jhclark/du
 Introduction
 ============
 
-This is the in-progress baking of Ducttape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is not yet suitable for production use.
+This is the in-progress baking of Ducttape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is alpha quality. Proceed with caution and report bugs regularly.
 
-For a basic tutorial on the syntax of Ducttape that currently works, see [tutorial.md](https://github.com/jhclark/ducttape/blob/master/tutorial.md).
+Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
+
+Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
 
 Design Principles
 =================
@@ -26,48 +28,6 @@ To stay in the loop on ducttape development, subscribe to our higher traffic dev
 
 To keep updated on bleeding edge development of ducttape, subscribe to our higher traffic commits mailing list: https://groups.google.com/group/ducttape-commits
 
-Building
-========
-
-TODO: Move this section to a separate file once we move out of alpha...
-
-Assuming you have Scala 2.9.2+ installed, just run:
-
-```bash
-./build.sh
-```
-
-This will produce ducttape.jar.
-
-Documentation
-=============
-
-To generate the tutorial documentation as doc/doc.pdf:
-```bash
-./doc.sh
-```
-
-
-To generate scaladoc:
-```bash
-./scaladoc.sh
-```
-
-Testing
-=======
-
-To test low level data structures, run:
-
-```bash
-TODO (Currently Eclipse JUnit is used)
-```
-
-To test high-level functionality, run:
-
-```
-./test-regression.sh
-```
-This will run all of the example files associated with the tutorial, which also serve as regression tests.
 
 Emacs Mode
 ==========

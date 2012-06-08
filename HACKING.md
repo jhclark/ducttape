@@ -22,7 +22,7 @@ mkdir workspace # The directory to be used by your Scala Eclipse
 cd workspace
 git clone git:github.com/jhclark/ducttape.git
 mkdir ducttape/lib
-cp /path/to/scalatest-1.6.1.jar ducttape/lib
+cp /path/to/scalatest-1.7.1.jar ducttape/lib
 ```
 
 Now, open Eclipse using the workspace you just created.
@@ -48,6 +48,12 @@ Console
 
 If you wish to develop from the command line, you should use either the emacs or vi syntax highlighting mode that is distributed with Scala.
 
+To build ducttape from the command line, use:
+
+```
+./build-support/sbt compile
+```
+
 
 Scala Style
 ===========
@@ -63,3 +69,47 @@ Scaladoc
 ========
 
 Source code should be commented using ScalaDoc standards. See https://wiki.scala-lang.org/display/SW/Scaladoc.
+
+
+
+
+
+Building
+========
+
+```bash
+./build-support/sbt compile
+./build-support/jar.sh
+```
+
+This will produce ducttape.jar.
+
+Documentation
+=============
+
+To generate the tutorial documentation as doc/doc.pdf:
+```bash
+./build-support/doc.sh
+```
+
+
+To generate scaladoc:
+```bash
+./build-support/scaladoc.sh
+```
+
+Testing
+=======
+
+To test low level data structures, run:
+
+```bash
+TODO (Currently Eclipse JUnit is used)
+```
+
+To test high-level functionality, run:
+
+```
+./test-regression.sh
+```
+This will run all of the example files associated with the tutorial, which also serve as regression tests.

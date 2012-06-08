@@ -3,6 +3,7 @@ package ducttape.cli
 import collection.Set
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.RealTask
+import ducttape.workflow.PlanPolicy
 import ducttape.exec.FullTaskEnvironment
 import ducttape.workflow.TaskTemplate
 import ducttape.exec.DirectoryArchitect
@@ -13,7 +14,7 @@ import ducttape.exec.PackageVersioner
 object EnvironmentMode {
   
   def run(workflow: HyperWorkflow,
-          plannedVertices: Set[(String,Realization)],
+          planPolicy: PlanPolicy,
           packageVersions: PackageVersioner)
          (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
     
@@ -29,7 +30,7 @@ object EnvironmentMode {
     // TODO: Dont' apply plan filter?
     // TODO: Apply filters so that we do much less work to get here
     val matchingTasks: Iterable[UnpackedWorkVert] = {
-      workflow.unpackedWalker(plannedVertices=plannedVertices).iterator.
+      workflow.unpackedWalker(planPolicy).iterator.
         filter { v: UnpackedWorkVert => goalTaskName == "*" || v.packed.value.get.name == goalTaskName }
     }.toIterable
     System.err.println("Found %d vertices with matching task name".format(matchingTasks.size))

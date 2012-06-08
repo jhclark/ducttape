@@ -4,6 +4,11 @@
 # for the Kyoto Free Translation Task (KFTT)
 
 # You will likely have to edit the 'package' blocks such that the paths match your local environment
+# Some dependencies you should be aware of:
+# * curl
+# * python 2.7+
+# * cython 0.14.1+
+# * boost
 
 # In general, you'll probably want to clone these git repos locally and point these repo URLs
 # at your local machine: 1) so that you can pull just when you want and 2) so that you can edit the repos locally
@@ -80,7 +85,7 @@ task align_dir : cdec
 task align_sym : cdec
                < align_fe=$align@align_dir[AlignDir:s2t]
                < align_ef=$align@align_dir[AlignDir:t2s]
-               > align=align.gz
+               > align=align.final.gz
                :: sym_heuristic=grow-diag-final-and {
 
   $cdec/utils/atools -c invert -i $align_ef \
@@ -111,7 +116,7 @@ task extract_gra : cdec
   for file in grammar.out.*; do
     echo >&2 "Formatting and gzipping: $file"
     $cdec/sa-extract/sa2cdec.py $feat_names < $file | gzip > $gra_dir/$file.gz
-    rm $raw/$file
+    rm $file
   done
 }
 

@@ -138,9 +138,9 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
     for (i <- 0 until 1000) {
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
-	    diamond.unpackedWalker().foreach(10, {v =>
-	      verts += v.packed.value
-	      reals += v.realization
+	    diamond.unpackedWalker().foreach(10, { v =>
+	      verts.synchronized { verts += v.packed.value }
+	      reals.synchronized { reals += v.realization }
 	    })
 	    val vertList = verts.toList.sorted
 	    assert(vertList == expectedVerts, "Wrong vertices produced: " + verts)

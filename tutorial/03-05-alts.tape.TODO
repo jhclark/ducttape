@@ -1,0 +1,29 @@
+# Chapter 3: HyperWorkflows
+# Lesson 5:  Branch points involving different code
+
+# TODO: Flesh out this example
+
+# Using "Alt" branches
+
+# "Alt" branches can add exactly one additional branch point to a task
+# Whereas the (BranchPoint: branch) syntax could add arbitrarily many
+# The name of the branch point is taken to be the name of the task itself
+# In this example the task "whichThing" adds a branch point called "whichThing"
+# with branches "choiceA" (the baseline), "choiceB" (an alternative), and "choiceC" (another alternative).
+#
+# Important: Inline alternative branches do NOT have the option of adding outputs
+# since all tasks must have exactly the same set of outputs
+
+branchpoint WhichThing < a=foo > a_out :: param_a=bar {
+  # TODO: Need a better way of specifying individual inputs to packed realizations
+  # (later output references get too complicated otherwise)
+  baseline choiceA < b="hi" :: param=$param_a {
+    cat $a $b $a_out
+  }
+  branch choiceB :: param=$x {
+    ln -s $a $a_out
+  }
+  branch choiceC :: param=$x {
+    ln -s $a $a_out
+  }
+}

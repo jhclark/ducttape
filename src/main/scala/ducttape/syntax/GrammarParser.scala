@@ -36,20 +36,5 @@ object GrammarParser extends RegexParsers {
     }    
   }
   
-  def readConfig(file: File): Seq[ConfigAssignment] = {
-    val result: ParseResult[Seq[ConfigAssignment]] = parseAll(Grammar.configLines, IO.read(file, "UTF-8"))    
-    val pos = result.next.pos
-    
-    return result match {
-      case Success(asses: Seq[ConfigAssignment], _) => {
-       asses.foreach(addFileInfo(_, file))
-       asses 
-      }
-      case Failure(msg, _) =>
-        throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
-      case Error(msg, _) =>
-        throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
-    }    
-  }
-  
+  def readConfig(file: File): WorkflowDefinition = readWorkflow(file)
 }

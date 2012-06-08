@@ -33,12 +33,21 @@ class WorkflowServlet(workflowDirs: Seq[File]) extends HttpServlet {
   override def service(req: HttpServletRequest, resp: HttpServletResponse) { 
     val pw = resp.getWriter
     req.getParameter("queryType") match {
-      case "first" => {
+      case "xdot_first" => {
         sendFile(pw)
       }
-      case "update" => {
+      case "xdot_update" => {
         pollFileForUpdates
         sendFile(pw)
+      }
+      case "db_first" => {
+        // TODO
+        // 1) Enumerate all tasks from DB
+        // 2) JSON-ify them and push them to the webapp
+      }
+      case "db_update" => {
+        // TODO: Wait for notification from sqlite that the db has changed
+        // TODO: Send data back to user
       }
       case _ @ t => {
         throw new RuntimeException("Unknown queryType: " + t)

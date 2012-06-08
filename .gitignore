@@ -22,3 +22,12 @@ results.txt
 log
 tmp/
 /*.tape
+
+!./lib/**/*.jar
+!./lib/**
+
+/tutorial/tutorial.aux
+/tutorial/tutorial.tex
+/tutorial/tutorial.toc
+/tutorial/tutorial.log
+/tutorial/texput.log

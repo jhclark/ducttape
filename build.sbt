@@ -18,7 +18,17 @@ parallelExecution in Test := false
 seq(ProguardPlugin.proguardSettings :_*)
 
 proguardOptions ++= Seq(
-  keepMain("Ducttape")
+  keepMain("Ducttape"),
+  // keep dynamically bound logger implementation
+  "-keep class org.slf4j.impl.*",
+  "-dontnote", // be far less verbose
+  //
+  // preserve enums
+  """-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+  }
+  """
 )
 
 minJarPath := new File("ducttape.min.jar")

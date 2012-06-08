@@ -9,6 +9,12 @@ import java.io.File
 import ducttape.util.Files
 
 object WebServer extends App {
+  
+  if (args.length != 2) {
+    System.err.println("Usage: webui.sh port workflowsFile")
+    System.exit(1)
+  }
+  
   val port = args(0).toInt
   val workflowsFile = args(1)
   val server = new Server(port)

@@ -25,6 +25,9 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   }
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
   val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
+  val output = StrOpt(desc="Directory where workflow output should be placed" +
+  		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
+  
   val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
   val no_color = BoolOpt(desc="Don't colorize output")
   

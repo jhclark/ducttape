@@ -1,0 +1,37 @@
+# Chapter 5: Summaries
+# Lesson 2: Summaries over branch points
+
+# TODO: Unfinished tutorial step
+
+# - This does lead to confusion in reports:
+#   A report defaults to running for all hyperedges, unless some specializations are specified
+branchpoint WhichThing < a > aOut :: paramA {
+
+  # NOTE: Branches inside a branchpoint task may *NOT* specify additional outputs
+  baseline task choiceA < b :: param=$paramA {
+    cat $a $b $aOut
+  }
+
+  branch task choiceB :: param=$x {
+    ln -s $a $aOut
+  }
+
+  branch task choiceC :: param=$x {
+    ln -s $a $aOut
+  }
+}
+
+summary summaryA {
+  using choiceA > Line1 {
+    head -n1 $a > $Line1
+  }
+
+  using choiceB > Line1 {
+    head -n1 $a > $Line1
+  }
+
+  using choiceC > Line1 MyParam {
+    head -n1 $a > $Line1
+    echo "$param" > $MyParam
+  }
+}

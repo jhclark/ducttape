@@ -4,6 +4,7 @@ set -o pipefail
 
 jobid=$1
 errFile=$2
+infoFile=$3
 
 # Remove server name, if specified
 jobid=$(echo $jobid | cut -d. -f1)
@@ -37,6 +38,7 @@ while true; do
     if [[ $exit_status != "" ]]; then
         echo >&2 "Job finished at $(date)"
 	echo >&2 "Job exited with status $exit_status"
+        qstat -f $jobid 2>&1 > $infoFile
 	if [[ -e $errFile ]]; then
 	    cat $errFile
 	fi

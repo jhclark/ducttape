@@ -11,8 +11,9 @@ submitter torque :: vmem walltime q
     echo "#PBS -q $q" >> $wrapper
     echo "#PBS -l nodes=1:ppn=$cpus" >> $wrapper
     echo "#PBS -l walltime=$walltime" >> $wrapper
+    echo "#PBS -l vmem=$vmem" >> $wrapper
     echo "#PBS -j oe" >> $wrapper
-    echo "#PBS -o localhost:$PWD/job.out" >> $wrapper
+    echo "#PBS -o localhost:$PWD/ducttape_job_out.txt" >> $wrapper
     echo "#PBS -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
 
     echo "#PBS -m bea" >> $wrapper
@@ -29,13 +30,17 @@ submitter torque :: vmem walltime q
     echo "cd $PWD" >> $wrapper
     echo >> $wrapper
 
+    # NOTE: Commands will be literally substituted here by ducttape, not bash
     echo "$COMMANDS" >> $wrapper
 
-    qsub $wrapper > jobid.txt
+    qsub $wrapper > ducttape_torque_jobid.txt
 
     # TODO: XXX: FIXME: implement new submitter framework that handles Torque better
     UGLY_HARDCODED_DUCTTAPE_DIR=/home/jhclark/software/ducttape/builtins
     # TODO: Move this into new and improved submitter framework, once it's implemented
-    $UGLY_HARDCODED_DUCTTAPE_DIR/pbs-wait-for-job.sh $(cat jobid.txt)
+    $UGLY_HARDCODED_DUCTTAPE_DIR/pbs-wait-for-job.sh \
+        $(cat ducttape_torque_jobid.txt) \
+        ducttape_job_out.txt \
+        ducttape_job.info
   }
 }
