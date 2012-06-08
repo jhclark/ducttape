@@ -10,3 +10,7 @@ scheduler
 branchpoint
 baseline
 branch
+global
+
+switch
+default
