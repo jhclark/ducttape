@@ -27,7 +27,7 @@ import ducttape.hyperdag.walker.SelectionFilter
  * walker will note when epsilon vertices are completed, but not actually
  * return them to the user */
 // TODO: Pass filters to dag walker
-class MetaHyperDag[V,M,H,E](private[hyperdag] val delegate: HyperDag[V,H,E],
+class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
                             private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[_],MetaEdge[M,H,E]],
                             private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]]) {
 
