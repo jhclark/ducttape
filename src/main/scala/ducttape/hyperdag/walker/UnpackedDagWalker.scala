@@ -19,14 +19,17 @@ import grizzled.slf4j.Logging
  *
  *  the constraintFilter allows for higher order semantics to be imposed on the traversal
  *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
- *  we want to choose a branch once and consistently use the same branch choice within each derivation
+ *  we want to choose a branch once and consistently use the same branch choice within each derivation.
+ *  The initState is used for intializing the beginning of each unpack iteration for each
+ *  active hyperedge. The final state is sent to the constraintFilter just before accepting
+ *  a candidate unpacked vertex, after which the state is discarded.
  *
  *  the vertex filter allows early termination when it is guaranteed that no future
  *  vertices should be reachable
  *
- *  the comboTransformer is used to implement anti-hyperedges by taking in the result of aggregating
+ *  the comboTransformer is used to implement things such as branch grafts by taking in the result of aggregating
  *  all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
- *  version (e.g. anti-hyperedges remove entirely one of these edges)
+ *  version (e.g. branch grafts remove entirely one of these edges from the combo and state F)
  *
  *  the "edge derivation" == the realization
  *  
@@ -110,7 +113,7 @@ class UnpackedDagWalker[V,H,E,D,F](
               trace(i + " post-remove combo=" + combo)
             }
           }
-        }     
+        }
       }
     }
 
@@ -120,15 +123,27 @@ class UnpackedDagWalker[V,H,E,D,F](
     def unpack(iFixed: Int,
                fixedRealization: Seq[D],
                callback: UnpackedVertex[V,H,E,D] => Unit) {
-      
+
+      val hedgeReal: Seq[D] = {
+        // allow user to filter out certain hyperedges from the derivation
+        // TODO: Deprecate hedgeFilter?      
+        if (!he.isEmpty && hedgeFilter(he.get))
+          Seq(toD(he.get.h))
+        else
+          Nil
+      }
+
       val combo = new MultiSet[D]
-      // allow user to filter out certain hyperedges from the derivation
-      if (!he.isEmpty && hedgeFilter(he.get))
-        combo += toD(he.get.h)
-      val parentReals = new Array[Seq[D]](filled.size)
-      parentReals(iFixed) = fixedRealization
-      combo ++= fixedRealization
-      unpack(0, iFixed, combo, parentReals, constraintFilter.initState, callback)
+      constraintFilter(v, constraintFilter.initState, combo, hedgeReal) match {
+        case None => ; // illegal state, skip it
+        case Some(nextState) => {
+          combo ++= hedgeReal
+          val parentReals = new Array[Seq[D]](filled.size)
+          parentReals(iFixed) = fixedRealization
+          //combo ++= fixedRealization
+          unpack(0, iFixed, combo, parentReals, nextState, callback)
+        }
+      }
     }
   } // end ActiveVertex
 
