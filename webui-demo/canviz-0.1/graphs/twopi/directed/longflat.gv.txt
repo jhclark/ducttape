@@ -1,0 +1,25 @@
+# Generated Sat Dec 10 13:03:32 GMT 2011 by twopi - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.068s
+# user	0m0.020s
+# sys	0m0.016s
+
+digraph if {
+	graph [rankdir=LR];
+	node [label="\N"];
+	graph [bb="0,0,89,182",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 182 90 182 90 -1 ",
+		xdotversion="1.2"];
+	{
+		graph [rank=same,
+			bb="",
+			_draw_="",
+			xdotversion=""];
+		b [pos="61,91", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 61 91 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 61 84 0 8 1 -b "];
+		c [pos="61,163", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 61 163 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 61 156 0 6 1 -c "];
+	}
+	a [pos="61,19", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 61 19 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 61 12 0 6 1 -a "];
+	a -> b [pos="e,61,72.587 61,37.169 61,44.869 61,54.026 61,62.583", _draw_="c 9 -#000000ff B 4 61 37 61 45 61 54 61 63 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 57 63 61 73 64 63 "];
+	c -> b [label="long long long", pos="e,61,109.41 61,144.83 61,137.13 61,127.97 61,119.42", lp="43,132.12", _draw_="c 9 -#000000ff B 4 61 145 61 137 61 128 61 119 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 65 119 61 109 58 119 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 43 125 0 86 14 -long long long "];
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+This file is part of Canviz. See http://www.canviz.org/
+$Id: index.html 254 2009-01-07 05:36:06Z ryandesign.com $
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta name="MSSmartTagsPreventParsing" content="true" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>canviz: graphviz on a canvas</title>
+	<link rel="stylesheet" type="text/css" href="canviz.css" />
+	<!--[if lte IE 6]><link rel="stylesheet" type="text/css" href="canviz-ie6.css" /><![endif]-->
+	<!--[if IE]><script type="text/javascript" src="excanvas/excanvas.js"></script><![endif]-->
+	<script type="text/javascript" src="prototype/prototype.js"></script>
+	<script type="text/javascript" src="path/path.js"></script>
+	<script type="text/javascript" src="canviz.js"></script>
+	<script type="text/javascript" src="x11colors.js"></script>
+	<script type="text/javascript" src="graphs/graphlist.js"></script>
+	<script type="text/javascript" src="graphs/layoutlist.js"></script>
+	<script type="text/javascript"><!--
+Ajax.Responders.register({
+	onCreate: function() {
+		$('busy').show();
+	},
+	onComplete: function() {
+		if (0 == Ajax.activeRequestCount) {
+			$('busy').hide();
+		}
+	}
+});
+
+var canviz;
+document.observe('dom:loaded', function() {
+	var list = $('graph_name');
+	graphs.sort(function(a, b) {
+		a = a.replace(/.*\//, '').toLowerCase();
+		b = b.replace(/.*\//, '').toLowerCase();
+		return (a > b) ? 1 : (a < b) ? -1 : 0;
+	}).each(function(graph, index) {
+		list.options[list.options.length] = new Option(graph.replace(/^.*\/(.*)$/, '$1').replace(/^(.*)\.txt$/, '$1'), graph, false, 0 == index);
+	});
+	
+	list = $('graph_engine');
+	layouts.each(function(layout) {
+		list.options[list.options.length] = new Option(layout, layout, false, 'dot' == layout);
+	});
+	
+	list = $('graph_scale');
+	[4, 2, 1.5, 1, 0.75, 0.5].each(function(scale) {
+		list.options[list.options.length] = new Option(100 * scale + '%', scale, false, 1 == scale);
+	});
+	
+	canviz = new Canviz('graph_container');
+	canviz.setImagePath('graphs/images/');
+	canviz.setScale($F('graph_scale'));
+	load_graph();
+});
+function load_graph() {
+	canviz.load(graph_url());
+}
+function set_graph_scale() {
+	canviz.setScale($F('graph_scale'));
+	canviz.draw();
+}
+function change_graph(inc) {
+	$('graph_name').selectedIndex = (($('graph_name').selectedIndex + inc) + $('graph_name').options.length) % $('graph_name').options.length;
+	load_graph();
+}
+function change_engine(inc) {
+	$('graph_engine').selectedIndex = (($('graph_engine').selectedIndex + inc) + $('graph_engine').options.length) % $('graph_engine').options.length;
+	load_graph();
+}
+function change_scale(inc) {
+	var new_scale = $('graph_scale').selectedIndex + inc;
+	if (new_scale < 0 || new_scale >= $('graph_scale').options.length) {
+		return;
+	}
+	$('graph_scale').selectedIndex = new_scale;
+	set_graph_scale();
+}
+function view_source() {
+	window.open(graph_url());
+}
+function graph_url() {
+	return 'graphs/' + $F('graph_engine') + '/' + $F('graph_name');
+}
+// --></script>
+</head>
+<body>
+
+<div id="busy" style="display:none">Loading...</div>
+
+<form action="javascript:void(0)" id="graph_form">
+
+<fieldset>
+<legend>Graph file</legend>
+<input type="button" class="little_button" value="&lt;" onclick="change_graph(-1)" />
+<select name="graph_name" id="graph_name" onchange="load_graph()"></select>
+<input type="button" class="little_button" value="&gt;" onclick="change_graph(1)" />
+</fieldset>
+
+<fieldset>
+<legend>Layout engine</legend>
+<input type="button" class="little_button" value="&lt;" onclick="change_engine(-1)" />
+<select name="graph_engine" id="graph_engine" onchange="load_graph()"></select>
+<input type="button" class="little_button" value="&gt;" onclick="change_engine(1)" />
+</fieldset>
+
+<fieldset>
+<legend>Magnification</legend>
+<input type="button" class="little_button" value="-" onclick="change_scale(1)" />
+<select name="graph_scale" id="graph_scale" onchange="set_graph_scale()"></select>
+<input type="button" class="little_button" value="+" onclick="change_scale(-1)" />
+</fieldset>
+
+<fieldset>
+<input type="button" class="big_button" value="View Dot Source" onclick="view_source()" />
+</fieldset>
+
+</form>
+
+<div id="page_container">
+
+<div id="graph_container"></div>
+
+<div id="debug_output"></div>
+
+</div>
+
+</body>
+</html>

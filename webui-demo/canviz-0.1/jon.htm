@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta name="MSSmartTagsPreventParsing" content="true" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>canviz: graphviz on a canvas</title>
+	<link rel="stylesheet" type="text/css" href="canviz.css" />
+	<!--[if lte IE 6]><link rel="stylesheet" type="text/css" href="canviz-ie6.css" /><![endif]-->
+	<!--[if IE]><script type="text/javascript" src="excanvas/excanvas.js"></script><![endif]-->
+	<script type="text/javascript" src="prototype/prototype.js"></script>
+	<script type="text/javascript" src="path/path.js"></script>
+	<script type="text/javascript" src="canviz.js"></script>
+	<script type="text/javascript" src="x11colors.js"></script>
+	<script type="text/javascript"><!--
+Ajax.Responders.register({
+	onCreate: function() {
+		$('busy').show();
+	},
+	onComplete: function() {
+		if (0 == Ajax.activeRequestCount) {
+			$('busy').hide();
+		}
+	}
+});
+
+var canviz;
+document.observe('dom:loaded', function() {
+	var list = $('graph_scale');
+	[4, 2, 1.5, 1, 0.75, 0.5, 0.25, 0.1].each(function(scale) {
+		list.options[list.options.length] = new Option(100 * scale + '%', scale, false, 1 == scale);
+	});
+	
+	canviz = new Canviz('graph_container');
+	canviz.setImagePath('graphs/images/');
+	canviz.setScale($F('graph_scale'));
+	load_graph();
+});
+function load_graph() {
+	canviz.load('x.gv');
+}
+function set_graph_scale() {
+	canviz.setScale($F('graph_scale'));
+	canviz.draw();
+}
+function change_scale(inc) {
+	var new_scale = $('graph_scale').selectedIndex + inc;
+	if (new_scale < 0 || new_scale >= $('graph_scale').options.length) {
+		return;
+	}
+	$('graph_scale').selectedIndex = new_scale;
+	set_graph_scale();
+}
+// --></script>
+</head>
+<body>
+
+<div id="busy" style="display:none">Loading...</div>
+
+<form action="javascript:void(0)" id="graph_form">
+
+<fieldset>
+<legend>Magnification</legend>
+<input type="button" class="little_button" value="-" onclick="change_scale(1)" />
+<select name="graph_scale" id="graph_scale" onchange="set_graph_scale()"></select>
+<input type="button" class="little_button" value="+" onclick="change_scale(-1)" />
+</fieldset>
+
+</form>
+
+<div id="page_container">
+  <div id="graph_container"></div>
+  <div id="debug_output"></div>
+  <div>Ohai here's some content</div>
+</div>
+
+</body>
+</html>

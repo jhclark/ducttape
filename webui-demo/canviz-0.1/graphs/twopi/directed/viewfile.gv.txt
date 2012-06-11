@@ -1,0 +1,74 @@
+# Generated Sat Dec 10 13:03:44 GMT 2011 by twopi - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.071s
+# user	0m0.023s
+# sys	0m0.016s
+
+digraph Viewfile {
+	node [label="\N", style=filled];
+	graph [bb="0,0,556,799.3",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 799 557 799 557 -1 ",
+		xdotversion="1.2"];
+	atoi [color=green, pos="455.82,341.91", width="0.75", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 456 342 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 456 335 0 21 4 -atoi "];
+	chkmalloc [color=green, pos="246.09,393.61", width="1.3056", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 246 394 47 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 246 387 0 59 9 -chkmalloc "];
+	close [color=green, pos="272.61,19", width="0.77778", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 273 19 28 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 273 12 0 29 5 -close "];
+	error [color=blue, pos="397.8,494.88", width="0.77778", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 398 495 28 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 398 488 0 29 5 -error "];
+	exit [color=blue, pos="525.72,428.07", width="0.75", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 526 428 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 526 421 0 21 4 -exit "];
+	fclose [color=green, pos="281.29,90.475", width="0.86111", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 281 90 31 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 281 83 0 33 6 -fclose "];
+	fgets [color=red, pos="106.28,324.68", width="0.75", height="0.5", _draw_="c 9 -#ff0000ff C 9 -#ff0000ff E 106 325 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 106 318 0 27 5 -fgets "];
+	fopen [color=green, pos="418.13,107.09", width="0.86111", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 418 107 31 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 418 100 0 33 5 -fopen "];
+	fprintf [color=blue, pos="477.68,519.61", width="0.91667", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 478 520 33 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 478 513 0 37 7 -fprintf "];
+	free [color=blue, pos="528,591.38", width="0.75", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 528 591 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 528 584 0 22 4 -free "];
+	free_list [color=blue, pos="456,591.38", width="1.0833", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 456 591 39 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 456 584 0 46 9 -free_list "];
+	fstat [color=green, pos="28,376.38", width="0.75", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 28 376 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 28 369 0 23 5 -fstat "];
+	getopt [color=green, pos="193.3,198.61", width="0.91667", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 193 199 33 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 193 192 0 36 6 -getopt "];
+	init_list [color=green, pos="316,376.38", width="1.0278", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 316 376 37 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 316 369 0 43 9 -init_list "];
+	insert_list [color=green, pos="188.49,443.3", width="1.25", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 188 443 45 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 188 436 0 56 11 -insert_list "];
+	main [color=green, pos="234.2,257.87", width="0.77778", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 234 258 28 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 234 251 0 29 4 -main "];
+	makeargs [color=blue, pos="423.79,280.89", width="1.25", height="0.5", _draw_="c 9 -#0000ffff C 9 -#0000ffff E 424 281 45 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 424 274 0 55 8 -makeargs "];
+	makepairs [color=green, pos="385.91,359.14", width="1.3056", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 386 359 47 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 386 352 0 59 9 -makepairs "];
+	malloc [color=green, pos="234.2,494.88", width="0.94444", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 234 495 34 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 234 488 0 38 6 -malloc "];
+	open [color=green, pos="443.66,39.769", width="0.77778", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 444 40 28 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 444 33 0 29 4 -open "];
+	printf [color=red, pos="443.66,712.98", width="0.83333", height="0.5", _draw_="c 9 -#ff0000ff C 9 -#ff0000ff E 444 713 30 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 444 706 0 32 6 -printf "];
+	read [color=green, pos="60.989,242.53", width="0.75", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 61 243 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 61 236 0 25 4 -read "];
+	rewind [color=green, pos="272.61,733.75", width=1, height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 273 734 36 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 273 727 0 41 6 -rewind "];
+	viewline [color=green, pos="350.71,662.28", width="1.1389", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 351 662 41 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 351 655 0 49 8 -viewline "];
+	viewlines [color=green, pos="342.04,161.95", width="1.2222", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 342 162 44 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 342 155 0 54 9 -viewlines "];
+	walk_list [color=green, pos="342.04,590.8", width="1.1944", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 342 591 43 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 342 584 0 53 9 -walk_list "];
+	write [color=green, pos="469.19,780.3", width="0.80556", height="0.5", _draw_="c 9 -#00ff00ff C 9 -#00ff00ff E 469 780 29 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 469 773 0 30 5 -write "];
+	fclose -> close [color=green, pos="e,274.83,37.279 279.1,72.439 278.17,64.795 277.06,55.705 276.03,47.209", _draw_="c 9 -#00ff00ff B 4 279 72 278 65 277 56 276 47 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 280 47 275 37 273 48 "];
+	fgets -> fstat [color=green, pos="e,47.398,363.57 86.927,337.46 77.613,343.61 66.27,351.1 56.032,357.86", _draw_="c 9 -#00ff00ff B 4 87 337 78 344 66 351 56 358 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 54 355 47 364 58 361 "];
+	fgets -> read [color=green, pos="e,70.36,259.53 96.893,307.66 90.638,296.32 82.3,281.19 75.233,268.37", _draw_="c 9 -#00ff00ff B 4 97 308 91 296 82 281 75 268 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 78 267 70 260 72 270 "];
+	fopen -> open [color=green, pos="e,436.91,57.573 424.83,89.403 427.42,82.577 430.44,74.61 433.3,67.082", _draw_="c 9 -#00ff00ff B 4 425 89 427 83 430 75 433 67 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 437 68 437 58 430 66 "];
+	printf -> write [color=green, pos="e,462.44,762.5 450.37,730.67 452.95,737.49 455.98,745.46 458.83,752.99", _draw_="c 9 -#00ff00ff B 4 450 731 453 737 456 745 459 753 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 456 754 462 762 462 752 "];
+	main -> fgets [color=blue, pos="e,127.56,313.57 212.21,269.35 191.36,280.24 159.87,296.69 136.64,308.82", _draw_="c 9 -#0000ffff B 4 212 269 191 280 160 297 137 309 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 135 306 128 314 138 312 "];
+	main -> getopt [color=green, pos="e,205.2,215.85 222.81,241.36 219.12,236.02 214.95,229.97 210.92,224.14", _draw_="c 9 -#00ff00ff B 4 223 241 219 236 215 230 211 224 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 214 222 205 216 208 226 "];
+	main -> makeargs [color=blue, pos="e,380.39,275.62 261.77,261.21 290.09,264.65 334.91,270.09 370.23,274.38", _draw_="c 9 -#0000ffff B 4 262 261 290 265 335 270 370 274 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 370 278 380 276 371 271 "];
+	main -> makepairs [color=green, pos="e,362.48,343.51 253.72,270.9 279.07,287.82 323.64,317.58 353.95,337.81", _draw_="c 9 -#00ff00ff B 4 254 271 279 288 324 318 354 338 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 352 341 362 344 356 335 "];
+	main -> chkmalloc [color=green, pos="e,244.51,375.51 235.78,275.89 237.79,298.81 241.28,338.63 243.63,365.54", _draw_="c 9 -#00ff00ff B 4 236 276 238 299 241 339 244 366 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 240 366 245 376 247 365 "];
+	main -> error [color=blue, pos="e,386.31,478.24 245.7,274.53 273.98,315.5 347.02,421.32 380.53,469.87", _draw_="c 9 -#0000ffff B 4 246 275 274 316 347 421 381 470 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 378 472 386 478 384 468 "];
+	main -> viewlines [color=green, pos="e,323.5,178.44 251.05,242.88 268.41,227.44 295.71,203.15 315.88,185.21", _draw_="c 9 -#00ff00ff B 4 251 243 268 227 296 203 316 185 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 318 188 323 178 314 182 "];
+	makeargs -> chkmalloc [color=blue, pos="e,270.42,378.17 399.45,296.32 368.3,316.08 314.2,350.4 279.29,372.55", _draw_="c 9 -#0000ffff B 4 399 296 368 316 314 350 279 373 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 277 370 270 378 281 376 "];
+	makepairs -> atoi [color=green, pos="e,430.49,348.16 425.76,349.32 425.86,349.3 425.96,349.27 426.06,349.25", _draw_="c 9 -#00ff00ff B 4 426 349 426 349 426 349 426 349 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 422 354 430 348 420 347 "];
+	makepairs -> init_list [color=green, pos="e,345.69,369.06 346.05,368.97 345.99,368.98 345.93,369 345.87,369.01", _draw_="c 9 -#00ff00ff B 4 346 369 346 369 346 369 346 369 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 355 363 346 369 356 370 "];
+	makepairs -> insert_list [color=green, pos="e,219.48,430.09 354.19,372.66 320.17,387.17 266.06,410.23 228.99,426.04", _draw_="c 9 -#00ff00ff B 4 354 373 320 387 266 410 229 426 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 227 423 219 430 230 429 "];
+	makepairs -> chkmalloc [color=green, pos="e,285.88,383.8 346.22,368.93 330.57,372.78 312.43,377.26 295.92,381.33", _draw_="c 9 -#00ff00ff B 4 346 369 331 373 312 377 296 381 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 295 378 286 384 296 385 "];
+	free_list -> free [color=blue, pos="e,500.83,591.38 495.37,591.38 495.49,591.38 495.6,591.38 495.72,591.38", _draw_="c 9 -#0000ffff B 4 495 591 495 591 496 591 496 591 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 491 595 501 591 491 588 "];
+	init_list -> chkmalloc [color=green, pos="e,282.26,384.69 282.68,384.59 282.61,384.6 282.54,384.62 282.47,384.64", _draw_="c 9 -#00ff00ff B 4 283 385 283 385 283 385 282 385 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 291 379 282 385 293 386 "];
+	insert_list -> chkmalloc [color=green, pos="e,226.8,410.25 207.67,426.75 211.33,423.6 215.21,420.25 219.06,416.93", _draw_="c 9 -#00ff00ff B 4 208 427 211 424 215 420 219 417 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 222 419 227 410 217 414 "];
+	walk_list -> error [color=blue, pos="e,387.83,512.04 352.26,573.21 360.81,558.51 373.11,537.36 382.77,520.74", _draw_="c 9 -#0000ffff B 4 352 573 361 559 373 537 383 521 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 386 522 388 512 380 519 "];
+	walk_list -> viewline [color=green, pos="e,348.5,644 344.23,608.84 345.15,616.48 346.26,625.57 347.29,634.07", _draw_="c 9 -#00ff00ff B 4 344 609 345 616 346 626 347 634 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 344 634 348 644 351 634 "];
+	chkmalloc -> malloc [color=green, pos="e,236.35,476.59 243.97,411.71 242.18,426.88 239.61,448.81 237.55,466.35", _draw_="c 9 -#00ff00ff B 4 244 412 242 427 240 449 238 466 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 234 466 236 477 241 467 "];
+	chkmalloc -> error [color=blue, pos="e,378.12,481.75 269.8,409.43 296.83,427.48 341,456.97 369.74,476.15", _draw_="c 9 -#0000ffff B 4 270 409 297 427 341 457 370 476 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 368 479 378 482 372 473 "];
+	error -> exit [color=blue, pos="e,504.44,439.18 419.79,483.4 440.64,472.51 472.13,456.06 495.36,443.93", _draw_="c 9 -#0000ffff B 4 420 483 441 473 472 456 495 444 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 497 447 504 439 494 441 "];
+	error -> fprintf [color=blue, pos="e,448.95,510.72 423.07,502.71 428.22,504.3 433.74,506.01 439.22,507.7", _draw_="c 9 -#0000ffff B 4 423 503 428 504 434 506 439 508 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 438 511 449 511 440 504 "];
+	error -> error [color=blue, pos="e,423.81,488.19 423.81,501.58 434.63,502.04 443.8,499.81 443.8,494.88 443.8,491.65 439.85,489.58 434.08,488.67", _draw_="c 9 -#0000ffff B 7 424 502 435 502 444 500 444 495 444 492 440 490 434 489 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 434 485 424 488 434 492 "];
+	viewline -> fgets [color=red, pos="e,118.13,341.06 338.26,645.07 298.02,589.5 171.44,414.68 124.25,349.5", _draw_="c 9 -#ff0000ff B 4 338 645 298 590 171 415 124 350 ", _hdraw_="S 5 -solid c 9 -#ff0000ff C 9 -#ff0000ff P 3 127 347 118 341 121 351 "];
+	viewline -> printf [color=red, pos="e,421.38,700.82 376.6,676.4 387.71,682.46 400.78,689.59 412.41,695.94", _draw_="c 9 -#ff0000ff B 4 377 676 388 682 401 690 412 696 ", _hdraw_="S 5 -solid c 9 -#ff0000ff C 9 -#ff0000ff P 3 411 699 421 701 414 693 "];
+	viewline -> rewind [color=green, pos="e,290.09,717.75 332.6,678.85 322.2,688.37 308.99,700.46 297.61,710.87", _draw_="c 9 -#00ff00ff B 4 333 679 322 688 309 700 298 711 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 295 708 290 718 300 714 "];
+	viewlines -> fclose [color=green, pos="e,295.02,106.64 327.33,144.65 319.65,135.61 310.13,124.41 301.74,114.54", _draw_="c 9 -#00ff00ff B 4 327 145 320 136 310 124 302 115 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 304 112 295 107 299 117 "];
+	viewlines -> fopen [color=green, pos="e,398.5,121.24 364.04,146.08 372.21,140.2 381.58,133.44 390.2,127.22", _draw_="c 9 -#00ff00ff B 4 364 146 372 140 382 133 390 127 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 392 130 399 121 388 124 "];
+	viewlines -> walk_list [color=green, pos="e,342.04,572.4 342.04,180.1 342.04,247.08 342.04,480.68 342.04,562.35", _draw_="c 9 -#00ff00ff B 4 342 180 342 247 342 481 342 562 ", _hdraw_="S 5 -solid c 9 -#00ff00ff C 9 -#00ff00ff P 3 339 562 342 572 346 562 "];
+	viewlines -> viewline [color=blue, pos="e,350.4,644.2 342.35,180.05 343.65,255.14 348.64,542.4 350.22,634.02", _draw_="c 9 -#0000ffff B 4 342 180 344 255 349 542 350 634 ", _hdraw_="S 5 -solid c 9 -#0000ffff C 9 -#0000ffff P 3 347 634 350 644 354 634 "];
+}

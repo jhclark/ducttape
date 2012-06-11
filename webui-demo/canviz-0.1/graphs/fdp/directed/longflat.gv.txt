@@ -1,0 +1,25 @@
+# Generated Sat Dec 10 13:03:32 GMT 2011 by fdp - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.071s
+# user	0m0.021s
+# sys	0m0.016s
+
+digraph if {
+	graph [rankdir=LR];
+	node [label="\N"];
+	graph [bb="0,0,123,125",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 125 124 125 124 -1 ",
+		xdotversion="1.2"];
+	{
+		graph [rank=same,
+			bb="",
+			_draw_="",
+			xdotversion=""];
+		b [pos="28.356,70.213", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 28 70 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 28 63 0 8 1 -b "];
+		c [pos="94.665,106.04", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 95 106 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 95 99 0 6 1 -c "];
+	}
+	a [pos="29.234,18.65", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 29 19 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 29 12 0 6 1 -a "];
+	a -> b [pos="e,28.664,52.102 28.927,36.684 28.898,38.401 28.867,40.169 28.837,41.953", _draw_="c 9 -#000000ff B 4 29 37 29 38 29 40 29 42 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 25 42 29 52 32 42 "];
+	c -> b [label="long long long", pos="e,49.428,81.598 73.685,94.704 68.847,92.09 63.608,89.26 58.467,86.482", lp="59.076,103.59", _draw_="c 9 -#000000ff B 4 74 95 69 92 64 89 58 86 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 60 83 49 82 57 89 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 59 97 0 86 14 -long long long "];
+}

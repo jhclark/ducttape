@@ -1,0 +1,25 @@
+# Generated Sat Dec 10 13:03:32 GMT 2011 by dot - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.087s
+# user	0m0.020s
+# sys	0m0.014s
+
+digraph if {
+	graph [rankdir=LR];
+	node [label="\N"];
+	graph [bb="0,0,205,108",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 108 206 108 206 -1 ",
+		xdotversion="1.2"];
+	{
+		graph [rank=same,
+			bb="",
+			_draw_="",
+			xdotversion=""];
+		b [pos="119,18", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 119 18 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 119 11 0 8 1 -b "];
+		c [pos="119,90", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 119 90 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 119 83 0 6 1 -c "];
+	}
+	a [pos="27,18", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 27 18 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 27 11 0 6 1 -a "];
+	a -> b [pos="e,91.77,18 54.105,18 62.732,18 72.431,18 81.65,18", _draw_="c 9 -#000000ff B 4 54 18 63 18 72 18 82 18 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 82 22 92 18 82 15 "];
+	c -> b [label="long long long", pos="s,119,71.831 119,36.413 119,44.059 119,53.108 119,61.573", lp="162,54", _draw_="c 9 -#000000ff B 4 119 36 119 44 119 53 119 62 ", _tdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 116 62 119 72 123 62 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 162 47 0 86 14 -long long long "];
+}

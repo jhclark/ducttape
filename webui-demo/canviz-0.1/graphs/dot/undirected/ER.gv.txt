@@ -1,0 +1,53 @@
+# Generated Sat Dec 10 13:03:45 GMT 2011 by dot - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.095s
+# user	0m0.027s
+# sys	0m0.016s
+
+graph ER {
+	node [label="\N", shape=box];
+	graph [label="\n\nEntity Relation Diagram\ndrawn by NEATO",
+		fontsize=20,
+		lp="159,48",
+		bb="0,0,318,636",
+		_ldraw_="F 20.000000 11 -Times-Roman c 9 -#000000ff T 159 24 0 191 23 -Entity Relation Diagram F 20.000000 11 -Times-Roman c 9 -#000000ff\
+ T 159 4 0 144 14 -drawn by NEATO ",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 636 319 636 319 -1 ",
+		xdotversion="1.2"];
+	{
+		graph [label="",
+			fontsize="",
+			lp="",
+			bb="",
+			_ldraw_="",
+			_draw_="",
+			xdotversion=""];
+		node [label=name,
+			shape=ellipse];
+		name0 [pos="215,618", width="0.80556", height="0.5", _draw_="c 9 -#000000ff e 215 618 29 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 215 611 0 31 4 -name "];
+		name1 [pos="118,286", width="0.80556", height="0.5", _draw_="c 9 -#000000ff e 118 286 29 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 118 279 0 31 4 -name "];
+		name2 [pos="29,114", width="0.80556", height="0.5", _draw_="c 9 -#000000ff e 29 114 29 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 29 107 0 31 4 -name "];
+	}
+	course [pos="252,544", width="0.75", height="0.5", _draw_="c 9 -#000000ff p 4 279 562 225 562 225 526 279 526 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 252 537 0 38 6 -course "];
+	institute [pos="195,372", width="0.83333", height="0.5", _draw_="c 9 -#000000ff p 4 225 390 165 390 165 354 225 354 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 195 365 0 45 9 -institute "];
+	student [pos="192,200", width="0.77778", height="0.5", _draw_="c 9 -#000000ff p 4 220 218 164 218 164 182 220 182 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 192 193 0 41 7 -student "];
+	code [shape=ellipse, pos="289,618", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 289 618 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 289 611 0 27 4 -code "];
+	grade [shape=ellipse, pos="106,114", width="0.83333", height="0.5", _draw_="c 9 -#000000ff e 106 114 30 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 106 107 0 32 5 -grade "];
+	number [shape=ellipse, pos="192,114", width="1.0556", height="0.5", _draw_="c 9 -#000000ff e 192 114 38 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 192 107 0 45 6 -number "];
+	"C-I" [shape=diamond, style=filled, color=lightgrey, pos="207,458", width="0.88889", height="0.5", _draw_="c 9 -#d3d3d3ff C 9 -#d3d3d3ff P 4 207 476 175 458 207 440 239 458 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 207 451 0 20 3 -C-I "];
+	"S-C" [shape=diamond, style=filled, color=lightgrey, pos="283,114", width="0.97222", height="0.5", _draw_="c 9 -#d3d3d3ff C 9 -#d3d3d3ff P 4 283 132 248 114 283 96 318 114 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 283 107 0 23 3 -S-C "];
+	"S-I" [shape=diamond, style=filled, color=lightgrey, pos="195,286", width="0.83333", height="0.5", _draw_="c 9 -#d3d3d3ff C 9 -#d3d3d3ff P 4 195 304 165 286 195 268 225 286 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 195 279 0 18 3 -S-I "];
+	name0 -- course [pos="223.77,600.46 229.54,588.92 237.07,573.85 242.91,562.18", _draw_="c 9 -#000000ff B 4 224 600 230 589 237 574 243 562 "];
+	code -- course [pos="280.42,600.84 274.61,589.22 266.95,573.91 261.05,562.1", _draw_="c 9 -#000000ff B 4 280 601 275 589 267 574 261 562 "];
+	course -- "C-I" [label=n, len="1.00", pos="242.46,525.76 234.05,509.69 221.97,486.61 214.31,471.97", lp="237,501", _draw_="c 9 -#000000ff B 4 242 526 234 510 222 487 214 472 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 237 494 0 8 1 -n "];
+	"C-I" -- institute [label=1, len="1.00", pos="204.63,441.01 202.58,426.32 199.63,405.16 197.53,390.14", lp="206,415", _draw_="c 9 -#000000ff B 4 205 441 203 426 200 405 198 390 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 206 408 0 8 1 -1 "];
+	institute -- name1 [pos="178.67,353.76 164.9,338.38 145.38,316.58 132.24,301.9", _draw_="c 9 -#000000ff B 4 179 354 165 338 145 317 132 302 "];
+	institute -- "S-I" [label=1, len="1.00", pos="195,353.76 195,339.17 195,318.8 195,304.21", lp="199,329", _draw_="c 9 -#000000ff B 4 195 354 195 339 195 319 195 304 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 199 322 0 8 1 -1 "];
+	"S-I" -- student [label=n, len="1.00", pos="194.38,268.18 193.87,253.52 193.15,232.83 192.63,218.09", lp="198,243", _draw_="c 9 -#000000ff B 4 194 268 194 254 193 233 193 218 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 198 236 0 8 1 -n "];
+	student -- grade [pos="173.76,181.76 158.28,166.28 136.3,144.3 121.62,129.62", _draw_="c 9 -#000000ff B 4 174 182 158 166 136 144 122 130 "];
+	student -- name2 [pos="163.98,185.22 132.03,168.36 80.449,141.15 51.169,125.7", _draw_="c 9 -#000000ff B 4 164 185 132 168 80 141 51 126 "];
+	student -- number [pos="192,181.76 192,167.17 192,146.8 192,132.21", _draw_="c 9 -#000000ff B 4 192 182 192 167 192 147 192 132 "];
+	student -- "S-C" [label=m, len="1.00", pos="211.3,181.76 229.14,164.9 255.14,140.33 270.44,125.87", lp="248.5,157", _draw_="c 9 -#000000ff B 4 211 182 229 165 255 140 270 126 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 249 150 0 11 1 -m "];
+	"S-C" -- course [label=n, len="1.00", pos="282.67,132.12 282.38,149.52 282,176.56 282,200 282,458 282,458 282,458 282,482.51 271,508.87 262.32,525.85", lp="286,329", _draw_="c 9 -#000000ff B 10 283 132 282 150 282 177 282 200 282 458 282 458 282 458 282 483 271 509 262 526 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 286 322 0 8 1 -n "];
+}

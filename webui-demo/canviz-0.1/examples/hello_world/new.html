@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+This file is part of Canviz. See http://www.canviz.org/
+$Id: new.html.in 256 2009-01-08 11:14:07Z ryandesign.com $
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta name="MSSmartTagsPreventParsing" content="true" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>Canviz demo: Hello world: The new way</title>
+	<link rel="stylesheet" type="text/css" href="styles_inner.css" />
+	<!--[if IE]><script type="text/javascript" src="../../excanvas/excanvas.js"></script><![endif]-->
+	<script type="text/javascript" src="../../prototype/prototype.js"></script>
+	<script type="text/javascript" src="../../path/path.js"></script>
+	<script type="text/javascript" src="../../canviz.js"></script>
+	<script type="text/javascript" src="scripts_common.js"></script>
+	<script type="text/javascript" src="scripts_new.js"></script>
+</head>
+<body>
+
+<h2>The new way</h2>
+
+<p>1. Write a Graphviz file:</p>
+
+<p><pre>digraph hello_world {
+	node [href="javascript:void(click_node('\N'))"]
+	hello:e->world:w
+}
+</pre></p>
+
+<p>2. Have Graphviz render it to an xdot file:</p>
+
+<p><pre>dot graph.gv -Txdot -ograph-xdot.gv</pre></p>
+
+<p>3. Write an HTML page containing an empty div and create a new Canviz object with the div's id and the xdot file's name:</p>
+
+<div class="graph">
+	<div id="canviz"></div>
+</div>
+
+<p id="click_output"></p>
+
+<div id="debug_output"></div>
+
+</body>
+</html>

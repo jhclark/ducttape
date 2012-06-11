@@ -1,0 +1,23 @@
+# Generated Sat Dec 10 13:03:40 GMT 2011 by neato - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.065s
+# user	0m0.020s
+# sys	0m0.014s
+
+digraph states {
+	graph [size="3,2", rankdir=LR];
+	node [label="\N", shape=ellipse];
+	graph [bb="0,0,162.12,125.84",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 126 163 126 163 -1 ",
+		xdotversion="1.2"];
+	empty [label=Empty, pos="35.5,77.544", width="0.94444", height="0.5", _draw_="c 9 -#000000ff e 36 78 34 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 36 71 0 39 5 -Empty "];
+	stolen [label=Stolen, pos="127.62,76.749", width="0.91667", height="0.5", _draw_="c 9 -#000000ff e 128 77 33 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 128 70 0 37 6 -Stolen "];
+	waiting [label=Waiting, pos="114.76,19", width="1.0833", height="0.5", _draw_="c 9 -#000000ff e 115 19 39 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 115 12 0 46 7 -Waiting "];
+	full [label=Full, pos="86.936,106.84", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 87 107 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 87 100 0 23 4 -Full "];
+	empty -> full [label=return, pos="e,66.145,94.996 58.81,90.819 58.963,90.906 59.116,90.993 59.269,91.08", lp="59.04,82.949", _draw_="c 9 -#000000ff B 4 59 91 59 91 59 91 59 91 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 56 93 66 95 59 87 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 59 76 0 35 6 -return "];
+	empty -> stolen [label=dispatch, wt=28, pos="e,94.333,77.036 69.54,77.25 74.348,77.209 79.344,77.166 84.298,77.123", lp="76.919,69.187", _draw_="c 9 -#000000ff B 4 70 77 74 77 79 77 84 77 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 84 81 94 77 84 74 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 77 62 0 47 8 -dispatch "];
+	stolen -> full [label=return, pos="e,105.34,93.228 107.75,91.44 107.65,91.514 107.55,91.589 107.45,91.663", lp="107.6,83.552", _draw_="c 9 -#000000ff B 4 108 91 108 92 108 92 107 92 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 111 84 105 93 115 90 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 108 77 0 35 6 -return "];
+	stolen -> waiting [label=touch, pos="e,118.8,37.143 123.62,58.793 122.78,55.027 121.88,50.97 120.98,46.938", lp="105.3,55.865", _draw_="c 9 -#000000ff B 4 124 59 123 55 122 51 121 47 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 124 46 119 37 118 48 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 105 49 0 32 5 -touch "];
+	waiting -> full [label=return, pos="e,92.6,88.96 109,37.2 105.17,49.292 100.06,65.402 95.73,79.08", lp="84.364,53.14", _draw_="c 9 -#000000ff B 4 109 37 105 49 100 65 96 79 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 92 78 93 89 99 80 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 84 46 0 35 6 -return "];
+}

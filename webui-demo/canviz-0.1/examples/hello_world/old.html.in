@@ -1,0 +1,39 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!--
+This file is part of Canviz. See http://www.canviz.org/
+$Id: old.html.in 256 2009-01-08 11:14:07Z ryandesign.com $
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+	<meta name="MSSmartTagsPreventParsing" content="true" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<title>Canviz demo: Hello world: The old way</title>
+	<link rel="stylesheet" type="text/css" href="styles_inner.css" />
+	<script type="text/javascript" src="../../prototype/prototype.js"></script>
+	<script type="text/javascript" src="scripts_common.js"></script>
+</head>
+<body>
+
+<h2>The old way</h2>
+
+<p>1. Write a Graphviz file:</p>
+
+<p><pre>@GRAPH@</pre></p>
+
+<p>2. Have Graphviz render it to PNG and image map files:</p>
+
+<p><pre>dot graph.gv -Tpng -ograph.png -Tcmapx -ograph-cmapx.html</pre></p>
+
+<p>3. Write an HTML page containing the image map and an &lt;img&gt; tag with the PNG file's name:</p>
+
+@CMAPX@
+
+<div class="graph">
+	<img src="graph.png" usemap="#hello_world" border="0" />
+</div>
+
+<p id="click_output"></p>
+
+</body>
+</html>

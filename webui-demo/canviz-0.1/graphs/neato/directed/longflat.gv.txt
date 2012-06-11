@@ -1,0 +1,25 @@
+# Generated Sat Dec 10 13:03:32 GMT 2011 by neato - graphviz version 2.22.2 (20090313.1817)
+#
+# 
+# real	0m0.391s
+# user	0m0.030s
+# sys	0m0.021s
+
+digraph if {
+	graph [rankdir=LR];
+	node [label="\N"];
+	graph [bb="0,0,134.93,163.63",
+		_draw_="c 9 -#ffffffff C 9 -#ffffffff P 4 0 -1 0 164 136 164 136 -1 ",
+		xdotversion="1.2"];
+	{
+		graph [rank=same,
+			bb="",
+			_draw_="",
+			xdotversion=""];
+		b [pos="51.957,87.206", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 52 87 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 52 80 0 8 1 -b "];
+		c [pos="95.852,144.63", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 96 145 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 96 138 0 6 1 -c "];
+	}
+	a [pos="28,19", width="0.75", height="0.5", _draw_="c 9 -#000000ff e 28 19 27 18 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 28 12 0 6 1 -a "];
+	a -> b [pos="e,45.725,69.464 34.17,36.565 36.665,43.67 39.604,52.038 42.367,59.903", _draw_="c 9 -#000000ff B 4 34 37 37 44 40 52 42 60 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 39 61 46 69 46 59 "];
+	c -> b [label="long long long", pos="e,64.297,103.35 83.391,128.33 79.372,123.07 74.828,117.12 70.469,111.42", lp="91.93,108.87", _draw_="c 9 -#000000ff B 4 83 128 79 123 75 117 70 111 ", _hdraw_="S 5 -solid c 9 -#000000ff C 9 -#000000ff P 3 73 109 64 103 68 113 ", _ldraw_="F 14.000000 11 -Times-Roman c 9 -#000000ff T 92 102 0 86 14 -long long long "];
+}

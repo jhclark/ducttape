@@ -1,0 +1,29 @@
+/*
+ * This file is part of Canviz. See http://www.canviz.org/
+ * $Id: styles_outer.css 256 2009-01-08 11:14:07Z ryandesign.com $
+ */
+
+body {
+	padding: 0;
+	margin: 0;
+}
+
+iframe.two_column {
+	position: absolute;
+	border: 0;
+	top: 0;
+	width: 50%;
+	height: 100%;
+}
+
+iframe#old_iframe {
+	left: 0;
+}
+
+iframe#new_iframe {
+	right: 0;
+}
+
+.clearer {
+	clear: both;
+}
