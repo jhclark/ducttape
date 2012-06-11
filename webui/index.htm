@@ -1,10 +1,257 @@
 <html>
+<head>
+  <!-- We use Font Awesome! see http://fortawesome.github.com/Font-Awesome -->
+  <!-- Font Awesome is used under the zCC 3.0 License -->
+
+  <!-- Uses DropKick for beautifying select elements http://jamielottering.github.com/DropKick/ -->
+
+  <!-- TODO: Add Scrolability for iOS apps: http://joehewitt.github.com/scrollability/ -->
+
+  <title>ducttape: Workflow Status</title>
+  <link rel="shortcut icon" href="/media/img/favicon.ico">
+  <link rel="stylesheet" type="text/css" href="anythingslider/anythingslider.css" />
+  <link rel="stylesheet" type="text/css" href="font-awesome/font-awesome.css" />
+  <link rel="stylesheet" type="text/css" href="dropkick/dropkick.css">
+
+  <!-- apply our custom css last -->
+  <link rel="stylesheet" type="text/css" href="tabs-no-images.css" />
+  <link rel="stylesheet" type="text/css" href="style.css" />
+
+
+  <!-- we don't use jquery off the web to support local usage (you're welcome, Lane) ;) -->
+  <script src="jquery/jquery-1.7.2.min.js" type="text/javascript" charset="utf-8"></script>
+  <script src="dropkick/jquery.dropkick-1.0.0.js" type="text/javascript" charset="utf-8"></script>
+
+  <script src="anythingslider/jquery.easing.1.2.js" type="text/javascript"></script>
+  <script src="anythingslider/jquery.anythingslider.js" type="text/javascript" charset="utf-8"></script>
+
+  <!-- we use anything slider from https://github.com/ProLoser/AnythingSlider -->
+  <!-- see also http://css-tricks.com/examples/AnythingSlider -->
+  
+  <script type="text/javascript" charset="utf-8">
+    // use the $(document).ready(handler) to make sure the page is scritable
+    $(function () {
+      // dropkick the workflow nav dropdown
+      $('.default_dropkick').dropkick();
+
+      $('#slider').anythingSlider({
+        // Appearance
+        expand: true,
+        width               : null,      // Override the default CSS width
+        height              : null,      // Override the default CSS height
+        resizeContents      : true,      // If true, solitary images/objects in the panel will expand to fit the viewport
+       resizePanel: false,
+    
+        // Navigation
+        buildStartStop      : false,
+        buildArrows         : false,
+        buildNavigation     : false,      // If true, buildsa list of anchor links to link to each panel
+        startPanel          : 1,         // This sets the initial panel
+        hashTags            : true,      // Should links change the hashtag in the URL?
+    
+        autoPlay            : false,      // This turns off the entire slideshow FUNCTIONALY, not just if it starts running or not
+        startStopped        : false,     // If autoPlay is on, this can force it to start stopped
+        easing              : "swing",    // Anything other than "linear" or "swing" requires the easing plugin
+
+        onSlideComplete:    function(slider) {
+          // XXX: HACK: I have no idea why we must shave off 40 pixels here...
+          var w = parseInt($("#slider").css("left").replace("px", ""));
+          $("#slider").css("left", (w-40) + "px");
+        }
+      });
+
+      // call this just so that the onSlideComplete() method above gets used
+      $('#slider').anythingSlider(1);
+
+      $("#tasks_tab").click(function(){
+        $('#slider').anythingSlider(1);
+      });
+      $("#summary_tab").click(function(){
+        $('#slider').anythingSlider(2);
+      });
+      $("#graph_tab").click(function(){
+        $('#slider').anythingSlider(3);
+      });
+      $("#usage_tab").click(function(){
+        $('#slider').anythingSlider(4);
+      });
+    });
+  </script>
+
+  <!-- <link rel="stylesheet" href="font-awesome-site.css"> -->
+  <!-- <link rel="stylesheet" href="font-awesome-prettify.css"> -->
+</head>
 
 <body>
+  
+  <!-- visible overflow for dropdowns -->
+  <div id="header" style="overflow-y: visible; height: 30px; z-index: 10;">
+    <div class="container">
+      <div id="logo" style="float: left;">
+	<a href="http://jhclark.github.com/ducttape">ducttape</a>
+      </div>
 
-  <div align="center">
-    <iframe src="graph.htm" width="100%" height="500" frameborder="0" />
+      <!-- Note: Floating makes margins impossible -->
+      <div style="float: right;">
+	<div style="float: left;">
+	  <!-- tabs work as navigator for scrollable -->
+	  <ul id="flowtabs" class="css-tabs navi">
+	    <li><a id="tasks_tab" href="#" class="current-tab">
+		<!-- <span style="font-size: 18px;"><i class="icon-ok"></i></span> -->
+		<span style="font-size: 18px;"><i class="icon-dashboard"></i></span> Tasks
+	    </a></li>
+	    <li><a id="summary_tab" href="#">
+		<span style="font-size: 18px;"><i class="icon-signal"></i></span> Summary</a>
+	    </li>
+	    <li><a id="graph_tab" href="#">
+		<span style="font-size: 18px;"><i class="icon-eye-open"></i></span> Graph
+	    </a></li>
+	    <li><a id="usage_tab" href="#">
+		<span style="font-size: 18px;"><i class="icon-hdd"></i></span> Disk Usage
+	    </a></li>
+	  </ul>
+	</div>
+
+	<div style="margin=5px 5px; float: left;" name="spacer">
+	  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+	</div>
+
+	<div style="float: right;">
+	  <!-- floating allows items to line up next to each other -->
+	  <div style="font-size: 26px; float: left;"><i class="icon-sitemap"></i></div>
+	  <div style="margin=5px 5px; float: left;" name="spacer">&nbsp;&nbsp;&nbsp;</div>
+	  <div style="float: left;">
+	    <form action="#" method="post" accept-charset="utf-8" >
+	      <select name="country" class="default_dropkick" style="" tabindex="2">
+		<!-- style="background-image:url(images/dk_arrows.png);" -->
+		<option value="">Select workflow</option>
+		<option value="NONE">None available</option>
+	      </select>
+	    </form>
+	  </div>
+	</div>
+      </div>
+    </div>
   </div>
+
+  <div> <!-- content -->
+
+    <!-- tab panes -->
+    <ul id="slider">
+      <li>
+	<div style="height=1000px;">
+	  <div class="ringer">
+	    <div class="box red_bar">
+	      <div class="bar_text">
+		<span style="font-size: 20px;"><i class="icon-bell"></i></span>
+		<!-- <span style="font-size: 20px;"><i class="icon-exclamation-sign"></i></span> -->
+		Failed Tasks
+	      </div>
+	      <div class="box_content">
+		Tasks go here
+	      </div>
+	    </div>
+	  </div>
+	  <br/>
+
+	  <div class="ringer">
+	    <div class="box green_bar">
+	      <div class="bar_text">
+		<span style="font-size: 20px;"><i class="icon-play-circle"></i></span>
+		Running Tasks
+	      </div>
+	      <div class="box_content">
+		<span style="font-weight: bold;">tune_pro</span> (QUEUED) <br/>
+		&nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-circle-arrow-left"></i></span>N=5 (@ <a href="#">config</a>) <br/>
+		&nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-chevron-left"></i></span> grammar=out@<a href="#">extract_gra</a> [size=5GB, version=?]<br/>
+		&nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-chevron-right"></i></span> ini<br/>
+		CODE expand via collapsible (+DB entry)
+		<div class="code">
+		  $cdec/dist_vest.pl --some-options-here<br/>
+		</div><br/>
+		TODO: Popup of local graph structure? <br/>
+	      </div>
+	    </div>
+	  </div>
+	  <br/>
+	    
+	    <div class="ringer">
+	      <div class="box yellow_bar">
+		<div class="bar_text">
+		  <span style="font-size: 20px;"><i class="icon-reorder"></i></span>
+		  Blocked Tasks
+		</div>
+		<div class="box_content">
+		  Tasks go here
+		</div>
+	      </div>
+	    </div>
+	    <br/>
+
+	    <div class="ringer">
+	      <div class="box blue_bar">
+		<div class="bar_text">
+		  <span style="font-size: 20px;"><i class="icon-check"></i></span>
+		  Completed Tasks
+		</div>
+		<div class="box_content">
+		  Tasks go here
+		</div>
+	      </div>
+	    </div>
+	    <br/>
+
+ <!--
+	    <span style="font-size: 20px;"><i class="icon-beaker"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-bolt"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-bar-chart"></i></span>
+	    
+	    <span style="font-size: 20px;"><i class="icon-tasks"></i></span>
+	    
+	    <span style="font-size: 20px;"><i class="icon-plus"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-plus-sign"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-minus"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-minus-sign"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-remove"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-remove-circle"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-remove-sign"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-file"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-save"></i></span>
+	    
+	    Open work directory
+	    <span style="font-size: 20px;"><i class="icon-folder-open"></i></span>
+	    <span style="font-size: 20px;"><i class="icon-folder-close"></i></span>
+	    
+	    <span style="font-size: 20px;"><i class="icon-refresh"></i></span>
+-->
+	</div>
+
+
+      </li> <!-- end tasks pane -->
+      
+      <li>Summaries (gray)</li>
+      <li>
+	<div align="center">
+	  <iframe src="graph.htm" width="100%" height="500" frameborder="0" />
+	</div>
+  
+      </li>
+      <li>Disk usage</li>
+      
+    </ul> <!-- end slider -->
+  </div> <!-- end content -->
+
+  <div id="footer_gray">
+    <ul class="footer_list">
+      <h4>Ducttape</h4>
+      <li><a href="http://jhclark.github.com/ducttape">Help</a></li>
+    </ul>
+    <ul class="footer_list">
+      <h4>Bash</h4>
+      <li><a href="http://jhclark.github.com/ducttape">Bash Reference</a></li>
+    </ul>
+  </div>
+
 
 </body>
 </html>
