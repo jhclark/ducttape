@@ -19,6 +19,8 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   
   // key is absolute path to file
   val locks = new mutable.HashMap[String, FileLock]
+
+  override def skip(exec: Executor, taskEnv: TaskEnvironment) {}
   
   override def begin(exec: Executor, taskEnv: FullTaskEnvironment) = acquireLock(taskEnv)
   override def fail(exec: Executor, taskEnv: FullTaskEnvironment)  = releaseLock(taskEnv)

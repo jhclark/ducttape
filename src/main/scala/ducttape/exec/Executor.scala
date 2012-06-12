@@ -70,7 +70,10 @@ class Executor(val dirs: DirectoryArchitect,
         }
       }
       System.err.println("Completed %s".format(task))
+      observers.foreach(_.succeed(this, taskEnv))
+    } else {
+      val taskEnv = new TaskEnvironment(dirs, task)
+      observers.foreach(_.skip(this, taskEnv))
     }
-    observers.foreach(_.succeed(this, taskEnv))
   }
 }

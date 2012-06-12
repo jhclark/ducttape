@@ -48,4 +48,8 @@ class GraphVizExecutionObserver extends ExecutionObserver {
       Files.write(viz, exec.dirs.xdotFile)
     }
   }
+
+  override def skip(exec: Executor, taskEnv: TaskEnvironment) {
+    completed += ((taskEnv.task.name, taskEnv.task.realization))
+  }
 }
