@@ -21,10 +21,7 @@ class DirectoryArchitect(val flat: Boolean,
   val installDir = Environment.getJarDir
   val builtinsDir = new File(installDir, "builtins")
   
-  val confBaseDir = confName match {
-    case Some(name) => new File(workflowBaseDir, name)
-    case None => workflowBaseDir
-  }
+  val confBaseDir = workflowBaseDir
   
   val versionHistoryDir = new File(confBaseDir, ".versions")
   def assignVersionDir(version: Int) = new File(versionHistoryDir, version.toString)
