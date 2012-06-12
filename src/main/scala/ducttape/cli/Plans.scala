@@ -88,7 +88,7 @@ object Plans extends Logging {
             // recursively find all dependencies of this vertex & add graft relaxations
             val deps: Seq[PackedWorkVert] = getDependencies(workflow, v, true)
             deps.foreach { dep: PackedWorkVert =>
-              debug("Grafts are: " + branchInfo.grafts)
+              trace("Grafts are: " + branchInfo.grafts)
               graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet[Branch]) ++= branchInfo.grafts
             }
           }
