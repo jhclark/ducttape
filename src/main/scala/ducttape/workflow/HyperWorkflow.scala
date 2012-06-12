@@ -173,11 +173,11 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
                     // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
                     planBranches.contains("*") ||
                       planBranches.contains(realBranch.name) ||
-                      isGraftDependency(graftRelaxations, v, realBranch) ||
-                      (realBranch.baseline && planBranches.contains("baseline"))
+                      (realBranch.baseline && planBranches.contains("baseline")) ||
+                      isGraftDependency(graftRelaxations, v, realBranch)
                   }
-                  // otherwise it implies the baseline branch
-                  case None => realBranch.baseline
+                  // otherwise it implies either the baseline branch or a graft relaxation
+                  case None => realBranch.baseline || isGraftDependency(graftRelaxations, v, realBranch)
                 }
               }
               if (!ok) {
