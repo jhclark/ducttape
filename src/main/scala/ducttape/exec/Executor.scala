@@ -27,9 +27,9 @@ class Executor(val dirs: DirectoryArchitect,
   observers.foreach(_.init(this))
 
   override def visit(task: RealTask) {
-    val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
     if (todo( (task.name, task.realization) )) {
       
+      val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
       // first, acquire a lock
       System.err.println("Acquiring lock for %s".format(task))
       locker.acquireLock(taskEnv)
