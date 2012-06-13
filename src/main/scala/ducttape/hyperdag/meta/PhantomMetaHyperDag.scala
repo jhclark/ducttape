@@ -22,7 +22,7 @@ class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) 
   
   def unpackedWalker[D,F](selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
                           hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-                          constraintFilter: ConstraintFilter[Option[V],D,F] = new DefaultConstraintFilter[Option[V],D,F],
+                          constraintFilter: ConstraintFilter[Option[V],H,E,D,F] = new DefaultConstraintFilter[Option[V],H,E,D,F],
                           vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
                           toD: H => D = new DefaultToD[H])

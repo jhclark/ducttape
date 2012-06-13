@@ -21,7 +21,7 @@ class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
                                       val srcTask: Option[TaskDef],
                                       val srcSpec: SpecT,
                                       val srcReal: Realization) {
-  override def toString() = "%s => %s (%s)".format(origSpec, srcSpec, srcReal)
+  override def toString() = "%s => %s (%s)".format(origSpec.name, srcSpec, srcReal)
 }
 
 object SpecTypes {

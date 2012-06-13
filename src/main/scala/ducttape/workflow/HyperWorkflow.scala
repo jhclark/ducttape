@@ -101,13 +101,15 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     
     // TODO: globalBranchPointConstraint is also the inPlanConstraint
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],Branch,UnpackState] {
+    val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState] {
       override val initState = new UnpackState
-      
+
+      // v: the sink vertex of this active hyperedge      
       // real: the current realization of this vertex
       // seen: the non-local derivation state we pass around (more efficient to access than real)
       // parentReal: the realization at the parent, which we are proposing to add (traverse)
       override def apply(v: PackedVertex[Option[TaskTemplate]],
+                         he: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
                          seen: UnpackState,
                          real: MultiSet[Branch],
                          parentReal: Seq[Branch]): Option[UnpackState] = {
@@ -195,7 +197,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
         } else {
           // left operand determines return type (an efficient immutable.HashMap)
           val result: UnpackState = seen ++ parentReal.map { b: Branch => (b.branchPoint, b) }
-          trace("Extending seen: " + seen.values + " with " + parentReal + "; Combo was " + real.keys + " ==> " + result.values)
+          trace("Extending seen at " + v + ": " + seen.values + " with " + parentReal + "; Combo was " + real.keys + " ==> " + result.values)
           Some(result)
         }
       }
@@ -214,7 +216,10 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
             included
           }
           // if we're not using the vertex filter, just pass through
-          case _ => true
+          case _ => {
+            trace("MetaVertexFilter vacuously accepts %s (not using a VertexFilter)".format(v))
+            true
+          }
         }
       } 
     }

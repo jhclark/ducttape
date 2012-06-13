@@ -212,8 +212,8 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
           }
         }
       val branchInfo = new BranchInfo(branchChild.branch, curGrafts)
-      debug("Using grafts: %s found nested edges: %s and terminal edges: %s".format(
-        curGrafts, nestedBranchEdges, terminalEdges))
+      debug("Task=%s; Using grafts: %s found nested edges: %s and terminal edges: %s".format(
+        task, curGrafts, nestedBranchEdges, terminalEdges))
       
       (branchInfo, nestedBranchEdges ++ terminalEdges)
     }
@@ -246,7 +246,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
         branchChild.terminalData.map { data => data.grafts }.toSeq
       }.toSet
       
-      // include at least the empty graft set
+      // if no grafts are specified for this task, denote it as the empty graft set
       val NO_GRAFTS = Seq()
       if (candidateGrafts.isEmpty) Set(NO_GRAFTS) else candidateGrafts
     }
@@ -276,7 +276,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       if (!hyperedges.isEmpty) {
         debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
           format(task, debugNesting, branchPoint, hyperedges))
-        dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s".format(branchPoint.toString, task.name))
+        dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s[%s]".format(branchPoint.toString, task.name, curGrafts.mkString(",")))
       } else {
         debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
           format(task, debugNesting, branchPoint))

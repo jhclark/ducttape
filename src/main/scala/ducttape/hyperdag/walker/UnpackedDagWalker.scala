@@ -40,7 +40,7 @@ class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
         selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
         hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-        constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+        constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         toD: H => D = new DefaultToD[H])
@@ -48,6 +48,10 @@ class UnpackedDagWalker[V,H,E,D,F](
 
   // TODO: Factor this out into a class all its own?
   // TODO: Document why active vertices are isomorphic to hyperedges (or no hyperedge)
+  // v is the sink vertex
+  // he is the active hyperedge that leads to this vertex
+  //   (only one hyperedge will be active per derivation)
+  //   (the hyperedge will be None iff this vertex has zero incoming hyperedges in the original hyperdag)
   class ActiveVertex(val v: PackedVertex[V],
                      val he: Option[HyperEdge[H,E]]) {
 
@@ -88,15 +92,13 @@ class UnpackedDagWalker[V,H,E,D,F](
           } 
         }
       } else {
-        //unpack(i+1, iFixed, combo, parentReals, prevState, callback)
         // NOTE: We previously set parentReals(iFixed) to be the fixed realization
         val myParentReals: Iterable[Seq[D]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
         for (parentRealization: Seq[D] <- myParentReals) {
-          // TODO: Get prevState
           // check if we meet external semantic constraints
-          constraintFilter(v, prevState, combo, parentRealization) match {
+          constraintFilter(v, he, prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
               trace(i + " hyperedge: " + he)
@@ -134,7 +136,7 @@ class UnpackedDagWalker[V,H,E,D,F](
       }
 
       val combo = new MultiSet[D]
-      constraintFilter(v, constraintFilter.initState, combo, hedgeReal) match {
+      constraintFilter(v, he, constraintFilter.initState, combo, hedgeReal) match {
         case None => ; // illegal state, skip it
         case Some(nextState) => {
           combo ++= hedgeReal

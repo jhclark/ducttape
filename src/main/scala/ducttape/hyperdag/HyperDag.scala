@@ -28,7 +28,7 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   // TODO: Pass filters to dag walker
   def unpackedWalker[D,F](selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
                           hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-                          constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+                          constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
                           vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
                           toD: H => D = new DefaultToD[H])

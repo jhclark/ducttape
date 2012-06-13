@@ -156,7 +156,7 @@ private[builder] class TaskTemplateBuilder(
           val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, allGrafts)
           data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
           
-          //debug("Setting grafts for %s: %s".format(origSpec, allGrafts))
+          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, allGrafts))
         }
         case _ => {
           // not a literal -- keep tracing through branch points

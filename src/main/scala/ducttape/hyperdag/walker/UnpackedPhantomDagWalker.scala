@@ -1,6 +1,7 @@
 package ducttape.hyperdag.walker
 
 import ducttape.hyperdag.PhantomHyperDag
+import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.UnpackedVertex
 import ducttape.util.MultiSet
 import ducttape.hyperdag.PackedVertex
@@ -11,18 +12,18 @@ class UnpackedPhantomDagWalker[V,H,E,D,F](
         val dag: PhantomHyperDag[V,H,E],
         val selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
         val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-        val constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+        val constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         val vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         val toD: H => D = new DefaultToD[H])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
   
-  object ConstraintFilterAdapter extends ConstraintFilter[Option[V],D,F] {
+  object ConstraintFilterAdapter extends ConstraintFilter[Option[V],H,E,D,F] {
     override val initState = constraintFilter.initState
-    override def apply(v: PackedVertex[Option[V]], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]) = {
+    override def apply(v: PackedVertex[Option[V]], he: Option[HyperEdge[H,E]], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]) = {
       v.value match {
         case None => Some(prevState)
-        case Some(_) => constraintFilter(dag.removePhantom(v), prevState, combo, parentRealization)
+        case Some(_) => constraintFilter(dag.removePhantom(v), he, prevState, combo, parentRealization)
       }
     }
   }

@@ -35,13 +35,14 @@ class DefaultHyperEdgeFilter[H,E] extends HyperEdgeFilter[H,E] {
   override def apply(combo: HyperEdge[H,E]) = true
 }
 
-trait ConstraintFilter[V,D,F] {
-  def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]): Option[F]
+// note: he is passed mainly for debugging
+trait ConstraintFilter[V,H,E,D,F] {
+  def apply(v: PackedVertex[V], he: Option[HyperEdge[H,E]], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]): Option[F]
   val initState: F
 }
 
-class DefaultConstraintFilter[V,D,F] extends ConstraintFilter[V,D,F] {
-  override def apply(v: PackedVertex[V], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]) = Some(prevState)
+class DefaultConstraintFilter[V,H,E,D,F] extends ConstraintFilter[V,H,E,D,F] {
+  override def apply(v: PackedVertex[V], he: Option[HyperEdge[H,E]], prevState: F, combo: MultiSet[D], parentRealization: Seq[D]) = Some(prevState)
   private var nada: F = _ // syntactic cruft, just to get a null...
   override val initState: F = nada
 }

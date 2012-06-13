@@ -15,7 +15,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
     selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
     hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
-    constraintFilter: ConstraintFilter[V,D,F] = new DefaultConstraintFilter[V,D,F],
+    constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
     toD: H => D = new DefaultToD[H])
