@@ -253,34 +253,39 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     
     debug("Task=%s %s: Have %d graft sets: %s".format(task, nestedBranches, graftSet.size, graftSet))
 
-    // add a meta-edge for each unique graft set
-    for (curGrafts: Seq[Branch] <- graftSet) {
-      val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
-      val graftedBranches: Set[Branch] = curGrafts.toSet
+    // grab hyperedges separately for each unique graft set
+    // (however, don't create them as separate meta-edges, else if there is more than one branch of the same branch point
+    //  and they have different graft sets, the branches will not match and the global branch point constraint will kill them)
+    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])] = {
+      graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
+        val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
+        val graftedBranches: Set[Branch] = curGrafts.toSet
       
-      // create a hyperedge list in the format expected by the HyperDAG API
-      // NOTE: getHyperEdges is mutually recursive with traverse()
-      val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])]
-        = getHyperEdges(task, specPhantomV, curNode, nestedBranches, curGrafts).filter {
-            case (branchInfo, vertexInfo) => {
-              // if this branch's branch point is named in our current graft set,
-              // make sure the branch name matches
-              // this isn't strictly necessary, but removes some unnecessary edges from the HyperDAG
-              // (that makes debugging easier)
-              !graftedBranchPoints.contains(branchInfo.branch.branchPoint) || graftedBranches.contains(branchInfo.branch)
-            }
+        // create a hyperedge list in the format expected by the HyperDAG API
+        // NOTE: getHyperEdges is mutually recursive with traverse()
+        val graftSpecificHyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])]
+          = getHyperEdges(task, specPhantomV, curNode, nestedBranches, curGrafts).filter {
+              case (branchInfo, vertexInfo) => {
+                // if this branch's branch point is named in our current graft set,
+                // make sure the branch name matches
+                // this isn't strictly necessary, but removes some unnecessary edges from the HyperDAG
+                // (that makes debugging easier)
+                !graftedBranchPoints.contains(branchInfo.branch.branchPoint) || graftedBranches.contains(branchInfo.branch)
+              }
           }
-      
-      debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, curGrafts, nestedBranches, hyperedges))
-      
-      if (!hyperedges.isEmpty) {
-        debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
-          format(task, nestedBranches, branchPoint, hyperedges))
-        dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s[%s]".format(branchPoint.toString, task.name, curGrafts.mkString(",")))
-      } else {
-        debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
-          format(task, nestedBranches, branchPoint))
+     
+        debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, nestedBranches, curGrafts, graftSpecificHyperedges))
+        graftSpecificHyperedges
       }
+    }
+    if (!hyperedges.isEmpty) {
+      debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
+        format(task, nestedBranches, branchPoint, hyperedges))
+      //dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s[%s]".format(branchPoint.toString, task.name, curGrafts.mkString(",")))
+      dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s".format(branchPoint.toString, task.name))
+    } else {
+      debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
+        format(task, nestedBranches, branchPoint))
     }
   }
 
