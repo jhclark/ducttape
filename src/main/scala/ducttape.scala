@@ -471,6 +471,12 @@ object Ducttape extends Logging {
         val packageVersions = getPackageVersions(cc, planPolicy)
         EnvironmentMode.run(workflow, planPolicy, packageVersions)
       }
+      case "commands" => {
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+        val packageVersions = getPackageVersions(cc, planPolicy)
+        EnvironmentMode.run(workflow, planPolicy, packageVersions, showCommands=true)        
+      }
       case "mark_done" => markDone
       case "viz" => viz
       case "debug_viz" => debugViz

@@ -15,14 +15,15 @@ object EnvironmentMode {
   
   def run(workflow: HyperWorkflow,
           planPolicy: PlanPolicy,
-          packageVersions: PackageVersioner)
+          packageVersions: PackageVersioner,
+          showCommands: Boolean = false)
          (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
     
     if (opts.taskName == None) {
-      opts.exitHelp("env requires a taskName", 1)
+      opts.exitHelp("env/commands requires a taskName", 1)
     }
     if (opts.realNames.size != 1) {
-      opts.exitHelp("env requires one realization name", 1)
+      opts.exitHelp("env/commands requires one realization name", 1)
     }
     val goalTaskName = opts.taskName.get
     val goalRealName = opts.realNames.head
@@ -49,10 +50,17 @@ object EnvironmentMode {
     System.err.println("Found %d vertices with matching realizations".format(matchingReals.size))
     
     for (task: RealTask <- matchingReals) {
-      println(task.name + " " + task.realization + ":")
+      println("# " + task.name + " " + task.realization + ":")
       val env = new FullTaskEnvironment(dirs, packageVersions, task)
       for ( (k,v) <- env.env) {
-        println("%s=%s".format(k,v))
+        if (showCommands) {
+          println("export %s=%s".format(k,v))
+        } else {
+          println("%s=%s".format(k,v))
+        }
+      }
+      if (showCommands) {
+        println(task.commands.code)
       }
       println()
     }
