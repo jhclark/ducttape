@@ -13,11 +13,12 @@
 
    ;( ,(regexp-opt '("::" "<" ">" "=" "(" ")" "@") 'word) . font-lock-function-name-face)
    ;
-   ( ,(regexp-opt '("::" ":" "<" ">") 'word) . font-lock-builtin-face)
+   ( ,(regexp-opt '("::" ":" "<" ">" "<=" "=>") 'word) . font-lock-builtin-face)
    ( ,(regexp-opt '("action"
 		    "baseline"
 		    "branch"
 		    "branchpoint"
+		    "calls"
 		    "config"
 		    "func"
 		    "group"
