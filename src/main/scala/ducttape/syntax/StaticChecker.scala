@@ -107,7 +107,12 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
       case plan: PlanDefinition => ;
     }
     
+    val seenTasks = new mutable.HashMap[String,TaskDef]
     for (task: TaskDef <- wd.tasks) {
+      seenTasks.get(task.name) match {
+        case None => seenTasks += task.name -> task
+        case Some(prevTask) => errors += new FileFormatException("Redeclaration of task: %s".format(prevTask.name), List(task, prevTask))
+      }
       val (w, e) = checkTaskDef(task)
       warnings ++= w
       errors ++= e
