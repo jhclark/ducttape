@@ -11,7 +11,6 @@ import ducttape.versioner.WorkflowVersionInfo
 
 // see also LockManager
 class PidWriter(dirs: DirectoryArchitect,
-                version: WorkflowVersionInfo,
                 todo: Set[(String,Realization)],
                 locker: LockManager,
                 remove: Boolean = false) extends UnpackedDagVisitor {

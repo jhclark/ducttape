@@ -107,15 +107,16 @@ object ExecuteMode {
           
           // Make a pass after moving partial output to write output files
           // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker), planPolicy)
+          Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
           System.err.println("Executing tasks...")
           try {
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
                               planPolicy, opts.jobs())
           } finally {
+            // TODO: Make this shutdown hook?
             // release all of our locks, even if we go down in flames
-            Visitors.visitAll(workflow, new PidWriter(dirs, myVersion, cc.todo, locker, remove=true), planPolicy)
+            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker, remove=true), planPolicy)
           }
         }
         case _ => System.err.println("Doing nothing")
