@@ -94,6 +94,13 @@ class UnpackedDagWalker[V,H,E,D,F](
       } else {
         // NOTE: We previously set parentReals(iFixed) to be the fixed realization
         val myParentReals: Iterable[Seq[D]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
+        debug {
+          // he is guaranteed to be defined if we have more than zero parent reals
+          val parents: Seq[PackedVertex[V]] = dag.sources(he.get)
+          val parent = parents(i)
+          "Applying constraint filter for parent %s".format(parent)
+        }
+
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
         for (parentRealization: Seq[D] <- myParentReals) {
@@ -136,6 +143,7 @@ class UnpackedDagWalker[V,H,E,D,F](
       }
 
       val combo = new MultiSet[D]
+      "Applying constraint filter for hyperedge %s (not parent)".format(he)
       constraintFilter(v, he, constraintFilter.initState, combo, hedgeReal) match {
         case None => ; // illegal state, skip it
         case Some(nextState) => {
