@@ -142,21 +142,35 @@ private[builder] class TaskTemplateBuilder(
     def handleNonBranchPoint() {
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
       val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
-      val allGrafts = myGrafts ++ prevGrafts
-      debug("Resolved %s to potentially non-branch spec %s @ %s with grafts %s".format(
-        origSpec, srcSpec, srcTaskDefOpt, myGrafts))
+      val allGrafts: Seq[Branch] = myGrafts ++ prevGrafts
+      debug("Resolved %s to potentially non-branch spec %s @ %s with new grafts %s (all grafts: %s)".format(
+        origSpec, srcSpec, srcTaskDefOpt, myGrafts, allGrafts))
       
       // resolveVarFunc might have returned a branch point to us
       // if it traced back to a parent's parameter, which is itself a branch point
       // if that's the case, we should continue recursing. otherwise, just add.
       srcSpec.rval match {
         case Literal(_) | Unbound() => {
+          // remove any grafts that are currently being introduced as a branch
+          // the graft will effectively be performed as a consistency check by the global branch point constraint
+          // otherwise, we botch the order of operations
+          // (we introduce branches, then check global branch point consistency, then apply grafts to remove branch points)
+          val filteredGrafts: Seq[Branch] = allGrafts.filter { branch =>
+            val ok = !branchHistory.contains(branch)
+            // TODO: Don't allow grafting then routing to a different branch?
+            if (!ok)
+              debug("Task=%s; Removing graft since nested branches already constrains this branch: %s is in %s".format(taskDef, branch, branchHistory))
+            else
+              debug("Task=%s; Keeping graft: %s is not in %s".format(taskDef, branch, branchHistory))
+            ok
+          }
+
           // store specs at this branch nesting along with its grafts
           // this is used by the MetaHyperDAG to determine structure and temporal dependencies
-          val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, allGrafts)
+          val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, filteredGrafts)
           data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
           
-          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, allGrafts))
+          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, filteredGrafts))
         }
         case _ => {
           // not a literal -- keep tracing through branch points
