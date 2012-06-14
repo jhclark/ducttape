@@ -30,7 +30,7 @@ object Plans extends Logging {
   // using a PatternFilter
   def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
-                    explainCallback: => (Option[String], String) => Unit,
+                    explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
                     graftRelaxations: Map[PackedWorkVert, Set[Branch]])
       : Map[(String,Realization), RealTask] = {
     val numCores = 1
@@ -41,9 +41,11 @@ object Plans extends Logging {
     // a backward pass over the unpacked DAG
     val candidates = new mutable.HashMap[(String,Realization), RealTask]
 
+    def explainCallbackCurried(vertexName: => String, msg: => String, accepted: Boolean)
+      = explainCallback(plan.name, vertexName, msg, accepted)
+
     // this is the most important place for us to pass the filter to unpackedWalker!
-    workflow.unpackedWalker(PatternFilter(plan.realizations, graftRelaxations),
-                            realizationFailureCallback=explainCallback.curried(plan.name)).
+    workflow.unpackedWalker(PatternFilter(plan.realizations, graftRelaxations), explainCallbackCurried).
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
@@ -63,9 +65,10 @@ object Plans extends Logging {
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
    */
+  def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
-                         explainCallback: => (Option[String], String) => Unit
-                           = { (plan: Option[String], msg: String) => ; })
+                         explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
+                         errorOnZeroTasks: Boolean = true)
                         (implicit conf: Config): PlanPolicy = {
     
     // Pass 1: One backward pass per task that has a branch graft
@@ -104,11 +107,14 @@ object Plans extends Logging {
         System.err.println("Using default one-off realization plan: " +
         		"Each realization will have no more than 1 non-baseline branch")
         		
+
+        def explainCallbackCurried(vertexName: => String, msg: => String, accepted: Boolean)
+          = explainCallback(Some("default one-off"), vertexName, msg, accepted)
+
         val planPolicy = OneOff(graftRelaxations)	
         // walk the one-off plan, for the benefit of the explainCallback,
         // not because we actually store any information from it
-        workflow.unpackedWalker(planPolicy, realizationFailureCallback=explainCallback.curried(Some("default one-off"))).
-          foreach { v: UnpackedWorkVert => ; }  
+        workflow.unpackedWalker(planPolicy, explainCallbackCurried).foreach { v: UnpackedWorkVert => ; }  
         planPolicy
       }
       case _ => {
@@ -171,7 +177,7 @@ object Plans extends Logging {
           System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, planName))
           
           // this is almost certainly not what the user intended
-          if (seen.isEmpty) {
+          if (seen.isEmpty && errorOnZeroTasks) {
             throw new FileFormatException("Plan includes zero tasks", plan.planDef)
           }
           vertexFilter ++= seen.map { task => (task.name, task.realization) }

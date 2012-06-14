@@ -2,6 +2,7 @@ package ducttape.hyperdag.meta
 
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.PackedVertex
+import ducttape.hyperdag.UnpackedVertex
 import ducttape.hyperdag.walker.PackedPhantomMetaDagWalker
 import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.MetaVertexFilter
@@ -25,11 +26,12 @@ class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) 
                           constraintFilter: ConstraintFilter[Option[V],H,E,D,F] = new DefaultConstraintFilter[Option[V],H,E,D,F],
                           vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-                          toD: H => D = new DefaultToD[H])
+                          toD: H => D = new DefaultToD[H],
+                          observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
                          (implicit ordering: Ordering[D])
                          : UnpackedPhantomMetaDagWalker[V,M,H,E,D,F] = {
     new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, selectionFilter, hedgeFilter,
-      constraintFilter, vertexFilter, comboTransformer, toD)(ordering)
+      constraintFilter, vertexFilter, comboTransformer, toD, observer)(ordering)
   }
   
   private[hyperdag] def removePhantoms(list: Traversable[PackedVertex[Option[V]]])

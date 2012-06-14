@@ -18,7 +18,8 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-    toD: H => D = new DefaultToD[H])
+    toD: H => D = new DefaultToD[H],
+    observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
   
   object MetaComboTransformer extends ComboTransformer[H,E,D] {
@@ -39,9 +40,16 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     override def apply(he: HyperEdge[H,E]) = !dag.isEpsilon(he)
   }
 
+  object ObserverVertexFilter extends VertexFilter[V,H,E,D] {
+    override def apply(v: UnpackedVertex[V,H,E,D]) = {
+      observer(v)
+      true
+    }
+  }
+
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
     dag.delegate, selectionFilter, hedgeFilter, constraintFilter,
-    new DefaultVertexFilter[V,H,E,D], comboTransformer, toD)
+    ObserverVertexFilter, comboTransformer, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps

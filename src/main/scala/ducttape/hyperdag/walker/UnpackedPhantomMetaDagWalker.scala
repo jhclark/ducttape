@@ -22,7 +22,8 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         constraintFilter: ConstraintFilter[Option[V],H,E,D,F] = new DefaultConstraintFilter[Option[V],H,E,D,F],
         vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-        toD: H => D = new DefaultToD[H])
+        toD: H => D = new DefaultToD[H],
+        observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
         (implicit ordering: Ordering[D])
   extends Walker[UnpackedChainedMetaVertex[V,H,E,D]] with Logging {
   
@@ -34,7 +35,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   }
   
   val delegate = new UnpackedMetaDagWalker[Option[V],M,H,E,D,F](
-    dag.delegate, selectionFilter, hedgeFilter, constraintFilter, MetaVertexFilterAdapter, comboTransformer, toD)
+    dag.delegate, selectionFilter, hedgeFilter, constraintFilter, MetaVertexFilterAdapter, comboTransformer, toD, observer)
     
   // we must be able to recover the phantom-antecedents of non-phantom vertices
   // so that we can properly populate their state maps

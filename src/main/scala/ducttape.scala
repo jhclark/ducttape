@@ -272,14 +272,30 @@ object Ducttape extends Logging {
     // explain why certain realizations weren't generated (it's not always obvious)
     def explain {
       // TODO: More memory efficient uniquing strategy?
-      val seen = new mutable.HashSet[(Option[String],String)]
-      def explainCallback(planName: Option[String], msg: String) {
-        if (!seen( (planName, msg) )) {
-          System.err.println("%s: %s".format(planName.getOrElse("Anonymous"), msg))
-          seen += ((planName, msg))
+      val seen = new mutable.HashSet[(Option[String],String,String)]
+      val have = new mutable.HashMap[String,mutable.HashSet[String]]
+      def explainCallback(planName: Option[String], vertexName: =>String, msg: =>String, accepted: Boolean) {
+        if (accepted) {
+          have.getOrElseUpdate(vertexName, new mutable.HashSet[String]) += msg
+        } else {
+          if (!seen( (planName, vertexName, msg) )) {
+            System.err.println("%s%s%s: %s%s%s: %s".format(
+              conf.greenColor, planName.getOrElse("Anonymous"), conf.resetColor,
+              conf.taskColor, vertexName, conf.resetColor,
+              msg))
+            seen += ((planName, vertexName, msg))
+          }
         }
       }
-      Plans.getPlannedVertices(workflow, explainCallback)
+      Plans.getPlannedVertices(workflow, explainCallback, errorOnZeroTasks=false)
+
+      System.err.println("Accepted realizations: ")
+      for ( (vertex, reals) <- have.toSeq.sortBy(_._1)) {
+        System.err.println("%s%s%s".format(conf.taskColor, vertex, conf.resetColor))
+        for (real <- reals) {
+          System.err.println("  %s".format(real))
+        }
+      }
     }
 
     def markDone {
