@@ -229,12 +229,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   def traverse(task: TaskTemplate,
     specPhantomV: PackedVertex[Option[TaskTemplate]],
     curNode: BranchPointTree,
-    debugNesting: Seq[Branch],
+    nestedBranches: Seq[Branch],
     sinkV: PackedVertex[Option[TaskTemplate]])(implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]]) {
 
     // the branch point associated with the meta edge being created
     val branchPoint = curNode.branchPoint
-    debug("Task=%s %s: BranchPointTree is %s".format(task, debugNesting, curNode))
+    debug("Task=%s %s: BranchPointTree is %s".format(task, nestedBranches, curNode))
 
     // we create a phantom vertex when:
     // 1) we need an imaginary home for config specs
@@ -251,7 +251,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       if (candidateGrafts.isEmpty) Set(NO_GRAFTS) else candidateGrafts
     }
     
-    debug("Task=%s %s: Have %d graft sets: %s".format(task, debugNesting, graftSet.size, graftSet))
+    debug("Task=%s %s: Have %d graft sets: %s".format(task, nestedBranches, graftSet.size, graftSet))
 
     // add a meta-edge for each unique graft set
     for (curGrafts: Seq[Branch] <- graftSet) {
@@ -261,7 +261,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       // create a hyperedge list in the format expected by the HyperDAG API
       // NOTE: getHyperEdges is mutually recursive with traverse()
       val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])]
-        = getHyperEdges(task, specPhantomV, curNode, debugNesting, curGrafts).filter {
+        = getHyperEdges(task, specPhantomV, curNode, nestedBranches, curGrafts).filter {
             case (branchInfo, vertexInfo) => {
               // if this branch's branch point is named in our current graft set,
               // make sure the branch name matches
@@ -271,15 +271,15 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
             }
           }
       
-      debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, curGrafts, debugNesting, hyperedges))
+      debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, curGrafts, nestedBranches, hyperedges))
       
       if (!hyperedges.isEmpty) {
         debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
-          format(task, debugNesting, branchPoint, hyperedges))
+          format(task, nestedBranches, branchPoint, hyperedges))
         dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s[%s]".format(branchPoint.toString, task.name, curGrafts.mkString(",")))
       } else {
         debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
-          format(task, debugNesting, branchPoint))
+          format(task, nestedBranches, branchPoint))
       }
     }
   }

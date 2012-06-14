@@ -118,7 +118,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
         
-        trace("Applying constraint filter at %s for realization: %s".format(v, real.view.mkString("-")))
+        trace("Applying constraint filter at %s with hyperedge %s for realization: %s".format(v, he, real.view.mkString("-")))
         
         // enforce that each branch point should atomically select one branch per hyperpath
         // through the (Meta)HyperDAG
