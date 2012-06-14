@@ -105,8 +105,8 @@ object Shell extends Logging {
   val BASH_FLAGS = Seq(
     "set -e", // stop on errors
     "set -o pipefail", // stop on errors in pipelines
-    "set -u", // don't allow unbound variables
-    "set -x" // show each command as it is executed
+    "set -u" // don't allow unbound variables
+    //"set -x" // show each command as it is executed
   )
 
   def runGetOutputLines(cmd: String,
