@@ -2,7 +2,7 @@
 # Lesson 2:  Functions
 
 # To define a "task function" in the same file
-func filter: cdec < in > out {
+func filter : cdec < in > out {
   cat < $in > $out
 }
 
@@ -10,4 +10,4 @@ func filter: cdec < in > out {
 # Using that function or subworkflow later in the file:
 # (Require naming inputs and outputs again for clarity, but
    omit commands)
-task X = filter: cdec < in=x.txt > out
+task X calls filter : cdec < in=x.txt > out
