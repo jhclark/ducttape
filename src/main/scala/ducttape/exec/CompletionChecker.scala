@@ -24,7 +24,7 @@ object CompletionChecker extends Logging {
     }
   } 
   
-  def isComplete(taskEnv: TaskEnvironment): Boolean = {
+  def isComplete(taskEnv: TaskEnvironment, msgCallback: String => Unit = (msg: String) => { ; } ): Boolean = {
     
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
@@ -43,7 +43,7 @@ object CompletionChecker extends Logging {
     conditions.forall { case (cond, msg) =>
       val conditionHolds = cond()
       if (!conditionHolds)
-        System.err.println("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
+        msgCallback("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
       conditionHolds
     }
   }
@@ -74,7 +74,9 @@ object CompletionChecker extends Logging {
 
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
 // the most recent result is untouched, invalid, partial, or complete
-class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor with Logging {
+//
+// use msgCallback to show info about why tasks aren't complete
+class CompletionChecker(dirs: DirectoryArchitect, msgCallback: String => Unit) extends UnpackedDagVisitor with Logging {
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
   private val _completed = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
@@ -98,7 +100,7 @@ class CompletionChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor wit
     debug("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
 
-    if (CompletionChecker.isComplete(taskEnv)) {
+    if (CompletionChecker.isComplete(taskEnv, msgCallback)) {
       _completed += ((task.name, task.realization))
 //      completeVersions += (task.name, task.realization) -> task.version
     } else {

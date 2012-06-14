@@ -245,7 +245,8 @@ object Ducttape extends Logging {
       
     def getCompletedTasks(planPolicy: PlanPolicy): CompletionChecker = {
       System.err.println("Checking for completed steps...")
-      Visitors.visitAll(workflow, new CompletionChecker(dirs), planPolicy)
+      def msgCallback(msg: String) = System.err.println(msg)
+      Visitors.visitAll(workflow, new CompletionChecker(dirs, msgCallback), planPolicy)
     }
     
     def getPackageVersions(cc: CompletionChecker, planPolicy: PlanPolicy) = {
