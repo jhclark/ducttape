@@ -40,7 +40,7 @@ object Shell extends Logging {
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
       // TODO: Set environment here to be consistent with dry run script generation?
-      bash.println("set -euo pipefail")
+      bash.println(BASH_FLAGS.mkString("\n"))
       bash.println(cmd)
       bash.close()
     }
@@ -102,6 +102,13 @@ object Shell extends Logging {
     output
   }
 
+  val BASH_FLAGS = Seq(
+    "set -e", // stop on errors
+    "set -o pipefail", // stop on errors in pipelines
+    "set -u", // don't allow unbound variables
+    "set -x" // show each command as it is executed
+  )
+
   def runGetOutputLines(cmd: String,
                         stdPrefix: String,
                         workDir: File,
@@ -110,10 +117,7 @@ object Shell extends Logging {
 
     def provideIn(x: OutputStream) = {
       val bash = new PrintStream(x)
-      bash.println("set -e") // stop on errors
-      bash.println("set -o pipefail") // stop on errors in pipelines
-      bash.println("set -u") // don't allow unbound variables
-      bash.println("set -x") // show each command as it is executed
+      bash.println(BASH_FLAGS.mkString("\n"))
       bash.println(cmd)
       bash.close
     }

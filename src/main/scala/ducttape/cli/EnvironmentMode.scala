@@ -10,6 +10,7 @@ import ducttape.exec.DirectoryArchitect
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.exec.PackageVersioner
+import ducttape.util.Shell
 
 object EnvironmentMode {
   
@@ -60,6 +61,7 @@ object EnvironmentMode {
         }
       }
       if (showCommands) {
+        println(Shell.BASH_FLAGS.mkString("\n"))
         println(task.commands.code)
       }
       println()
