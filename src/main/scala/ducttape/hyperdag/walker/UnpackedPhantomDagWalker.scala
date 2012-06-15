@@ -16,6 +16,7 @@ class UnpackedPhantomDagWalker[V,H,E,D,F](
         val vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         val toD: H => D = new DefaultToD[H])
+       (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
   
   object ConstraintFilterAdapter extends ConstraintFilter[Option[V],H,E,D,F] {

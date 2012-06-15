@@ -20,6 +20,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
     toD: H => D = new DefaultToD[H],
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
+   (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
   
   object MetaComboTransformer extends ComboTransformer[H,E,D] {
