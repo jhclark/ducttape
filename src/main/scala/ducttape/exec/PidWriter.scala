@@ -30,7 +30,7 @@ class PidWriter(dirs: DirectoryArchitect,
         //    will run it (WARNING: it's the user's responsibility to
         //    make sure all currently running versions will provide
         //    *consistent* output)
-        locker.maybeAcquireLock(taskEnv)
+        locker.maybeAcquireLock(taskEnv, writeVersion=true)
       } else {
         locker.maybeReleaseLock(taskEnv)
       }

@@ -98,18 +98,19 @@ object ExecuteMode {
           System.err.println("Retreiving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
-  
+
+          // TODO: Make locker take a thunk to create a scoping effect
           val locker = new LockManager(myVersion)
-          
-          System.err.println("Moving previous partial output to the attic...")
-          // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
-          
-          // Make a pass after moving partial output to write output files
-          // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
-          System.err.println("Executing tasks...")
           try {
+            System.err.println("Moving previous partial output to the attic...")
+            // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
+            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
+            
+            // Make a pass after moving partial output to write output files
+            // claiming those directories as ours so that we can later start another ducttape process
+            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
+            
+            System.err.println("Executing tasks...")
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
                               planPolicy, opts.jobs())

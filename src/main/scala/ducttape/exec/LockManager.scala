@@ -144,7 +144,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   }
 
   // acquire the lock iff nobody else holds it
-  def maybeAcquireLock(taskEnv: TaskEnvironment): Boolean = {
+  def maybeAcquireLock(taskEnv: TaskEnvironment, writeVersion: Boolean): Boolean = {
     locks.synchronized {
       // do we already hold this lock?
       debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
@@ -158,7 +158,10 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
             // note: we already have "locks" synchronized
             locks += taskEnv.lockFile.getAbsolutePath -> lock
             debug("Locks are now: " + locks)
-            Files.write(version.version.toString, taskEnv.versionFile)
+            if (writeVersion) {
+              debug("Writing version to " + taskEnv.versionFile)
+              Files.write(version.version.toString, taskEnv.versionFile)
+            }
             true
           }
           case None => {
