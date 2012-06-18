@@ -32,6 +32,7 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
                           vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
                           toD: H => D = new DefaultToD[H])
+                         (implicit ordering: Ordering[D])
     = new walker.UnpackedDagWalker[V,H,E,D,F](this, selectionFilter, hedgeFilter, constraintFilter, vertexFilter,
                                               comboTransformer, toD)
     

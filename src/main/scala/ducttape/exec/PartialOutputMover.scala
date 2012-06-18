@@ -30,7 +30,7 @@ class PartialOutputMover(dirs: DirectoryArchitect,
     debug("Considering %s".format(task))
     
     val taskEnv = new TaskEnvironment(dirs, task)
-    val gotLock = locker.maybeAcquireLock(taskEnv)
+    val gotLock = locker.maybeAcquireLock(taskEnv, writeVersion=false)
     
     if (gotLock) {
       if (broken( (task.name, task.realization) )) {

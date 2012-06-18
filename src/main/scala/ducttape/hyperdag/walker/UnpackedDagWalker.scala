@@ -44,6 +44,7 @@ class UnpackedDagWalker[V,H,E,D,F](
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         toD: H => D = new DefaultToD[H])
+       (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
   // TODO: Factor this out into a class all its own?
@@ -87,7 +88,8 @@ class UnpackedDagWalker[V,H,E,D,F](
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
           case Some(transformedCombo: MultiSet[_]) => {
             if (selectionFilter(transformedCombo)) {
-              callback(new UnpackedVertex[V,H,E,D](v, he, transformedCombo.toList, parentReals.toList))
+              val sortedReal: Seq[D] = transformedCombo.toList.sorted(ordering)
+              callback(new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList))
             }
           } 
         }
@@ -166,6 +168,7 @@ class UnpackedDagWalker[V,H,E,D,F](
   
   // XXX: O(unpacked_vertices)
   // dedupe vertices, made necessary by realization mangling
+  // this requires that the realizations be sorted so that equals() works as expected
   private val seen = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
 
   // first, visit the roots, which are guaranteed not to be packed
@@ -308,7 +311,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                   // this possibility is introduced by realization mangling
                   if (!seen(unpackedV)) {
                     debug("Adding new vertex to the agenda: " + unpackedV)
-                    debug("Seen: " + seen)
+                    trace("Seen: " + seen)
                     agenda.add(unpackedV)
                     seen += unpackedV
                   }

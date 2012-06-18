@@ -24,7 +24,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         toD: H => D = new DefaultToD[H],
         observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
-        (implicit ordering: Ordering[D])
+       (implicit ordering: Ordering[D])
   extends Walker[UnpackedChainedMetaVertex[V,H,E,D]] with Logging {
   
   object MetaVertexFilterAdapter extends MetaVertexFilter[Option[V],H,E,D] {
@@ -103,6 +103,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
             val munged: Seq[(E, Seq[D])] = zip3(dag.delegate.sources(hyperedge), parentReals, hyperedge.e) flatMap {
               case (parent, parentReal, edge) => {
                 trace("Begin backtracing phantom chain for " + parent)
+                // TODO: DON'T RE-SORT HERE
                 val unpackedV = unpackedMap( (parent, parentReal.sorted(ordering)) )
                 val leafParents: Seq[(E, Seq[D])] = followPhantomChain(unpackedV, edge, parentReal)
                 leafParents

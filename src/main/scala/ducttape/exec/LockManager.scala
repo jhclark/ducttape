@@ -13,6 +13,28 @@ import grizzled.slf4j.Logging
 
 import collection._
 
+object LockManager extends Logging {
+  // DO NOT use this during normal workflow execution
+  // it is meant for manual one-time cleanup only
+  def forceReleaseLock(taskEnv: TaskEnvironment) {
+    debug("Forcefully releasing lock: " + taskEnv.lockFile)
+ 
+/*   
+    locks.synchronized {
+      locks.getOrElse(taskEnv.lockFile.getAbsolutePath) match {
+        case Some(lock) => {
+          lock.release()
+          locks -= taskEnv.lockFile.getAbsolutePath          
+        }
+        case None => ;
+      }
+    }
+*/
+    taskEnv.lockFile.delete()
+  }
+}
+
+
 // see also PidWriter
 // note: this class is also responsible for writing workflow version information
 class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with Logging {
@@ -122,7 +144,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   }
 
   // acquire the lock iff nobody else holds it
-  def maybeAcquireLock(taskEnv: TaskEnvironment): Boolean = {
+  def maybeAcquireLock(taskEnv: TaskEnvironment, writeVersion: Boolean): Boolean = {
     locks.synchronized {
       // do we already hold this lock?
       debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
@@ -136,7 +158,10 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
             // note: we already have "locks" synchronized
             locks += taskEnv.lockFile.getAbsolutePath -> lock
             debug("Locks are now: " + locks)
-            Files.write(version.version.toString, taskEnv.versionFile)
+            if (writeVersion) {
+              debug("Writing version to " + taskEnv.versionFile)
+              Files.write(version.version.toString, taskEnv.versionFile)
+            }
             true
           }
           case None => {

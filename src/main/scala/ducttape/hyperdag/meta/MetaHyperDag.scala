@@ -45,7 +45,8 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
                           constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
                           vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
-                          toD: H => D = new DefaultToD[H]) = {
+                          toD: H => D = new DefaultToD[H])
+                         (implicit ordering: Ordering[D])= {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.

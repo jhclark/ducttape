@@ -21,6 +21,7 @@ import ducttape.exec.DirectoryArchitect
 import ducttape.exec.PackageVersioner
 import ducttape.exec.FullTaskEnvironment
 import ducttape.exec.PartialOutputMover
+import ducttape.exec.ForceUnlocker
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
@@ -245,7 +246,8 @@ object Ducttape extends Logging {
       
     def getCompletedTasks(planPolicy: PlanPolicy): CompletionChecker = {
       System.err.println("Checking for completed steps...")
-      Visitors.visitAll(workflow, new CompletionChecker(dirs), planPolicy)
+      def msgCallback(msg: String) = System.err.println(msg)
+      Visitors.visitAll(workflow, new CompletionChecker(dirs, msgCallback), planPolicy)
     }
     
     def getPackageVersions(cc: CompletionChecker, planPolicy: PlanPolicy) = {
@@ -507,6 +509,35 @@ object Ducttape extends Logging {
           }
         }
       }
+      case "unlock" => {
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+
+        if (cc.locked.size > 0) {
+          import ducttape.cli.ColorUtils.colorizeDir
+          System.err.println("Remove locks:")
+          for ( (task, real) <- cc.locked) {
+            System.err.println("%sUNLOCK:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+          }
+        }
+          
+        val answer = if (opts.yes) {
+          true
+        } else {
+          // note: user must still press enter
+          if (cc.locked.size > 0) {
+            System.err.print("Are you sure you want to FORCE UNLOCK these %d tasks? (Only do this if you sure no other process is using them) [y/n] ".format(cc.todo.size))
+            Console.readBoolean
+          } else {
+            false
+          }
+        }
+        
+        answer match {
+          case true => Visitors.visitAll(workflow, new ForceUnlocker(dirs, todo=cc.locked), planPolicy)
+          case _ => System.err.println("Doing nothing")
+        }
+       }
       case "exec" | _ => {
         val planPolicy = getPlannedVertices()
         val cc = getCompletedTasks(planPolicy)
