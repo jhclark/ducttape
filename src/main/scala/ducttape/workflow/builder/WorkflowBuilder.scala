@@ -224,6 +224,16 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     }
   }
 
+  // Overview of some of the compicated things traverse must deal with here -- in traverse() and getHyperEdges():
+  // * Nested branch points
+  // * Grafting inside branch point defs
+  // * Grafting of the same branch point that is currently being defined, inside that branch point def
+  // * Having the same branch with different graft sets (this happens frequently for Baseline.baseline)
+  //   - choosing one branch must jointly activate all graft sets -- don't accidentally iterate over (branch, graftSet) in epsilon vertex
+  // * Having different branches with the same graft set (consider 2 branches, 1 graft set)
+  //   - if we accidentally have an epsilon vertex for each (branch, graftSet) pair, then the branches will collide and cancel out
+  // * Having grafts at different levels of branch point nesting
+
   // add one metaedge per branch point
   // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
   def traverse(task: TaskTemplate,
