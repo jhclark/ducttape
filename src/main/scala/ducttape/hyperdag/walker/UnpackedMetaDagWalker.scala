@@ -16,35 +16,33 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     munger: RealizationMunger[V,H,E,D,F],
     constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
-    comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
     toD: H => D = new DefaultToD[H],
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
   
-  object MetaComboTransformer extends ComboTransformer[H,E,D] {
-    override def apply(heOpt: Option[HyperEdge[H,E]], combo: MultiSet[D]) = heOpt match {
-      case None => comboTransformer(heOpt, combo)
+  // never allow children to transform epsilons
+  // and remove hyperedges from derivation
+  object MetaRealizationMunger extends RealizationMunger[V,H,E,D,F] {
+    override def finishHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], combo: MultiSet[D]) = heOpt match {
+      case None => munger.finishHyperedge(v, heOpt, combo)
       case Some(he: HyperEdge[_,_]) => {
         if (dag.isEpsilon(he)) {
           Some(combo) // never transform epsilons
         } else {
-          comboTransformer(heOpt, combo)
+          munger.finishHyperedge(v, heOpt, combo)
         }
       }
     }
-  }
-
-  // TODO: Add this to the munger
-  object EpsilonRemovalMunger extends RealizationMunger[V,H,E,D,F] {
-    def traverseHyperedgeBegin(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], toD: H => D): Seq[D] = {
+    
+    override def beginHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]] = {
       heOpt match {
-        case None => Nil
+        case None => Some(Nil)
         case Some(he) => {
           if (dag.isEpsilon(he))
-            Nil
+            Some(Nil)
           else
-            Seq(toD(he.h))
+            Some(proposedReal)
         }
       }
     }
@@ -58,8 +56,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, EpsilonRemovalMunger.andThen(munger), constraintFilter,
-    ObserverVertexFilter, comboTransformer, toD)
+    dag.delegate, MetaRealizationMunger.andThen(munger), constraintFilter, ObserverVertexFilter, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps

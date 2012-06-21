@@ -18,9 +18,9 @@ import ducttape.hyperdag.meta.PhantomMetaHyperDag
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
 import ducttape.hyperdag.walker.PackedPhantomMetaDagWalker
-import ducttape.hyperdag.walker.ComboTransformer
 import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.MetaVertexFilter
+import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.workflow.SpecTypes.SpecPair
 
 import grizzled.slf4j.Logging
@@ -55,42 +55,44 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
    *  
    *  The explainCallback can be used to provide feedback to the user on
    *  why certain realizations were not produced (e.g. due to grafting). */
-  class BranchGraftComboTransformer(explainCallback: (=>String, =>String, Boolean) => Unit)
-      extends ComboTransformer[BranchInfo,Seq[SpecPair],Branch]
+  class BranchGraftRealizationMunger(explainCallback: (=>String, =>String, Boolean) => Unit)
+      extends RealizationMunger[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState]
       with Logging {
     
-    override def apply(heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]) = heOpt match {
-      case Some(he) => {
-        trace {
-          val sink = dag.delegate.delegate.sink(he)
-          "Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, sink, combo)
-        }
-        if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
-          // no grafting required. do nothing
-          trace("No grafting required")
-          Some(combo)
-        } else {
-          if (he.h.grafts.forall { branch => combo.contains(branch) } ) {
-            val copy = new MultiSet[Branch](combo)
-            he.h.grafts.foreach { branch => copy.removeAll(branch) }
-            trace("Applied grafts: %s => %s".format(combo.keys, copy.keys))
-            Some(copy)
+    override def finishHyperedge(v: PackedWorkVert, heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]): Option[MultiSet[Branch]] = {
+      heOpt match {
+        case Some(he) => {
+          trace {
+            val sink = dag.delegate.delegate.sink(he)
+            "Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, sink, combo)
+          }
+          if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
+            // no grafting required. do nothing
+            trace("No grafting required")
+            Some(combo)
           } else {
-            trace("Filtered by branch graft")
-            // no corresponding edge was found in the derivation
-            // this branch graft cannot apply
-            explainCallback(
-              heOpt.map { he => dag.delegate.delegate.sink(he).toString }.getOrElse("unknown"),
-              "Realization %s filtered by branch graft: %s (source: %s)".format(
-                combo.view.mkString("-"),
-                he.h.grafts.mkString(","),
-                heOpt.map { he => dag.delegate.delegate.sources(he).head.toString }.getOrElse("unknown")),
-              false)
-            None
+            if (he.h.grafts.forall { branch => combo.contains(branch) } ) {
+              val copy = new MultiSet[Branch](combo)
+              he.h.grafts.foreach { branch => copy.removeAll(branch) }
+              trace("Applied grafts: %s => %s".format(combo.keys, copy.keys))
+              Some(copy)
+            } else {
+              trace("Filtered by branch graft")
+              // no corresponding edge was found in the derivation
+              // this branch graft cannot apply
+              explainCallback(
+                heOpt.map { he => dag.delegate.delegate.sink(he).toString }.getOrElse("unknown"),
+                "Realization %s filtered by branch graft: %s (source: %s)".format(
+                  combo.view.mkString("-"),
+                  he.h.grafts.mkString(","),
+                  heOpt.map { he => dag.delegate.delegate.sources(he).head.toString }.getOrElse("unknown")),
+                false)
+              None
+            }
           }
         }
+        case _ => Some(combo)
       }
-      case _ => Some(combo)
     }
   }
 
@@ -241,9 +243,9 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
       = explainCallback(v.packed.toString, v.realization.mkString("-"), true)
 
     dag.unpackedWalker[Branch,UnpackState](
+      new BranchGraftRealizationMunger(explainCallback),
       constraintFilter=globalBranchPointConstraint,
       vertexFilter=vertexFilter,
-      comboTransformer=new BranchGraftComboTransformer(explainCallback),
       toD=toD,
       observer=observe)(ordering)
   }

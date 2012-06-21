@@ -43,24 +43,16 @@ class DefaultToD[H] extends Function1[H,H] {
   override def apply(h: H) = h
 }
 
-// TODO: Receieve immutable multiset as argument?
-trait ComboTransformer[H,E,D] {
-  def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]]
-}
-
-class DefaultComboTransformer[H,E,D] extends ComboTransformer[H,E,D] {
-  override def apply(he: Option[HyperEdge[H,E]], combo: MultiSet[D]) = Some(combo)
-}
-
 trait RealizationMunger[V,H,E,D,F] {
   
   // when we first encounter the hyperedge, we must add any realizations that this hyperedge will introduce
-  def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Seq[D] = proposedReal
+  def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]] = Some(proposedReal)
 
   //def traverseEdge()
   
-  // when we finish traversing the hyperedge, we're free to accept it or not, but we should be done modifying realizations 
-  //def finishHyperedge()
+  // when we finish traversing the hyperedge, we're free to accept it or not, but we should be done modifying realizations
+  // TODO: Make incoming multiset immutable?
+  def finishHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]] = Some(combo)
 
   def andThen(that: RealizationMunger[V,H,E,D,F]): RealizationMunger[V,H,E,D,F]
     = new CompositeRealizationMunger[V,H,E,D,F](this, that)
@@ -71,8 +63,19 @@ class CompositeRealizationMunger[V,H,E,D,F](
     second: RealizationMunger[V,H,E,D,F])
     extends RealizationMunger[V,H,E,D,F] {
 
-  def traverseHyperedgeBegin(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Seq[D]
-    = second.beginHyperedge(v, he, first.beginHyperedge(v, he, proposedReal))
+  override def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]] = {
+    first.beginHyperedge(v, he, proposedReal) match {
+      case None => None
+      case Some(intermediate) => second.beginHyperedge(v, he, intermediate) 
+    }
+  }
+
+  override def finishHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]] = {
+    first.finishHyperedge(v, he, combo) match {
+      case None => None
+      case Some(intermediate) => second.finishHyperedge(v, he, intermediate) 
+    }
+  }
 }
 
 class DefaultRealizationMunger[V,H,E,D,F] extends RealizationMunger[V,H,E,D,F];

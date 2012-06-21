@@ -10,7 +10,8 @@ import annotation.tailrec
 import grizzled.slf4j.Logging
 
 
-/** 
+/** Actually, this is an UnpackedHyperDagWalker... 
+ * 
  *  the constraintFilter allows for higher order semantics to be imposed on the traversal
  *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
  *  we want to choose a branch once and consistently use the same branch choice within each derivation.
@@ -20,24 +21,26 @@ import grizzled.slf4j.Logging
  *
  *  the vertex filter allows early termination when it is guaranteed that no future
  *  vertices should be reachable
- *
- *  the comboTransformer is used to implement things such as branch grafts by taking in the result of aggregating
- *  all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
- *  version (e.g. branch grafts remove entirely one of these edges from the combo and state F). it allows us to
- *  prevent exhaustive traversal of all derivations (i.e. prevent combinatorial explosion) by returning None
- *  if any single component incoming edge of a hyperedge does not match its constraints.
+ *  
+ *  The RealizationMunger allows user-defined transformations and filtering of the derivation process.
+ *  Uses:
+ *  - beginHyperedge() is used to cosmetically remove epsilon hyperedges introduced by the MetaHyperDag
+ *    from the derivation
+ *  - the finishHyperEdge() is used to implement things such as branch grafts by taking in the result of aggregating
+ *    all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
+ *    version (e.g. branch grafts remove entirely one of these edges from the combo and state F). it allows us to
+ *    prevent exhaustive traversal of all derivations (i.e. prevent combinatorial explosion) by returning None
+ *    if any single component incoming edge of a hyperedge does not match its constraints.
  *
  *  the "edge derivation" == the realization
  *  
  *  The type D is the "derivation type" of the hyperedge. Usually, having D=H is fine, but
  *  D may be any function of H via the function toD() */
-// TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
         munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
         constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-        comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
         toD: H => D = new DefaultToD[H])
        (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
@@ -78,7 +81,7 @@ class UnpackedDagWalker[V,H,E,D,F](
       trace("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
       if (i == filled.size) {
-        comboTransformer(he, combo) match {
+        munger.finishHyperedge(v, he, combo) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
           case Some(transformedCombo: MultiSet[_]) => {
             val sortedReal: Seq[D] = transformedCombo.toList.sorted(ordering)
@@ -129,21 +132,27 @@ class UnpackedDagWalker[V,H,E,D,F](
 
       // allow user to filter out certain hyperedges from the derivation
       // (e.g. hyperedges from Epsilon vertices)
-      val hedgeReal: Seq[D] = {
+      val hedgeRealOpt: Option[Seq[D]] = {
         val proposedReal = he.map(he => Seq(toD(he.h))).getOrElse(Nil)
         munger.beginHyperedge(v, he, proposedReal)
       }
-
-      val combo = new MultiSet[D]
-      "Applying constraint filter for hyperedge %s (not parent)".format(he)
-      constraintFilter(v, he, constraintFilter.initState, combo, hedgeReal) match {
-        case None => ; // illegal state, skip it
-        case Some(nextState) => {
-          combo ++= hedgeReal
-          val parentReals = new Array[Seq[D]](filled.size)
-          parentReals(iFixed) = fixedRealization
-          //combo ++= fixedRealization
-          unpack(0, iFixed, combo, parentReals, nextState, callback)
+      
+      // did munger decide to no longer continue with this hyperedge?
+      hedgeRealOpt match {
+        case None => ;
+        case Some(hedgeReal) => {
+          val combo = new MultiSet[D]
+          "Applying constraint filter for hyperedge %s (not parent)".format(he)
+          constraintFilter(v, he, constraintFilter.initState, combo, hedgeReal) match {
+            case None => ; // illegal state, skip it
+            case Some(nextState) => {
+              combo ++= hedgeReal
+              val parentReals = new Array[Seq[D]](filled.size)
+              parentReals(iFixed) = fixedRealization
+              //combo ++= fixedRealization
+              unpack(0, iFixed, combo, parentReals, nextState, callback)
+            }
+          }
         }
       }
     }
