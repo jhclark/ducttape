@@ -13,7 +13,7 @@ import annotation.tailrec
  *  F is the FilterState */
 class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
-    hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+    munger: RealizationMunger[V,H,E,D,F],
     constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -34,10 +34,20 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
       }
     }
   }
-  
-  // TODO: XXX: Combine with hedgeFilter from above
-  object EpsilonHyperEdgeFilter extends HyperEdgeFilter[H,E] { // TODO: Rename as "mask"
-    override def apply(he: HyperEdge[H,E]) = !dag.isEpsilon(he)
+
+  // TODO: Add this to the munger
+  object EpsilonRemovalMunger extends RealizationMunger[V,H,E,D,F] {
+    def traverseHyperedgeBegin(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], toD: H => D): Seq[D] = {
+      heOpt match {
+        case None => Nil
+        case Some(he) => {
+          if (dag.isEpsilon(he))
+            Nil
+          else
+            Seq(toD(he.h))
+        }
+      }
+    }
   }
 
   object ObserverVertexFilter extends VertexFilter[V,H,E,D] {
@@ -48,7 +58,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, hedgeFilter, constraintFilter,
+    dag.delegate, EpsilonRemovalMunger.andThen(munger), constraintFilter,
     ObserverVertexFilter, comboTransformer, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices

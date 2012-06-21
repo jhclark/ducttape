@@ -10,10 +10,7 @@ import annotation.tailrec
 import grizzled.slf4j.Logging
 
 
-/** the hedge filter allows us to hide certain hyperedges from
- *  the edge derivation (e.g. edges without a branch name / the default branch name)
- *  however, this filter is cosmetic only and does not result in any additional 
- *
+/** 
  *  the constraintFilter allows for higher order semantics to be imposed on the traversal
  *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
  *  we want to choose a branch once and consistently use the same branch choice within each derivation.
@@ -37,7 +34,7 @@ import grizzled.slf4j.Logging
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
-        hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
         constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -80,7 +77,6 @@ class UnpackedDagWalker[V,H,E,D,F](
 
       trace("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
 
-      // hedgeFilter has already been applied
       if (i == filled.size) {
         comboTransformer(he, combo) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
@@ -131,13 +127,11 @@ class UnpackedDagWalker[V,H,E,D,F](
                fixedRealization: Seq[D],
                callback: UnpackedVertex[V,H,E,D] => Unit) {
 
+      // allow user to filter out certain hyperedges from the derivation
+      // (e.g. hyperedges from Epsilon vertices)
       val hedgeReal: Seq[D] = {
-        // allow user to filter out certain hyperedges from the derivation
-        // TODO: Deprecate hedgeFilter?      
-        if (!he.isEmpty && hedgeFilter(he.get))
-          Seq(toD(he.get.h))
-        else
-          Nil
+        val proposedReal = he.map(he => Seq(toD(he.h))).getOrElse(Nil)
+        munger.beginHyperedge(v, he, proposedReal)
       }
 
       val combo = new MultiSet[D]

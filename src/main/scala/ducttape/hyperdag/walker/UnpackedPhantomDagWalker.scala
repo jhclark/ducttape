@@ -10,7 +10,6 @@ import grizzled.slf4j.Logging
 // TODO: Create UnpackedPhantomVertex and return those instead
 class UnpackedPhantomDagWalker[V,H,E,D,F](
         val dag: PhantomHyperDag[V,H,E],
-        val hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
         val constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         val vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         val comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -44,7 +43,7 @@ class UnpackedPhantomDagWalker[V,H,E,D,F](
   def isPhantom(v: UnpackedVertex[Option[V],H,E,D]) = v.packed.value.isEmpty
     
   val delegate = new UnpackedDagWalker[Option[V],H,E,D,F](
-    dag.delegate, hedgeFilter,  ConstraintFilterAdapter, VertexFilterAdapter, comboTransformer, toD)
+    dag.delegate, new DefaultRealizationMunger, ConstraintFilterAdapter, VertexFilterAdapter, comboTransformer, toD)
     
   override def take(): Option[UnpackedVertex[V,H,E,D]] = delegate.take() match {
     case None => None

@@ -9,12 +9,12 @@ import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.MetaVertexFilter
 import ducttape.hyperdag.walker.ComboTransformer
-import ducttape.hyperdag.walker.HyperEdgeFilter
 import ducttape.hyperdag.walker.DefaultConstraintFilter
 import ducttape.hyperdag.walker.DefaultMetaVertexFilter
 import ducttape.hyperdag.walker.DefaultComboTransformer
-import ducttape.hyperdag.walker.DefaultHyperEdgeFilter
 import ducttape.hyperdag.walker.DefaultToD
+import ducttape.hyperdag.walker.RealizationMunger
+import ducttape.hyperdag.walker.DefaultRealizationMunger
 
 /** essentially -- an AND-OR HyperDAG 
  * an implementation of MetaHyperDAGs based on transforming
@@ -38,7 +38,7 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
 
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
-  def unpackedWalker[D,F](hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+  def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
                           constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
                           vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -49,7 +49,7 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
     // TODO: Exclude epsilons from completed, etc.
     // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
     // the burden on the filter
-    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, hedgeFilter, constraintFilter, vertexFilter, comboTransformer, toD)
+    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, constraintFilter, vertexFilter, comboTransformer, toD)
   }
 
   def inMetaEdges(v: PackedVertex[_]): Seq[MetaEdge[M,H,E]]

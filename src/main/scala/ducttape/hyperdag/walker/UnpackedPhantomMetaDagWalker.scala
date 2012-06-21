@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 // TODO: Create ChainedUnpackedVertex and return those instead
 class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         val dag: PhantomMetaHyperDag[V,M,H,E],
-        hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+        munger: RealizationMunger[Option[V],H,E,D,F] = new DefaultRealizationMunger[Option[V],H,E,D,F],
         constraintFilter: ConstraintFilter[Option[V],H,E,D,F] = new DefaultConstraintFilter[Option[V],H,E,D,F],
         vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
         comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -34,7 +34,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   }
   
   val delegate = new UnpackedMetaDagWalker[Option[V],M,H,E,D,F](
-    dag.delegate, hedgeFilter, constraintFilter, MetaVertexFilterAdapter, comboTransformer, toD, observer)
+    dag.delegate, munger, constraintFilter, MetaVertexFilterAdapter, comboTransformer, toD, observer)
     
   // we must be able to recover the phantom-antecedents of non-phantom vertices
   // so that we can properly populate their state maps
