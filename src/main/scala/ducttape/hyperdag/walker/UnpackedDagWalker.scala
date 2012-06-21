@@ -14,9 +14,6 @@ import grizzled.slf4j.Logging
  *  the edge derivation (e.g. edges without a branch name / the default branch name)
  *  however, this filter is cosmetic only and does not result in any additional 
  *
- *  the selectionFilter allows us to prevent exhaustive traversal of all derivations
- *  (i.e. prevent combinatorial explosion)
- *
  *  the constraintFilter allows for higher order semantics to be imposed on the traversal
  *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
  *  we want to choose a branch once and consistently use the same branch choice within each derivation.
@@ -29,7 +26,9 @@ import grizzled.slf4j.Logging
  *
  *  the comboTransformer is used to implement things such as branch grafts by taking in the result of aggregating
  *  all parent hyper edges and the currently active hyperedge (the combo) and generating a transformed
- *  version (e.g. branch grafts remove entirely one of these edges from the combo and state F)
+ *  version (e.g. branch grafts remove entirely one of these edges from the combo and state F). it allows us to
+ *  prevent exhaustive traversal of all derivations (i.e. prevent combinatorial explosion) by returning None
+ *  if any single component incoming edge of a hyperedge does not match its constraints.
  *
  *  the "edge derivation" == the realization
  *  
@@ -38,7 +37,6 @@ import grizzled.slf4j.Logging
 // TODO: SPECIFY GOAL VERTICES
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
-        selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
         hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
         constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
@@ -87,10 +85,8 @@ class UnpackedDagWalker[V,H,E,D,F](
         comboTransformer(he, combo) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
           case Some(transformedCombo: MultiSet[_]) => {
-            if (selectionFilter(transformedCombo)) {
-              val sortedReal: Seq[D] = transformedCombo.toList.sorted(ordering)
-              callback(new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList))
-            }
+            val sortedReal: Seq[D] = transformedCombo.toList.sorted(ordering)
+            callback(new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList))
           } 
         }
       } else {

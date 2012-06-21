@@ -19,14 +19,6 @@ class DefaultMetaVertexFilter[V,H,E,D] extends MetaVertexFilter[V,H,E,D] {
   override def apply(v: UnpackedMetaVertex[V,H,E,D]) = true
 }
 
-trait SelectionFilter[H] {
-  def apply(combo: MultiSet[H]): Boolean
-}
-
-class DefaultSelectionFilter[H] extends SelectionFilter[H] {
-  override def apply(combo: MultiSet[H]) = true
-}
-
 trait HyperEdgeFilter[H,E] {
   def apply(he: HyperEdge[H,E]): Boolean
 }

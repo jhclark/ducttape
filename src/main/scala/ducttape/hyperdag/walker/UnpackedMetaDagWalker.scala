@@ -13,7 +13,6 @@ import annotation.tailrec
  *  F is the FilterState */
 class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
-    selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
     hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
     constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
@@ -49,7 +48,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, selectionFilter, hedgeFilter, constraintFilter,
+    dag.delegate, hedgeFilter, constraintFilter,
     ObserverVertexFilter, comboTransformer, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices

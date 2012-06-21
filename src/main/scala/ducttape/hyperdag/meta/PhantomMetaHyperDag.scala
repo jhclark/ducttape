@@ -13,16 +13,13 @@ import ducttape.hyperdag.walker.DefaultMetaVertexFilter
 import ducttape.hyperdag.walker.DefaultComboTransformer
 import ducttape.hyperdag.walker.DefaultHyperEdgeFilter
 import ducttape.hyperdag.walker.DefaultToD
-import ducttape.hyperdag.walker.DefaultSelectionFilter
 import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
-import ducttape.hyperdag.walker.SelectionFilter
 
 class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) {
   
   def packedWalker() = new PackedPhantomMetaDagWalker[V](this)
   
-  def unpackedWalker[D,F](selectionFilter: SelectionFilter[D] = new DefaultSelectionFilter[D],
-                          hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
+  def unpackedWalker[D,F](hedgeFilter: HyperEdgeFilter[H,E] = new DefaultHyperEdgeFilter[H,E],
                           constraintFilter: ConstraintFilter[Option[V],H,E,D,F] = new DefaultConstraintFilter[Option[V],H,E,D,F],
                           vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
                           comboTransformer: ComboTransformer[H,E,D] = new DefaultComboTransformer[H,E,D],
@@ -30,7 +27,7 @@ class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) 
                           observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
                          (implicit ordering: Ordering[D])
                          : UnpackedPhantomMetaDagWalker[V,M,H,E,D,F] = {
-    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, selectionFilter, hedgeFilter,
+    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, hedgeFilter,
       constraintFilter, vertexFilter, comboTransformer, toD, observer)(ordering)
   }
   
