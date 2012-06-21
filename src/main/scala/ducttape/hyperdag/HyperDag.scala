@@ -2,9 +2,7 @@ package ducttape.hyperdag
 
 import collection._
 import ducttape.viz._
-import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.VertexFilter
-import ducttape.hyperdag.walker.DefaultConstraintFilter
 import ducttape.hyperdag.walker.DefaultVertexFilter
 import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
@@ -23,11 +21,10 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
     = new walker.PackedDagWalker[V](this)
   // TODO: Pass filters to dag walker
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
-                          constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
                           vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
                           toD: H => D = new DefaultToD[H])
                          (implicit ordering: Ordering[D])
-    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, constraintFilter, vertexFilter, toD)
+    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD)
     
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)

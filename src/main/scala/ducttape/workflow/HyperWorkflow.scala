@@ -18,7 +18,6 @@ import ducttape.hyperdag.meta.PhantomMetaHyperDag
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
 import ducttape.hyperdag.walker.PackedPhantomMetaDagWalker
-import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.MetaVertexFilter
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.workflow.SpecTypes.SpecPair
@@ -107,18 +106,24 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     
     // TODO: globalBranchPointConstraint is also the inPlanConstraint
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    val globalBranchPointConstraint = new ConstraintFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState] {
-      override val initState = new UnpackState
+    val globalBranchPointConstraint = new RealizationMunger[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState] {
+      
+      // TODO: Do we never need to filter here?
+      val emptyCombo = new MultiSet[Branch]
+      override def beginEdges(v: PackedWorkVert, he: Option[WorkflowEdge], initReal: Seq[Branch], prevInitState: Option[UnpackState]): Option[UnpackState] = {
+        traverseEdge(v, he, Nil, new UnpackState, emptyCombo, Nil)
+      }
 
       // v: the sink vertex of this active hyperedge      
       // real: the current realization of this vertex
       // seen: the non-local derivation state we pass around (more efficient to access than real)
       // parentReal: the realization at the parent, which we are proposing to add (traverse)
-      override def apply(v: PackedVertex[Option[TaskTemplate]],
-                         he: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
-                         seen: UnpackState,
-                         real: MultiSet[Branch],
-                         parentReal: Seq[Branch]): Option[UnpackState] = {
+      override def traverseEdge(v: PackedVertex[Option[TaskTemplate]],
+                                he: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
+                                e: Seq[SpecPair],
+                                seen: UnpackState,
+                                real: MultiSet[Branch],
+                                parentReal: Seq[Branch]): Option[UnpackState] = {
         
         assert(seen != null)
         assert(parentReal != null)
@@ -242,11 +247,9 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     def observe(v: UnpackedVertex[Option[TaskTemplate], BranchInfo, Seq[SpecPair], Branch])
       = explainCallback(v.packed.toString, v.realization.mkString("-"), true)
 
-    dag.unpackedWalker[Branch,UnpackState](
-      new BranchGraftRealizationMunger(explainCallback),
-      constraintFilter=globalBranchPointConstraint,
-      vertexFilter=vertexFilter,
-      toD=toD,
-      observer=observe)(ordering)
+    val graftMunger = new BranchGraftRealizationMunger(explainCallback)
+    val munger = graftMunger.andThen(globalBranchPointConstraint)
+      
+    dag.unpackedWalker[Branch,UnpackState](munger, vertexFilter, toD, observe)(ordering)
   }
 }

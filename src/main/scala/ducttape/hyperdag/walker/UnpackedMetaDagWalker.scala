@@ -14,7 +14,6 @@ import annotation.tailrec
 class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
     munger: RealizationMunger[V,H,E,D,F],
-    constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     toD: H => D = new DefaultToD[H],
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
@@ -56,7 +55,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, MetaRealizationMunger.andThen(munger), constraintFilter, ObserverVertexFilter, toD)
+    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps

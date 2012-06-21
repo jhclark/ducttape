@@ -39,7 +39,6 @@ import grizzled.slf4j.Logging
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
         munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
-        constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         toD: H => D = new DefaultToD[H])
        (implicit ordering: Ordering[D])
@@ -97,12 +96,16 @@ class UnpackedDagWalker[V,H,E,D,F](
           val parent = parents(i)
           "Applying constraint filter for parent %s".format(parent)
         }
+        
+        val edges: Seq[E] = he.map(_.e).getOrElse(Nil)
 
         // for each backpointer to a realization...
         // if we have zero, this will terminate the recursion, as expected
-        for (parentRealization: Seq[D] <- myParentReals) {
+        for ( (parentRealization, e) <- myParentReals.zip(edges)) {
+          // parentRealization: Seq[D]
+          // e: E
           // check if we meet external semantic constraints
-          constraintFilter(v, he, prevState, combo, parentRealization) match {
+          munger.traverseEdge(v, he, e, prevState, combo, parentRealization) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
               trace(i + " hyperedge: " + he)
@@ -141,11 +144,11 @@ class UnpackedDagWalker[V,H,E,D,F](
       hedgeRealOpt match {
         case None => ;
         case Some(hedgeReal) => {
-          val combo = new MultiSet[D]
           "Applying constraint filter for hyperedge %s (not parent)".format(he)
-          constraintFilter(v, he, constraintFilter.initState, combo, hedgeReal) match {
+          munger.beginEdges(v, he, hedgeReal) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
+              val combo = new MultiSet[D]
               combo ++= hedgeReal
               val parentReals = new Array[Seq[D]](filled.size)
               parentReals(iFixed) = fixedRealization

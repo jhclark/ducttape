@@ -6,9 +6,7 @@ import ducttape.hyperdag.walker.UnpackedMetaDagWalker
 import ducttape.hyperdag.HyperDag
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.HyperEdge
-import ducttape.hyperdag.walker.ConstraintFilter
 import ducttape.hyperdag.walker.MetaVertexFilter
-import ducttape.hyperdag.walker.DefaultConstraintFilter
 import ducttape.hyperdag.walker.DefaultMetaVertexFilter
 import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
@@ -37,7 +35,6 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
-                          constraintFilter: ConstraintFilter[V,H,E,D,F] = new DefaultConstraintFilter[V,H,E,D,F],
                           vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
                           toD: H => D = new DefaultToD[H])
                          (implicit ordering: Ordering[D])= {
@@ -46,7 +43,7 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
     // TODO: Exclude epsilons from completed, etc.
     // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
     // the burden on the filter
-    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, constraintFilter, vertexFilter, toD)
+    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD)
   }
 
   def inMetaEdges(v: PackedVertex[_]): Seq[MetaEdge[M,H,E]]
