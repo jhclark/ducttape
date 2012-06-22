@@ -21,27 +21,33 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
   
   // never allow children to transform epsilons
-  // and remove hyperedges from derivation
+  // and remove epsilon hyperedges from derivation
   object MetaRealizationMunger extends RealizationMunger[V,H,E,D,F] {
-    override def finishHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], combo: MultiSet[D]) = heOpt match {
-      case None => munger.finishHyperedge(v, heOpt, combo)
+    
+    override def initHyperedge(dOpt: Option[D]) = munger.initHyperedge(dOpt)
+    override def toRealization(state: F) = munger.toRealization(state)
+    
+    private val emptyState = initHyperedge(None)
+    
+    override def finishHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], state: F) = heOpt match {
+      case None => munger.finishHyperedge(v, heOpt, state)
       case Some(he: HyperEdge[_,_]) => {
         if (dag.isEpsilon(he)) {
-          Some(combo) // never transform epsilons
+          Some(state) // never allow child mungers to transform/see epsilons
         } else {
-          munger.finishHyperedge(v, heOpt, combo)
+          munger.finishHyperedge(v, heOpt, state)
         }
       }
     }
     
-    override def beginHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]] = {
+    override def beginHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], prevState: F): Option[F] = {
       heOpt match {
-        case None => Some(Nil)
+        case None => Some(emptyState)
         case Some(he) => {
           if (dag.isEpsilon(he))
-            Some(Nil)
+            Some(emptyState)
           else
-            Some(proposedReal)
+            Some(prevState)
         }
       }
     }

@@ -1,10 +1,12 @@
 package ducttape.hyperdag.walker
+
 import ducttape.hyperdag.meta.UnpackedMetaVertex
-import ducttape.util.MultiSet
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.UnpackedVertex
 import ducttape.hyperdag.meta.UnpackedChainedMetaVertex
+
+import collection._
 
 // these really better belong in companion objects
 // for UnpackedDagWalker and UnpackedMetaDagWalker
@@ -33,70 +35,88 @@ class DefaultToD[H] extends Function1[H,H] {
 
 // rename to TraversalMunger? or DerivationMunger?
 trait RealizationMunger[V,H,E,D,F] {
-  
-  private var nada: F = _ // syntactic cruft, just to get a null...
-  
-  // 1) when we first encounter the hyperedge, we must add any realizations that this hyperedge will introduce
-  def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]]
-    = Some(proposedReal)
 
-  // 2) Called just before our repeated calls to traverseEdge()
-  //    this defines the initState for the state object passed through traverseEdge
-  // TODO: Combine with beginHyperedge? Convert final state into Seq[D]?
-  // There might be prevInitState if there are multiple components in a composite munger
-  def beginEdges(v: PackedVertex[V], he: Option[HyperEdge[H,E]], initReal: Seq[D], prevInitState: Option[F] = None): Option[F] = {
-    Some(nada)
-  }
+  // 1) the initial state when we begin traversing each hyperedge
+  // Note: d may be None if this vertex has no incoming hyperedge
+  def initHyperedge(dOpt: Option[D]): F
+  
+  // 2) when we first encounter the hyperedge, we must add the payload that this hyperedge will introduce
+  //    we might choose to ignore that payload (e.g. if a branch is from an epsilon vertex)
+  def beginHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], prevState: F): Option[F]
+    = Some(prevState)
   
   // 3) Called for each incoming component edge of the current hyperedge
   //    he is passed mainly for debugging
-  def traverseEdge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], e: E, prevState: F, combo: MultiSet[D], parentRealization: Seq[D]): Option[F]
+  def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentRealization: Seq[D], prevState: F): Option[F]
     = Some(prevState)
   
   // 4) Finish hyperedges
   // when we finish traversing the hyperedge, we're free to accept it or not, but we should be done modifying realizations
-  // TODO: Make incoming multiset immutable!
-  def finishHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]] = Some(combo)
+  def finishHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], state: F): Option[F] = Some(state)
+
+  // 5) convert efficient state back to a realization (it will be sorted by walker)
+  def toRealization(state: F): Seq[D]
 
   // create a composite RealizationMunger (convenience method, not part of munging API)
-  def andThen(that: RealizationMunger[V,H,E,D,F]): RealizationMunger[V,H,E,D,F]
-    = new CompositeRealizationMunger[V,H,E,D,F](this, that)
+  // init: which munger will be used to initialize the unpacking state?
+  // end: which munger's toRealization() method will be used to convert the state back to a realization?
+  def andThen(that: RealizationMunger[V,H,E,D,F]) = new CompositeRealizationMunger[V,H,E,D,F](this, that)()
 }
 
+// first: the first munger to run
+// second: the munger to run after than
+// init: which munger will be used to initialize the unpacking state?
+// end: which munger's toRealization() method will be used to convert the state back to a realization?
 class CompositeRealizationMunger[V,H,E,D,F](
     first: RealizationMunger[V,H,E,D,F],
     second: RealizationMunger[V,H,E,D,F])
+   (init: RealizationMunger[V,H,E,D,F] = first,
+    end: RealizationMunger[V,H,E,D,F] = second)
     extends RealizationMunger[V,H,E,D,F] {
+  
+  // some "fluent" methods for building a munger
+  def withInit(newInit: RealizationMunger[V,H,E,D,F])
+    = new CompositeRealizationMunger[V,H,E,D,F](first, second)(newInit, end)
+    
+  def withEnd(newEnd: RealizationMunger[V,H,E,D,F])
+    = new CompositeRealizationMunger[V,H,E,D,F](first, second)(init, newEnd)
+    
+  override def toString() = "([init=%s] %s => %s [end=%s])".format(init, first, second, end)
+  
+  // really, more of an initState...
+  override def initHyperedge(d: Option[D]): F = init.initHyperedge(d)
 
-  override def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], proposedReal: Seq[D]): Option[Seq[D]] = {
-    first.beginHyperedge(v, he, proposedReal) match {
+  override def beginHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], prevState: F): Option[F] = {
+    first.beginHyperedge(v, he, prevState) match {
       case None => None
       case Some(intermediate) => second.beginHyperedge(v, he, intermediate) 
     }
   }
   
-  // TODO: How do we initialize the state when we have multiple mungers?
-  
-  override def beginEdges(v: PackedVertex[V], he: Option[HyperEdge[H,E]], initReal: Seq[D], prevInitState: Option[F]): Option[F] = {
-    first.beginEdges(v, he, initReal, prevInitState) match {
+  override def traverseEdge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], e: E, parentRealization: Seq[D], prevState: F): Option[F] = {
+    first.traverseEdge(v, he, e, parentRealization, prevState) match {
       case None => None
-      case Some(intermediate) => second.beginEdges(v, he, initReal, Some(intermediate)) 
-    }
-  }
-  
-  override def traverseEdge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], e: E, prevState: F, combo: MultiSet[D], parentRealization: Seq[D]): Option[F] = {
-    first.traverseEdge(v, he, e, prevState, combo, parentRealization) match {
-      case None => None
-      case Some(intermediate) => second.traverseEdge(v, he, e, intermediate, combo, parentRealization) 
+      case Some(intermediate) => second.traverseEdge(v, he, e, parentRealization, intermediate) 
     }
   }
 
-  override def finishHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], combo: MultiSet[D]): Option[MultiSet[D]] = {
-    first.finishHyperedge(v, he, combo) match {
+  override def finishHyperedge(v: PackedVertex[V], he: Option[HyperEdge[H,E]], prevState: F): Option[F] = {
+    first.finishHyperedge(v, he, prevState) match {
       case None => None
       case Some(intermediate) => second.finishHyperedge(v, he, intermediate) 
     }
   }
+
+  override def toRealization(state: F) = end.toRealization(state)
 }
 
-class DefaultRealizationMunger[V,H,E,D,F] extends RealizationMunger[V,H,E,D,F];
+trait DefaultRealizationStates[V,H,E,D] extends RealizationMunger[V,H,E,D,immutable.HashSet[D]] {
+  override def initHyperedge(opt: Option[D]) = opt match {
+    case None => new immutable.HashSet[D]
+    case Some(d) => new immutable.HashSet[D] + d
+  }
+  override def toRealization(state: immutable.HashSet[D]): Seq[D] = state.toSeq
+}
+
+class DefaultRealizationMunger[V,H,E,D] extends DefaultRealizationStates[V,H,E,D];
+

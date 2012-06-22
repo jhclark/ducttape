@@ -36,9 +36,10 @@ import grizzled.slf4j.Logging
  *  
  *  The type D is the "derivation type" of the hyperedge. Usually, having D=H is fine, but
  *  D may be any function of H via the function toD() */
+// NOTE: F must be immutable.HashSet[D] to use DefaultRealizationMunger
 class UnpackedDagWalker[V,H,E,D,F](
         val dag: HyperDag[V,H,E],
-        munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
+        munger: RealizationMunger[V,H,E,D,F],
         vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
         toD: H => D = new DefaultToD[H])
        (implicit ordering: Ordering[D])
@@ -72,18 +73,19 @@ class UnpackedDagWalker[V,H,E,D,F](
     // we can bail at any point during this process if a filter fails
     private def unpack(i: Int,
                        iFixed: Int,
-                       combo: MultiSet[D],
                        parentReals: Array[Seq[D]],
                        prevState: F,
                        callback: UnpackedVertex[V,H,E,D] => Unit) {
 
-      trace("filled : %s %s %d/%d fixed=%d %s %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList, combo))
+      trace("filled : %s %s %d/%d fixed=%d %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList))
 
       if (i == filled.size) {
-        munger.finishHyperedge(v, he, combo) match {
+        munger.finishHyperedge(v, he, prevState) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
-          case Some(transformedCombo: MultiSet[_]) => {
-            val sortedReal: Seq[D] = transformedCombo.toList.sorted(ordering)
+          case Some(finalState: F) => {
+            val finalReal: Seq[D] = munger.toRealization(finalState)
+            val sortedReal: Seq[D] = finalReal.toList.sorted(ordering)
+            assert(parentReals.toList.forall { _ != null }, "parentReals for %s should not contain null".format(v))
             callback(new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList))
           } 
         }
@@ -105,21 +107,11 @@ class UnpackedDagWalker[V,H,E,D,F](
           // parentRealization: Seq[D]
           // e: E
           // check if we meet external semantic constraints
-          munger.traverseEdge(v, he, e, prevState, combo, parentRealization) match {
+          munger.traverseEdge(v, he, e, parentRealization, prevState) match {
             case None => ; // illegal state, skip it
             case Some(nextState) => {
-              trace(i + " hyperedge: " + he)
-              trace(i + " pre-add combo=" + combo)
-              combo ++= parentRealization
-              trace(i + " post-add combo=" + combo)
               parentReals(i) = parentRealization
-              trace(i + " pre-recurse parentRealization=" + parentRealization.toList)
-              trace(i + " pre-recurse parentReals=" + parentReals.toList)
-              unpack(i+1, iFixed, combo, parentReals, nextState, callback)
-              trace(i + " post-recurse parentRealization=" + parentRealization.toList)
-              trace(i + " pre-remove combo=" + combo)
-              combo --= parentRealization
-              trace(i + " post-remove combo=" + combo)
+              unpack(i+1, iFixed, parentReals, nextState, callback)
             }
           }
         }
@@ -133,29 +125,20 @@ class UnpackedDagWalker[V,H,E,D,F](
                fixedRealization: Seq[D],
                callback: UnpackedVertex[V,H,E,D] => Unit) {
 
+      // turn derivation state D into an unpacking state F
+      val initState = munger.initHyperedge(he.map(heVal => toD(heVal.h)))
+      
       // allow user to filter out certain hyperedges from the derivation
       // (e.g. hyperedges from Epsilon vertices)
-      val hedgeRealOpt: Option[Seq[D]] = {
-        val proposedReal = he.map(he => Seq(toD(he.h))).getOrElse(Nil)
-        munger.beginHyperedge(v, he, proposedReal)
-      }
-      
       // did munger decide to no longer continue with this hyperedge?
-      hedgeRealOpt match {
+      munger.beginHyperedge(v, he, initState) match {
         case None => ;
-        case Some(hedgeReal) => {
-          "Applying constraint filter for hyperedge %s (not parent)".format(he)
-          munger.beginEdges(v, he, hedgeReal) match {
-            case None => ; // illegal state, skip it
-            case Some(nextState) => {
-              val combo = new MultiSet[D]
-              combo ++= hedgeReal
-              val parentReals = new Array[Seq[D]](filled.size)
-              parentReals(iFixed) = fixedRealization
-              //combo ++= fixedRealization
-              unpack(0, iFixed, combo, parentReals, nextState, callback)
-            }
-          }
+        case Some(nextState) => {
+          "Began hyperedge %s".format(he)
+          // TODO: Can we avoid re-allocating this over and over?
+          val parentReals = new Array[Seq[D]](filled.size)
+          parentReals(iFixed) = fixedRealization
+          unpack(0, iFixed, parentReals, nextState, callback)
         }
       }
     }

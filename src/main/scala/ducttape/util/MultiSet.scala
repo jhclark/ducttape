@@ -7,7 +7,7 @@ object MultiSet {
   def empty[A] = new MultiSet[A]
 }
 
-class MultiSet[A] {
+class MultiSet[A] extends ImmutableMultiSet[A] {
   private val map = new mutable.HashMap[A,Int]
   
   def this(other: MultiSet[A]) {

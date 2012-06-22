@@ -48,33 +48,53 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
   type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair],Branch,UnpackState]
 
   def packedWalker: PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
+  
+  type HyperWorkflowMunger = RealizationMunger[Option[TaskTemplate], BranchInfo, Seq[SpecPair], Branch, UnpackState]
+  
+  trait HyperWorkflowStateMunger extends HyperWorkflowMunger {
     
+    // heBranch might be None if this vertex has no incoming hyperedge
+    override def initHyperedge(heBranch: Option[Branch]): UnpackState = heBranch match {
+      case None => new UnpackState
+      case Some(branch: Branch) => new UnpackState + ((branch.branchPoint, branch))
+    }
+    
+    override def toRealization(state: UnpackState): Seq[Branch] = state.values.toSeq
+  }
+  
   /** when used with an unpacker, causes hyperedge grafts to be recognized
    *  and handled properly
    *  
    *  The explainCallback can be used to provide feedback to the user on
    *  why certain realizations were not produced (e.g. due to grafting). */
-  class BranchGraftRealizationMunger(explainCallback: (=>String, =>String, Boolean) => Unit)
-      extends RealizationMunger[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState]
-      with Logging {
+  class BranchGraftMunger(explainCallback: (=>String, =>String, Boolean) => Unit)
+      extends HyperWorkflowStateMunger with Logging {
     
-    override def finishHyperedge(v: PackedWorkVert, heOpt: Option[WorkflowEdge], combo: MultiSet[Branch]): Option[MultiSet[Branch]] = {
+    // GAH! This returns a MultiSet[Branch] instead of an UnpackState... yet we want to affect the added parentRealization
+    // How do we still keep MultiSets efficient while passing along this state and keeping it consistent?
+    // Can we make the multiset more helpful (e.g. index it by BranchPoint?)
+    override def traverseEdge(v: PackedWorkVert,
+        heOpt: Option[WorkflowEdge],
+        e: Seq[SpecPair],
+        parentRealization: Seq[Branch],
+        prevState: UnpackState): Option[UnpackState] = {
+      
       heOpt match {
         case Some(he) => {
-          trace {
-            val sink = dag.delegate.delegate.sink(he)
-            "Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, sink, combo)
-          }
+          trace ("Considering if we need to apply a graft for he '%s' with sink '%s': ".format(he, v, prevState))
           if (he.h == null || he.h.grafts.size == 0) { // TODO: Why is this null check necessary?
             // no grafting required. do nothing
             trace("No grafting required")
-            Some(combo)
+            Some(prevState)
           } else {
-            if (he.h.grafts.forall { branch => combo.contains(branch) } ) {
-              val copy = new MultiSet[Branch](combo)
-              he.h.grafts.foreach { branch => copy.removeAll(branch) }
-              trace("Applied grafts: %s => %s".format(combo.keys, copy.keys))
-              Some(copy)
+            // assert that the current state contains all of the branches specified by the graft
+            if (he.h.grafts.forall { branch => prevState.get(branch.branchPoint) == Some(branch) } ) {
+              // now that we've asserted that the grafts, remove all grafted branches from the state
+              val nextState = he.h.grafts.foldLeft(prevState) { case (state, branch) =>
+                state - branch.branchPoint
+              }
+              trace("Applied grafts: %s => %s".format(prevState.values, nextState.values))
+              Some(nextState)
             } else {
               trace("Filtered by branch graft")
               // no corresponding edge was found in the derivation
@@ -82,7 +102,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
               explainCallback(
                 heOpt.map { he => dag.delegate.delegate.sink(he).toString }.getOrElse("unknown"),
                 "Realization %s filtered by branch graft: %s (source: %s)".format(
-                  combo.view.mkString("-"),
+                  prevState.values.mkString("-"),
                   he.h.grafts.mkString(","),
                   heOpt.map { he => dag.delegate.delegate.sources(he).head.toString }.getOrElse("unknown")),
                 false)
@@ -90,7 +110,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
             }
           }
         }
-        case _ => Some(combo)
+        case _ => Some(prevState)
       }
     }
   }
@@ -105,30 +125,23 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
                      : UnpackedWalker = {
     
     // TODO: Should we allow access to "real" in this function -- that seems inefficient
-    val globalBranchPointConstraint = new RealizationMunger[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState] {
-      
-      // TODO: Do we never need to filter here?
-      val emptyCombo = new MultiSet[Branch]
-      override def beginEdges(v: PackedWorkVert, he: Option[WorkflowEdge], initReal: Seq[Branch], prevInitState: Option[UnpackState]): Option[UnpackState] = {
-        traverseEdge(v, he, Nil, new UnpackState, emptyCombo, Nil)
-      }
+    object GlobalBranchPointConstraint extends HyperWorkflowStateMunger {
 
       // v: the sink vertex of this active hyperedge      
       // real: the current realization of this vertex
       // seen: the non-local derivation state we pass around (more efficient to access than real)
       // parentReal: the realization at the parent, which we are proposing to add (traverse)
       override def traverseEdge(v: PackedVertex[Option[TaskTemplate]],
-                                he: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
+                                heOpt: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
                                 e: Seq[SpecPair],
-                                seen: UnpackState,
-                                real: MultiSet[Branch],
-                                parentReal: Seq[Branch]): Option[UnpackState] = {
+                                parentReal: Seq[Branch],
+                                prevState: UnpackState): Option[UnpackState] = {
         
-        assert(seen != null)
+        assert(prevState != null)
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
         
-        trace("Applying globalBranchPointConstraint at %s with hyperedge %s for realization: %s".format(v, he, real.view.mkString("-")))
+        trace("Applying globalBranchPointConstraint at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState.values.mkString("-")))
         
         // enforce that each branch point should atomically select one branch per hyperpath
         // through the (Meta)HyperDAG
@@ -142,43 +155,35 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
             newBranch != prevChosenBranch
           }
         }
-        
-        val myReal = real.view ++ parentReal.view
-        if (parentReal.exists { branch => violatesChosenBranch(seen, branch) } ) {
+
+        if (parentReal.exists { branch => violatesChosenBranch(prevState, branch) } ) {
           None // we've already seen this branch point before -- and we just chose the wrong branch
         } else {
           // left operand determines return type (an efficient immutable.HashMap)
-          val result: UnpackState = seen ++ parentReal.map { b: Branch => (b.branchPoint, b) }
-          trace("Extending seen at " + v + ": " + seen.values + " with " + parentReal + "; Combo was " + real.keys + " ==> " + result.values)
+          val result: UnpackState = prevState ++ parentReal.map { b: Branch => (b.branchPoint, b) }
+          trace("Extending seen at " + v + ": " + prevState.values + " with " + parentReal + " ==> " + result.values)
           Some(result)
         }
       }
     }
     
-     val inPlanConstraint = new RealizationMunger[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch,UnpackState] {
-      
-      // TODO: Do we never need to filter here?
-      val emptyCombo = new MultiSet[Branch]
-      override def beginEdges(v: PackedWorkVert, he: Option[WorkflowEdge], initReal: Seq[Branch], prevInitState: Option[UnpackState]): Option[UnpackState] = {
-        traverseEdge(v, he, Nil, new UnpackState, emptyCombo, Nil)
-      }
+    object InPlanConstraint extends HyperWorkflowStateMunger {
 
       // v: the sink vertex of this active hyperedge      
       // real: the current realization of this vertex
       // seen: the non-local derivation state we pass around (more efficient to access than real)
       // parentReal: the realization at the parent, which we are proposing to add (traverse)
       override def traverseEdge(v: PackedVertex[Option[TaskTemplate]],
-                                he: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
+                                heOpt: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
                                 e: Seq[SpecPair],
-                                seen: UnpackState,
-                                real: MultiSet[Branch],
-                                parentReal: Seq[Branch]): Option[UnpackState] = {
+                                parentReal: Seq[Branch],
+                                prevState: UnpackState): Option[UnpackState] = {
         
-        assert(seen != null)
+        assert(prevState != null)
         assert(parentReal != null)
         assert(!parentReal.exists(_ == null))
         
-        trace("Applying inPlan filter at %s with hyperedge %s for realization: %s".format(v, he, real.view.mkString("-")))
+        trace("Applying inPlan filter at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState.values.mkString("-")))
         
         def isGraftDependency(graftRelaxations: Map[PackedWorkVert, Set[Branch]],
             v: PackedWorkVert,
@@ -186,7 +191,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
           debug("Checking graft dependencies for " + v)
           graftRelaxations.get(v) match {
             case None => false
-            case Some(grafts: Set[Branch]) => {
+            case Some(grafts: Set[_] /* [Branch] */ ) => {
               debug("Found graft relaxation for %s due to branch graft".format(v, branch))
               grafts.contains(branch)
             }
@@ -239,13 +244,14 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
           }
         }
         
-        val myReal = real.view ++ parentReal.view
+        // Use views so that we don't have to copy as much
+        val myReal: Traversable[Branch] = prevState.values.view ++ parentReal.view
         if (!inPlan(myReal)) {
           None // it's not in the plan
         } else {
           // left operand determines return type (an efficient immutable.HashMap)
-          val result: UnpackState = seen ++ parentReal.map { b: Branch => (b.branchPoint, b) }
-          trace("Extending seen at " + v + ": " + seen.values + " with " + parentReal + "; Combo was " + real.keys + " ==> " + result.values)
+          val result: UnpackState = prevState ++ parentReal.map { b: Branch => (b.branchPoint, b) }
+          trace("Extending seen at " + v + ": " + prevState.values + " with " + parentReal + " ==> " + result.values)
           Some(result)
         }
       }
@@ -282,9 +288,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     def observe(v: UnpackedVertex[Option[TaskTemplate], BranchInfo, Seq[SpecPair], Branch])
       = explainCallback(v.packed.toString, v.realization.mkString("-"), true)
 
-    val graftMunger = new BranchGraftRealizationMunger(explainCallback)
-    val munger = graftMunger.andThen(globalBranchPointConstraint).andThen(inPlanConstraint)
-      
+    val munger = GlobalBranchPointConstraint.andThen(InPlanConstraint).andThen(new BranchGraftMunger(explainCallback))    
     dag.unpackedWalker[Branch,UnpackState](munger, vertexFilter, toD, observe)(ordering)
   }
 }

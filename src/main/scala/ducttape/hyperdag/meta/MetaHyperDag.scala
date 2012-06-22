@@ -34,9 +34,9 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
 
   def packedWalker() = new PackedMetaDagWalker[V](this) // TODO: Exclude epsilons from completed, etc.
 
-  def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
-                          vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
-                          toD: H => D = new DefaultToD[H])
+  def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
+                          vertexFilter: MetaVertexFilter[V,H,E,D],
+                          toD: H => D)
                          (implicit ordering: Ordering[D])= {
     // TODO: Combine this hedgeFilter with an external one?
     // TODO: Allow filtering baseline from realizations
@@ -44,6 +44,13 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
     // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
     // the burden on the filter
     new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD)
+  }
+  
+  def unpackedWalker[D](vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
+                        toD: H => D = new DefaultToD[H])
+                       (implicit ordering: Ordering[D]) = {
+    val munger = new DefaultRealizationMunger[V,H,E,D]
+    new UnpackedMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD)
   }
 
   def inMetaEdges(v: PackedVertex[_]): Seq[MetaEdge[M,H,E]]

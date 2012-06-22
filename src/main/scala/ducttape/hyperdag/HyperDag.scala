@@ -17,14 +17,20 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
   
   val size: Int = vertices.size
 
-  def packedWalker()
-    = new walker.PackedDagWalker[V](this)
-  // TODO: Pass filters to dag walker
-  def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F] = new DefaultRealizationMunger[V,H,E,D,F],
-                          vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-                          toD: H => D = new DefaultToD[H])
+  def packedWalker() = new walker.PackedDagWalker[V](this)
+
+  def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
+                          vertexFilter: VertexFilter[V,H,E,D],
+                          toD: H => D)
                          (implicit ordering: Ordering[D])
     = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD)
+    
+  def unpackedWalker[D](vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
+                        toD: H => D = new DefaultToD[H])
+                       (implicit ordering: Ordering[D]) = {
+    val munger = new DefaultRealizationMunger[V,H,E,D]
+    new walker.UnpackedDagWalker[V,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD)
+  }
     
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]
     = inEdgesMap.getOrElse(v, Seq.empty)

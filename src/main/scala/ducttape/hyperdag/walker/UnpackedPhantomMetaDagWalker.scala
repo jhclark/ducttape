@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 // TODO: Create ChainedUnpackedVertex and return those instead
 class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         val dag: PhantomMetaHyperDag[V,M,H,E],
-        munger: RealizationMunger[Option[V],H,E,D,F] = new DefaultRealizationMunger[Option[V],H,E,D,F],
+        munger: RealizationMunger[Option[V],H,E,D,F],
         vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
         toD: H => D = new DefaultToD[H],
         observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
@@ -101,6 +101,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
               case (parent, parentReal, edge) => {
                 trace("Begin backtracing phantom chain for " + parent)
                 // TODO: DON'T RE-SORT HERE
+                assert(parentReal != null, "parentReal should not be null")
                 val unpackedV = unpackedMap( (parent, parentReal.sorted(ordering)) )
                 val leafParents: Seq[(E, Seq[D])] = followPhantomChain(unpackedV, edge, parentReal)
                 leafParents
@@ -112,6 +113,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
             (finalEdges, finalParentReals)
           }
         }
+        // TODO: This is a different meaning of "munge" versus the RealizationMunger...
         val mungedEdges: Seq[Seq[E]] = parentInfo.map(_._1)
         val mungedParentReals: Seq[Seq[Seq[D]]] = parentInfo.map(_._2)
         
