@@ -15,12 +15,10 @@ import grizzled.slf4j.Logging
 object GlobalBranchPointConstraint extends HyperWorkflowStateMunger with Logging {
 
   // v: the sink vertex of this active hyperedge      
-  // real: the current realization of this vertex
-  // seen: the non-local derivation state we pass around (more efficient to access than real)
   // parentReal: the realization at the parent, which we are proposing to add (traverse)
   override def traverseEdge(v: PackedVertex[Option[TaskTemplate]],
-                            heOpt: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
-                            e: Seq[SpecPair],
+                            heOpt: Option[HyperEdge[Branch,SpecGroup]],
+                            e: SpecGroup,
                             parentReal: Seq[Branch],
                             prevState: UnpackState): Option[UnpackState] = {
     
@@ -46,10 +44,7 @@ object GlobalBranchPointConstraint extends HyperWorkflowStateMunger with Logging
     if (parentReal.exists { branch => violatesChosenBranch(prevState, branch) } ) {
       None // we've already seen this branch point before -- and we just chose the wrong branch
     } else {
-      // left operand determines return type (an efficient immutable.HashMap)
-      val result: UnpackState = prevState ++ parentReal.map { b: Branch => (b.branchPoint, b) }
-      trace("Extending seen at " + v + ": " + prevState.values + " with " + parentReal + " ==> " + result.values)
-      Some(result)
+      Some(prevState)
     }
   }
 }

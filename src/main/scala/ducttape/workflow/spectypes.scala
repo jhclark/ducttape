@@ -31,3 +31,13 @@ object SpecTypes {
   type LiteralSpecPair = SpecPairType[LiteralSpec]
 }
 import SpecTypes._
+
+class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
+  override def toString() = "[%s]\n".format(grafts.mkString(",")) + specPairs.mkString("\n")
+}
+
+object SpecGroup {
+  val empty = new SpecGroup(Nil, Nil)
+}
+
+import SpecTypes._

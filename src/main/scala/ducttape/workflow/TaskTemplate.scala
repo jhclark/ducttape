@@ -55,7 +55,7 @@ class TaskTemplate(val taskDef: TaskDef,
        v.edges.zip(v.parentRealizations).flatMap { case (hyperedgeElements, parentReals) =>
          hyperedgeElements.zip(parentReals).flatMap { case (e, parentBranches) =>
            val parentReal = new Realization(parentBranches)
-           e.map { spec: SpecPair =>
+           e.specPairs.map { spec: SpecPair =>
              (spec, parentReal)
            }
          }

@@ -47,7 +47,7 @@ trait RealizationMunger[V,H,E,D,F] {
   
   // 3) Called for each incoming component edge of the current hyperedge
   //    he is passed mainly for debugging
-  def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentRealization: Seq[D], prevState: F): Option[F]
+  def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentReal: Seq[D], prevState: F): Option[F]
     = Some(prevState)
   
   // 4) Finish hyperedges

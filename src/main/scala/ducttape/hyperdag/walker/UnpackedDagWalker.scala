@@ -38,11 +38,11 @@ import grizzled.slf4j.Logging
  *  D may be any function of H via the function toD() */
 // NOTE: F must be immutable.HashSet[D] to use DefaultRealizationMunger
 class UnpackedDagWalker[V,H,E,D,F](
-        val dag: HyperDag[V,H,E],
-        munger: RealizationMunger[V,H,E,D,F],
-        vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-        toD: H => D = new DefaultToD[H])
-       (implicit ordering: Ordering[D])
+    val dag: HyperDag[V,H,E],
+    munger: RealizationMunger[V,H,E,D,F],
+    vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
+    toD: H => D = new DefaultToD[H])
+   (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
   // TODO: Factor this out into a class all its own?
@@ -96,7 +96,7 @@ class UnpackedDagWalker[V,H,E,D,F](
           // he is guaranteed to be defined if we have more than zero parent reals
           val parents: Seq[PackedVertex[V]] = dag.sources(he.get)
           val parent = parents(i)
-          "Applying constraint filter for parent %s".format(parent)
+          "Traversing edges for parent %s".format(parent)
         }
         
         val edges: Seq[E] = he.map(_.e).getOrElse(Nil)

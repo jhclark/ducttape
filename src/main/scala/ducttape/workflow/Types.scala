@@ -19,7 +19,7 @@ object Types {
   type UnpackState = immutable.HashMap[BranchPoint, Branch]
   
   type PackedWorkVert = PackedVertex[Option[TaskTemplate]]
-  type UnpackedWorkVert = UnpackedChainedMetaVertex[TaskTemplate,BranchInfo,Seq[SpecPair],Branch]
-  type WorkflowEdge = HyperEdge[BranchInfo,Seq[SpecPair]]
-  type WorkflowMetaEdge = MetaEdge[BranchPoint, BranchInfo, Seq[SpecPair]]
+  type UnpackedWorkVert = UnpackedChainedMetaVertex[TaskTemplate,Branch,SpecGroup,Branch]
+  type WorkflowEdge = HyperEdge[Branch,SpecGroup]
+  type WorkflowMetaEdge = MetaEdge[BranchPoint, Branch, SpecGroup]
 }

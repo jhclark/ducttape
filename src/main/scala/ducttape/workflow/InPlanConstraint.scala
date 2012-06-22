@@ -1,5 +1,7 @@
 package ducttape.workflow
 
+import collection._
+
 import HyperWorkflow._
 import ducttape.workflow.HyperWorkflow.HyperWorkflowStateMunger
 import ducttape.workflow.SpecTypes.SpecPair
@@ -10,19 +12,18 @@ import ducttape.workflow.Types.PackedWorkVert
 import ducttape.hyperdag.meta.PhantomMetaHyperDag
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.HyperEdge
-import grizzled.slf4j.Logging
 import ducttape.hyperdag.walker.MetaVertexFilter
 import ducttape.hyperdag.meta.UnpackedMetaVertex
 
-class InPlanConstraint(
-      policy: PlanPolicy,
-      explainCallback: ExplainCallback)
+import grizzled.slf4j.Logging
+
+class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     extends HyperWorkflowStateMunger
-    with MetaVertexFilter[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]
+    with MetaVertexFilter[Option[TaskTemplate],Branch,SpecGroup,Branch]
     with Logging {
   
   // for MetaVertexFilter -- this is used iff we're using the VertexFilter policy
-  override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],BranchInfo,Seq[SpecPair],Branch]): Boolean = {
+  override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],Branch,SpecGroup,Branch]): Boolean = {
     policy match {
       case VertexFilter(plannedVertices) => {
         // TODO: Less extraneous Realization creation?
@@ -45,8 +46,8 @@ class InPlanConstraint(
   // seen: the non-local derivation state we pass around (more efficient to access than real)
   // parentReal: the realization at the parent, which we are proposing to add (traverse)
   override def traverseEdge(v: PackedVertex[Option[TaskTemplate]],
-                            heOpt: Option[HyperEdge[BranchInfo,Seq[SpecPair]]],
-                            e: Seq[SpecPair],
+                            heOpt: Option[HyperEdge[Branch,SpecGroup]],
+                            e: SpecGroup,
                             parentReal: Seq[Branch],
                             prevState: UnpackState): Option[UnpackState] = {
     
@@ -78,7 +79,8 @@ class InPlanConstraint(
         // just accept everything for now since vertex filter
         // will take care of keeping things manageable
         case VertexFilter(_) => true
-        case OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) => {
+        case OneOff(graftRelaxationsX) => {
+          val graftRelaxations: Map[PackedWorkVert, Set[Branch]] = graftRelaxationsX
           trace("Checking if no more than one branch point selected a non-baseline branch (default one-off policy)")
           // note: graft dependencies don't count toward one non-baseline branch
           val nonBaselines = myReal.count {
@@ -86,8 +88,10 @@ class InPlanConstraint(
           }
           nonBaselines <= 1
         }
-        case PatternFilter(planFilter: Map[BranchPoint, Set[String]],
-                           graftRelaxations: Map[PackedWorkVert, Set[Branch]]) => {
+        case PatternFilter(planFilterX, graftRelaxationsX) => {
+          val planFilter: Map[BranchPoint, Set[String]] = planFilterX
+          val graftRelaxations: Map[PackedWorkVert, Set[Branch]] = graftRelaxationsX
+                             
           val ok = myReal.forall { realBranch: Branch =>
             planFilter.get(realBranch.branchPoint) match {
               // planFilter must explicitly mention a branch point
@@ -120,10 +124,7 @@ class InPlanConstraint(
     if (!inPlan(myReal)) {
       None // it's not in the plan
     } else {
-      // left operand determines return type (an efficient immutable.HashMap)
-      val result: UnpackState = prevState ++ parentReal.map { b: Branch => (b.branchPoint, b) }
-      trace("Extending seen at " + v + ": " + prevState.values + " with " + parentReal + " ==> " + result.values)
-      Some(result)
+      Some(prevState)
     }
   }
 }

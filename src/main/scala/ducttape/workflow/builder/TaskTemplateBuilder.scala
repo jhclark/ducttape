@@ -29,7 +29,6 @@ import ducttape.syntax.BashCode
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.Branch
 import ducttape.workflow.BranchFactory
-import ducttape.workflow.BranchInfo
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.BranchPointFactory
 import ducttape.workflow.HyperWorkflow
@@ -39,7 +38,7 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.Task
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.builder.WorkflowBuilder.BranchPointTree
-import ducttape.workflow.builder.WorkflowBuilder.BranchInfoTree
+import ducttape.workflow.builder.WorkflowBuilder.BranchTree
 import ducttape.workflow.builder.WorkflowBuilder.TerminalData
 import ducttape.workflow.SpecTypes.SpecPair
 import ducttape.workflow.SpecTypes.LiteralSpecPair
@@ -63,7 +62,7 @@ private[builder] class TaskTemplateBuilder(
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
     val parents: Map[TaskTemplate,BranchPointTree] = wd.tasks.map { taskDef: TaskDef =>
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
-      val baselineTree = new BranchInfoTree(Task.NO_BRANCH)
+      val baselineTree = new BranchTree(Task.NO_BRANCH)
       tree.children += baselineTree
 
       // parameters are different than file dependencies in that they do not
@@ -111,7 +110,7 @@ private[builder] class TaskTemplateBuilder(
   // sort of variable
   def resolveBranchPoint[SpecT <: Spec]
     (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef], isParam: Boolean)
-    (prevTree: BranchInfoTree, branchHistory: Seq[Branch], curTask: Option[TaskDef],
+    (prevTree: BranchTree, branchHistory: Seq[Branch], curTask: Option[TaskDef],
      curSpec: Spec, prevGrafts: Seq[Branch])
     (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 

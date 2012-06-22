@@ -6,12 +6,12 @@ import ducttape.workflow.Realization
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.Branch
-import ducttape.workflow.BranchInfo
 import ducttape.workflow.PlanPolicy
 import ducttape.workflow.OneOff
 import ducttape.workflow.PatternFilter
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.RealTask
+import ducttape.workflow.SpecGroup
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.Types.PackedWorkVert
 import ducttape.workflow.Types.WorkflowMetaEdge
@@ -85,17 +85,15 @@ object Plans extends Logging {
         debug("Considering hyperedge with sources: " + workflow.dag.sources(hyperedge))
         
         // TODO: Record the realizations for which this graft is required?
-        Optional.toOption(hyperedge.h) match {
-          case Some(branchInfo) if (!branchInfo.grafts.isEmpty) => {
-            
+        hyperedge.e.foreach { specGroup: SpecGroup =>
+          if (specGroup != null && !specGroup.grafts.isEmpty) {
             // recursively find all dependencies of this vertex & add graft relaxations
             val deps: Seq[PackedWorkVert] = getDependencies(workflow, v, true)
             deps.foreach { dep: PackedWorkVert =>
-              trace("Grafts are: " + branchInfo.grafts)
-              graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet[Branch]) ++= branchInfo.grafts
+              trace("Grafts are: " + specGroup.grafts)
+              graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet[Branch]) ++= specGroup.grafts
             }
           }
-          case _ => Nil
         }
       }
     }

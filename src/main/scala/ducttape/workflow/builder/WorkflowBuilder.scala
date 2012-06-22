@@ -31,13 +31,13 @@ import ducttape.syntax.BashCode
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.Branch
 import ducttape.workflow.BranchFactory
-import ducttape.workflow.BranchInfo
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.BranchPointFactory
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.NoSuchBranchException
 import ducttape.workflow.NoSuchBranchPointException
 import ducttape.workflow.RealizationPlan
+import ducttape.workflow.SpecGroup
 import ducttape.workflow.Task
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.Types.PackedWorkVert
@@ -57,12 +57,12 @@ object WorkflowBuilder {
 
   /** alternates with BranchInfoTree */
   private[builder] class BranchPointTree(val branchPoint: BranchPoint) {
-    val children = new mutable.ArrayBuffer[BranchInfoTree]
+    val children = new mutable.ArrayBuffer[BranchTree]
 
-    def getOrAdd(br: Branch): BranchInfoTree = children.find { child => child.branch == br } match {
+    def getOrAdd(br: Branch): BranchTree = children.find { child => child.branch == br } match {
       case Some(found) => found
       case None => {
-        val child = new BranchInfoTree(br)
+        val child = new BranchTree(br)
         children += child
         child
       }
@@ -80,14 +80,16 @@ object WorkflowBuilder {
    * alternates with BranchPointTree
    * branch will be baseline for the root vertex
    */
-  private[builder] class BranchInfoTree(val branch: Branch) {
+  private[builder] class BranchTree(val branch: Branch) {
 
     // if populated at the root, indicates no branch points
-    // specs, organized by which task they originate from
-    // and then by what grafts apply for that parent
+    //   specs, organized by which task they originate from
+    //   and then by what grafts apply for that parent
     // NOTE: These are the final resolved specs, appropriate for use within some realization
-    // they are used in the BranchTreeMap; the plain edges in the HyperDAG
-    // are populated by the *original* unresolved specs
+    //   they are used in the BranchTreeMap; the plain edges in the HyperDAG
+    //   are populated by the *original* unresolved specs
+    // In the end, each element of terminalData will become an edge
+    //   within some hyperedge
     var terminalData = new mutable.ArrayBuffer[TerminalData]
     val children = new mutable.ArrayBuffer[BranchPointTree]
 
@@ -142,7 +144,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
   val branchPointFactory = new BranchPointFactory
   val branchFactory = new BranchFactory(branchPointFactory)
-  val dag = new PhantomMetaHyperDagBuilder[TaskTemplate, BranchPoint, BranchInfo, Seq[SpecPair]]()
+  val dag = new PhantomMetaHyperDagBuilder[TaskTemplate, BranchPoint, Branch, SpecGroup]()
 
   def catcher[U](func: => U)(implicit ref: BranchPointRef) = try { func } catch {
     case e: NoSuchBranchPointException => {
@@ -182,42 +184,57 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   def getHyperEdges(task: TaskTemplate, 
                     specPhantomV: PackedVertex[Option[TaskTemplate]],
                     curNode: BranchPointTree,
-                    debugNesting: Seq[Branch],
-                    curGrafts: Seq[Branch])
+                    debugNesting: Seq[Branch])
                    (implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]])
-    : Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])] = {
+    : Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])] = {
     
-    val possibleHyperEdges = curNode.children.map { branchChild: BranchInfoTree =>
-      val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = {
+        // each graft set will receive its own meta-edge
+//    val graftSet: Set[Seq[Branch]] = {
+//      val candidateGrafts = curNode.children.flatMap { branchChild: BranchTree =>
+//        branchChild.terminalData.map { data => data.grafts }.toSeq
+//      }.toSet
+//      
+//      // if no grafts are specified for this task, denote it as the empty graft set
+//      val NO_GRAFTS = Seq()
+//      if (candidateGrafts.isEmpty) Set(NO_GRAFTS) else candidateGrafts
+//    }
+//    
+//    debug("Task=%s %s: Have %d graft sets: %s".format(task, nestedBranches, graftSet.size, graftSet))
+
+    
+//          graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
+//        val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
+//        val graftedBranches: Set[Branch] = curGrafts.toSet
+    
+    val possibleHyperEdges = curNode.children.map { branchChild: BranchTree =>
+      val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
         branchChild.children.map { bpChild: BranchPointTree =>
           // we have more than one branch point in a row: create a phantom
           val branchPhantomV: PackedVertex[Option[TaskTemplate]]
             = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch".format(task.name, branchChild.branch.toString))
           traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
-          (branchPhantomV, Nil)
+          (branchPhantomV, SpecGroup.empty)
         }
       }
 
       // branches with no further branch points nested under them
       // get normal edges attached to them, which lead back to previous
       // tasks
-      val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])] = branchChild.terminalData.
-        filter { case data => data.grafts == curGrafts }.
-        map { data: TerminalData =>
+      val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
+        branchChild.terminalData.map { data: TerminalData =>
           data.task match {
             // has a temporal dependency on a previous task
-            case Some(taskDef: TaskDef) => (toVertex(taskDef), data.specs)
+            case Some(taskDef: TaskDef) => (toVertex(taskDef), new SpecGroup(data.specs, data.grafts))
             // no temporal dependency
-            case None => (specPhantomV, data.specs)
+            case None => (specPhantomV, new SpecGroup(data.specs, data.grafts))
           }
         }
-      val branchInfo = new BranchInfo(branchChild.branch, curGrafts)
-      debug("Task=%s; Using grafts: %s found nested edges: %s and terminal edges: %s".format(
-        task, curGrafts, nestedBranchEdges, terminalEdges))
-      
-      (branchInfo, nestedBranchEdges ++ terminalEdges)
+      }
+      debug("Task=%s; Found nested edges: %s and terminal edges: %s".format(task, nestedBranchEdges, terminalEdges))
+      (branchChild.branch, nestedBranchEdges ++ terminalEdges)
     }
     
+    // result type: (PackedVertex[Option[TaskTemplate]], SpecGroup)
     possibleHyperEdges.filter {
       // don't include hyperedges with zero source vertices
       case (branchInfo, edges) => edges.size > 0
@@ -250,44 +267,12 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // 1) we need an imaginary home for config specs
     // 2) we have more than one branch point in a row (nested branch points)
 
-    // each graft set will receive its own meta-edge
-    val graftSet: Set[Seq[Branch]] = {
-      val candidateGrafts = curNode.children.flatMap { branchChild: BranchInfoTree =>
-        branchChild.terminalData.map { data => data.grafts }.toSeq
-      }.toSet
-      
-      // if no grafts are specified for this task, denote it as the empty graft set
-      val NO_GRAFTS = Seq()
-      if (candidateGrafts.isEmpty) Set(NO_GRAFTS) else candidateGrafts
-    }
-    
-    debug("Task=%s %s: Have %d graft sets: %s".format(task, nestedBranches, graftSet.size, graftSet))
-
     // grab hyperedges separately for each unique graft set
     // (however, don't create them as separate meta-edges, else if there is more than one branch of the same branch point
     //  and they have different graft sets, the branches will not match and the global branch point constraint will kill them)
-    val hyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])] = {
-      graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
-        val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
-        val graftedBranches: Set[Branch] = curGrafts.toSet
-      
-        // create a hyperedge list in the format expected by the HyperDAG API
-        // NOTE: getHyperEdges is mutually recursive with traverse()
-        val graftSpecificHyperedges: Seq[(BranchInfo, Seq[(PackedVertex[Option[TaskTemplate]], Seq[SpecPair])])]
-          = getHyperEdges(task, specPhantomV, curNode, nestedBranches, curGrafts).filter {
-              case (branchInfo, vertexInfo) => {
-                // if this branch's branch point is named in our current graft set,
-                // make sure the branch name matches
-                // this isn't strictly necessary, but removes some unnecessary edges from the HyperDAG
-                // (that makes debugging easier)
-                !graftedBranchPoints.contains(branchInfo.branch.branchPoint) || graftedBranches.contains(branchInfo.branch)
-              }
-          }
-     
-        debug("Task=%s %s: Grafts=%s :: Accumulated hyperedges: %s".format(task, nestedBranches, curGrafts, graftSpecificHyperedges))
-        graftSpecificHyperedges
-      }
-    }
+    val hyperedges: Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])]
+      = getHyperEdges(task, specPhantomV, curNode, nestedBranches)
+
     if (!hyperedges.isEmpty) {
       debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
         format(task, nestedBranches, branchPoint, hyperedges))
