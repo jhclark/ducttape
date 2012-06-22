@@ -16,13 +16,10 @@ import grizzled.slf4j.Logging
  *  The explainCallback can be used to provide feedback to the user on
  *  why certain realizations were not produced (e.g. due to grafting). */
 class BranchGraftMunger(
-    dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
-    explainCallback: ExplainCallback)
+      dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,BranchInfo,Seq[SpecPair]],
+      explainCallback: ExplainCallback)
     extends HyperWorkflowStateMunger with Logging {
   
-  // GAH! This returns a MultiSet[Branch] instead of an UnpackState... yet we want to affect the added parentRealization
-  // How do we still keep MultiSets efficient while passing along this state and keeping it consistent?
-  // Can we make the multiset more helpful (e.g. index it by BranchPoint?)
   override def traverseEdge(v: PackedWorkVert,
       heOpt: Option[WorkflowEdge],
       e: Seq[SpecPair],
