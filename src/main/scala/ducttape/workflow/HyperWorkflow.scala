@@ -40,11 +40,18 @@ object HyperWorkflow {
     
     // heBranch might be None if this vertex has no incoming hyperedge
     override def initHyperedge(heBranch: Option[Branch]): UnpackState = heBranch match {
-      case None => new UnpackState
-      case Some(branch: Branch) => new UnpackState + ((branch.branchPoint, branch))
+      case None => UnpackState.empty
+      // This line is cool: It cleanly states that branches introduced at a hyperedge
+      // are never subject to the grafts of that hyperedge's component edges
+      case Some(branch: Branch) => new UnpackState(
+        hyperedgeState=UnpackState.emptyMap + ((branch.branchPoint, branch)),
+        edgeState=UnpackState.emptyMap)
     }
     
-    override def toRealization(state: UnpackState): Seq[Branch] = state.values.toSeq
+    override def toRealization(state: UnpackState): Seq[Branch] = {
+      assert(state.edgeState.isEmpty)
+      state.hyperedgeState.values.toSeq
+    }
   }
 }
 
@@ -88,12 +95,16 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     val inPlanConstraint = new InPlanConstraint(policy, explainCallback)
       
     // order is important!
-    // first, we update the state to add any new branches
-    // then we must first apply grafts, *before* enforcing
-    // global branch point consistency and plan membership since some branches may disappear in grafting
-    val munger = RealizationStateMunger.
+    // 1) first, add each edge's state into a holding buffer: edgeState
+    // 2) apply grafts
+    //    NOTE: some branches may disappear in grafting
+    // 3) enforce global branch point consistency 
+    // 4) merge the edge state's holding buffer into the hyperedgeState
+    // 5) check that the final hyperedge state for plan membership
+    val munger = EdgeStateInitializer.
       andThen(new BranchGraftMunger(dag, explainCallback)).
       andThen(GlobalBranchPointConstraint).
+      andThen(EdgeStateMerger).
       andThen(inPlanConstraint)
     dag.unpackedWalker[Branch,UnpackState](munger, inPlanConstraint, toD, observe)(ordering)
   }

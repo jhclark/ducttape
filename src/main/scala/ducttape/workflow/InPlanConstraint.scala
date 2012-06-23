@@ -55,7 +55,7 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     assert(parentReal != null)
     assert(!parentReal.exists(_ == null))
     
-    trace("Applying inPlan filter at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState.values.mkString("-")))
+    trace("Applying inPlan filter at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState))
     
     def isGraftDependency(graftRelaxations: Map[PackedWorkVert, Set[Branch]],
         v: PackedWorkVert,
@@ -74,17 +74,22 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     // violated yet in the state?
     // TODO: This could be much more efficient if we only
     // checked which 
-    def inPlan(myReal: Traversable[Branch]): Boolean = {
+    // Set because these must be uniquified
+    def inPlan(myReal: Set[Branch]): Boolean = {
       policy match {
         // just accept everything for now since vertex filter
         // will take care of keeping things manageable
         case VertexFilter(_) => true
         case OneOff(graftRelaxationsX) => {
           val graftRelaxations: Map[PackedWorkVert, Set[Branch]] = graftRelaxationsX
-          trace("Checking if no more than one branch point selected a non-baseline branch (default one-off policy)")
           // note: graft dependencies don't count toward one non-baseline branch
           val nonBaselines = myReal.count {
             realBranch: Branch => !realBranch.baseline && !isGraftDependency(graftRelaxations, v, realBranch)
+          }
+          if (isDebugEnabled) {
+            debug("OneOff: Number of non-baseline branches: %d".format(nonBaselines))
+            myReal.foreach { realBranch: Branch => debug("OneOff: Branch %s: baseline? %s graftDep? %s".format(
+                realBranch, realBranch.baseline, isGraftDependency(graftRelaxations, v, realBranch))) }
           }
           nonBaselines <= 1
         }
@@ -109,21 +114,22 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
               case None => realBranch.baseline || isGraftDependency(graftRelaxations, v, realBranch)
             }
           }
-          if (!ok) {
-            explainCallback(v.comment.getOrElse(v.value.getOrElse("Unknown").toString),
-              "Plan excludes realization: %s".format(myReal.mkString("-")),
-              false)
-          }
           ok
         }
       }
     }
     
     // Use views so that we don't have to copy as much
-    val myReal: Traversable[Branch] = prevState.values.view ++ parentReal.view
+    // note that edgeState has been merged into the hyperedgeState by this point
+    val myReal: Set[Branch] = (prevState.hyperedgeState.values.view ++ parentReal.view).toSet
     if (!inPlan(myReal)) {
+      explainCallback(v.comment.getOrElse(v.value.getOrElse("Unknown").toString),
+        "Plan excludes realization: %s".format(myReal.mkString("-")),
+        false)
+      debug("Vertex=%s; Not in plan: %s".format(v, prevState))
       None // it's not in the plan
     } else {
+      debug("Vertex=%s; In plan: %s".format(v, prevState))
       Some(prevState)
     }
   }

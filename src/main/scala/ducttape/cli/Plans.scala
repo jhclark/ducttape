@@ -98,7 +98,11 @@ object Plans extends Logging {
       }
     }
     
-    debug("Found graft relaxations: " + graftRelaxations)
+    if (isDebugEnabled) {
+      for ( (v, set) <- graftRelaxations) {
+        debug("Found graft relaxation: %s -> %s".format(v, set.toString))
+      }
+    }
     
     workflow.plans match {
       case Nil => {

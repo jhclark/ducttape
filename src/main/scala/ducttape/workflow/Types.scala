@@ -16,7 +16,19 @@ object Types {
   // when walking an unpacked DAG, only allow the same branch to appear in a realization once
   // By using Scala's fast immutable sets, we save big on space complexity while keeping reasonable time
   // See Phil Bagwell's work at EPFL on data sharing in immutable/persistent data structures
-  type UnpackState = immutable.HashMap[BranchPoint, Branch]
+  class UnpackState(
+      // hyperedgeState: The branches we've already committed to adding
+      val hyperedgeState: immutable.Map[BranchPoint, Branch],
+      // edgeState: The branches from a particular edge that we're considering
+      //   but might still get munged via grafting or rejected due to constraints
+      val edgeState: immutable.Map[BranchPoint, Branch]) {
+    override def toString() = "he=%s++e=%s".format(hyperedgeState.values.mkString("-"), edgeState.values.mkString("-"))
+  }
+
+  object UnpackState {
+    val emptyMap = new immutable.HashMap[BranchPoint, Branch]
+    val empty = new UnpackState(emptyMap, emptyMap)
+  }
   
   type PackedWorkVert = PackedVertex[Option[TaskTemplate]]
   type UnpackedWorkVert = UnpackedChainedMetaVertex[TaskTemplate,Branch,SpecGroup,Branch]

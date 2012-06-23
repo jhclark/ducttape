@@ -26,22 +26,28 @@ object GlobalBranchPointConstraint extends HyperWorkflowStateMunger with Logging
     assert(parentReal != null)
     assert(!parentReal.exists(_ == null))
     
-    trace("Applying globalBranchPointConstraint at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState.values.mkString("-")))
+    trace("Applying globalBranchPointConstraint at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState))
     
     // enforce that each branch point should atomically select one branch per hyperpath
     // through the (Meta)HyperDAG
-    def violatesChosenBranch(seen: UnpackState, newBranch: Branch) = seen.get(newBranch.branchPoint) match {
-      case None => {
-        trace("No branch chosen yet for: " + newBranch.branchPoint)
-        false // no branch chosen yet
-      }
-      case Some(prevChosenBranch) => {
-        trace("Enforcing constraint: %s == %s or bust".format(newBranch, prevChosenBranch))
-        newBranch != prevChosenBranch
+    def violatesChosenBranch(chosenBranches: Map[BranchPoint,Branch], proposedBranch: Branch) = {
+      chosenBranches.get(proposedBranch.branchPoint) match {
+        case None => {
+          trace("No branch chosen yet for: " + proposedBranch.branchPoint)
+          false // no branch chosen yet
+        }
+        case Some(prevChosenBranch) => {
+          trace("Enforcing constraint: %s == %s or bust".format(proposedBranch, prevChosenBranch))
+          proposedBranch != prevChosenBranch
+        }
       }
     }
 
-    if (parentReal.exists { branch => violatesChosenBranch(prevState, branch) } ) {
+    val proposedBranches = prevState.edgeState.values
+    val chosenBranches = prevState.hyperedgeState
+    
+    if (proposedBranches.exists { branch => violatesChosenBranch(chosenBranches, branch) } ) {
+      debug("Vertex=%s; e=%s; Discarded globally inconsistent realization: %s".format(v, e, prevState))
       None // we've already seen this branch point before -- and we just chose the wrong branch
     } else {
       Some(prevState)
