@@ -112,13 +112,13 @@ object WorkflowBuilder {
       }
     }
 
-    def getOrAdd(task: Option[TaskDef], grafts: Seq[Branch]): TerminalData = {
+    def getOrAdd(task: Option[TaskDef], grafts: Seq[Branch], isParam: Boolean): TerminalData = {
       // TODO: Do we need to sort grafts so that we don't get multiple entries
       // if they're in different orders?
-      terminalData.find { data => data.task == task && data.grafts == grafts } match {
+      terminalData.find { data => data.task == task && data.grafts == grafts && data.isParam == isParam } match {
         case Some(data) => data
         case None => {
-          val result = new TerminalData(task, grafts)
+          val result = new TerminalData(task, grafts, isParam)
           terminalData += result
           result
         }
@@ -130,10 +130,12 @@ object WorkflowBuilder {
 
   private[builder] class TerminalData(
     val task: Option[TaskDef],
-    val grafts: Seq[Branch]) {
+    val grafts: Seq[Branch],
+    val isParam: Boolean) {
+
     val specs = new mutable.ArrayBuffer[SpecPair]
 
-    override def toString() = "(%s %s %s)".format(task, grafts, specs)
+    override def toString() = "(%s %s isParam=%s %s)".format(task, grafts, isParam, specs)
   }
 }
 
@@ -212,13 +214,16 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       // branches with no further branch points nested under them
       // get normal edges attached to them, which lead back to previous
       // tasks
+      // we distinguish between literals (as specified by .isParam)
+      // and specs that depend on previous tasks (not params)
       val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
         branchChild.terminalData.map { data: TerminalData =>
-          data.task match {
+          data.isParam match {
             // has a temporal dependency on a previous task
-            case Some(taskDef: TaskDef) => (toVertex(taskDef), new SpecGroup(data.specs, data.grafts))
+            // TODO: Remove Option[TaskDef] ?
+            case false => (toVertex(data.task.get), new SpecGroup(data.specs, data.grafts))
             // no temporal dependency
-            case None => (specPhantomV, new SpecGroup(data.specs, data.grafts))
+            case true => (specPhantomV, new SpecGroup(data.specs, data.grafts))
           }
         }
       }

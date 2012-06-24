@@ -208,7 +208,7 @@ private[builder] class TaskTemplateBuilder(
 
           // store specs at this branch nesting along with its grafts
           // this is used by the MetaHyperDAG to determine structure and temporal dependencies
-          val data: TerminalData = myBranchTree.getOrAdd(srcTaskDefOpt, allGrafts)
+          val data: TerminalData = myBranchTree.getOrAdd(srcTaskDefOpt, allGrafts, isParam)
           data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
           
           trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, allGrafts))
