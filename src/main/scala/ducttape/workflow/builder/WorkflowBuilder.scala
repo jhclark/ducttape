@@ -219,9 +219,14 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       val terminalEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
         branchChild.terminalData.map { data: TerminalData =>
           data.isParam match {
-            // has a temporal dependency on a previous task
-            // TODO: Remove Option[TaskDef] ?
-            case false => (toVertex(data.task.get), new SpecGroup(data.specs, data.grafts))
+            case false => {
+              data.task match {
+                // has a temporal dependency on a previous task
+                case Some(task) => (toVertex(task), new SpecGroup(data.specs, data.grafts))
+                // depends on a non-task such as a config/global assignment
+                case None => (specPhantomV, new SpecGroup(data.specs, data.grafts))
+              }
+            }
             // no temporal dependency
             case true => (specPhantomV, new SpecGroup(data.specs, data.grafts))
           }
