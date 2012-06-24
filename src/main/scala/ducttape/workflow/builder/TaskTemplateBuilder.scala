@@ -38,14 +38,17 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.Task
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.builder.WorkflowBuilder.BranchPointTree
+import ducttape.workflow.builder.WorkflowBuilder.BranchPointTreeData
 import ducttape.workflow.builder.WorkflowBuilder.BranchTree
 import ducttape.workflow.builder.WorkflowBuilder.TerminalData
 import ducttape.workflow.SpecTypes.SpecPair
 import ducttape.workflow.SpecTypes.LiteralSpecPair
-import scala.collection.Seq
-import scala.collection.Set
-import scala.collection.Map
-import scala.collection.mutable
+
+import collection.Seq
+import collection.Set
+import collection.Map
+import collection.mutable
+
 import grizzled.slf4j.Logging
 
 // unlike WorkflowBuilder, we have no interaction with hyperdag framework here
@@ -60,8 +63,9 @@ private[builder] class TaskTemplateBuilder(
     val taskMap: Map[String,TaskDef] = wd.tasks.map { t: TaskDef => (t.name, t) } toMap
     
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
-    val parents: Map[TaskTemplate,BranchPointTree] = wd.tasks.map { taskDef: TaskDef =>
+    val parents: Map[TaskTemplate,BranchPointTreeData] = wd.tasks.map { taskDef: TaskDef =>
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
+      val treeData = new BranchPointTreeData(tree, Nil)
       val baselineTree = new BranchTree(Task.NO_BRANCH)
       tree.children += baselineTree
 
@@ -81,18 +85,18 @@ private[builder] class TaskTemplateBuilder(
         resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
           baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), inSpec, Nil)(resolveVarFunc=resolveInput)
       }
-      
-      val inputVals: Seq[SpecPair] = tree.specs.filter(_.isInput).map { spec =>
-        new SpecPair(spec.origSpec, spec.srcTask, spec.srcSpec, isParam=false)
-      }.toSeq
-      
+            
       val paramVals: Seq[LiteralSpecPair] = tree.specs.filter(_.isParam).map { spec =>
         val literalSrcSpec = spec.srcSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed since isParam
         new LiteralSpecPair(spec.origSpec, spec.srcTask, literalSrcSpec, isParam=true)
       }.toSeq
 
+      val inputVals: Seq[SpecPair] = tree.specs.filter(_.isInput).map { spec =>
+        new SpecPair(spec.origSpec, spec.srcTask, spec.srcSpec, isParam=false)
+      }.toSeq
+
       val taskT = new TaskTemplate(taskDef, inputVals, paramVals)
-      (taskT, tree) // key, value for parents map
+      (taskT, treeData) // key, value for parents map
     }.toMap
     
     val taskTemplates: Seq[TaskTemplate] = parents.keys.toSeq
@@ -115,6 +119,8 @@ private[builder] class TaskTemplateBuilder(
     (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
     debug("Task=%s: Recursively resolving potential branch point: %s @ %s".format(taskDef, curSpec, curTask))
+
+    // TODO: Un-nest these methods
     
     // create an internal node in the branch tree
     def handleBranchPoint(branchPointName: String,
@@ -123,17 +129,55 @@ private[builder] class TaskTemplateBuilder(
                           isFromSeq: Boolean = false) {
       
       val branchPoint = branchPointFactory.get(branchPointName)
-      val bpTree: BranchPointTree = prevTree.getOrAdd(branchPoint)
       
       for ( (branchSpec, idx) <- branchSpecs.zipWithIndex) {
-        debug("branchSpec = " + branchSpec)
+
+        debug("Task=%s; bp=%s; new branchSpec=%s".format(taskDef, branchPoint, branchSpec))
         val isBaseline = (idx == 0)
         val branch = branchFactory.get(branchSpec.name, branchPoint, isBaseline)
-        val branchTree = bpTree.getOrAdd(branch)
-        trace("Found branch tree %s for branch spec: %s".format(branchTree.branch, branchSpec))
-        val newHistory = branchHistory ++ Seq(branch)
-        resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-          branchTree, newHistory, curTask, branchSpec, prevGrafts)(resolveVarFunc)
+
+        // Statically enforce grafts that happen within a nested
+        // branch point (occur in our branch tree)
+        // This is especially important for grafted params, since these
+        // grafts are enforced exclusively at compile-time (now)
+        // and it just helps keep the generated graphs a bit cleaner
+        val graftsOk = prevGrafts.find { graft: Branch => graft.branchPoint == branch.branchPoint } match {
+          case Some(graft) => {
+            debug("Task=%s; Enforcing static graft %s == %s".format(taskDef, graft, branch))
+            graft == branch
+          }
+          case None => true
+        }
+        
+        if (graftsOk) {
+          val newHistory = branchHistory ++ Seq(branch)
+          // does this branch assignment spec lead to a more deeply nested branch point?
+          // or something else?
+          // Note that it might not even be an assignment, since we allow anonymous branch specs
+          branchSpec.rval match {
+            case BranchPointDef(_,_) => {
+              // no grafts needed/possible here
+              val bpTreeData: BranchPointTreeData = prevTree.getOrAdd(branchPoint, prevGrafts)
+              val branchTree: BranchTree = bpTreeData.tree.getOrAdd(branch)
+
+              debug("Task=%s; branchPoint=%s; Spec %s contains a nested branch point. Branch tree is %s for branch spec.".format(taskDef, branchPoint, branchSpec, branchTree.branch))
+              resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
+                branchTree, newHistory, curTask, branchSpec, prevGrafts)(resolveVarFunc)
+            }
+            case _ => {
+              // if it's not a branch point def, we must immediately get its grafts
+              // to get them in the right place in the tree
+              val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, branchSpec, curTask)
+              // only use *prevGrafts* (the grafts needed to arrive at this BP)
+              // instead of prevGrafts++myGrafts
+              val bpTreeData: BranchPointTreeData = prevTree.getOrAdd(branchPoint, prevGrafts)
+              val branchTree: BranchTree = bpTreeData.tree.getOrAdd(branch)
+
+              debug("Task=%s; branchPoint=%s; Spec %s does not contain a nested branch point. Branch tree is %s for branch spec.".format(taskDef, branchPoint, branchSpec, branchTree.branch))
+              handleNonBranchPointHelper(branchSpec, branchTree)(srcSpec, srcTaskDefOpt, myGrafts)
+            }
+          }
+        }
       }
     }
 
@@ -141,7 +185,14 @@ private[builder] class TaskTemplateBuilder(
     def handleNonBranchPoint() {
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
       val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
-      val allGrafts: Seq[Branch] = myGrafts ++ prevGrafts
+      handleNonBranchPointHelper(curSpec, prevTree)(srcSpec, srcTaskDefOpt, myGrafts)
+    }
+
+    def handleNonBranchPointHelper(theSpec: Spec, myBranchTree: BranchTree)
+        (srcSpec: Spec, srcTaskDefOpt: Option[TaskDef], myGrafts: Seq[Branch]) {
+
+      // use myGrafts instead of myGrafts ++ prevGrafts
+      val allGrafts: Seq[Branch] = myGrafts
       debug("Resolved %s to potentially non-branch spec %s @ %s with new grafts %s (all grafts: %s)".format(
         origSpec, srcSpec, srcTaskDefOpt, myGrafts, allGrafts))
       
@@ -150,32 +201,23 @@ private[builder] class TaskTemplateBuilder(
       // if that's the case, we should continue recursing. otherwise, just add.
       srcSpec.rval match {
         case Literal(_) | Unbound() => {
-          // remove any grafts that are currently being introduced as a branch
-          // the graft will effectively be performed as a consistency check by the global branch point constraint
-          // otherwise, we botch the order of operations
-          // (we introduce branches, then check global branch point consistency, then apply grafts to remove branch points)
-          val filteredGrafts: Seq[Branch] = allGrafts.filter { branch =>
-            val ok = !branchHistory.contains(branch)
-            // TODO: Don't allow grafting then routing to a different branch?
-            if (!ok)
-              debug("Task=%s; Removing graft since nested branches already constrains this branch: %s is in %s".format(taskDef, branch, branchHistory))
-            else
-              debug("Task=%s; Keeping graft: %s is not in %s".format(taskDef, branch, branchHistory))
-            ok
-          }
+
+          // TODO: We need to remove this branch from the history/branch tree entirely...
+          // this potentially removes phantoms even
+          // i.e. don't modify the grafts, modify the tree...
 
           // store specs at this branch nesting along with its grafts
           // this is used by the MetaHyperDAG to determine structure and temporal dependencies
-          val data: TerminalData = prevTree.getOrAdd(srcTaskDefOpt, filteredGrafts)
+          val data: TerminalData = myBranchTree.getOrAdd(srcTaskDefOpt, allGrafts)
           data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
           
-          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, filteredGrafts))
+          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, allGrafts))
         }
         case _ => {
           // not a literal -- keep tracing through branch points
           // note that we now recurse with a different curTask
           resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-            prevTree, branchHistory, srcTaskDefOpt, srcSpec, allGrafts)(resolveVarFunc)
+            myBranchTree, branchHistory, srcTaskDefOpt, srcSpec, allGrafts)(resolveVarFunc)
         }
       }
     }
@@ -219,7 +261,7 @@ private[builder] class TaskTemplateBuilder(
       }
       case _ => handleNonBranchPoint()
     }
-  }
+  } // handleBranchPoint -- TODO: This method is obese, split it up.
 
   // the resolved Spec is guaranteed to be a literal for params
   private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {

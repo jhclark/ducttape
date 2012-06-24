@@ -68,12 +68,19 @@ object WorkflowBuilder {
       }
     }
 
+    // recursively enumerate all specs in this tree
     def specs: Iterable[SpecPair] = children.flatMap { child =>
-      child.terminalData.flatMap { data => data.specs } ++
-        child.children.flatMap { grandchild => grandchild.specs }
+      child.terminalData.flatMap { data: TerminalData => data.specs } ++
+        child.children.flatMap { grandchild: BranchPointTreeData => grandchild.tree.specs }
     }
 
     override def toString() = "(BP=" + branchPoint + ": " + children.mkString + ")"
+  }
+
+  private[builder] class BranchPointTreeData(
+    val tree: BranchPointTree,
+    val grafts: Seq[Branch]) {
+    override def toString() = tree + "+grafts=[" + grafts.mkString(",") + "]"
   }
 
   /**
@@ -91,13 +98,14 @@ object WorkflowBuilder {
     // In the end, each element of terminalData will become an edge
     //   within some hyperedge
     var terminalData = new mutable.ArrayBuffer[TerminalData]
-    val children = new mutable.ArrayBuffer[BranchPointTree]
+    val children = new mutable.ArrayBuffer[BranchPointTreeData]
 
-    def getOrAdd(bp: BranchPoint): BranchPointTree = {
-      children.find { child => child.branchPoint == bp } match {
+    def getOrAdd(bp: BranchPoint, grafts: Seq[Branch]): BranchPointTreeData = {
+      children.find { child => child.tree.branchPoint == bp && child.grafts == grafts } match {
         case Some(found) => found
         case None => {
-          val child = new BranchPointTree(bp)
+          val bpt = new BranchPointTree(bp)
+          val child = new BranchPointTreeData(bpt, grafts)
           children += child
           child
         }
@@ -117,7 +125,7 @@ object WorkflowBuilder {
       }
     }
 
-    override def toString() = "(B=" + branch + " :: terminalData=" + terminalData.mkString(":") + " :: " + children.mkString + ")"
+    override def toString() = "(B=" + branch + " :: terminalData=" + terminalData.mkString(":") + " :: " + children + ")"
   }
 
   private[builder] class TerminalData(
@@ -183,19 +191,21 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   
   def getHyperedges(task: TaskTemplate, 
                     specPhantomV: PackedVertex[Option[TaskTemplate]],
-                    curNode: BranchPointTree,
+                    curNode: BranchPointTreeData,
                     debugNesting: Seq[Branch])
                    (implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]])
     : Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])] = {
 
-    val possibleHyperedges = curNode.children.map { branchChild: BranchTree =>
+    val possibleHyperedges = curNode.tree.children.map { branchChild: BranchTree =>
+
       val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
-        branchChild.children.map { bpChild: BranchPointTree =>
-          // we have more than one branch point in a row: create a phantom
+        // we might have multiple branch point trees if there are different graft sets
+        branchChild.children.map { bpChild: BranchPointTreeData =>
+          // we have more than one branch point in a row: create a phantom V for each graft
           val branchPhantomV: PackedVertex[Option[TaskTemplate]]
-            = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch".format(task.name, branchChild.branch.toString))
+            = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch[%s]".format(task.name, branchChild.branch.toString, bpChild.grafts.mkString(",")))
           traverse(task, specPhantomV, bpChild, debugNesting ++ Seq(branchChild.branch), branchPhantomV)
-          (branchPhantomV, SpecGroup.empty)
+          (branchPhantomV, SpecGroup.empty(grafts=bpChild.grafts))
         }
       }
 
@@ -237,29 +247,25 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   // the Baseline branch point and baseline branch are automatically added by findTasks() in the first pass
   def traverse(task: TaskTemplate,
     specPhantomV: PackedVertex[Option[TaskTemplate]],
-    curNode: BranchPointTree,
+    curNode: BranchPointTreeData,
     nestedBranches: Seq[Branch],
     sinkV: PackedVertex[Option[TaskTemplate]])(implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]]) {
 
     // the branch point associated with the meta edge being created
-    val branchPoint = curNode.branchPoint
-    debug("Task=%s %s: BranchPointTree is %s".format(task, nestedBranches, curNode))
+    val branchPoint = curNode.tree.branchPoint
+    debug("Task=%s %s: BranchPointTreeData is %s".format(task, nestedBranches, curNode))
 
     // we create a phantom vertex when:
     // 1) we need an imaginary home for config specs
     // 2) we have more than one branch point in a row (nested branch points)
-
-    // grab hyperedges separately for each unique graft set
-    // (however, don't create them as separate meta-edges, else if there is more than one branch of the same branch point
-    //  and they have different graft sets, the branches will not match and the global branch point constraint will kill them)
     val hyperedges: Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])]
       = getHyperedges(task, specPhantomV, curNode, nestedBranches)
 
     if (!hyperedges.isEmpty) {
-      debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
-        format(task, nestedBranches, branchPoint, hyperedges))
-      //dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s[%s]".format(branchPoint.toString, task.name, curGrafts.mkString(",")))
-      dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment="Epsilon:%s:%s".format(branchPoint.toString, task.name))
+      val name = "Epsilon:%s:%s".format(branchPoint.toString, task.name)
+      debug("Task=%s %s: Adding metaedge '%s' for branchPoint %s to HyperDAG: Component hyperedges are: %s".
+        format(task, name, nestedBranches, branchPoint, hyperedges))
+      dag.addMetaEdge(branchPoint, hyperedges, sinkV, comment=name)
     } else {
       debug("Task=%s %s: No metaedge for branchPoint %s is needed (zero component hyperedges)".
         format(task, nestedBranches, branchPoint))
@@ -294,7 +300,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     for (v: PackedVertex[Option[TaskTemplate]] <- vertices.values) {
       val taskT: TaskTemplate = v.value.get
       debug("Adding %s to HyperDAG".format(taskT))
-      val nestedBranchInfo: BranchPointTree = foundTasks.parents(taskT)
+      val nestedBranchInfo: BranchPointTreeData = foundTasks.parents(taskT)
       val specPhantomV: PackedVertex[Option[TaskTemplate]] = dag.addPhantomVertex(comment = "Phantom:%s.literals".format(taskT.name))
       traverse(taskT, specPhantomV, nestedBranchInfo, Nil, v)
     }

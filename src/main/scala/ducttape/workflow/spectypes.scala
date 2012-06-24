@@ -38,6 +38,7 @@ class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
 
 object SpecGroup {
   val empty = new SpecGroup(Nil, Nil)
+  def empty(grafts: Seq[Branch]) = new SpecGroup(Nil, grafts)
 }
 
 import SpecTypes._

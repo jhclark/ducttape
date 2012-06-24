@@ -12,6 +12,11 @@ import grizzled.slf4j.Logging
 
  /** when used with an unpacker, causes hyperedge grafts to be recognized
  *  and handled properly
+ *
+ *  Note that some grafts are enforced statically at compile time.
+ *  This is true for 1) grafts on parameters (since parameters don't imply
+ *  temporal dependencies, they are only linked to phantom vertices in
+ *  the HyperDAG) and 2) grafts within nested branch point definitions.
  *  
  *  The explainCallback can be used to provide feedback to the user on
  *  why certain realizations were not produced (e.g. due to grafting). */
