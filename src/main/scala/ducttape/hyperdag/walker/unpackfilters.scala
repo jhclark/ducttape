@@ -47,6 +47,7 @@ trait RealizationMunger[V,H,E,D,F] {
   
   // 3) Called for each incoming component edge of the current hyperedge
   //    he is passed mainly for debugging
+  // TODO: Should this remain abstract?
   def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentReal: Seq[D], prevState: F): Option[F]
     = Some(prevState)
   
@@ -113,8 +114,11 @@ class CompositeRealizationMunger[V,H,E,D,F](
 trait DefaultRealizationStates[V,H,E,D] extends RealizationMunger[V,H,E,D,immutable.HashSet[D]] {
   override def initHyperedge(opt: Option[D]) = opt match {
     case None => new immutable.HashSet[D]
-    case Some(d) => new immutable.HashSet[D] + d
+    case Some(d) => new immutable.HashSet[D] + d  
   }
+  override def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentReal: Seq[D], prevState: immutable.HashSet[D]): Option[immutable.HashSet[D]]
+    = Some(prevState ++ parentReal)
+
   override def toRealization(state: immutable.HashSet[D]): Seq[D] = state.toSeq
 }
 
