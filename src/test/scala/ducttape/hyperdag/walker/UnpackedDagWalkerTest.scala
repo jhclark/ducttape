@@ -107,9 +107,9 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
     	Seq(),
     	Seq("HyperEdge 1"),
     	Seq("HyperEdge 2"),
-    	Seq("HyperEdge 3", "HyperEdge 1"),
+    	Seq("HyperEdge 1", "HyperEdge 3"),
     	Seq("HyperEdge 2", "HyperEdge 4"),
-    	Seq("HyperEdge 2", "HyperEdge 5", "HyperEdge 1")
+    	Seq("HyperEdge 1", "HyperEdge 2", "HyperEdge 5")
     ).sorted(order)
     
     val expectedVerts = List("Vertex A", "Vertex B", "Vertex C", "Vertex D").sorted
@@ -148,7 +148,7 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
 	    //debug("Expected: " + expectedReals)
 	    //debug("Actual  : " + realList)
 	    // == was not calling deep equals on strings! can we override with an implicit?
-	    assert(listsEqual(realList, expectedReals), "Wrong realizations produced: " + realList)
+	    assert(listsEqual(realList, expectedReals), "Wrong realizations produced: " + realList + "\nExpected: " + expectedReals)
     }
     timer.interrupt()
   }
