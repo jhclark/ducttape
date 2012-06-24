@@ -82,16 +82,5 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
   }
 
   lazy val env = inputs ++ outputs ++ params ++ packageEnvs
-  
-  lazy val taskVariables = {
-    env.map { tuple =>
-    
-      tuple._1 + "=" + tuple._2
-    
-    }.reduceLeft { (acc,line) =>
-      
-      acc + "\n" + line
-      
-    }
-  }
+  lazy val taskVariables = env.map { case (key, value) => "%s=%s".format(key,value) }.mkString("\n")
 }
