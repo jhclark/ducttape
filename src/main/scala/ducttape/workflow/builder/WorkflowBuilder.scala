@@ -181,32 +181,14 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     }
   }
   
-  def getHyperEdges(task: TaskTemplate, 
+  def getHyperedges(task: TaskTemplate, 
                     specPhantomV: PackedVertex[Option[TaskTemplate]],
                     curNode: BranchPointTree,
                     debugNesting: Seq[Branch])
                    (implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]])
     : Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])] = {
-    
-        // each graft set will receive its own meta-edge
-//    val graftSet: Set[Seq[Branch]] = {
-//      val candidateGrafts = curNode.children.flatMap { branchChild: BranchTree =>
-//        branchChild.terminalData.map { data => data.grafts }.toSeq
-//      }.toSet
-//      
-//      // if no grafts are specified for this task, denote it as the empty graft set
-//      val NO_GRAFTS = Seq()
-//      if (candidateGrafts.isEmpty) Set(NO_GRAFTS) else candidateGrafts
-//    }
-//    
-//    debug("Task=%s %s: Have %d graft sets: %s".format(task, nestedBranches, graftSet.size, graftSet))
 
-    
-//          graftSet.toSeq.flatMap { curGrafts: Seq[Branch] =>
-//        val graftedBranchPoints: Set[BranchPoint] = curGrafts.map(_.branchPoint).toSet
-//        val graftedBranches: Set[Branch] = curGrafts.toSet
-    
-    val possibleHyperEdges = curNode.children.map { branchChild: BranchTree =>
+    val possibleHyperedges = curNode.children.map { branchChild: BranchTree =>
       val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
         branchChild.children.map { bpChild: BranchPointTree =>
           // we have more than one branch point in a row: create a phantom
@@ -235,13 +217,13 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     }
     
     // result type: (PackedVertex[Option[TaskTemplate]], SpecGroup)
-    possibleHyperEdges.filter {
+    possibleHyperedges.filter {
       // don't include hyperedges with zero source vertices
       case (branchInfo, edges) => edges.size > 0
     }
   }
 
-  // Overview of some of the compicated things traverse must deal with here -- in traverse() and getHyperEdges():
+  // Overview of some of the compicated things traverse must deal with here -- in traverse() and getHyperedges():
   // * Nested branch points
   // * Grafting inside branch point defs
   // * Grafting of the same branch point that is currently being defined, inside that branch point def
@@ -271,7 +253,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     // (however, don't create them as separate meta-edges, else if there is more than one branch of the same branch point
     //  and they have different graft sets, the branches will not match and the global branch point constraint will kill them)
     val hyperedges: Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])]
-      = getHyperEdges(task, specPhantomV, curNode, nestedBranches)
+      = getHyperedges(task, specPhantomV, curNode, nestedBranches)
 
     if (!hyperedges.isEmpty) {
       debug("Task=%s %s: Adding metaedge for branchPoint %s to HyperDAG: Component hyperedges are: %s".
