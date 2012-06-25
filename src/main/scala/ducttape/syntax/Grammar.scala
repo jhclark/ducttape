@@ -309,32 +309,24 @@ object Grammar {
 
 
   /**
-   * Branch name.
-   * <p>
-   * A branch name is comprised of one or more of the following:
-   * <ul>
-   * <li>Unicode letters (\p{L})</li>
-   * <li>Unicode numbers (\p{N})</li>
-   * <li>Unicode currency symbols (\p{Sc})</li>
-   * <li>Unicode connector punctuation, such as underscore (\p{Pc})</li> 
-   * </ul>
+   * Branch name, with the same naming restrictions as unquoted literals.
    */
   def branchName(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
       howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      regex("""[^\p{L}\p{N}\p{Sc}\p{Pc}]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+      regex("""[^"')(\]\[\*\$:@=\s]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
       // Else if the name contains only legal characters and the input ends, then parse it
-      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*$""".r)
+      | regex("""[^"')(\]\[\*\$:@=\s]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
-      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*""".r)
+      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)
     )
   }
 
