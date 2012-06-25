@@ -33,6 +33,13 @@ class Executor(val dirs: DirectoryArchitect,
       // first, acquire a lock
       System.err.println("Acquiring lock for %s".format(task))
       locker.acquireLock(taskEnv)
+      
+     taskEnv.fullSymlink match {
+        case None => ;
+        case Some(link) => {
+          Files.symlink(taskEnv.where, link)
+        }
+      }
 
       // Note: If we just acquired the lock,
       // the LockManager will have just written ducttape_version.txt for us as well.

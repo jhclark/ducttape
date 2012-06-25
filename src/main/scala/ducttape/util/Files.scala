@@ -4,8 +4,11 @@ import java.io._
 import scala.io.Source
 import java.net.URI
 import java.net.URL
+import annotation.tailrec
 
-object Files {
+import grizzled.slf4j.Logging
+
+object Files extends Logging {
   def write(str: String, file: File) {
     file.getParentFile().mkdirs()
     val fw = new FileWriter(file)
@@ -56,6 +59,24 @@ object Files {
   def moveFile(src: File, dest: File) = org.apache.commons.io.FileUtils.moveFile(src, dest)
   def moveFileToDir(src: File, dest: File, createDestDir: Boolean = true)
     = org.apache.commons.io.FileUtils.moveFileToDirectory(src, dest, createDestDir)
+  
+  // returns path, relative to the relativeToDir
+  def relativize(path: File, baseDir: File): String = {
+    val absPath = path.getAbsoluteFile
+    val absBaseDir = baseDir.getAbsoluteFile
+    absBaseDir.toURI.relativize(absPath.toURI).getPath
+  }
+    
+  def symlink(pointTo: File, link: File) {
+    // note: we ignore the exit code in case nothing was linked
+    // absolute symlink paths are *evil* since they mean the directory can never be relocated
+    val absLinkDir: File = link.getAbsoluteFile.getParentFile
+    val relativePointTo: String = relativize(pointTo, absLinkDir)
+    val linkName = link.getName
+    debug("Relativized %s relative to %s: %s".format(pointTo, link, relativePointTo))
+    debug("Symlinking to %s in %s".format(relativePointTo, absLinkDir))
+    Shell.run("cd %s && ln -sf %s %s".format(absLinkDir.getAbsolutePath, relativePointTo, linkName), stdPrefix="ln")
+  }
 
   def ls(dir: File): Seq[File] = {
     val listing = dir.listFiles

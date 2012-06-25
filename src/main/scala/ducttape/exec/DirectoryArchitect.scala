@@ -33,11 +33,13 @@ class DirectoryArchitect(val flat: Boolean,
     new File(relativeTo, taskName).getAbsoluteFile
   }
   
-  def assignDir(task: RealTask, relativeTo: File = confBaseDir): File = assignDir(task.taskDef, task.realization, relativeTo)
+  def assignDir(task: RealTask, relativeTo: File = confBaseDir): File
+    = assignDir(task.taskDef, task.realization, relativeTo, task.realization.toString)
   
-  def assignDir(taskDef: TaskDef, realization: Realization): File = assignDir(taskDef, realization, confBaseDir)
+  def assignDir(taskDef: TaskDef, realization: Realization): File
+    = assignDir(taskDef, realization, confBaseDir, realization.toString)
   
-  def assignDir(taskDef: TaskDef, realization: Realization, relativeTo: File): File = {
+  private def assignDir(taskDef: TaskDef, realization: Realization, relativeTo: File, realName: String): File = {
     val packedDir = assignPackedDir(taskDef.name, relativeTo)
     if (flat) {
       if (realization != Task.NO_REALIZATION) { // TODO: Statically check this elsewhere, too?
@@ -45,8 +47,28 @@ class DirectoryArchitect(val flat: Boolean,
       }
       packedDir
     } else { // using hyper structure
-      new File(packedDir, realization.toString).getAbsoluteFile 
+      new File(packedDir, realName).getAbsoluteFile 
     }
+  }
+
+  // this symlink includes *all* branch points in the current workflow, even
+  //   if they're baseline branches. this symlink may include more components
+  //   as the workflow evolves, but should be used ONLY by the user, not
+  //   internally by ducttape
+  // will return None if we are using flat structure since we will never
+  //   have multiple realizations there OR if the symlink would be the same as the original dir
+  def assignLongSymlink(task: RealTask): Option[File] = {
+    if (flat) {
+      None
+    } else {
+      val orig = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toString)
+      val link = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toFullString)
+      if (orig.getAbsolutePath == link.getAbsolutePath || task.realization.branches == Task.NO_REALIZATION.branches) {
+        None
+      } else {
+        Some(link)
+      }
+    }  
   }
   
   val atticDir = new File(confBaseDir, ".attic")

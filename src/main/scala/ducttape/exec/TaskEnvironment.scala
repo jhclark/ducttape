@@ -62,6 +62,10 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // the where directory to the attic (including its exact inode, in case
   // any running processes still have that inode open)
   val lockFile = new File(where.getParentFile, "%s.LOCK".format(where.getName))
+  
+  // the full symlink is to be for user-friendly navigation of the directory tree
+  // NOT for internal use by ducttape
+  lazy val fullSymlink = dirs.assignLongSymlink(task)
 }
 
 /**
