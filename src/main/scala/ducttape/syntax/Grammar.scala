@@ -161,14 +161,15 @@ object Grammar {
       (regex("""[^\[\s]*[\[]""".r)~err("An unquoted literal may not contain an opening square bracket")) |      
       (regex("""[^\]\s]*[\]]""".r)~err("An unquoted literal may not contain a closing square bracket")) |        
       (regex("""[^:\s]*:""".r)~err("An unquoted literal may not contain a colon")) |      
-      (regex("""[^\*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
-      (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
+      (regex("""[^*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
+      (regex("""[^+\s]*\+""".r)~err("An unquoted literal may not contain a + symbol")) |
+      (regex("""[^$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
       (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
       // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
       (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |
       // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
       (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |      
-      regex("""[^"')(\]\[\*\$:@=\s]+""".r)
+      regex("""[^"')(\]\[*+$:@=\s]+""".r)
     ) ^^ {
       case string: String => new Literal(string)
     }
