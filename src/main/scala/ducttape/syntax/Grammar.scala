@@ -1029,7 +1029,7 @@ object Grammar {
         ) ~> 
         repsep(crossProduct,opt(whitespace)) <~
         (
-            opt(whitespace) ~ 
+            opt(commentableWhitespace) ~ 
             (
                 literal("}") ~ 
                 (
