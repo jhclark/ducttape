@@ -46,4 +46,9 @@ class Realization(val branches: Seq[Branch]) {
   
   // unshortened realization name
   def toFullString(): String = fullRealizationName()
+  
+  // returns true if this realization has only one branch and it is Baseline.baseline
+  def hasSingleBranchBaseline(): Boolean = {
+    branches == Seq(Task.NO_BRANCH) || branches.isEmpty
+  }
 }
