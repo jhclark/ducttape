@@ -3,7 +3,13 @@ Travis CI Build Status: [![Build Status](https://secure.travis-ci.org/jhclark/du
 Introduction
 ============
 
-This is the in-progress baking of Ducttape, a workflow management system for researchers who heart unix. This is a complete overhaul of the LoonyBin workflow manager. Currently, it is alpha quality. Proceed with caution and report bugs regularly.
+Ducttape is a workflow management system for researchers who heart unix. It allows you to:
+
+* Write tasks using bash and have dependencies among tasks automatically managed (like Make)
+* Track the versions of the software used, the data used, and even the task descriptions themselves in a very detailed way
+* Quickly and easily run your workflow under multiple input conditions while re-using intermediate results -- without copy-pasting
+
+Currently, it is alpha quality. Proceed with caution and report bugs regularly.
 
 Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
