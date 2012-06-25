@@ -287,7 +287,6 @@ object Grammar {
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    * @param howToFailAtEnd Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  type NameParserType = (String, Regex, String=>Parser[Nothing], String=>Parser[Nothing]) => Parser[String]
   def name(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
@@ -308,29 +307,38 @@ object Grammar {
   }
 
 
-
-  // TODO: XXX: Jon's gross hack to get branch names working in thesis workflow
-  // copied from name()
-  // XXX: duplicates code from name()
+  /**
+   * Branch name.
+   * <p>
+   * A branch name is comprised of one or more of the following:
+   * <ul>
+   * <li>Unicode letters (\p{L})</li>
+   * <li>Unicode numbers (\p{N})</li>
+   * <li>Unicode currency symbols (\p{Sc})</li>
+   * <li>Unicode connector punctuation, such as underscore (\p{Pc})</li> 
+   * </ul>
+   */
   def branchName(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
       howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      regex("""[^A-Za-z0-9_]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+      regex("""[^\p{L}\p{N}\p{Sc}\p{Pc}]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
       // Else if the name contains only legal characters and the input ends, then parse it
-      | regex("""[A-Za-z0-9_]*$""".r)
+      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
-      | regex("""[A-Za-z0-9_]*""".r)
+      | regex("""[\p{L}\p{N}\p{Sc}\p{Pc}]*""".r)
     )
   }
 
+  /** Convenient shorthand type that encompasses name and branchName */
+  type NameParserType = (String, Regex, String=>Parser[Nothing], String=>Parser[Nothing]) => Parser[String]
 
 
 
