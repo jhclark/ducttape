@@ -9,7 +9,7 @@
 	<taskdef name="scaladoc" classname="scala.tools.ant.Scaladoc">
 		<classpath>
 			<pathelement location="${scala.home}/lib/scala-compiler.jar" />
-			<pathelement location="${scala.home}/lib/scala-library.jar"  />
+			<pathelement location="${scala.home}/lib/scala/scala-library-2.9.2.jar"  />
 		</classpath>
 	</taskdef>
 

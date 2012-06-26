@@ -98,4 +98,8 @@ class BranchPointTest extends AbstractTest("branch point",Grammar.branchPoint) {
 //    """(branchPointName: .9e256..7.7e1024)"""      
   )
   
+  override def exceptionCases = Set(
+      """(a: "b=1")"""
+  )
+  
 }
