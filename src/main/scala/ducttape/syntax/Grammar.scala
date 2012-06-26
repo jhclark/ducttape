@@ -637,27 +637,36 @@ object Grammar {
 //  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
   val branchAssignment: Parser[Spec] = positioned(
-      (basicAssignment("branch",failure(_),failure(_),failure(_),branchName) | rvalue) ^^ {
-        case assignment: AbstractSpec[_] => assignment
-        case _: ShorthandTaskVariable => throw new RuntimeException("A shorthand task variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
-        case _: ShorthandConfigVariable => throw new RuntimeException("A shorthand global or config variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
-        case _: ShorthandBranchGraft => throw new RuntimeException("A shorthand branch graft is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
-        
-        // anonymous branch: do our best to infer a reasonable branch name
-        case rhs: Literal => new Spec(rhs.value, rhs, false)
-        case rhs: TaskVariable => new Spec(rhs.value, rhs, false)
-        case rhs: BranchGraft => new Spec(rhs.variableName, rhs, false)
-        case rhs: BranchPointDef if (rhs.name.isDefined)
-           => new Spec(rhs.name.get, rhs, false)
-        case rhs: SequentialBranchPoint if (rhs.branchPointName.isDefined)
-          => new Spec(rhs.branchPointName.get, rhs ,false)
-        case rhs: RValue => {
-          throw new RuntimeException(
-              "Could not figure out how to extract a branch name from anonymous branch value %s of type %s.".
-                 format(rhs.toString, rhs.getClass.getName.toString) +
-          		"Please prefix with 'var=...'")
-        }
-      }
+      (basicAssignment("branch",failure(_),failure(_),failure(_),branchName) | rvalue) ^^ (
+          (x:ASTType) => {
+            val spec:Spec = x match {
+              case assignment: AbstractSpec[_] => assignment
+              case _: ShorthandTaskVariable => throw new RuntimeException("A shorthand task variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+              case _: ShorthandConfigVariable => throw new RuntimeException("A shorthand global or config variable is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+              case _: ShorthandBranchGraft => throw new RuntimeException("A shorthand branch graft is not allowed as a bare right-hand side (where no left-hand side exists) in a branch assignment")
+              // anonymous branch: do our best to infer a reasonable branch name
+              case rhs: Literal => new Spec(rhs.value, rhs, false)
+              case rhs: TaskVariable => new Spec(rhs.value, rhs, false)
+              case rhs: BranchGraft => new Spec(rhs.variableName, rhs, false)
+              case rhs: BranchPointDef if (rhs.name.isDefined)
+                => new Spec(rhs.name.get, rhs, false)
+              case rhs: SequentialBranchPoint if (rhs.branchPointName.isDefined)
+                => new Spec(rhs.branchPointName.get, rhs ,false)
+              case rhs: RValue => {
+                throw new RuntimeException(
+                  "Could not figure out how to extract a branch name from anonymous branch value %s of type %s.".
+                  format(rhs.toString, rhs.getClass.getName.toString) +
+                  "Please prefix with 'var=...'")
+              }
+            }
+            
+            if ("""[^"')(\]\[\*\$:@=\s]+""".r.pattern.matcher(spec.name).matches) {
+              spec
+            } else {
+              throw new RuntimeException("The branch name extracted from anonymous branch with value " + spec + " does not conform to branch naming requirements")
+            }   
+          }
+      )
   )
 
   /** Input variable declaration. */  
