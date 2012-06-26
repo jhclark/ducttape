@@ -161,14 +161,15 @@ object Grammar {
       (regex("""[^\[\s]*[\[]""".r)~err("An unquoted literal may not contain an opening square bracket")) |      
       (regex("""[^\]\s]*[\]]""".r)~err("An unquoted literal may not contain a closing square bracket")) |        
       (regex("""[^:\s]*:""".r)~err("An unquoted literal may not contain a colon")) |      
-      (regex("""[^\*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
-      (regex("""[^\$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
+      (regex("""[^*\s]*\*""".r)~err("An unquoted literal may not contain a * symbol")) |
+      (regex("""[^+\s]*\+""".r)~err("An unquoted literal may not contain a + symbol")) |
+      (regex("""[^$\s]*\$""".r)~err("An unquoted literal may not contain a $ symbol")) |
       (regex("""[^(\s]*[(]""".r)~err("An unquoted literal may not contain an opening parenthesis")) |      
       // NOTE: If we encounter a closing parenthesis we MUST allow backtracking, so we call failure instead of err
       (regex("""[^)\s]*[)]""".r)~failure("An unquoted literal may not contain a closing parenthesis")) |
       // NOTE: If we encounter whitespace we MUST allow backtracking, so we call failure instead of err  
       (regex("""[^\s]*\s""".r)~failure("An unquoted literal may not contain whitespace. If you meant to refer to a variable, you probably forgot the $ sign.")) |      
-      regex("""[^"')(\]\[\*\$:@=\s]+""".r)
+      regex("""[^"')(\]\[*+$:@=\s]+""".r)
     ) ^^ {
       case string: String => new Literal(string)
     }
@@ -287,7 +288,6 @@ object Grammar {
    * @param whatCanComeNext Regular expression that specifies what may legally follow the name
    * @param howToFailAtEnd Function that defines error or failure behavior to follow when an illegal expression follows the name
    */
-  type NameParserType = (String, Regex, String=>Parser[Nothing], String=>Parser[Nothing]) => Parser[String]
   def name(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
@@ -308,29 +308,30 @@ object Grammar {
   }
 
 
-
-  // TODO: XXX: Jon's gross hack to get branch names working in thesis workflow
-  // copied from name()
-  // XXX: duplicates code from name()
+  /**
+   * Branch name, with the same naming restrictions as unquoted literals.
+   */
   def branchName(title: String,
       whatCanComeNext: Regex,
       howToFailAtStart: (String)=>Parser[Nothing],
       howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      regex("""[^A-Za-z0-9_]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+      regex("""[^"')(\]\[\*\$:@=\s]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
       // Else if the name contains only legal characters and the input ends, then parse it
-      | regex("""[A-Za-z0-9_]*$""".r)
+      | regex("""[^"')(\]\[\*\$:@=\s]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[A-Za-z0-9_]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
-      | regex("""[A-Za-z0-9_]*""".r)
+      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)
     )
   }
 
+  /** Convenient shorthand type that encompasses name and branchName */
+  type NameParserType = (String, Regex, String=>Parser[Nothing], String=>Parser[Nothing]) => Parser[String]
 
 
 
@@ -1029,7 +1030,7 @@ object Grammar {
         ) ~> 
         repsep(crossProduct,opt(whitespace)) <~
         (
-            opt(whitespace) ~ 
+            opt(commentableWhitespace) ~ 
             (
                 literal("}") ~ 
                 (
