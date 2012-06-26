@@ -65,10 +65,12 @@ class TaskTemplate(val taskDef: TaskDef,
      // TODO: Assert that all the specs from inputVals made it through the HyperDAG
 
      val realInputVals: Seq[ResolvedSpec] = for ( (spec, parentReal) <- specs; if spec.isInput) yield {
+       debug("Resolved input spec: %s with realization %s".format(spec, parentReal))
        new ResolvedSpecType[Spec](spec.origSpec, spec.srcTask, spec.srcSpec, parentReal)
      }
      val realParamVals: Seq[ResolvedLiteralSpec] = for ( (spec, parentReal) <- specs; if spec.isParam) yield {
        val literalSrcSpec = spec.srcSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed since isParam
+       debug("Resolved param spec: %s with realization %s".format(spec, parentReal))
        new ResolvedSpecType[LiteralSpec](spec.origSpec, spec.srcTask, literalSrcSpec, parentReal)
      }
 

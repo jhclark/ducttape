@@ -33,7 +33,14 @@ object SpecTypes {
 import SpecTypes._
 
 class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
-  override def toString() = "[%s]\n".format(grafts.mkString(",")) + specPairs.mkString("\n")
+  def toString(withNewlines: Boolean) = {
+    if (withNewlines) {
+      "[%s]\n".format(grafts.mkString(",")) + specPairs.mkString("\n")
+    } else {
+      "(SpecGroup [%s] %s)".format(grafts.mkString(","), specPairs.mkString(","))
+    }
+  }
+  override def toString() = toString(withNewlines=false)
 }
 
 object SpecGroup {
