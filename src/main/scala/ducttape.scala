@@ -137,6 +137,17 @@ object Ducttape extends Logging {
       }
     } ++ wd.globals
     
+    // XXX Remove as soon as Jon's current experiments are done - this is a hack
+    {
+      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_branchpoint_delimiter" } match {
+        case Some(spec) => spec.rval match {
+          case lit: Literal => Realization.delimiter=lit.value.trim().toLowerCase.slice(0, 1)
+          case _ => throw new FileFormatException("ducttape_branchpoint_delimiter directive must be a literal", spec)
+        }
+        case None => ()
+      }
+    }
+    
     val flat: Boolean = ex2err {
       confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
         case Some(spec) => spec.rval match {
