@@ -8,6 +8,9 @@ import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
 
+// XXX: HACK
+import ducttape.workflow.SpecGroup
+
 // immutable
 class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
                       val vertices: Seq[PackedVertex[V]],
@@ -56,9 +59,9 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
     def stringifyH(h: H): String = if (h == null) "" else h.toString
     def stringifyE(e: E): String = if (e == null) {
       ""
-    } else if(e.isInstanceOf[Seq[_]]) {
-      val seq = e.asInstanceOf[Seq[_]]
-      seq.mkString("\n")
+    } else if(e.isInstanceOf[SpecGroup]) {
+      val sg = e.asInstanceOf[SpecGroup]
+      sg.toString(withNewlines=true)
     } else {
       e.toString
     }

@@ -133,4 +133,9 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
       Some(prevState)
     }
   }
+  
+//  override def finishHyperedge(v: PackedWorkVert, heOpt: WorkflowEdge, state: UnpackState): Option[UnpackState] = {
+//    
+//    Some(state)
+//  }
 }

@@ -69,16 +69,19 @@ class UnpackedDagWalker[V,H,E,D,F](
     override def toString() = "%s(he=%s)".format(v,he)
 
     // recursively scan left-to-right across the array called filled,
-    // building up the combination of hyperedges that forms a realization
-    // we can bail at any point during this process if a filter fails
+    //   building up the combination of hyperedges that forms a realization
+    //   we can bail at any point during this process if a filter fails
+    // each recursive call to unpack() is isomorphic to one of the component edges of this vertex's active hyperedge
+    //   Note: the final call terminal to unpack() overruns the length of the edges (aka filled).
     private def unpack(i: Int,
                        iFixed: Int,
                        parentReals: Array[Seq[D]],
                        prevState: F,
                        callback: UnpackedVertex[V,H,E,D] => Unit) {
 
-      trace("filled : %s %s %d/%d fixed=%d %s".format(v,he.getOrElse(""),i,filled.size, iFixed, parentReals.toList))
+      debug("Vertex=%s; he=%s; i=%d/%d; fixed=%d %s".format(v, he, i, filled.size, iFixed, parentReals.toList))
 
+      // this will immediately be true if he == None
       if (i == filled.size) {
         munger.finishHyperedge(v, he, prevState) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
@@ -86,31 +89,41 @@ class UnpackedDagWalker[V,H,E,D,F](
             val finalReal: Seq[D] = munger.toRealization(finalState)
             val sortedReal: Seq[D] = finalReal.toList.sorted(ordering)
             assert(parentReals.toList.forall { _ != null }, "parentReals for %s should not contain null".format(v))
-            callback(new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList))
+            val uv = new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList)
+            debug("Created new unpacked vertex: %s: Parent realizations: %s".format(uv, uv.parentRealizations))
+            callback(uv)
           } 
         }
       } else {
+        assert(he != None)
+        
         // NOTE: We previously set parentReals(iFixed) to be the fixed realization
         val myParentReals: Iterable[Seq[D]] = if (i == iFixed) Seq(parentReals(iFixed)) else filled(i)
-        debug {
+
+        // only called for debugging
+        def getParent(): PackedVertex[V] = {
           // he is guaranteed to be defined if we have more than zero parent reals
           val parents: Seq[PackedVertex[V]] = dag.sources(he.get)
-          val parent = parents(i)
-          "Traversing edges for parent %s".format(parent)
+          parents(i)
         }
+        val edge: E = he.get.e(i)
+        debug("Vertex=%s; he=%s; i=%d/%d; parent=%s edge=%s".format(v, he, i, filled.size, getParent, edge))
         
-        val edges: Seq[E] = he.map(_.e).getOrElse(Nil)
 
-        // for each backpointer to a realization...
-        // if we have zero, this will terminate the recursion, as expected
-        for ( (parentRealization, e) <- myParentReals.zip(edges)) {
-          // parentRealization: Seq[D]
-          // e: E
+        // for each possible realization of the parent vertex of the current component edge
+        // (represented by the current recursive call to unpack())...
+        for (parentRealization: Seq[D] <- myParentReals) {
           // check if we meet external semantic constraints
-          munger.traverseEdge(v, he, e, parentRealization, prevState) match {
-            case None => ; // illegal state, skip it
+          munger.traverseEdge(v, he, edge, parentRealization, prevState) match {
+            case None => {
+              // illegal state, skip it
+              debug("Vertex=%s; he=%s; Edge traversal resulted in illegal state. parent%d=%s; parentReal=%s; e%d=%s".
+                format(v, he, i, getParent, parentRealization, i, edge))
+            }
             case Some(nextState) => {
               parentReals(i) = parentRealization
+              debug("Vertex=%s; he=%s; Successfully traversing edge. parent%d=%s; parentReal=%s; e%d=%s".
+                format(v, he, i, getParent, parentRealization, i, edge))
               unpack(i+1, iFixed, parentReals, nextState, callback)
             }
           }

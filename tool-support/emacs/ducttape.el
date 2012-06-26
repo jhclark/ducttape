@@ -77,10 +77,6 @@ For detail, see `comment-dwim'."
   (modify-syntax-entry ?\/ ". 12b" ducttape-mode-syntax-table)
   (modify-syntax-entry ?\n "> b" ducttape-mode-syntax-table)
 
-  ;; define comment for this style: “/* … */” (n allows nesting)
-  (modify-syntax-entry ?\/ ". 14n" ducttape-mode-syntax-table)
-  (modify-syntax-entry ?* ". 23n" ducttape-mode-syntax-table)
-
   ;; Make { and } delimiters matching each other
   (modify-syntax-entry ?{ "(}")
   (modify-syntax-entry ?} "){")
