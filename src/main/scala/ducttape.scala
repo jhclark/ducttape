@@ -143,9 +143,9 @@ object Ducttape extends Logging {
           case lit: Literal => lit.value.trim().toLowerCase match {
             case "flat" => true
             case "hyper" => false
-            case _ => throw new FileFormatException("ducttape stuctue directive must be either 'flat' or 'hyper'", spec) 
+            case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", spec) 
           }
-          case _ => throw new FileFormatException("ducttape stucture directive must be a literal", spec)
+          case _ => throw new FileFormatException("ducttape_structure directive must be a literal", spec)
         }
         case None => false // not flat by default (hyper)
       }
@@ -166,7 +166,7 @@ object Ducttape extends Logging {
               case Some(spec) => spec.rval match {
                 // output directory was specified in the configuration file: use that next
                 case lit: Literal => new File(lit.value.trim())
-                case _ => throw new FileFormatException("ducttape output directive must be a literal", spec)
+                case _ => throw new FileFormatException("ducttape_output directive must be a literal", spec)
               }
               // if unspecified, use PWD as the output directory
               case None => Environment.PWD
