@@ -126,7 +126,10 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     
     // Looking for a piece
     (d: *) // of cheese
-    }"""   
+    }""",
+    
+    // Default via
+    "reach goal"
     
   ) 
   
