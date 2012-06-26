@@ -569,23 +569,26 @@ object Grammar {
     commentableWhitespace ~>
     (
         Keyword.reach ~>
-        rep1sep(name("goal","""[\s,]""".r),opt(space)~literal(",")~opt(space)) <~
+        rep1sep(name("goal","""[\s,]""".r),opt(space)~literal(",")~opt(space))
+    ) ~
+    opt(
         (
             space ~
             Keyword.via ~
             opt(commentableWhitespace)
+        ) ~>
+        (
+            rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
+            (
+                (literal("{")~opt(commentableWhitespace)) ~>
+                rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
+                (opt(commentableWhitespace)~(literal("}")|err("Missing closing } bracket.")))
+            )
         )
-    ) ~
-    (
-       rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
-       (
-           (literal("{")~opt(commentableWhitespace)) ~>
-           rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
-           (opt(commentableWhitespace)~(literal("}")|err("Missing closing } bracket.")))
-       )
     )
   } ^^ {
-    case (goals: Seq[String]) ~ (crossProduct: Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
+    case (goals: Seq[String]) ~ Some(crossProduct: Seq[BranchPointRef]) => new CrossProduct(goals,crossProduct)
+    case (goals: Seq[String]) ~ None => new CrossProduct(goals,Seq(new BranchPointRef("Baseline",Seq(new Literal("baseline")))))
   })
 
   
