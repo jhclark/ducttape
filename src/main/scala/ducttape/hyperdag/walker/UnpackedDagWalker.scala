@@ -106,19 +106,24 @@ class UnpackedDagWalker[V,H,E,D,F](
           val parents: Seq[PackedVertex[V]] = dag.sources(he.get)
           parents(i)
         }
+        val edge: E = he.get.e(i)
+        debug("Vertex=%s; he=%s; i=%d/%d; parent=%s edge=%s".format(v, he, i, filled.size, getParent, edge))
         
-        val edges: Seq[E] = he.map(_.e).getOrElse(Nil)
 
-        // for each backpointer to a realization...
-        // if we have zero, this will terminate the recursion, as expected
-        for ( (parentRealization, e) <- myParentReals.zip(edges)) {
-          // parentRealization: Seq[D]
-          // e: E
+        // for each possible realization of the parent vertex of the current component edge
+        // (represented by the current recursive call to unpack())...
+        for (parentRealization: Seq[D] <- myParentReals) {
           // check if we meet external semantic constraints
-          munger.traverseEdge(v, he, e, parentRealization, prevState) match {
-            case None => ; // illegal state, skip it
+          munger.traverseEdge(v, he, edge, parentRealization, prevState) match {
+            case None => {
+              // illegal state, skip it
+              debug("Vertex=%s; he=%s; Edge traversal resulted in illegal state. parent%d=%s; parentReal=%s; e%d=%s".
+                format(v, he, i, getParent, parentRealization, i, edge))
+            }
             case Some(nextState) => {
               parentReals(i) = parentRealization
+              debug("Vertex=%s; he=%s; Successfully traversing edge. parent%d=%s; parentReal=%s; e%d=%s".
+                format(v, he, i, getParent, parentRealization, i, edge))
               unpack(i+1, iFixed, parentReals, nextState, callback)
             }
           }
