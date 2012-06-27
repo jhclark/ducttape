@@ -56,6 +56,7 @@ import ducttape.cli.ExecuteMode
 import ducttape.util.LogUtils
 import grizzled.slf4j.Logging
 import ducttape.syntax.WorkflowChecker
+import ducttape.workflow.VertexFilter
 
 object Ducttape extends Logging {
   
@@ -250,8 +251,8 @@ object Ducttape extends Logging {
       Visitors.visitAll(workflow, new CompletionChecker(dirs, msgCallback), planPolicy)
     }
     
-    def getPackageVersions(cc: CompletionChecker, planPolicy: PlanPolicy) = {
-      val packageFinder = new PackageFinder(cc.todo, workflow.packageDefs)
+    def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy) = {
+      val packageFinder = new PackageFinder(cc.map(_.todo), workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, planPolicy)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
@@ -468,15 +469,13 @@ object Ducttape extends Logging {
       case "list" => list
       case "explain" => explain
       case "env" => {
-        val planPolicy = getPlannedVertices()
-        val cc = getCompletedTasks(planPolicy)
-        val packageVersions = getPackageVersions(cc, planPolicy)
+        val planPolicy: PlanPolicy = getPlannedVertices()
+        val packageVersions = getPackageVersions(None, planPolicy)
         EnvironmentMode.run(workflow, planPolicy, packageVersions)
       }
       case "commands" => {
-        val planPolicy = getPlannedVertices()
-        val cc = getCompletedTasks(planPolicy)
-        val packageVersions = getPackageVersions(cc, planPolicy)
+        val planPolicy: PlanPolicy = getPlannedVertices()
+        val packageVersions = getPackageVersions(None, planPolicy)
         EnvironmentMode.run(workflow, planPolicy, packageVersions, showCommands=true)        
       }
       case "mark_done" => markDone
@@ -541,7 +540,7 @@ object Ducttape extends Logging {
       case "exec" | _ => {
         val planPolicy = getPlannedVertices()
         val cc = getCompletedTasks(planPolicy)
-        ExecuteMode.run(workflow, cc, planPolicy, history, { () => getPackageVersions(cc, planPolicy) })
+        ExecuteMode.run(workflow, cc, planPolicy, history, { () => getPackageVersions(Some(cc), planPolicy) })
       }
     })
   }

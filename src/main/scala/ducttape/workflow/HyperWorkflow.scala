@@ -23,14 +23,6 @@ import ducttape.workflow.SpecTypes.SpecPair
 
 import grizzled.slf4j.Logging
 
-trait PlanPolicy;
-case class OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) extends PlanPolicy;
-case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;
-case class PatternFilter(
-    planFilter: Map[BranchPoint, Set[String]],
-    graftRelaxations: Map[PackedWorkVert, Set[Branch]]
-  ) extends PlanPolicy;
-
 object HyperWorkflow {
   type ExplainCallback = (=>String, =>String, Boolean) => Unit
   type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,Branch,SpecGroup,Branch,UnpackState]

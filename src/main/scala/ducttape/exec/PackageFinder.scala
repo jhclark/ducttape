@@ -9,14 +9,15 @@ import ducttape.syntax.FileFormatException
 import java.io.File
 
 // TODO: Why 
-class PackageFinder(todo: Set[(String,Realization)],
+class PackageFinder(todo: Option[Set[(String,Realization)]],
                     packageDefs: Map[String,PackageDef]) extends UnpackedDagVisitor {
   
   val packages = new mutable.HashSet[PackageDef]
   
   override def visit(task: RealTask) {
+    // TODO: Match...
     // TODO: Why do we need todo here? Isn't this enforced by the walker?
-    if (todo( (task.name, task.realization) )) {
+    if (todo == None || todo.get( (task.name, task.realization) )) {
       for (packageSpec: Spec <- task.packages) {
         if (packageDefs.contains(packageSpec.name)) {
           packages += packageDefs(packageSpec.name)
