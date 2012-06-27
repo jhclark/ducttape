@@ -27,12 +27,17 @@ echo >&2 "Building source..."
 mkdir -p $rootDir/bin
 find $rootDir/src/main/scala $rootDir/src/test/scala \
   | egrep '\.scala$' \
-  | xargs scalac \
-    -Dscala.timings=true \
-    -unchecked -deprecation -cp $libs  \
-    -d $rootDir/bin/ \
-  | $rootDir/build-support/color_scalac.awk
+  | xargs zinc \
+    -cp $libs \
+    -d $rootDir/bin/zinc \
+    -S-unchecked -S-deprecation -nailed -analysis-cache bin/zinc.cache
+
+#  | xargs scalac \
+#    -Dscala.timings=true \
+#    -unchecked -deprecation -cp $libs  \
+#    -d $rootDir/bin/ \
+#  | $rootDir/build-support/color_scalac.awk
 
 echo >&2 "Building JAR..."
-(cd $rootDir/bin; zip -qr $rootDir/ducttape.jar *)
+(cd $rootDir/bin/zinc; zip -qr $rootDir/ducttape.jar *)
 

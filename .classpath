@@ -15,5 +15,5 @@
 	<classpathentry kind="lib" path="lib/doc/pegdown-1.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/doc/parboiled-core-1.0.2.jar"/>
 	<classpathentry kind="lib" path="lib/doc/parboiled-java-1.0.2.jar"/>
-	<classpathentry kind="output" path="bin"/>
+	<classpathentry kind="output" path="bin/eclipse"/>
 </classpath>
