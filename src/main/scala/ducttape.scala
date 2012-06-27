@@ -138,15 +138,26 @@ object Ducttape extends Logging {
       }
     } ++ wd.globals
     
+    // XXX Remove as soon as Jon's current experiments are done - this is a hack
+    {
+      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_branchpoint_delimiter" } match {
+        case Some(spec) => spec.rval match {
+          case lit: Literal => Realization.delimiter=lit.value.trim().toLowerCase.slice(0, 1)
+          case _ => throw new FileFormatException("ducttape_branchpoint_delimiter directive must be a literal", spec)
+        }
+        case None => ()
+      }
+    }
+    
     val flat: Boolean = ex2err {
       confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
         case Some(spec) => spec.rval match {
           case lit: Literal => lit.value.trim().toLowerCase match {
             case "flat" => true
             case "hyper" => false
-            case _ => throw new FileFormatException("ducttape stuctue directive must be either 'flat' or 'hyper'", spec) 
+            case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", spec) 
           }
-          case _ => throw new FileFormatException("ducttape stucture directive must be a literal", spec)
+          case _ => throw new FileFormatException("ducttape_structure directive must be a literal", spec)
         }
         case None => false // not flat by default (hyper)
       }
@@ -167,7 +178,7 @@ object Ducttape extends Logging {
               case Some(spec) => spec.rval match {
                 // output directory was specified in the configuration file: use that next
                 case lit: Literal => new File(lit.value.trim())
-                case _ => throw new FileFormatException("ducttape output directive must be a literal", spec)
+                case _ => throw new FileFormatException("ducttape_output directive must be a literal", spec)
               }
               // if unspecified, use PWD as the output directory
               case None => Environment.PWD
