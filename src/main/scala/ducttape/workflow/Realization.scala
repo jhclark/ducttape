@@ -28,14 +28,14 @@ class Realization(val branches: Seq[Branch]) {
       val displayName = if (branch.baseline) "baseline" else branch.name
       "%s.%s".format(branch.branchPoint.name, displayName)
     }
-    names.mkString("-")
+    names.mkString(Realization.delimiter)
   }
     
   private def fullRealizationName(): String = {
     // TODO: Prohibit the branch point name "Baseline"?
     val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT }
     val names = filteredBranches.map { branch => "%s.%s".format(branch.branchPoint.name, branch.name) }
-    names.mkString("-")
+    names.mkString(Realization.delimiter)
   }
 
   lazy val str = realizationName()
@@ -51,4 +51,8 @@ class Realization(val branches: Seq[Branch]) {
   def hasSingleBranchBaseline(): Boolean = {
     branches == Seq(Task.NO_BRANCH) || branches.isEmpty
   }
+}
+
+object Realization {
+  var delimiter:String="+"
 }

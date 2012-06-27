@@ -56,6 +56,7 @@ import ducttape.cli.ExecuteMode
 import ducttape.util.LogUtils
 import grizzled.slf4j.Logging
 import ducttape.syntax.WorkflowChecker
+import ducttape.workflow.VertexFilter
 
 object Ducttape extends Logging {
   
@@ -137,15 +138,26 @@ object Ducttape extends Logging {
       }
     } ++ wd.globals
     
+    // XXX Remove as soon as Jon's current experiments are done - this is a hack
+    {
+      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_branchpoint_delimiter" } match {
+        case Some(spec) => spec.rval match {
+          case lit: Literal => Realization.delimiter=lit.value.trim().toLowerCase.slice(0, 1)
+          case _ => throw new FileFormatException("ducttape_branchpoint_delimiter directive must be a literal", spec)
+        }
+        case None => ()
+      }
+    }
+    
     val flat: Boolean = ex2err {
       confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
         case Some(spec) => spec.rval match {
           case lit: Literal => lit.value.trim().toLowerCase match {
             case "flat" => true
             case "hyper" => false
-            case _ => throw new FileFormatException("ducttape stuctue directive must be either 'flat' or 'hyper'", spec) 
+            case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", spec) 
           }
-          case _ => throw new FileFormatException("ducttape stucture directive must be a literal", spec)
+          case _ => throw new FileFormatException("ducttape_structure directive must be a literal", spec)
         }
         case None => false // not flat by default (hyper)
       }
@@ -166,7 +178,7 @@ object Ducttape extends Logging {
               case Some(spec) => spec.rval match {
                 // output directory was specified in the configuration file: use that next
                 case lit: Literal => new File(lit.value.trim())
-                case _ => throw new FileFormatException("ducttape output directive must be a literal", spec)
+                case _ => throw new FileFormatException("ducttape_output directive must be a literal", spec)
               }
               // if unspecified, use PWD as the output directory
               case None => Environment.PWD
@@ -250,8 +262,8 @@ object Ducttape extends Logging {
       Visitors.visitAll(workflow, new CompletionChecker(dirs, msgCallback), planPolicy)
     }
     
-    def getPackageVersions(cc: CompletionChecker, planPolicy: PlanPolicy) = {
-      val packageFinder = new PackageFinder(cc.todo, workflow.packageDefs)
+    def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy) = {
+      val packageFinder = new PackageFinder(cc.map(_.todo), workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, planPolicy)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
@@ -468,15 +480,13 @@ object Ducttape extends Logging {
       case "list" => list
       case "explain" => explain
       case "env" => {
-        val planPolicy = getPlannedVertices()
-        val cc = getCompletedTasks(planPolicy)
-        val packageVersions = getPackageVersions(cc, planPolicy)
+        val planPolicy: PlanPolicy = getPlannedVertices()
+        val packageVersions = getPackageVersions(None, planPolicy)
         EnvironmentMode.run(workflow, planPolicy, packageVersions)
       }
       case "commands" => {
-        val planPolicy = getPlannedVertices()
-        val cc = getCompletedTasks(planPolicy)
-        val packageVersions = getPackageVersions(cc, planPolicy)
+        val planPolicy: PlanPolicy = getPlannedVertices()
+        val packageVersions = getPackageVersions(None, planPolicy)
         EnvironmentMode.run(workflow, planPolicy, packageVersions, showCommands=true)        
       }
       case "mark_done" => markDone
@@ -541,7 +551,7 @@ object Ducttape extends Logging {
       case "exec" | _ => {
         val planPolicy = getPlannedVertices()
         val cc = getCompletedTasks(planPolicy)
-        ExecuteMode.run(workflow, cc, planPolicy, history, { () => getPackageVersions(cc, planPolicy) })
+        ExecuteMode.run(workflow, cc, planPolicy, history, { () => getPackageVersions(Some(cc), planPolicy) })
       }
     })
   }
