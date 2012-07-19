@@ -9,6 +9,23 @@ import annotation.tailrec
 import grizzled.slf4j.Logging
 
 object Files extends Logging {
+  
+  def humanReadableSize(bytes:Long) = {
+    val units = List("B","KB","MB","GB","TB","PB","EB","ZB","YB")
+    var result = BigDecimal.long2bigDecimal(bytes)
+    
+    if (bytes < 0) result *= -1
+    
+    var unitIndex = 0
+    
+    while (unitIndex < units.length && result >= 1024) {
+      result /= 1024.0
+      unitIndex += 1
+    }
+    
+    result.toString + " " + units(unitIndex)
+  }
+  
   def write(str: String, file: File) {
     file.getParentFile().mkdirs()
     val fw = new FileWriter(file)
