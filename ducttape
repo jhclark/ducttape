@@ -17,6 +17,6 @@ libs=$libs:$scriptDir/lib/slf4j-api-1.6.4.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/slf4j-jdk14-1.6.4.jar # DEV-ONLY
 
 #     -XX:MaxJavaStackTraceDepth=25 \
-java -Xmx1g \
+java -Xmx1g -Xss2M \
      -cp $libs \
      Ducttape "$@"
