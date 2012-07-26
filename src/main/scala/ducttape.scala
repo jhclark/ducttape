@@ -1,8 +1,18 @@
 import System._
 import collection._
 import sys.ShutdownHookThread
+
 import java.io.File
 import java.util.concurrent.ExecutionException
+import java.util.regex.Pattern
+
+import ducttape.cli.Config
+import ducttape.cli.ErrorUtils
+import ducttape.cli.Opts
+import ducttape.cli.EnvironmentMode
+import ducttape.cli.Plans
+import ducttape.cli.RealizationGlob
+import ducttape.cli.ExecuteMode
 import ducttape.db.WorkflowDatabase
 import ducttape.db.TaskInfo
 import ducttape.db.PackageInfo
@@ -38,25 +48,22 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.PlanPolicy
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.Types._
+import ducttape.workflow.BuiltInLoader
+import ducttape.syntax.FileFormatException
+import ducttape.syntax.WorkflowChecker
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
 import ducttape.util.Environment
-import ducttape.workflow.BuiltInLoader
-import ducttape.syntax.FileFormatException
+import ducttape.util.LogUtils
 import ducttape.util.DucttapeException
 import ducttape.util.BashException
-import ducttape.cli.Config
-import ducttape.cli.ErrorUtils
-import ducttape.cli.Opts
-import ducttape.cli.EnvironmentMode
-import ducttape.cli.Plans
-import ducttape.workflow.Visitors
-import ducttape.cli.ExecuteMode
-import ducttape.util.LogUtils
-import grizzled.slf4j.Logging
-import ducttape.syntax.WorkflowChecker
+import ducttape.util.Globs
 import ducttape.workflow.VertexFilter
+import ducttape.workflow.Visitors
+
+import grizzled.slf4j.Logging
+
 
 object Ducttape extends Logging {
   
@@ -356,17 +363,24 @@ object Ducttape extends Logging {
     }
 
     // supports '*' as a task or realization
+    // or globs containing interlaced '*' and '?' as tasks or realizations
     def getVictims(taskToKill: String,
                    realsToKill: Set[String],
                    planPolicy: PlanPolicy): OrderedSet[RealTask] = {
       
+      val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(taskToKill))
+      val realPatterns: Seq[RealizationGlob] = realsToKill.toSeq.map(new RealizationGlob(_))
+
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
-        if (taskToKill == "*" || taskT.name == taskToKill) {
-          if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
+
+        if (taskPattern.matcher(taskT.name).matches) {
+        //if (taskToKill == "*" || taskT.name == taskToKill) {
+          //if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
+          if (realPatterns.exists(_.matches(task.realization))) {
             // TODO: Store seqs instead?
             victims += ((task.name, task.realization))
             victimList += task
