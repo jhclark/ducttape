@@ -69,5 +69,5 @@ class Realization(val branches: Seq[Branch]) extends Logging {
 }
 
 object Realization {
-  var delimiter:String="+"
+  var delimiter: String = "+"
 }
