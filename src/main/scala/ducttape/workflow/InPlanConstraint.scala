@@ -17,6 +17,14 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
 
 import grizzled.slf4j.Logging
 
+trait PlanPolicy;
+case class OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) extends PlanPolicy;
+case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;
+case class PatternFilter(
+    planFilter: Map[BranchPoint, Set[String]],
+    graftRelaxations: Map[PackedWorkVert, Set[Branch]]
+  ) extends PlanPolicy;
+
 class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     extends HyperWorkflowStateMunger
     with MetaVertexFilter[Option[TaskTemplate],Branch,SpecGroup,Branch]
