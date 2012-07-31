@@ -38,13 +38,13 @@ object Shell extends Logging {
     val stdout = Files.writer(stdoutFile)
     val stderr = Files.writer(stderrFile)
     def provideIn(x: OutputStream) = {
-      val bash = new PrintStream(x)
+      val bash = new PrintStream(x,false,"UTF-8")
       // TODO: Set environment here to be consistent with dry run script generation?
       bash.println(BASH_FLAGS.mkString("\n"))
       bash.println(cmd)
       bash.close()
     }
-    def handleOut(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
+    def handleOut(x: InputStream) = for (line <- Source.fromInputStream(x,"UTF-8").getLines) {
       // avoid concatenation
       System.out.print(stdPrefix)
       System.out.print(": ")
@@ -52,7 +52,7 @@ object Shell extends Logging {
       stdout.print(line) // no flush like println
       stdout.append('\n')
     }
-    def handleErr(x: InputStream) = for (line <- Source.fromInputStream(x).getLines) {
+    def handleErr(x: InputStream) = for (line <- Source.fromInputStream(x,"UTF-8").getLines) {
       // avoid concatenation
       System.err.print(stdPrefix)
       System.err.print(": ")
