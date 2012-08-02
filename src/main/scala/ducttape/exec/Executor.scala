@@ -34,7 +34,7 @@ class Executor(val dirs: DirectoryArchitect,
       System.err.println("Acquiring lock for %s".format(task))
       locker.acquireLock(taskEnv)
       
-     taskEnv.fullSymlink match {
+      taskEnv.fullSymlink match {
         case None => ;
         case Some(link) => {
           Files.symlink(taskEnv.where, link)
@@ -52,29 +52,25 @@ class Executor(val dirs: DirectoryArchitect,
           
           System.err.println("Running %s in %s".format(task, taskEnv.where.getAbsolutePath))
           observers.foreach(_.begin(this, taskEnv))
-          taskEnv.where.mkdirs
-          if (!taskEnv.where.exists) {
-            observers.foreach(_.fail(this, taskEnv))
-            throw new BashException("Could not make directory: " + taskEnv.where.getAbsolutePath)
-          }
-          
+
+          Files.mkdirs(taskEnv.where)          
           debug("Environment for %s is %s".format(task, taskEnv.env))
     
           // the "run" action of the submitter will throw if the exit code is non-zero
           submitter.run(taskEnv)
           
           if (!CompletionChecker.isComplete(taskEnv)) {
-            val msg = "Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath
-            System.err.println("Failed %s: %s".format(task, msg))
-            observers.foreach(_.fail(this, taskEnv))
-            throw new BashException(msg)
+            throw new BashException("Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath)
           }
         }
       } catch {
-        case e: Exception => {
-          System.err.println("Failed %s: %s".format(task, e.getMessage))
-          throw e
+        case t: Throwable => {
+          System.err.println("Failed %s: %s".format(task, t.getMessage))
+          observers.foreach(_.fail(this, taskEnv))
+          throw t
         }
+      } finally {
+        locker.releaseLock(taskEnv)
       }
       System.err.println("Completed %s".format(task))
       observers.foreach(_.succeed(this, taskEnv))

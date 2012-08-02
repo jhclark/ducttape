@@ -10,6 +10,7 @@ import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.util.Environment
+import ducttape.util.Files
 import ducttape.workflow.Task
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.RealTask
@@ -129,7 +130,7 @@ class DirectoryArchitect(val flat: Boolean,
   def getTempActionDir(actionName: String) = {
     val f = File.createTempFile("ducttape", actionName)
     f.delete() // delete file
-    f.mkdirs() // and make it a directory instead
+    Files.mkdirs(f) // and make it a directory instead
     f
   }
 }

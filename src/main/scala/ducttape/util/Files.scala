@@ -10,7 +10,7 @@ import grizzled.slf4j.Logging
 
 object Files extends Logging {
   def write(str: String, file: File) {
-    file.getParentFile().mkdirs()
+    Files.mkdirs(file.getParentFile)
     val fw = new FileWriter(file)
     try {
       fw.write(str)
@@ -50,7 +50,7 @@ object Files extends Logging {
 
   //org.apache.commons.io.FileUtils.moveDirectory(src, dest)
   def moveDir(src: File, dest: File) {
-    dest.getParentFile.mkdirs()
+    Files.mkdirs(dest.getParentFile)
     val result = Shell.run("mv %s %s".format(src.getAbsolutePath, dest.getAbsolutePath), "moveDir")
     if (result != 0) {
       throw new RuntimeException("Failed to move %s to %s".format(src.getAbsolutePath, dest.getAbsolutePath))
@@ -115,6 +115,7 @@ object Files extends Logging {
   }
   
   def mkdirs(dir: File) {
+    debug("Making directory: %s".format(dir.getAbsolutePath))
     dir.mkdirs()
     if (!dir.exists) {
       throw new IOException("Could not create directory: " + dir.getAbsolutePath)
