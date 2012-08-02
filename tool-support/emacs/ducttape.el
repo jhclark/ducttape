@@ -23,6 +23,7 @@
 		    "func"
 		    "group"
 		    "global"
+                    "of"
 		    "package"
 		    "plan"
 		    "reach"
