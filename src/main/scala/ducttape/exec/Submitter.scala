@@ -90,10 +90,6 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     // TODO: Were there ever any quoting bugs here?
     val code = runAction.commands.toString
-    //.replace("$COMMANDS", taskEnv.task.commands.toString).
-    //replace("${COMMANDS}", taskEnv.task.commands.toString)
-
-    debug("Code after nesting into run action is: %s".format(code))
     debug("Execution environment is: %s".format(env))
 
     System.err.println("Using submitter %s".format(submitterDef.name))
