@@ -59,6 +59,7 @@ import ducttape.util.LogUtils
 import ducttape.util.DucttapeException
 import ducttape.util.BashException
 import ducttape.util.Globs
+import ducttape.util.Shell
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.Visitors
 
@@ -531,6 +532,93 @@ object Ducttape extends Logging {
           for (param: ParamInfo <- task.params) {
             System.out.println("  :: %s: %s".format(param.name, param.value))
           }
+        }
+      }
+      case "summary" => {
+        // 1) find which summary the user asked for (else use them all)
+        //    -- just use them all for now
+        //    -- we should also allow the user to specify which "plans" they would like us to enumerate
+        //    -- we should also allow ther user to specify task globs on the command line
+
+        // TODO: More static checking of summaries to disallow params and inputs (and even packages for now)
+
+        // TODO: As a static pre-processing step, we should make sure summaries are referring to existing tasks...
+        //wd.tasks.find { _.name == taskName } match {
+        //  case None => throw new FileFormatException("Task '%s' not found. Required by summary '%s'".format(taskName, summary.name), summaryDef)
+        //  case Some(taskDef) => {
+        //  }
+        //}
+
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+        val packageVersions = getPackageVersions(None, planPolicy)
+        
+        // 2) Run each summary block and store in a big table
+        //    we also keep track of all realizations we've seen and produce one column in our output table for each
+        val branchPointSet = new mutable.HashSet[BranchPoint]
+        val labelSet = new mutable.HashSet[String]
+        val results = new mutable.HashMap[(String,Realization), mutable.HashMap[String,String]]
+        for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
+          val taskT: TaskTemplate = v.packed.value.get
+          val task: RealTask = taskT.realize(v)
+
+          for (summaryDef: SummaryDef <- wd.summaries) {
+            for (ofDef: SummaryTaskDef <- summaryDef.ofs; if (ofDef.name == task.name && cc.completed( (task.name, task.realization) ))) {
+              val taskEnv = new FullTaskEnvironment(dirs, packageVersions, task)
+              val workDir = dirs.getTempActionDir("summary")
+              Files.mkdirs(workDir)
+                  
+              val summaryOutputs: Seq[(String,String)] = ofDef.outputs.map { spec: Spec =>
+                (spec.name, new File(workDir, spec.name).getAbsolutePath)
+              }
+
+              // TODO: Use all the same variables as a submitter?
+              val env: Seq[(String,String)] = Seq( ("TASK_DIR", taskEnv.where.getAbsolutePath) ) ++ summaryOutputs ++ taskEnv.env
+
+              // f) run the summary command
+              val code = ofDef.commands.toString
+              val stdPrefix = "%s/%s".format(taskEnv.task.name, taskEnv.task.realization)
+              val stdoutFile = new File(workDir, "summary_stdout.txt")
+              val stderrFile = new File(workDir, "summary_stderr.txt")
+              val exitCodeFile = new File(workDir, "summary_exit_code.txt")
+
+              err.println("Summarizing %s: %s/%s".format(summaryDef.name, task.name, task.realization))
+              val exitCode = Shell.run(code, stdPrefix, workDir, env, stdoutFile, stderrFile)
+              Files.write("%d".format(exitCode), exitCodeFile)
+              if (exitCode != 0) {
+                throw new BashException("Summary '%s' of %s/%s failed".format(summaryDef.name, taskEnv.task.name, taskEnv.task.realization))
+              }
+              
+              // g) extract the result from the file and put it in our table
+              for ( (outputName, path) <- summaryOutputs) {
+                val lines: Seq[String] = Files.read(new File(path))
+                if (lines.size != 1) {
+                  throw new BashException("For summary '%s', expected exactly one line in '%s', but instead found %d".format(summaryDef.name, path, lines.size))
+                }
+                val label = outputName
+                val result: String = lines(0)
+                results.getOrElseUpdate( (task.name, task.realization), new mutable.HashMap[String,String] ) += label -> result
+                branchPointSet ++= task.realization.branches.map(_.branchPoint)
+                labelSet += label
+              }
+              
+              // h) cleanup
+              Files.deleteDir(workDir)
+            }
+          }
+        }
+
+        // 3) print the table out in a nice tab-delimited format
+        // first line is header
+        val branchPoints: Seq[BranchPoint] = branchPointSet.toSeq.sortBy(_.name)
+        val labels: Seq[String] = labelSet.toSeq.sorted
+        val header: Seq[String] = branchPoints.map(_.name) ++ labels
+        System.out.println(header.mkString("\t"))
+        for ( ((taskName, real), values) <- results) {
+          val branches: Map[BranchPoint, String] = real.branches.map { branch => (branch.branchPoint, branch.name) }.toMap
+          val cols: Seq[String] = branchPoints.map { bp => branches.getOrElse(bp, "--") } ++
+            labels.map { label => values.getOrElse(label, "--") }
+          System.out.println(cols.mkString("\t"))
         }
       }
       case "unlock" => {
