@@ -114,7 +114,7 @@ object Ducttape extends Logging {
     }
     
     val confNameOpt = opts.config_file.value match {
-      case Some(confFile) => Some(Files.basename(confFile, ".conf"))
+      case Some(confFile) => Some(Files.basename(confFile, ".conf", ".tconf"))
       case None => opts.config_name.value match {
         case Some(confName) => Some(confName)
         case None => None

@@ -103,12 +103,11 @@ object Files extends Logging {
       listing.toSeq
   }
 
-  def basename(filename: String, suffix: String) = {
-    if (filename.endsWith(suffix)) {
-      filename.substring(0, filename.length - suffix.length)
-    } else {
-      filename
+  def basename(filename: String, suffixes: String*): String = {
+    for (suffix <- suffixes; if (filename.endsWith(suffix))) {
+      return filename.substring(0, filename.length - suffix.length)
     }
+    return filename
   }
   
   def copy(src: File, dest: File) {
