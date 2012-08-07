@@ -7,6 +7,16 @@ import annotation.tailrec
 object ErrorBehavior extends Enumeration {
   type ErrorBehavior = Value
   val Ignore, Warn, Error = Value
+
+  def parse(str: Option[String], default: ErrorBehavior): ErrorBehavior = str match {
+    case None => default
+    case Some(s) => s.toLowerCase match {
+      case "error" => Error
+      case "warn" => Warn
+      case "ignore" => Ignore
+      case _ => throw new RuntimeException("Invalid value for error behavior '%s'. Please use one of: error, warn, ignore".format(s))
+    }
+  }
 }
 import ErrorBehavior._
 
