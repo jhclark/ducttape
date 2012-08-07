@@ -112,6 +112,8 @@ object Ducttape extends Logging {
       
       workflowOnly ++ confStuff
     }
+
+    System.err.println("Plans are '%s'".format(wd.plans.mkString(" ")))
     
     val confNameOpt = opts.config_file.value match {
       case Some(confFile) => Some(Files.basename(confFile, ".conf", ".tconf"))
@@ -121,6 +123,7 @@ object Ducttape extends Logging {
       }
     }
     
+    // TODO: Can we remove this entirely now that config files have the same syntax as regular .tape files?
     val confSpecs: Seq[ConfigAssignment] = {
       opts.config_file.value match {
         // use anonymous conf from config file, if any
@@ -224,7 +227,7 @@ object Ducttape extends Logging {
     
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
-    
+
     // Our dag is directed from antecedents toward their consequents
     // After an initial forward pass that uses a realization filter
     // to generate vertices whose realizations are part of the plan
@@ -232,7 +235,8 @@ object Ducttape extends Logging {
     // to make sure all of the vertices contribute to a goal vertex
     
     def getPlannedVertices(): PlanPolicy = {
-      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow)
+      // pass in user-specified plan name -- iff it was specified by the user -- otherwise use all plans
+      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, planName=opts.plan)
       planPolicy match {
         case VertexFilter(plannedVertices) => {
           System.err.println("Planned %s vertices".format(plannedVertices.size))

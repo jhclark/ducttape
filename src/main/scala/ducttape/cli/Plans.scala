@@ -64,11 +64,14 @@ object Plans extends Logging {
   /**
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
+   *
+   * planName specifies a specific plan name that should be used. if not specified, the union of all plans is used.
    */
   def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
-                         errorOnZeroTasks: Boolean = true)
+                         errorOnZeroTasks: Boolean = true,
+                         planName: Option[String] = None)
                         (implicit conf: Config): PlanPolicy = {
     
     // Pass 1: One backward pass per task that has a branch graft
@@ -106,10 +109,9 @@ object Plans extends Logging {
     
     workflow.plans match {
       case Nil => {
-        System.err.println("Using default one-off realization plan: " +
-        		"Each realization will have no more than 1 non-baseline branch")
+        System.err.println("No plans specified in workflow -- Using default one-off realization plan: " +
+          "Each realization will have no more than 1 non-baseline branch")
         		
-
         def explainCallbackCurried(vertexName: => String, msg: => String, accepted: Boolean)
           = explainCallback(Some("default one-off"), vertexName, msg, accepted)
 
@@ -123,8 +125,16 @@ object Plans extends Logging {
         System.err.println("Finding hyperpaths contained in plan...")
          
         val vertexFilter = new mutable.HashSet[(String,Realization)]
-        for (plan: RealizationPlan <- workflow.plans) {
-          val planName = plan.name.getOrElse("*anonymous*")
+        val plans: Seq[RealizationPlan] = planName match {
+          case None => workflow.plans
+          case Some(name) => workflow.plans.filter(_.name == Some(name)) match {
+            // TODO: Change to CLI exception?
+            case Seq() => throw new RuntimeException("Specified plan not found: '%s'. Candidates are: ".format(name, workflow.plans.map(_.name.getOrElse("*anonymous*")).mkString(" ")))
+            case matches @ _ => matches
+          }
+        }
+        for (plan: RealizationPlan <- plans) {
+          val planName: String = plan.name.getOrElse("*anonymous*")
           System.err.println("Finding vertices for plan: %s".format(planName))
           
           // Pass 2: Forward pass through the HyperDAG using a PatternFilter
@@ -136,7 +146,7 @@ object Plans extends Logging {
           val fronteir = new mutable.Queue[RealTask]
           
           System.err.println("Have %d candidate tasks matching plan's realizations: %s".format(
-              candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
+            candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
           
           // Initialize for Pass 3: Take the union over active plans
           //   to obtain the realizations desired for each goal task 
