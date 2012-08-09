@@ -53,14 +53,7 @@ object Plans extends Logging {
     })
     candidates
   }
-  
-  // TODO: This is overzealous since these are not necessarily
-  //   all dependencies in the unpacked DAG
-  def getDependencies(workflow: HyperWorkflow, v: PackedWorkVert, includeV: Boolean): Seq[PackedWorkVert] = {
-    (if (includeV) Seq(v) else Nil) ++
-      workflow.dag.delegate.delegate.parents(v).flatMap { getDependencies(workflow, _, true) }
-  }
-  
+    
   /**
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
@@ -79,23 +72,34 @@ object Plans extends Logging {
     //   required by the branch graft
     // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
     //   realizations that shouldn't be selected.
-    debug("Finding graft relaxations...")
+
+    info("Finding graft relaxations...")
     // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
     val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
+    // don't visit the same vertex many times
+    val visited = new mutable.HashSet[PackedWorkVert]
     
-    workflow.dag.delegate.delegate.packedWalker.foreach { v: PackedWorkVert =>
+    for (v: PackedWorkVert <- workflow.dag.delegate.delegate.packedWalker) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
         debug("Considering hyperedge with sources: " + workflow.dag.sources(hyperedge))
-        
+
         // TODO: Record the realizations for which this graft is required?
         hyperedge.e.foreach { specGroup: SpecGroup =>
+          debug("Considering edge: %s".format(specGroup))
           if (specGroup != null && !specGroup.grafts.isEmpty) {
             // recursively find all dependencies of this vertex & add graft relaxations
-            val deps: Seq[PackedWorkVert] = getDependencies(workflow, v, true)
-            deps.foreach { dep: PackedWorkVert =>
-              trace("Grafts are: " + specGroup.grafts)
-              graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet[Branch]) ++= specGroup.grafts
+
+            // TODO: This is overzealous since these are not necessarily
+            //   all dependencies in the unpacked DAG
+            def visitDependencies(v: PackedWorkVert) {
+              val relaxationsAtV = graftRelaxations.getOrElseUpdate(v, new mutable.HashSet)
+              // note: this check is key to making this code block efficient
+              if (!specGroup.grafts.forall { graft: Branch => relaxationsAtV.contains(graft) }) {
+                specGroup.grafts.foreach { graft: Branch => relaxationsAtV += graft }
+                workflow.dag.delegate.delegate.parents(v).foreach(visitDependencies(_))
+              }
             }
+            //System.err.println("%s: Grafts for dependency %s are: %s".format(v, dep, specGroup.grafts))
           }
         }
       }
