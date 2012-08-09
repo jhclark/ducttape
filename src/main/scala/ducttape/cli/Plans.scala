@@ -70,7 +70,7 @@ object Plans extends Logging {
     // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
     //   realizations that shouldn't be selected.
 
-    info("Finding graft relaxations...")
+    debug("Finding graft relaxations...")
     // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
     val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
     // don't visit the same vertex many times
@@ -78,34 +78,36 @@ object Plans extends Logging {
     
     for (v: PackedWorkVert <- workflow.dag.delegate.delegate.packedWalker) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
-        debug("Considering hyperedge with sources: " + workflow.dag.sources(hyperedge))
+        trace("Considering hyperedge with sources: " + workflow.dag.sources(hyperedge))
 
         // TODO: Record the realizations for which this graft is required?
         hyperedge.e.foreach { specGroup: SpecGroup =>
-          debug("Considering edge: %s".format(specGroup))
+          trace("Considering edge: %s".format(specGroup))
           if (specGroup != null && !specGroup.grafts.isEmpty) {
             // recursively find all dependencies of this vertex & add graft relaxations
 
             // TODO: This is overzealous since these are not necessarily
             //   all dependencies in the unpacked DAG
-            def visitDependencies(v: PackedWorkVert) {
+            def visitDependencies(v: PackedWorkVert, specGroup: SpecGroup) {
               val relaxationsAtV = graftRelaxations.getOrElseUpdate(v, new mutable.HashSet)
               // note: this check is key to making this code block efficient
               if (!specGroup.grafts.forall { graft: Branch => relaxationsAtV.contains(graft) }) {
                 specGroup.grafts.foreach { graft: Branch => relaxationsAtV += graft }
-                workflow.dag.delegate.delegate.parents(v).foreach(visitDependencies(_))
+                workflow.dag.delegate.delegate.parents(v).foreach(visitDependencies(_, specGroup))
               }
             }
+            visitDependencies(v, specGroup)
             //System.err.println("%s: Grafts for dependency %s are: %s".format(v, dep, specGroup.grafts))
           }
         }
       }
     }
     
-    if (isDebugEnabled) {
+    debug {
       for ( (v, set) <- graftRelaxations) {
         debug("Found graft relaxation: %s -> %s".format(v, set.toString))
       }
+      "</grafts>"
     }
     
     workflow.plans match {
