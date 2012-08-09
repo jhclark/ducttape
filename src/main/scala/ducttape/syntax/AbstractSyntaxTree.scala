@@ -244,6 +244,7 @@ object AbstractSyntaxTree {
   }
   type PackageDef = TaskDef
   type ActionDef = TaskDef
+  type SummaryTaskDef = TaskDef
 
   class CallDefinition(val comments: Comments,
                        val name: String, 
@@ -262,7 +263,10 @@ object AbstractSyntaxTree {
     
     // only has members for SubmitterDefs (but adding more info to the typesystem gets ridiculous)
     lazy val actions: Seq[ActionDef] = taskLikes.filter(_.keyword == "action")
-    
+
+    // only has members for SummaryDefs (but adding more info to the typesystem gets ridiculous)
+    lazy val ofs: Seq[SummaryTaskDef] = taskLikes.filter(_.keyword == "of")
+
     private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect { case x: TaskPackageNames => x }
     private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect { case x: TaskInputs => x }
     private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect { case x: TaskOutputs => x }
@@ -280,6 +284,7 @@ object AbstractSyntaxTree {
   }
   type VersionerDef = GroupDefinition
   type SubmitterDef = GroupDefinition
+  type SummaryDef = GroupDefinition
   
   // TODO: use the Pimp My Library Pattern to add certain methods to certain keywords?
   
@@ -322,6 +327,7 @@ object AbstractSyntaxTree {
     private lazy val groupLikes: Seq[GroupDefinition] = blocks.collect { case x: GroupDefinition => x }
     lazy val versioners: Seq[VersionerDef] = groupLikes.filter(_.keyword == "versioner")
     lazy val submitters: Seq[SubmitterDef] = groupLikes.filter(_.keyword == "submitter")
+    lazy val summaries: Seq[SummaryDef] = groupLikes.filter(_.keyword == "summary")
     
     private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect { case x: ConfigDefinition => x }
     lazy val configs: Seq[ConfigDefinition] = configLikes.filter { t: ConfigDefinition => t.keyword == "config"}

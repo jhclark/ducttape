@@ -136,26 +136,19 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     // partial builds should already have been removed by PackageBuilder
     
     val workDir = dirs.getTempActionDir("versioner.checkout")
-    val stdoutFile = new File(workDir, "checkout_stdout.txt")
+    val stdoutFile = new File(workDir, "checkout_stdout.txt") 
     val stderrFile = new File(workDir, "checkout_stderr.txt")
     val exitCodeFile = new File(workDir, "checkout_exit_code.txt")
     
+    // TODO: "dir" is perhaps a bad choice of variable name here.
+    // we should be checking for collissions
     val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.getEnv(packageDef)
     
     System.err.println("Checking out %s into %s via %s".format(
       packageDef.name, buildDir.getAbsolutePath, workDir.getAbsolutePath))
 
-    debug("Making dir: " + workDir.getAbsolutePath)
-    workDir.mkdirs
-    if (!workDir.exists) {
-      throw new BashException("Could not make directory: " + workDir.getAbsolutePath)
-    }
-
-    debug("Making dir: " + buildDir.getAbsolutePath)
-    buildDir.mkdirs
-    if (!buildDir.exists) {
-      throw new BashException("Could not make directory: " + buildDir.getAbsolutePath)
-    }
+    Files.mkdirs(workDir)
+    Files.mkdirs(buildDir)
 
     debug("Running checkout commands: " + info.checkoutDef.commands.toString)
     val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name

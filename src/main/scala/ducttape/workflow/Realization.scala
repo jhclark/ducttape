@@ -1,10 +1,14 @@
 package ducttape.workflow
 
+import ducttape.util.HashUtils
+
 import collection._
+
+import grizzled.slf4j.Logging
 
 // Note: branches are now guaranteed to be sorted by the HyperDAG
 // see RealizationOrdering
-class Realization(val branches: Seq[Branch]) {
+class Realization(val branches: Seq[Branch]) extends Logging {
  // TODO: Keep string branch point names?
 
   // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
@@ -28,14 +32,25 @@ class Realization(val branches: Seq[Branch]) {
       val displayName = if (branch.baseline) "baseline" else branch.name
       "%s.%s".format(branch.branchPoint.name, displayName)
     }
-    names.mkString(Realization.delimiter)
+    val result = names.mkString(Realization.delimiter)
+    if (result.length > 255) {
+      throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
+    }
+    result
   }
     
   private def fullRealizationName(): String = {
     // TODO: Prohibit the branch point name "Baseline"?
     val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT }
     val names = filteredBranches.map { branch => "%s.%s".format(branch.branchPoint.name, branch.name) }
-    names.mkString(Realization.delimiter)
+    val result = names.mkString(Realization.delimiter)
+    if (result.length > 255) {
+      warn("Very long filename is being hashed: " + result)
+      HashUtils.md5(result)
+      //throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
+    } else {
+      result
+    }
   }
 
   lazy val str = realizationName()
@@ -54,5 +69,5 @@ class Realization(val branches: Seq[Branch]) {
 }
 
 object Realization {
-  var delimiter:String="+"
+  var delimiter: String = "+"
 }

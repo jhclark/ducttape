@@ -12,7 +12,7 @@ class SpecPairType[SpecT <: Spec](
   def isInput = !isParam
   override def toString() = {
     val t = srcTask.getOrElse("")
-    "%s => %s@%s".format(origSpec, srcSpec, t) 
+    "%s=%s@%s".format(origSpec.name, srcSpec.rval, t) 
   }
 }
                                         
@@ -32,6 +32,7 @@ object SpecTypes {
 }
 import SpecTypes._
 
+// NOTE: This is primarily how edges are visualized in the GraphViz representation
 class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
   def toString(withNewlines: Boolean) = {
     if (withNewlines) {

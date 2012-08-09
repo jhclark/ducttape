@@ -48,7 +48,7 @@ object WorkflowVersionInfo {
     if (myVersionDir.exists) {
       throw new RuntimeException("Version history directory already exists!")
     }
-    myVersionDir.mkdirs()
+    Files.mkdirs(myVersionDir)
     
     val workflowCopy = new File(myVersionDir, "workflow.tape")
     Files.copy(workflowFile, workflowCopy)

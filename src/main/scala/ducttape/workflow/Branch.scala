@@ -11,5 +11,5 @@ trait Branch {
       (this.baseline && that.baseline || this.name == that.name) && this.branchPoint == that.branchPoint
     }
   }
-  override def toString() = "%s:%s".format(branchPoint.name, name)
+  override def toString() = "%s.%s".format(branchPoint.name, name)
 }

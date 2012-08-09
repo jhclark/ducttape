@@ -1,8 +1,18 @@
 import System._
 import collection._
 import sys.ShutdownHookThread
+
 import java.io.File
 import java.util.concurrent.ExecutionException
+import java.util.regex.Pattern
+
+import ducttape.cli.Config
+import ducttape.cli.ErrorUtils
+import ducttape.cli.Opts
+import ducttape.cli.EnvironmentMode
+import ducttape.cli.Plans
+import ducttape.cli.RealizationGlob
+import ducttape.cli.ExecuteMode
 import ducttape.db.WorkflowDatabase
 import ducttape.db.TaskInfo
 import ducttape.db.PackageInfo
@@ -25,6 +35,7 @@ import ducttape.exec.ForceUnlocker
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
+import ducttape.syntax.ErrorBehavior
 import ducttape.syntax.ErrorBehavior._
 import ducttape.versioner._
 import ducttape.workflow.builder.WorkflowBuilder
@@ -38,25 +49,23 @@ import ducttape.workflow.RealizationPlan
 import ducttape.workflow.PlanPolicy
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.Types._
+import ducttape.workflow.BuiltInLoader
+import ducttape.syntax.FileFormatException
+import ducttape.syntax.WorkflowChecker
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
 import ducttape.util.Environment
-import ducttape.workflow.BuiltInLoader
-import ducttape.syntax.FileFormatException
+import ducttape.util.LogUtils
 import ducttape.util.DucttapeException
 import ducttape.util.BashException
-import ducttape.cli.Config
-import ducttape.cli.ErrorUtils
-import ducttape.cli.Opts
-import ducttape.cli.EnvironmentMode
-import ducttape.cli.Plans
-import ducttape.workflow.Visitors
-import ducttape.cli.ExecuteMode
-import ducttape.util.LogUtils
-import grizzled.slf4j.Logging
-import ducttape.syntax.WorkflowChecker
+import ducttape.util.Globs
+import ducttape.util.Shell
 import ducttape.workflow.VertexFilter
+import ducttape.workflow.Visitors
+
+import grizzled.slf4j.Logging
+
 
 object Ducttape extends Logging {
   
@@ -73,6 +82,15 @@ object Ducttape extends Logging {
     ShutdownHookThread { // make sure we never leave the color in a bad state on exit
       println(conf.resetColor)
       System.err.println(conf.resetColor)
+    }
+
+    // read user config before printing anything to screen
+    val userConfigFile = new File(System.getProperty("user.home"), ".ducttape")
+    debug("Checking for user config at: %s".format(userConfigFile.getAbsolutePath))
+    val userConfig: WorkflowDefinition = if (userConfigFile.exists) {
+      GrammarParser.readConfig(userConfigFile)
+    } else {
+      new WorkflowDefinition(Nil)
     }
     
     err.println("%sDuctTape v0.2".format(conf.headerColor))
@@ -98,17 +116,18 @@ object Ducttape extends Logging {
         case None => new WorkflowDefinition(Nil)
       })
       
-      workflowOnly ++ confStuff
+      workflowOnly ++ confStuff ++ userConfig
     }
-    
+
     val confNameOpt = opts.config_file.value match {
-      case Some(confFile) => Some(Files.basename(confFile, ".conf"))
+      case Some(confFile) => Some(Files.basename(confFile, ".conf", ".tconf"))
       case None => opts.config_name.value match {
         case Some(confName) => Some(confName)
         case None => None
       }
     }
     
+    // TODO: Can we remove this entirely now that config files have the same syntax as regular .tape files?
     val confSpecs: Seq[ConfigAssignment] = {
       opts.config_file.value match {
         // use anonymous conf from config file, if any
@@ -133,27 +152,32 @@ object Ducttape extends Logging {
         }
       }
     } ++ wd.globals
-    
-    // XXX Remove as soon as Jon's current experiments are done - this is a hack
-    {
-      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_branchpoint_delimiter" } match {
+
+    // TODO: Move conf specs method into WorkflowDefinition?
+    def getLiteralSpec(name: String): Option[LiteralSpec] = {
+      confSpecs.map(_.spec).find { spec => spec.name == name } match {
         case Some(spec) => spec.rval match {
-          case lit: Literal => Realization.delimiter=lit.value.trim().toLowerCase.slice(0, 1)
-          case _ => throw new FileFormatException("ducttape_branchpoint_delimiter directive must be a literal", spec)
+          // silly typesystem doesn't detect that this is trivially true...
+          case lit: Literal => Some(spec.asInstanceOf[LiteralSpec])
+          case _ => throw new FileFormatException("%s directive must be a literal".format(name), spec)
         }
-        case None => ()
+        case None => None
       }
+    }
+    def getLiteralSpecValue(name: String): Option[String] = getLiteralSpec(name).map(_.rval.value)
+    
+    // XXX: TODO: Remove as soon as Jon's current experiments are done - this is a hack
+    getLiteralSpecValue("ducttape_branchpoint_delimiter") match {
+      case Some(value) => Realization.delimiter = value.toLowerCase.slice(0, 1)
+      case None => ;
     }
     
     val flat: Boolean = ex2err {
-      confSpecs.map(_.spec).find { spec => spec.name == "ducttape_structure" } match {
-        case Some(spec) => spec.rval match {
-          case lit: Literal => lit.value.trim().toLowerCase match {
-            case "flat" => true
-            case "hyper" => false
-            case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", spec) 
-          }
-          case _ => throw new FileFormatException("ducttape_structure directive must be a literal", spec)
+      getLiteralSpec("ducttape_structure") match {
+        case Some(literalSpec) => literalSpec.rval.value.toLowerCase match {
+          case "flat" => true
+          case "hyper" => false
+          case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", literalSpec)
         }
         case None => false // not flat by default (hyper)
       }
@@ -169,13 +193,8 @@ object Ducttape extends Logging {
           // output directory was specified on the command line: use that first
           case Some(outputDir) => new File(outputDir)
           case None => {
-            val confOutputDir = confSpecs.map(_.spec).find { spec => spec.name == "ducttape_output" }
-            confOutputDir match {
-              case Some(spec) => spec.rval match {
-                // output directory was specified in the configuration file: use that next
-                case lit: Literal => new File(lit.value.trim())
-                case _ => throw new FileFormatException("ducttape_output directive must be a literal", spec)
-              }
+            getLiteralSpecValue("ducttape_output") match {
+              case Some(value) => new File(value)
               // if unspecified, use PWD as the output directory
               case None => Environment.PWD
             }
@@ -189,8 +208,11 @@ object Ducttape extends Logging {
     
     // pass 1 error checking: directly use workflow AST
     {
+      val undeclaredBehavior = ErrorBehavior.parse(getLiteralSpecValue("ducttape_undeclared_vars"), default=Warn)
+      val unusedBehavior = ErrorBehavior.parse(getLiteralSpecValue("ducttape_unused_vars"), default=Warn)
+
       val (warnings, errors) = {
-        val bashChecker = new StaticChecker(undeclaredBehavior=Warn, unusedBehavior=Warn)
+        val bashChecker = new StaticChecker(undeclaredBehavior, unusedBehavior)
         val (warnings1, errors1) = bashChecker.check(wd)
         
         val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
@@ -212,7 +234,7 @@ object Ducttape extends Logging {
     
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
-    
+
     // Our dag is directed from antecedents toward their consequents
     // After an initial forward pass that uses a realization filter
     // to generate vertices whose realizations are part of the plan
@@ -220,7 +242,8 @@ object Ducttape extends Logging {
     // to make sure all of the vertices contribute to a goal vertex
     
     def getPlannedVertices(): PlanPolicy = {
-      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow)
+      // pass in user-specified plan name -- iff it was specified by the user -- otherwise use all plans
+      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, planName=opts.plan)
       planPolicy match {
         case VertexFilter(plannedVertices) => {
           System.err.println("Planned %s vertices".format(plannedVertices.size))
@@ -352,17 +375,24 @@ object Ducttape extends Logging {
     }
 
     // supports '*' as a task or realization
+    // or globs containing interlaced '*' and '?' as tasks or realizations
     def getVictims(taskToKill: String,
                    realsToKill: Set[String],
                    planPolicy: PlanPolicy): OrderedSet[RealTask] = {
       
+      val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(taskToKill))
+      val realPatterns: Seq[RealizationGlob] = realsToKill.toSeq.map(new RealizationGlob(_))
+
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
-        if (taskToKill == "*" || taskT.name == taskToKill) {
-          if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
+
+        if (taskPattern.matcher(taskT.name).matches) {
+        //if (taskToKill == "*" || taskT.name == taskToKill) {
+          //if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
+          if (realPatterns.exists(_.matches(task.realization))) {
             // TODO: Store seqs instead?
             victims += ((task.name, task.realization))
             victimList += task
@@ -513,6 +543,106 @@ object Ducttape extends Logging {
           for (param: ParamInfo <- task.params) {
             System.out.println("  :: %s: %s".format(param.name, param.value))
           }
+        }
+      }
+      case "summary" => {
+        // 1) find which summary the user asked for (else use them all)
+        //    -- just use them all for now
+        //    -- we should also allow the user to specify which "plans" they would like us to enumerate
+        //    -- we should also allow ther user to specify task globs on the command line
+
+        // TODO: More static checking of summaries to disallow params and inputs (and even packages for now)
+
+        // TODO: As a static pre-processing step, we should make sure summaries are referring to existing tasks...
+        //wd.tasks.find { _.name == taskName } match {
+        //  case None => throw new FileFormatException("Task '%s' not found. Required by summary '%s'".format(taskName, summary.name), summaryDef)
+        //  case Some(taskDef) => {
+        //  }
+        //}
+
+        val planPolicy = getPlannedVertices()
+        val cc = getCompletedTasks(planPolicy)
+        val packageVersions = getPackageVersions(None, planPolicy)
+        
+        // 2) Run each summary block and store in a big table
+
+        //    we also keep track of a) all branch points we've seen and produce one column in our output table for each
+        //    and b) each branch seen for each of those branch points -- branch points having only a single branch will be omitted
+        //    to make the control variables of each experiment more obvious
+        val branchPointMap = new mutable.HashMap[BranchPoint, mutable.HashSet[Branch]]
+        val labelSet = new mutable.HashSet[String]
+        val results = new mutable.HashMap[(String,Realization), mutable.HashMap[String,String]]
+        for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
+          val taskT: TaskTemplate = v.packed.value.get
+          val task: RealTask = taskT.realize(v)
+
+          for (summaryDef: SummaryDef <- wd.summaries) {
+            for (ofDef: SummaryTaskDef <- summaryDef.ofs; if (ofDef.name == task.name && cc.completed( (task.name, task.realization) ))) {
+              val taskEnv = new FullTaskEnvironment(dirs, packageVersions, task)
+              val workDir = dirs.getTempActionDir("summary")
+              Files.mkdirs(workDir)
+                  
+              val summaryOutputs: Seq[(String,String)] = ofDef.outputs.map { spec: Spec =>
+                (spec.name, new File(workDir, spec.name).getAbsolutePath)
+              }
+
+              // TODO: Use all the same variables as a submitter?
+              val env: Seq[(String,String)] = Seq( ("TASK_DIR", taskEnv.where.getAbsolutePath) ) ++ summaryOutputs ++ taskEnv.env
+
+              // f) run the summary command
+              val code = ofDef.commands.toString
+              val stdPrefix = "%s/%s".format(taskEnv.task.name, taskEnv.task.realization)
+              val stdoutFile = new File(workDir, "summary_stdout.txt")
+              val stderrFile = new File(workDir, "summary_stderr.txt")
+              val exitCodeFile = new File(workDir, "summary_exit_code.txt")
+
+              err.println("Summarizing %s: %s/%s".format(summaryDef.name, task.name, task.realization))
+              val exitCode = Shell.run(code, stdPrefix, workDir, env, stdoutFile, stderrFile)
+              Files.write("%d".format(exitCode), exitCodeFile)
+              if (exitCode != 0) {
+                throw new BashException("Summary '%s' of %s/%s failed".format(summaryDef.name, taskEnv.task.name, taskEnv.task.realization))
+              }
+              
+              // g) extract the result from the file and put it in our table
+              for ( (outputName, path) <- summaryOutputs) {
+                val lines: Seq[String] = Files.read(new File(path))
+                if (lines.size != 1) {
+                  throw new BashException("For summary '%s', expected exactly one line in '%s', but instead found %d".format(summaryDef.name, path, lines.size))
+                }
+                val label = outputName
+                val result: String = lines(0)
+                results.getOrElseUpdate( (task.name, task.realization), new mutable.HashMap[String,String] ) += label -> result
+                for (branch <- task.realization.branches) {
+                  branchPointMap.getOrElseUpdate(branch.branchPoint, new mutable.HashSet) += branch
+                }
+                labelSet += label
+              }
+              
+              // h) cleanup
+              Files.deleteDir(workDir)
+            }
+          }
+        }
+
+        // 3) print the table out in a nice tab-delimited format
+        // first line is header
+        val allBranchPoints = branchPointMap.keys.toSeq.sortBy(_.name)
+        val (constantBranchPointMap, variableBranchPointMap)
+          = branchPointMap.toSeq.sortBy(_._1.name).partition { case (bp, branches) => branches.size == 1 }
+        for ( (bp, branches) <- constantBranchPointMap) {
+          System.err.println("Constant branch point: %s=%s".format(bp, branches.head))
+        }
+        val variableBranchPoints: Seq[BranchPoint] = variableBranchPointMap.map(_._1)
+        System.err.println("Variable branch points: " + variableBranchPoints.mkString(" "))
+
+        val labels: Seq[String] = labelSet.toSeq.sorted
+        val header: Seq[String] = variableBranchPoints.map(_.name) ++ labels
+        System.out.println(header.mkString("\t"))
+        for ( ((taskName, real), values) <- results) {
+          val branches: Map[BranchPoint, String] = real.branches.map { branch => (branch.branchPoint, branch.name) }.toMap
+          val cols: Seq[String] = variableBranchPoints.map { bp => branches.getOrElse(bp, "--") } ++
+            labels.map { label => values.getOrElse(label, "--") }
+          System.out.println(cols.mkString("\t"))
         }
       }
       case "unlock" => {
