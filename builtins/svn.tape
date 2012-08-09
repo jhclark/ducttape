@@ -6,7 +6,7 @@ versioner svn :: repo rev {
   }
   action repo_version > version {
     svn info $repo | awk -F': ' '/Revision/{print $2}' > $version
-    svn info $repo | awk -F': ' '/Date/{print}' > $date
+#    svn info $repo | awk -F': ' '/Date/{print}' > $date
   }
   # Used to confirm version after update/install
   action local_version > version date {  
