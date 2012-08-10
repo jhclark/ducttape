@@ -103,11 +103,14 @@ object Files extends Logging {
       listing.toSeq
   }
 
+  // strips leading directory and any suffix
   def basename(filename: String, suffixes: String*): String = {
-    for (suffix <- suffixes; if (filename.endsWith(suffix))) {
-      return filename.substring(0, filename.length - suffix.length)
+    val nodir = new File(filename).getName
+
+    for (suffix <- suffixes; if (nodir.endsWith(suffix))) {
+      return nodir.substring(0, nodir.length - suffix.length)
     }
-    return filename
+    return nodir
   }
   
   def copy(src: File, dest: File) {
