@@ -2,7 +2,7 @@
 # * All other commands are run inside $dir
 versioner svn :: repo rev {
   action checkout > dir {
-    svn co -r $rev $repo .
+    svn co -r $rev $repo $dir
   }
   action repo_version > version {
     svn info $repo | awk -F': ' '/Revision/{print $2}' > $version
