@@ -307,6 +307,12 @@ object Grammar {
     )
   }
 
+  /**
+   * A convenience method for branchName() like name() above
+   */
+  def branchName(title: String, whatCanComeNext: Regex): Parser[String] = {
+    branchName(title,whatCanComeNext,err(_),err(_))
+  }
 
   /**
    * Branch name, with the same naming restrictions as unquoted literals.
@@ -316,17 +322,21 @@ object Grammar {
       howToFailAtStart: (String)=>Parser[Nothing],
       howToFailAtEnd: (String)=>Parser[Nothing]): Parser[String] = {
     ( // If the name starts with an illegal character, bail out and don't backtrack
-      regex("""[^"')(\]\[\*\$:@=\s]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+      //regex("""[^,"')(\]\[\*\$:@=\s]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
+      regex("""[^A-Za-z0-9_.]""".r)<~howToFailAtStart("Illegal character at start of " + title + " name")
 
       // Else if the name contains only legal characters and the input ends, then parse it
-      | regex("""[^"')(\]\[\*\$:@=\s]*$""".r)
+      //| regex("""[^,"')(\]\[\*\$:@=\s]*$""".r)
+      | regex("""[A-Za-z0-9_.]*$""".r)
       
       // Else if the name itself is OK, but it is followed by something that can't legally follow the name, bail out and don't backtrack
-      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+      //| regex("""[^,"')(\]\[\*\$:@=\s]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
+      | regex("""[A-Za-z0-9_.]*""".r)<~guard(not(regex(whatCanComeNext)))~howToFailAtEnd("Illegal character in " + title + " name. Adding a space after the variable name may fix this error.")
 
       // Finally, if the name contains only legal characters, 
       //          and is followed by something that's allowed to follow it, then parse it!
-      | regex("""[^"')(\]\[\*\$:@=\s]*""".r)
+      //| regex("""[^,"')(\]\[\*\$:@=\s]*""".r)
+      | regex("""[A-Za-z0-9_.]*""".r)
     )
   }
 
@@ -399,7 +409,7 @@ object Grammar {
    * Reference to a branch name or a branch glob (*)
    */
   val branchReference: Parser[String] = {
-    literal("*") | name("branch reference","""[\]\s,]""".r)
+    literal("*") | branchName("branch reference","""[\]\s,]""".r)
   }
   
   /**

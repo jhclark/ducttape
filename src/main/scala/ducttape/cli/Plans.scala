@@ -73,7 +73,7 @@ object Plans extends Logging {
     // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
     //   realizations that shouldn't be selected.
 
-    info("Finding graft relaxations...")
+    debug("Finding graft relaxations...")
     // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
     val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
     // don't visit the same vertex many times
@@ -91,18 +91,18 @@ object Plans extends Logging {
 
             // TODO: This is overzealous since these are not necessarily
             //   all dependencies in the unpacked DAG
-            def visitDependencies(dep: PackedWorkVert) {
+            def visitDependencies(dep: PackedWorkVert, specGroup: SpecGroup) {
               val relaxationsAtDep = graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet)
               // note: this check is key to making this code block efficient
               if (!specGroup.grafts.forall { graft: Branch => relaxationsAtDep.contains(graft) }) {
                 debug("%s: Dependency %s added new grafts: %s".format(v, dep, specGroup.grafts))
                 specGroup.grafts.foreach { graft: Branch => relaxationsAtDep += graft }
-                workflow.dag.delegate.delegate.parents(dep).foreach(visitDependencies(_))
+                workflow.dag.delegate.delegate.parents(dep).foreach(visitDependencies(_, specGroup))
               } else {
                 trace("%s: Dependency %s already has grafts: %s".format(v, dep, specGroup.grafts))
               }
             }
-            visitDependencies(v)
+            visitDependencies(v, specGroup)
           }
         }
       }

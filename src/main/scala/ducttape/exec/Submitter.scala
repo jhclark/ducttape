@@ -80,9 +80,9 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // note that run requires the entire environment from the original task
     // since we might not be doing any wrapping at all
     val env: Seq[(String,String)] = Seq(
-          ("TASK", taskEnv.task.name),
-          ("REALIZATION", taskEnv.task.realization.toString),        
           ("CONFIGURATION", taskEnv.dirs.confName.getOrElse("")),
+          ("TASK", taskEnv.task.name),
+          ("REALIZATION", taskEnv.task.realization.toString),
           ("TASK_VARIABLES",taskEnv.taskVariables),
           ("COMMANDS", taskEnv.task.commands.toString)) ++
         dotParamsEnv ++ taskEnv.env
