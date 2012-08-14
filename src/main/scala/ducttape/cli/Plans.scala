@@ -49,6 +49,7 @@ object Plans extends Logging {
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
         val task: RealTask = taskT.realize(v)
+        trace("Found new candidate: %s".format(task))
         candidates += (task.name, task.realization) -> task
     })
     candidates
