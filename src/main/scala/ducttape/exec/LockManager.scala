@@ -41,6 +41,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   
   // key is absolute path to file
   val locks = new mutable.HashMap[String, FileLock] with mutable.SynchronizedMap[String, FileLock]
+  private var isShutdown = false
 
   override def skip(exec: Executor, taskEnv: TaskEnvironment) {}
   
@@ -69,6 +70,10 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
    * process to either complete a task or fail to complete it before we can acquire a lock
    */
   def acquireLock(taskEnv: TaskEnvironment) {
+
+    if (isShutdown) {
+      throw new RuntimeException("LockManager is already shut down. No further locks will be issued.")
+    }
     
     // do we already hold this lock?
     debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
@@ -146,32 +151,38 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
 
   // acquire the lock iff nobody else holds it
   def maybeAcquireLock(taskEnv: TaskEnvironment, writeVersion: Boolean): Boolean = {
-    // do we already hold this lock?
-    debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
-    if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
-        
-      Files.mkdirs(taskEnv.lockFile.getParentFile)
-      val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
-      Optional.toOption(raFile.getChannel.tryLock()) match {
-        case Some(lock) => {
-          debug("Successfully got an early lock on: " + taskEnv.lockFile)
-          // note: we already have "locks" synchronized
-          locks += taskEnv.lockFile.getAbsolutePath -> lock
-          debug("Locks are now: " + locks)
-          if (writeVersion) {
-            debug("Writing version to " + taskEnv.versionFile)
-            Files.write(version.version.toString, taskEnv.versionFile)
-          }
-          true
-        }
-        case None => {
-          debug("Did not get an early lock on: " + taskEnv.lockFile)
-          false
-        }
-      }
+
+    if (isShutdown) {
+      false
     } else {
-      debug("Already locked: %s".format(taskEnv.lockFile.getAbsolutePath))
-      true
+
+      // do we already hold this lock?
+      debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
+      if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
+        
+        Files.mkdirs(taskEnv.lockFile.getParentFile)
+        val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
+        Optional.toOption(raFile.getChannel.tryLock()) match {
+          case Some(lock) => {
+            debug("Successfully got an early lock on: " + taskEnv.lockFile)
+            // note: we already have "locks" synchronized
+            locks += taskEnv.lockFile.getAbsolutePath -> lock
+            debug("Locks are now: " + locks)
+            if (writeVersion) {
+              debug("Writing version to " + taskEnv.versionFile)
+              Files.write(version.version.toString, taskEnv.versionFile)
+            }
+            true
+          }
+          case None => {
+            debug("Did not get an early lock on: " + taskEnv.lockFile)
+              false
+          }
+        }
+      } else {
+        debug("Already locked: %s".format(taskEnv.lockFile.getAbsolutePath))
+        true
+      }
     }
   }
 
@@ -190,5 +201,14 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
         true
       }
     }
+  }
+
+  // used to indicate that this lock manager should not accept any further requests
+  // to acquire locks
+  // this can be useful when a user shutdown request has been detected (e.g. Ctrl+C)
+  // but not all worker threads have stopped yet. we need to guarantee that no new locks
+  // will be issued during cleanup
+  def shutdown() {
+    isShutdown = true
   }
 }
