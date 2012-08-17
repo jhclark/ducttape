@@ -54,6 +54,7 @@ object Grammar {
     val via: Parser[String] = keyword("via")
     val plan: Parser[String] = keyword("plan")
     val global: Parser[String] = keyword("global")
+    val importKeyword: Parser[String] = keyword("import")
 
   }
   
@@ -264,8 +265,8 @@ object Grammar {
   val literalValue: Parser[Literal] = {
     tripleQuotedLiteral | quotedLiteral | unquotedLiteral 
   }
-
-    /**
+  
+  /**
    * Parser for a name, defined as an ASCII alphanumeric identifier.
    * <p>
    * The first character must be an upper-case letter, an lower-case letter, or an underscore.
@@ -1125,16 +1126,43 @@ object Grammar {
     globalBlock           |
     planBlock
   }
-    
+
+  val importStatement: Parser[WorkflowDefinition] = {
+    Keyword.importKeyword ~ opt(space) ~> literalValue
+  }  ^^ {
+    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value))
+  }
   
   val blocks: Parser[Seq[Block]] = {
     opt(whitespace) ~> 
-    rep(block) <~ 
+    rep(block|importStatement) <~ 
     (
         opt(whitespace)~
         opt(comments)~
         opt(whitespace)
     )
+  } ^^ {
+    case (s:Seq[ASTType]) => {
+      val result = scala.collection.mutable.ListBuffer[Block]()
+      s.foreach(entry => 
+         entry match {
+           case (b:Block) => result += b
+           case (w:WorkflowDefinition) => {
+             w.blocks.foreach(b => result += b)
+           }
+         }
+      )
+//      println("result: " + result.size)
+      result
+    }
+//    case (s:Seq[Block]) => s
+//    case (w:WorkflowDefinition) => w.blocks
   }
 
+//  val blocks: Parser[Seq[Block]] = {
+//    rep(blockSeq)
+//  } ^^ {
+//    case (seqOfSeqs:Seq[Seq[Block]]) => seqOfSeqs.flatten
+//  }
+  
 }
