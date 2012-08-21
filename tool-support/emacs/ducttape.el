@@ -23,6 +23,7 @@
 		    "func"
 		    "group"
 		    "global"
+		    "import"
                     "of"
 		    "package"
 		    "plan"
