@@ -5,7 +5,8 @@ scriptDir=$(dirname $0)
 
 DUCTTAPE=$scriptDir/..
 VERSION=0.2
-RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
+RELEASE_NAME=ducttape-${VERSION}
+#RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
 DIST_BASE=${DUCTTAPE}/dist
 DIST=${DIST_BASE}/${RELEASE_NAME}
 
@@ -36,18 +37,18 @@ cp -r ${DUCTTAPE}/tool-support ${DIST}/
 cp -r ${DUCTTAPE}/builtins ${DIST}/
 
 mkdir -p $DIST/tutorial
-tutorialDir=$DUCTTAPE/syntax/tutorial
-for dir in $(cd $tutorialDir; find . -mindepth 1 -maxdepth 1 -type d); do
-    files=$(echo $tutorialDir/$dir/*.{tape,conf,sh})
-    if [ ! -z "$files" ]; then
-	mkdir -p $DIST/tutorial/$dir
-	cp $tutorialDir/$dir/*.{tape,conf,sh} $DIST/tutorial/$dir/
-    fi
-done
+tutorialDir=$DUCTTAPE/tutorial
+cp $tutorialDir/*.tape \
+   $tutorialDir/*.txt \
+   $tutorialDir/*.md \
+   $tutorialDir/*conf \
+   $tutorialDir/*.sh \
+   $DIST/tutorial
     
-#find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~' | xargs rm -rf
+find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~' | xargs rm -rf
 tar -C ${DIST_BASE} -cvzf ${DIST_BASE}/${RELEASE_NAME}.tgz ${RELEASE_NAME}
 
 # Update symlink for regression testing
 cd $DIST_BASE
-ln -sf ${RELEASE_NAME} ducttape-current
+rm -f ducttape-current
+ln -sf ${RELEASE_NAME}/ ducttape-current
