@@ -41,6 +41,7 @@ tutorialDir=$DUCTTAPE/tutorial
 cp $tutorialDir/*.tape \
    $tutorialDir/*.txt \
    $tutorialDir/*.md \
+   $tutorialDir/*.pdf \
    $tutorialDir/*conf \
    $tutorialDir/*.sh \
    $DIST/tutorial
