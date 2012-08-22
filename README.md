@@ -40,7 +40,7 @@ ducttape 01-01-hello-world.tape
 
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
-System-wide installation coming soon. See below for how to add emacs/vim syntax highlighting to your environment.
+System-wide installation coming soon. See below for how to add emacs/vim syntax highlighting to your local install.
 
 
 Design Principles
