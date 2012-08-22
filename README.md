@@ -15,6 +15,34 @@ Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark
 
 Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
 
+Quick Start
+===========
+
+First, download and unpack the program:
+
+```bash
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.tgz
+tar -xvzf ducttape-0.2.tgz
+```
+
+Add ducttape to your PATH:
+
+```bash
+export PATH=$PWD/ducttape-0.2:$PATH
+```
+
+Run a tutorial example:
+
+```bash
+cd ducttape-0.2/tutorial
+ducttape 01-01-hello-world.tape
+```
+
+What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
+
+System-wide installation coming soon. See below for how to add emacs/vim syntax highlighting to your environment.
+
+
 Design Principles
 =================
 
