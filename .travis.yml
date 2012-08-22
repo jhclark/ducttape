@@ -4,7 +4,8 @@ jdk:
 script: ./build-support/sbt test
 after_script:
   - ./build-support/ensure_unique_tutorial_tasks.sh
-  - ./build-support/sbt proguard
+  - ./build-support/jar.sh
   - ./build-support/doc.sh
+  - ./build-support/sbt proguard
   - ./build-support/dist.sh
   - PATH=$PWD/dist/ducttape-current:$PATH ./build-support/test-regression.sh
