@@ -9,8 +9,6 @@ Ducttape is a workflow management system for researchers who heart unix. It allo
 * Track the versions of the software used, the data used, and even the task descriptions themselves in a very detailed way
 * Quickly and easily run your workflow under multiple input conditions while re-using intermediate results -- without copy-pasting
 
-Currently, it is alpha quality. Proceed with caution and report bugs regularly.
-
 Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
 Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
