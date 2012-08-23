@@ -12,6 +12,10 @@ DIST=${DIST_BASE}/${RELEASE_NAME}
 
 cd $DUCTTAPE
 
+echo "=============================================="
+echo "Creating Ducttape release for version $VERSION"
+echo "=============================================="
+
 echo "Original JAR stats:"
 du -csh lib/*.jar lib/webui/*.jar lib/scala/scala-library-2.9.2.jar
 
@@ -45,11 +49,16 @@ cp $tutorialDir/*.tape \
    $tutorialDir/*conf \
    $tutorialDir/*.sh \
    $DIST/tutorial
-    
-find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~' | xargs rm -rf
+  
+# Don't use xargs to avoid non-zero return when no sucn files exist  
+for file in $(find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~'); do
+  rm -f $file
+done
 tar -C ${DIST_BASE} -cvzf ${DIST_BASE}/${RELEASE_NAME}.tgz ${RELEASE_NAME}
 
 # Update symlink for regression testing
 cd $DIST_BASE
 rm -f ducttape-current
 ln -sf ${RELEASE_NAME}/ ducttape-current
+
+echo "Distribution ready."
