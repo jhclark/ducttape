@@ -154,7 +154,7 @@ object Ducttape extends Logging {
       }
     } ++ wd.globals
     
-    val directives: Directives = ex2err {
+    implicit val directives: Directives = ex2err {
       new Directives(confSpecs)
     }
         

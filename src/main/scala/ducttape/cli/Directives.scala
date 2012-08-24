@@ -63,4 +63,10 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
 
   // experimental directives
   val enableImports: Boolean = parseExperimental("ducttape_experimental_imports")
+  val enablePackages: Boolean = parseExperimental("ducttape_experimental_packages")
+  val enableSubmitters: Boolean = parseExperimental("ducttape_experimental_submitters")
+
+  // enable multiple ducttape processes to run at the same time
+  // (this has nothing to do with parallel execution of tasks!)
+  val enableMultiproc: Boolean = parseExperimental("ducttape_experimental_multiproc")
 }

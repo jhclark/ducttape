@@ -7,6 +7,7 @@ import sys.ShutdownHookThread
 import java.util.concurrent.ExecutionException
 import java.io.File
 
+import ducttape.cli.Directives
 import ducttape.syntax.FileFormatException
 import ducttape.exec.PackageBuilder
 import ducttape.versioner.WorkflowVersionInfo
@@ -32,7 +33,7 @@ object ExecuteMode {
           planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
           getPackageVersions: () => PackageVersioner)
-         (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
+         (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect, directives: Directives) {
     
     if (cc.todo.isEmpty) {
       // TODO: Might need to re-run if any package versions have changed
@@ -54,7 +55,11 @@ object ExecuteMode {
       
       // TODO: Check package versions to see if any packages need rebuilding.
   
-      // TODO: Check for existing PID lock files from some other process...x
+      // TODO: Check for existing PID lock files from some other process... and make sure we're on the same machine
+
+      if (!directives.enableMultiproc && cc.locked.size > 0) {
+        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_enable_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
+      }
       
       import ducttape.cli.ColorUtils.colorizeDir
       import ducttape.cli.ColorUtils.colorizeDirs
