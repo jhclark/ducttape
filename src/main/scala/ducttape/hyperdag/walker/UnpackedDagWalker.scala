@@ -68,6 +68,9 @@ class UnpackedDagWalker[V,H,E,D,F](
     override def equals(obj: Any) = obj match { case that: ActiveVertex => (that.v == this.v) && (that.he == this.he) }
     override def toString() = "%s(he=%s)".format(v,he)
 
+    var verticesAccepted: Int = 0
+    var verticesDiscarded: Int = 0
+
     // recursively scan left-to-right across the array called filled,
     //   building up the combination of hyperedges that forms a realization
     //   we can bail at any point during this process if a filter fails
@@ -90,6 +93,8 @@ class UnpackedDagWalker[V,H,E,D,F](
             val sortedReal: Seq[D] = finalReal.toList.sorted(ordering)
             assert(parentReals.toList.forall { _ != null }, "parentReals for %s should not contain null".format(v))
             val uv = new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList)
+
+            verticesAccepted += 1
             debug("Created new unpacked vertex: %s: Parent realizations: %s".format(uv, uv.parentRealizations))
             callback(uv)
           } 
@@ -108,7 +113,6 @@ class UnpackedDagWalker[V,H,E,D,F](
         }
         val edge: E = he.get.e(i)
         debug("Vertex=%s; he=%s; i=%d/%d; parent=%s edge=%s".format(v, he, i, filled.size, getParent, edge))
-        
 
         // for each possible realization of the parent vertex of the current component edge
         // (represented by the current recursive call to unpack())...
@@ -117,8 +121,12 @@ class UnpackedDagWalker[V,H,E,D,F](
           munger.traverseEdge(v, he, edge, parentRealization, prevState) match {
             case None => {
               // illegal state, skip it
+              verticesDiscarded += 1
               debug("Vertex=%s; he=%s; Edge traversal resulted in illegal state. parent%d=%s; parentReal=%s; e%d=%s".
                 format(v, he, i, getParent, parentRealization, i, edge))
+              if (verticesDiscarded % 10000 == 0) {
+                info("Traversed %d vertices so far (%d others discarded)".format(verticesAccepted, verticesDiscarded))
+              }
             }
             case Some(nextState) => {
               parentReals(i) = parentRealization

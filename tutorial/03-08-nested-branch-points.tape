@@ -8,8 +8,6 @@ task uses_nested < file=$ref_test :: N=$num_refs {
 
 global {
   # Adding multiple branches from a config file
-  # TODO: Another example with multiple language pairs
-  #       (multiple config files, each which introduces a realization?)
   num_refs=(
     Test:
     baseline=(

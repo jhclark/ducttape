@@ -107,7 +107,6 @@ task first > x {
  * We use first's output "x" as the input "a" by using the = operator
  * Instead of specifying an absolute path as before, we specify
    it as a dependency using the "$" prefix
- TODO: $first/x should become $x@first
 
 ```
 task and_then < a=$x@first > x {
@@ -150,56 +149,16 @@ global {
 }
 ```
 
-Basics: Anonymous configs
--------------------------
-
-
- TODO: More documentation
-
-```
-task hello_anonymous_world :: who=$someone {
-  echo hello $who
-}
-```
-
- an anonymous configuration block
- this creates no additional directory structure
-
-```
-config {
-  someone=world
-}
-```
-
-Basics: Named configs
----------------------
-
-
- Named configs allow... TODO
-
-```
-task hello_named_world :: who=$someone {
-  echo hello $who
-}
-```
-
- an named configuration block
- all tasks will be nested under an additional subdirectory called "World"
-
-```
-config World {
-  someone=world
-}
-global {
-  ducttape_structure=flat
-}
-```
-
 Basics: External config files
 -----------------------------
 
 
- TODO: Why are these useful?
+ External config files allow you to separate variables (and even tasks)
+ that don't belong in a more generic workflow.
+
+ For example, if you wish to build a workflow that builds a large system
+ based on data, it's possible to separate the main building workflow
+ from any references to specific data files.
 
 ```
 task hello_external_world :: who=$someone {
@@ -214,7 +173,8 @@ Basics: Global variables
 ------------------------
 
 
- TODO: Why are these useful?
+ Global variables allow you to define input files and parameters
+ that are reused throughout the workflow.
 
 ```
 task hello_global_world :: who=$someone {
@@ -253,41 +213,6 @@ global {
 
 Packages
 ========
-
-Packages: Using package versioning
-----------------------------------
-
-
- * During R&D, software often changes while a workflow is running
- * To reproduce a workflow, you need to know what version of
-   the software you ran
- * in, out, and N are shown only to illustrate syntax
-
-```
-task lunchtime_with_git : lunchpy {
-  $lunchpy/lunch.py Indian Mexican Italian
-}
-```
-
- * Build commands are only called when versioner indicates a new version
- The following versioners are built-in to ducttape and implemented under $DUCTTAPE/builtins:
- * git
- * svn
-
- Note: We don't actually need to compile anything for python code,
- but for the sake of example we'll make this program run a bit faster
-
-```
-package lunchpy :: .versioner=git .repo="git://github.com/mjdenkowski/lunchpy.git" .ref=HEAD {
-  python -m compileall .
-}
-```
-
- The idea here is to reproduce a repository-checkout-and-build within the context of a larger workflow system.
- This can become important in computational research in which software updates and experiments
- rapidly iterate with many code updates happening between experiments. For the sake of
-reproducibility, it is important to know and be able to reproduce *exactly* the
- software configuration used in each experiment.
 
 Packages: Understanding the git versioner
 -----------------------------------------
@@ -337,7 +262,6 @@ versioner git :: repo ref {
   action repo_version > version {
     git ls-remote $repo $ref | cut -f1 > $version
   }
-  # TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
   # Used to confirm version after checkout
   action local_version > version date {
     git rev-parse HEAD > $version
@@ -413,11 +337,16 @@ HyperWorkflows: The default one off plan
 ----------------------------------------
 
 
- TODO: What is a plan?
+ Most HyperWorkflows involve more than one branch point. With a large
+ enough number of these, running the cross-product of all branches
+ quickly becomes infeasible.
 
- Most HyperWorkflows involve more than one dimension of experimentation.
- That is, there is more than one packed file/parameter among the workflow's
- tasks. In this example, we will see how to run these variations as
+ To address this problem, ducttape provides "plans". A plan is a set
+ of branches that the user wishes to be run at a specific task.
+ By default, ducttape will execute all tasks, but only for realizations
+ that contain no more than one *non-baseline* branch.
+
+ In this example, we will see how to run these variations as
  "one off" experiments.
 
  We start with a task much like the previous example
@@ -474,7 +403,7 @@ HyperWorkflows: Custom realization plans
  We start with the same example from part 2
 
 ```
-task planned_1 < in=(whichSize: smaller=small.txt bigger=big.txt) > out {
+task planned_1 < in=(WhichSize: smaller=small.txt bigger=big.txt) > out {
   cat < $in > $out
 }
 ```
@@ -498,29 +427,43 @@ plan Basics {
   # The * operator indicates a cross-product
   # The "score" indicates that score is the goal task ("target" in GNU Make lingo)
   # and only dependencies of that task should be run
-  reach planned_2 via (whichSize: smaller) * (N: one two) * (M: 1..10)
+  reach planned_2 via (WhichSize: smaller) * (N: one two) * (M: 1..10)
   # * 2 experiments/realizations: just the large model (e.g. if it takes much longer to run)
   # * "planned_1 and planned_2" indicates that those 2 tasks are the goal tasks
   #   This is used only to demonstrate syntax. Since planned_1 is a parent of planned_2,
   #   mentioning it has no effect in this case
-  reach planned_1, planned_2 via (whichSize: bigger) * (N: one) * (M: 2 8)
+  reach planned_1, planned_2 via (WhichSize: bigger) * (N: one) * (M: 2 8)
+  # It is also possible to use the plan-glob operator '*' as
+  # a branch name to indicate "all branches" should be used in the cross-product
+  # This will result in the realizations:
+  # * WhichSize.bigger (N.one and M.1 are omitted from the name since it is the baseline)
+  # * WhichSize.bigger-N.two (M.1 is omitted from the name since it is the baseline)
+  reach planned_2 via (WhichSize: bigger) * (N: *) * (M: 1)
 }
 ```
 
 HyperWorkflows: Branch Grating
 ------------------------------
 
- TODO: Unfinished tutorial step
- TODO: Example of grafting multiple branches (from different branch points) using comma
- TODO: Example of one input performing a graft and another input of the same task not grafting
+ Branch points allow you to run a single task and all of its dependents
+ under a particular set of conditions (the realization). But what
+ if you want some dependents to only use a specific configuration?
+ For this, ducttape provides branch grafts.
 
- Branch grafting allows the selection of exactly one branch from a branch point that
- has been defined by a task or one of its parents. At the task and input where the branch graft is requested,
- the specified branch is taken to be the only branch that will ever be used *for that task, input pair*.
- The task at which the graft was requested will then have no further visibility of that branch point -- nor
- will any dependents of that task have visibility of the branch point. 
+ A branch graft constrains an input or parameter to use only realizations
+ that contain the specified branch(es) -- this of course requires that the branch
+ has been defined by the parent task or one of its dependencies. The task at which
+ the graft was requested will then have no further visibility of that
+ branch point -- nor will any dependents of that task have visibility
+ of the branch point. 
 
- if we have a tokenizer that we'd like to run on the training, dev, and test set
+ Note: You can graft multiple branches (from different branch points) using comma
+ we don't show an example of this for brevity.
+ Note: One input may use a graft and while another input does not use a graft. We
+ don't show this usage here.
+
+ A use case from natural language processing for branch grafts:
+ We have a tokenizer that we'd like to run on the training, dev, and test set
  and then later using exactly one branch from that branch point
 
 ```
@@ -545,8 +488,6 @@ task uses_nested < file=$ref_test :: N=$num_refs {
 }
 global {
   # Adding multiple branches from a config file
-  # TODO: Another example with multiple language pairs
-  #       (multiple config files, each which introduces a realization?)
   num_refs=(
     Test:
     baseline=(
@@ -711,6 +652,11 @@ For the new hyper structure, this makes the $TASK directory: $TRANS/$TASK _ NAME
 Your original flat tasks will be symlinked into $TRANS as: $TRANS/$TASK _ NAME/baseline - >  $DEST/$TASK _ NAME, since each flat task represents the baseline branch of the Baseline branch point in a hyperworkflow.
 
 TODO: This README file needs to be updated.
+
+Why are tasks more like Make targets than functions?
+----------------------------------------------------
+
+Because you typically only use them once, even over a large number of experimental comparisons (thanks to branch points). Really, you should be thinking about bash scripts and their arguments as the basic unit of reusable functions in ducttape.
 
 Job control
 -----------

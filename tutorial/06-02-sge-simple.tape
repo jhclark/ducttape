@@ -1,6 +1,11 @@
 # Chapter 6: Submitters
 # Lesson 2:  Sun Grid Engine (Simple)
 
+# note: submitter syntax is currently experimental since a major change is planned for a future release
+global {
+  ducttape_experimental_submitters=enable
+}
+
 task hello_sge :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
   echo hello
 }

@@ -1,5 +1,7 @@
 package ducttape.exec
 
+import sys.ShutdownHookThread
+
 import ducttape.workflow.RealTask
 import ducttape.util.Files
 import ducttape.util.Optional
@@ -40,7 +42,20 @@ object LockManager extends Logging {
 class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with Logging {
   
   // key is absolute path to file
-  val locks = new mutable.HashMap[String, FileLock]
+  val locks = new mutable.HashMap[String, FileLock] with mutable.SynchronizedMap[String, FileLock]
+  private var isShutdown = false
+
+  private val locker = this
+  private val unlocker = ShutdownHookThread {
+    // release all of our locks, even if we go down in flames
+    // note: 'finally' blocks aren't guaranteed to be executed on JVM shutdown and we really need these files removed...
+    locker.shutdown()
+    if (locks.size > 0) {
+      System.err.println("EXITING: Cleaning up lock files...")
+      // don't accept any more locks for the lifefime of this object once we detect that a JVM shutdown is in progress
+      locker.maybeReleaseAll()
+    }
+  }
 
   override def skip(exec: Executor, taskEnv: TaskEnvironment) {}
   
@@ -69,27 +84,32 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
    * process to either complete a task or fail to complete it before we can acquire a lock
    */
   def acquireLock(taskEnv: TaskEnvironment) {
+
+    if (isShutdown) {
+      throw new RuntimeException("LockManager is already shut down. No further locks will be issued.")
+    }
     
-    locks.synchronized {
-      // do we already hold this lock?
-      debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
-      if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
-        // try to figure out (in a non-strict way) whether we will likely
-        // need to wait on the lock and give the user some feedback
-        // if we do
-        if (taskEnv.lockFile.exists) {
-          try {
-            val (hostname, pid) = readLockFile(taskEnv.lockFile)
-            debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
-          } catch {
-            case _ => ; // something went wrong, but just ignore it since this was only informational
-          }
+    // do we already hold this lock?
+    debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
+    if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
+      // try to figure out (in a non-strict way) whether we will likely
+      // need to wait on the lock and give the user some feedback
+      // if we do
+      if (taskEnv.lockFile.exists) {
+        try {
+          val (hostname, pid) = readLockFile(taskEnv.lockFile)
+          debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
+        } catch {
+          case _ => ; // something went wrong, but just ignore it since this was only informational
         }
+      }
         
-        Files.mkdirs(taskEnv.lockFile.getParentFile)
-        val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
+      Files.mkdirs(taskEnv.lockFile.getParentFile)
+      val raFile = new RandomAccessFile(taskEnv.lockFile, "rws")
     
-        debug("Waiting for lock: %s".format(taskEnv.lockFile))        
+      debug("Waiting for lock: %s".format(taskEnv.lockFile))
+
+      taskEnv.lockFile.synchronized {
         // use the OS's file locking mechanism
         // NOTE: This is valid only on the same machine -- not across network filesystems such as NFS!
         // this will block until our JVM acquires the lock
@@ -127,7 +147,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
         }
     
         // write the version file *after* removing any previous partial output
-        Files.write(version.version.toString, taskEnv.versionFile)
+        Files.write(version.version.toString, taskEnv.versionFile) 
       }
     }
   }
@@ -135,7 +155,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   def releaseLock(taskEnv: TaskEnvironment) {
     debug("Releasing lock: " + taskEnv.lockFile)
     
-    locks.synchronized {
+    taskEnv.lockFile.synchronized {
       val lock = locks(taskEnv.lockFile.getAbsolutePath)
       taskEnv.lockFile.delete()
       locks -= taskEnv.lockFile.getAbsolutePath
@@ -145,7 +165,11 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
 
   // acquire the lock iff nobody else holds it
   def maybeAcquireLock(taskEnv: TaskEnvironment, writeVersion: Boolean): Boolean = {
-    locks.synchronized {
+
+    if (isShutdown) {
+      false
+    } else {
+
       // do we already hold this lock?
       debug("Checking if we need to lock: %s".format(taskEnv.lockFile.getAbsolutePath))
       if (!locks.contains(taskEnv.lockFile.getAbsolutePath)) {
@@ -166,7 +190,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
           }
           case None => {
             debug("Did not get an early lock on: " + taskEnv.lockFile)
-            false
+              false
           }
         }
       } else {
@@ -176,22 +200,35 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
     }
   }
 
-  // release the lock iff we hold it
-  def maybeReleaseLock(taskEnv: TaskEnvironment): Boolean = {
-    locks.synchronized {
-      locks.get(taskEnv.lockFile.getAbsolutePath) match {
-        case None => {
-          debug("No need to release lock (it's not ours): " + taskEnv.lockFile)
-          false
-        }
-        case Some(lock) => {
-          debug("Releasing lock (as part of cleanup): " + taskEnv.lockFile)
-          taskEnv.lockFile.delete()
-          locks -= taskEnv.lockFile.getAbsolutePath
-          lock.release()
-          true
-        }
+  def maybeReleaseAll() = locks.keys.foreach { absPath => maybeReleaseLock(absPath) }
+
+  private def maybeReleaseLock(absPath: String): Boolean = {
+    locks.get(absPath) match {
+      case None => {
+        debug("No need to release lock (it's not ours): " + absPath)
+        false
       }
+      case Some(lock) => {
+        debug("Releasing lock (as part of cleanup): " + absPath)
+        new File(absPath).delete()
+        locks -= absPath
+        lock.release()
+        true
+      }
+    }
+  }
+
+  // release the lock iff we hold it
+  def maybeReleaseLock(taskEnv: TaskEnvironment): Boolean = maybeReleaseLock(taskEnv.lockFile.getAbsolutePath)
+
+  // used to indicate that this lock manager should not accept any further requests
+  // to acquire locks
+  // this can be useful when a user shutdown request has been detected (e.g. Ctrl+C)
+  // but not all worker threads have stopped yet. we need to guarantee that no new locks
+  // will be issued during cleanup
+  def shutdown() {
+    this.synchronized {
+      isShutdown = true
     }
   }
 }

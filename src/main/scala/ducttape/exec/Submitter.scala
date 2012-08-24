@@ -43,8 +43,8 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
   private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
     submitters.find { s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s)".format(
-                       submitterName, requiredBy.name), 
+      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s). Have: %s".format(
+                       submitterName, requiredBy.name, submitters.map(_.name).mkString(" ")), 
                      requiredBy)
     }
   }
@@ -80,9 +80,9 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // note that run requires the entire environment from the original task
     // since we might not be doing any wrapping at all
     val env: Seq[(String,String)] = Seq(
-          ("TASK", taskEnv.task.name),
-          ("REALIZATION", taskEnv.task.realization.toString),        
           ("CONFIGURATION", taskEnv.dirs.confName.getOrElse("")),
+          ("TASK", taskEnv.task.name),
+          ("REALIZATION", taskEnv.task.realization.toString),
           ("TASK_VARIABLES",taskEnv.taskVariables),
           ("COMMANDS", taskEnv.task.commands.toString)) ++
         dotParamsEnv ++ taskEnv.env
@@ -90,10 +90,6 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     // TODO: Were there ever any quoting bugs here?
     val code = runAction.commands.toString
-    //.replace("$COMMANDS", taskEnv.task.commands.toString).
-    //replace("${COMMANDS}", taskEnv.task.commands.toString)
-
-    debug("Code after nesting into run action is: %s".format(code))
     debug("Execution environment is: %s".format(env))
 
     System.err.println("Using submitter %s".format(submitterDef.name))

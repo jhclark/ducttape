@@ -1,7 +1,8 @@
 # Chapter 1: Basics
 # Lesson 9:  Global variables
 #
-# TODO: Why are these useful?
+# Global variables allow you to define input files and parameters
+# that are reused throughout the workflow.
 
 task hello_global_world :: who=$someone {
   echo hello $who

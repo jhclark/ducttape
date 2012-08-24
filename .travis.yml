@@ -4,6 +4,9 @@ jdk:
 script: ./build-support/sbt test
 after_script:
   - ./build-support/ensure_unique_tutorial_tasks.sh
-  - ./build-support/sbt proguard
+  - ./build-support/jar.sh
+  - sudo apt-get install -qq texlive-latex-base texlive-fonts-recommended texlive-science
+  - ./build-support/doc.sh
+  - ./build-support/proguard.sh
   - ./build-support/dist.sh
   - PATH=$PWD/dist/ducttape-current:$PATH ./build-support/test-regression.sh

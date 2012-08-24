@@ -23,6 +23,7 @@
 		    "func"
 		    "group"
 		    "global"
+                    "of"
 		    "package"
 		    "plan"
 		    "reach"
@@ -84,3 +85,6 @@ For detail, see `comment-dwim'."
 
 (setq auto-mode-alist (cons '("\\.tape$" . ducttape-mode) auto-mode-alist))
 (setq auto-mode-alist (cons '("\\.tconf$" . ducttape-mode) auto-mode-alist))
+
+;; ~/.ducttape
+(setq auto-mode-alist (cons '("\\.ducttape$" . ducttape-mode) auto-mode-alist))

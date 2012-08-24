@@ -286,6 +286,30 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   def build(): HyperWorkflow = {
     val confSpecs: Map[String, Spec] = configSpecs.map { a: ConfigAssignment => (a.spec.name, a.spec) }.toMap
 
+    // first identify all branch points that are present in the workflow so that
+    // we can identify and store which elements are branch points
+    def findBranchPoints(element: ASTType) {
+      element match {
+        case BranchPointDef(nameOpt: Option[String], branchSpecs: Seq[Spec]) => {
+          nameOpt match {
+            case Some(branchPointName) => {
+              val branchPoint = branchPointFactory.get(branchPointName)
+              for ( (branchSpec, idx) <- branchSpecs.zipWithIndex) {
+                val isBaseline = (idx == 0)
+                val branch = branchFactory.get(branchSpec.name, branchPoint, isBaseline)
+              }
+            }
+            case None => {
+              throw new FileFormatException("Anonymous branch points are not yet supported", element)
+            }
+          }
+        }
+        case _ => ;
+      }
+      element.children.foreach(findBranchPoints(_))
+    }
+    findBranchPoints(wd)
+
     // resolver has no knowledge of DAGs nor the dag builder
     val resolver = new TaskTemplateBuilder(wd, confSpecs, branchPointFactory, branchFactory)
 
@@ -321,7 +345,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
     // TODO: More checking on submitters and versioners?
     val submitters: Seq[SubmitterDef] = wd.submitters ++ builtins.flatMap { b: WorkflowDefinition => b.submitters }
+    debug("Workflow has submitters: %s".format(submitters.map(_.name).mkString(" ")))
     val versioners: Seq[VersionerDef] = wd.versioners ++ builtins.flatMap { b: WorkflowDefinition => b.versioners }
+    debug("Workflow has versioners: %s".format(versioners.map(_.name).mkString(" ")))
 
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)

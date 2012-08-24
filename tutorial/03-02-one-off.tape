@@ -1,11 +1,16 @@
 # Chapter 3: HyperWorkflows
 # Lesson 2:  The default one off plan
 #
-# TODO: What is a plan?
+# Most HyperWorkflows involve more than one branch point. With a large
+# enough number of these, running the cross-product of all branches
+# quickly becomes infeasible.
 #
-# Most HyperWorkflows involve more than one dimension of experimentation.
-# That is, there is more than one packed file/parameter among the workflow's
-# tasks. In this example, we will see how to run these variations as
+# To address this problem, ducttape provides "plans". A plan is a set
+# of branches that the user wishes to be run at a specific task.
+# By default, ducttape will execute all tasks, but only for realizations
+# that contain no more than one *non-baseline* branch.
+#
+# In this example, we will see how to run these variations as
 # "one off" experiments.
 
 # We start with a task much like the previous example

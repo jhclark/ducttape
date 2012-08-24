@@ -10,7 +10,7 @@ import grizzled.slf4j.Logging
 
 object Files extends Logging {
   
-  def humanReadableSize(bytes:Long) = {
+  def humanReadableSize(bytes: Long) = {
     val units = List("B","KB","MB","GB","TB","PB","EB","ZB","YB")
     var result = BigDecimal.long2bigDecimal(bytes)
     
@@ -27,7 +27,7 @@ object Files extends Logging {
   }
   
   def write(str: String, file: File) {
-    file.getParentFile().mkdirs()
+    Files.mkdirs(file.getParentFile)
     val fw = new FileWriter(file)
     try {
       fw.write(str)
@@ -43,6 +43,20 @@ object Files extends Logging {
   def writer(opt: Option[File]): PrintWriter = opt match {
     case Some(file: File) => writer(file)
     case None => new PrintWriter(NullWriter)
+  }
+
+  // reads all lines of a file bundled with the current JAR
+  def readJarResource(path: String): Seq[String] = {
+    val in = getClass.getResourceAsStream(path)
+    if (in == null) {
+      throw new FileNotFoundException("File resource not found: %s".format(path))
+    }
+    val br = new BufferedReader(new InputStreamReader(in))
+    try {
+      Iterator.continually(br.readLine).takeWhile(_ != null).toList
+    } finally {
+      br.close
+    }
   }
 
   // reads all lines, but closes file unlike io.Source
@@ -67,7 +81,7 @@ object Files extends Logging {
 
   //org.apache.commons.io.FileUtils.moveDirectory(src, dest)
   def moveDir(src: File, dest: File) {
-    dest.getParentFile.mkdirs()
+    Files.mkdirs(dest.getParentFile)
     val result = Shell.run("mv %s %s".format(src.getAbsolutePath, dest.getAbsolutePath), "moveDir")
     if (result != 0) {
       throw new RuntimeException("Failed to move %s to %s".format(src.getAbsolutePath, dest.getAbsolutePath))
@@ -103,12 +117,14 @@ object Files extends Logging {
       listing.toSeq
   }
 
-  def basename(filename: String, suffix: String) = {
-    if (filename.endsWith(suffix)) {
-      filename.substring(0, filename.length - suffix.length)
-    } else {
-      filename
+  // strips leading directory and any suffix
+  def basename(filename: String, suffixes: String*): String = {
+    val nodir = new File(filename).getName
+
+    for (suffix <- suffixes; if (nodir.endsWith(suffix))) {
+      return nodir.substring(0, nodir.length - suffix.length)
     }
+    return nodir
   }
   
   def copy(src: File, dest: File) {
@@ -132,6 +148,7 @@ object Files extends Logging {
   }
   
   def mkdirs(dir: File) {
+    debug("Making directory: %s".format(dir.getAbsolutePath))
     dir.mkdirs()
     if (!dir.exists) {
       throw new IOException("Could not create directory: " + dir.getAbsolutePath)
