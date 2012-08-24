@@ -90,7 +90,7 @@ object Ducttape extends Logging {
     }
 
     // read user config before printing anything to screen
-    val userConfigFile = new File(System.getProperty("user.home"), ".ducttape")
+    val userConfigFile = new File(Environment.UserHomeDir, ".ducttape")
     debug("Checking for user config at: %s".format(userConfigFile.getAbsolutePath))
     val userConfig: WorkflowDefinition = if (userConfigFile.exists) {
       GrammarParser.readConfig(userConfigFile)

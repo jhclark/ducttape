@@ -21,24 +21,7 @@ class DirectoryArchitect(val flat: Boolean,
                          val workflowBaseDir: File,
                          val confName: Option[String]) extends Logging {
 
-  val installDir = {
-    val jarDir = Environment.getJarDir
-    // detect system-wide installs
-    if (jarDir.getName == "bin") {
-      // e.g. /usr/local/share/ducttape
-      val shareDir = new File(jarDir.getParentFile, "share/ducttape")
-      debug("Detected a system-wide install. Trying to use share directory: %s".format(shareDir.getAbsolutePath))
-      if (shareDir.exists) {
-        shareDir
-      } else {
-        throw new RuntimeException("System-wide ducttape share directory not found: %s".format(shareDir.getAbsolutePath))
-      }
-    } else {
-      debug("Not a system-wide installation. Using JAR directory as install directory: %s".format(jarDir.getAbsolutePath))
-      jarDir
-    }
-  }
-  val builtinsDir = new File(installDir, "builtins")
+  val builtinsDir = new File(Environment.InstallDir, "builtins")
   
   val confBaseDir = workflowBaseDir
   
