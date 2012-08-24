@@ -19,14 +19,14 @@ Quick Start
 First, download and unpack the program:
 
 ```bash
-wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.tgz
-tar -xvzf ducttape-0.2.tgz
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.1.tgz
+tar -xvzf ducttape-0.2.1.tgz
 ```
 
 Add ducttape to your PATH:
 
 ```bash
-export PATH=$PWD/ducttape-0.2:$PATH
+export PATH=$PWD/ducttape-0.2.1:$PATH
 ```
 
 Run a tutorial example:
