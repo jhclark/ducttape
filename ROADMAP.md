@@ -20,11 +20,8 @@ Mainstream features:
 * Globs in realization plans
 * Detection of failed tasks: checks for non-zero exit code and all specified outputs being created
 * Ability to extend a workflow that has already been run without redoing unnecessary work
-<<<<<<< HEAD
 * Execute tasks in parallel: "ducttape -j12" in the spirit of GNU Make, etc.
-=======
 * Summaries: quickly make tables from many experimental variations
->>>>>>> 41ed82deffa8da5db5a2ede2d1ed36a20d0f003d
 
 * Package version tracking: know exactly what revision(s) produced the output of your workflow -- bundled with integration for SVN and git
 * New package version notification: detects when new package versions are available
