@@ -323,10 +323,12 @@ object AbstractSyntaxTree {
   }
   
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val blocks: Seq[Block],
-                           private[syntax] val hadImports: Boolean = false,
-                           private[syntax] val isImported: Boolean = false) extends ASTType {
-    override def children = blocks
+  class WorkflowDefinition(val elements: Seq[ASTType],
+                           private val hadImports: Boolean = false,
+                           private val isImported: Boolean = false) extends ASTType {
+    override def children = elements
+
+    lazy val blocks: Seq[Block] = elements.collect { case x: Block => x }
     
     lazy val plans: Seq[PlanDefinition] = blocks.collect { case x: PlanDefinition => x }
     
@@ -347,17 +349,17 @@ object AbstractSyntaxTree {
     def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)
 
     // imports will always be collapsed for the outside world
-    private[syntax] lazy val subworkflows: Seq[WorkflowDefinition] = blocks.collect { case x: WorkflowDefinition => x }
-    lazy val hasImports: Boolean = subworkflows.size > 0
-    lazy val usesImports: Boolean = hasImports || hadImports
+    private lazy val imported: Seq[WorkflowDefinition] = elements.collect { case x: WorkflowDefinition => x }
+    private lazy val hasImports: Boolean = imported.size > 0
+    lazy val usesImports: Boolean = isImported || hasImports || hadImports
     private[syntax] def collapseImports() = new WorkflowDefinition(
-      blocks.filter { x => !x.isInstanceOf[WorkflowDefinition] } ++ subworkflows.flatMap(_.blocks),
-      hadImports=this.hasImports,
+      blocks ++ imported.flatMap(_.blocks),
+      hadImports=this.usesImports,
       isImported=this.isImported
     )
 
     override def toString() = blocks.mkString("\n\n")
     
-    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks)
+    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks, hadImports, isImported)
   }
 }

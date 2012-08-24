@@ -1135,7 +1135,7 @@ object Grammar {
     case (l:Literal) => GrammarParser.readWorkflow(new File(l.value), isImported=true)
   }
   
-  val blocks: Parser[Seq[Block]] = {
+  val elements: Parser[Seq[ASTType]] = {
     opt(whitespace) ~> 
     rep(block|importStatement) <~ 
     (
@@ -1144,21 +1144,7 @@ object Grammar {
         opt(whitespace)
     )
   } ^^ {
-    case (s:Seq[ASTType]) => {
-      val result = scala.collection.mutable.ListBuffer[Block]()
-      s.foreach(entry => 
-         entry match {
-           case (b:Block) => result += b
-           case (w:WorkflowDefinition) => {
-             w.blocks.foreach(b => result += b)
-           }
-         }
-      )
-//      println("result: " + result.size)
-      result
-    }
-//    case (s:Seq[Block]) => s
-//    case (w:WorkflowDefinition) => w.blocks
+    case (e:Seq[ASTType]) => e // note: GrammarParser takes care of collapsing imports now
   }
 
 //  val blocks: Parser[Seq[Block]] = {

@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutionException
 import java.util.regex.Pattern
 
 import ducttape.cli.Config
+import ducttape.cli.Directives
 import ducttape.cli.ErrorUtils
 import ducttape.cli.Opts
 import ducttape.cli.EnvironmentMode
@@ -152,70 +153,42 @@ object Ducttape extends Logging {
         }
       }
     } ++ wd.globals
-
-    // TODO: Move conf specs method into WorkflowDefinition?
-    def getLiteralSpec(name: String): Option[LiteralSpec] = {
-      confSpecs.map(_.spec).find { spec => spec.name == name } match {
-        case Some(spec) => spec.rval match {
-          // silly typesystem doesn't detect that this is trivially true...
-          case lit: Literal => Some(spec.asInstanceOf[LiteralSpec])
-          case _ => throw new FileFormatException("%s directive must be a literal".format(name), spec)
-        }
-        case None => None
-      }
-    }
-    def getLiteralSpecValue(name: String): Option[String] = getLiteralSpec(name).map(_.rval.value)
     
-    // XXX: TODO: Remove as soon as Jon's current experiments are done - this is a hack
-    getLiteralSpecValue("ducttape_branchpoint_delimiter") match {
-      case Some(value) => Realization.delimiter = value.toLowerCase.slice(0, 1)
-      case None => ;
+    val directives: Directives = ex2err {
+      new Directives(confSpecs)
     }
-    
-    val flat: Boolean = ex2err {
-      getLiteralSpec("ducttape_structure") match {
-        case Some(literalSpec) => literalSpec.rval.value.toLowerCase match {
-          case "flat" => true
-          case "hyper" => false
-          case _ => throw new FileFormatException("ducttape_structure directive must be either 'flat' or 'hyper'", literalSpec)
-        }
-        case None => false // not flat by default (hyper)
-      }
-    }
-    if (flat) System.err.println("Using structure: flat")
+        
+    if (directives.flat) System.err.println("Using structure: flat")
         
     // TODO: Make sure conf specs include the workflow itself!
     
     implicit val dirs: DirectoryArchitect = {
-      
       val workflowBaseDir: File = {
         opts.output.value match {
           // output directory was specified on the command line: use that first
           case Some(outputDir) => new File(outputDir)
-          case None => {
-            getLiteralSpecValue("ducttape_output") match {
-              case Some(value) => new File(value)
-              // if unspecified, use PWD as the output directory
-              case None => Environment.PWD
-            }
+          case None => directives.output match { // ducttape_output=...
+            case Some(value) => new File(value)
+            // if unspecified, use PWD as the output directory
+            case None => Environment.PWD
           }
         }
       }
-      new DirectoryArchitect(flat, workflowBaseDir, confNameOpt)
+      new DirectoryArchitect(directives.flat, workflowBaseDir, confNameOpt)
     }
     
     val builtins: Seq[WorkflowDefinition] = BuiltInLoader.load(dirs.builtinsDir)
     
     // pass 1 error checking: directly use workflow AST
     {
-      val undeclaredBehavior = ErrorBehavior.parse(getLiteralSpecValue("ducttape_undeclared_vars"), default=Warn)
-      val unusedBehavior = ErrorBehavior.parse(getLiteralSpecValue("ducttape_unused_vars"), default=Warn)
+      val undeclaredBehavior = ErrorBehavior.parse(directives.undeclared_vars, default=Warn)
+      val unusedBehavior = ErrorBehavior.parse(directives.unused_vars, default=Warn)
 
       val (warnings, errors) = {
         val bashChecker = new StaticChecker(undeclaredBehavior, unusedBehavior)
         val (warnings1, errors1) = bashChecker.check(wd)
         
-        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins, directives)
         val (warnings2, errors2) = workflowChecker.check()
         (warnings1 ++ warnings2, errors1 ++ errors2)
       }
@@ -253,7 +226,7 @@ object Ducttape extends Logging {
 
       // pass 2 error checking: use unpacked workflow
       {
-        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
+        val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins, directives)
         val (warnings, errors) = workflowChecker.checkUnpacked(workflow, planPolicy)
         for (e: FileFormatException <- warnings) {
           ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)

@@ -24,13 +24,13 @@ object GrammarParser extends RegexParsers {
   }
   
   def readWorkflow(file: File, isImported: Boolean = false): WorkflowDefinition = {
-    val result: ParseResult[Seq[Block]] = parseAll(Grammar.blocks, IO.read(file, "UTF-8"))    
+    val result: ParseResult[Seq[ASTType]] = parseAll(Grammar.elements, IO.read(file, "UTF-8"))    
     val pos = result.next.pos
     
     return result match {
-      case Success(blocks: Seq[Block], _) => {
-        blocks.foreach(addFileInfo(_, file))
-        new WorkflowDefinition(blocks, isImported).collapseImports
+      case Success(elements: Seq[ASTType], _) => {
+        elements.foreach(addFileInfo(_, file))
+        new WorkflowDefinition(elements, isImported).collapseImports
       }
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
