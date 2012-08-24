@@ -10,7 +10,7 @@ import grizzled.slf4j.Logging
 
 object Files extends Logging {
   
-  def humanReadableSize(bytes:Long) = {
+  def humanReadableSize(bytes: Long) = {
     val units = List("B","KB","MB","GB","TB","PB","EB","ZB","YB")
     var result = BigDecimal.long2bigDecimal(bytes)
     
@@ -43,6 +43,20 @@ object Files extends Logging {
   def writer(opt: Option[File]): PrintWriter = opt match {
     case Some(file: File) => writer(file)
     case None => new PrintWriter(NullWriter)
+  }
+
+  // reads all lines of a file bundled with the current JAR
+  def readJarResource(path: String): Seq[String] = {
+    val in = getClass.getResourceAsStream(path)
+    if (in == null) {
+      throw new FileNotFoundException("File resource not found: %s".format(path))
+    }
+    val br = new BufferedReader(new InputStreamReader(in))
+    try {
+      Iterator.continually(br.readLine).takeWhile(_ != null).toList
+    } finally {
+      br.close
+    }
   }
 
   // reads all lines, but closes file unlike io.Source

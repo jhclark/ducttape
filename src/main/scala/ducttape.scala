@@ -72,6 +72,10 @@ object Ducttape extends Logging {
   
   def main(args: Array[String]) {
     LogUtils.initJavaLogging()
+
+    val ducttapeVersion = Files.readJarResource("/version.info").head
+    err.println("ducttape %s".format(ducttapeVersion))
+    err.println("By Jonathan Clark")
     
     implicit val conf = new Config
     implicit val opts = new Opts(conf, args)
@@ -93,11 +97,7 @@ object Ducttape extends Logging {
     } else {
       new WorkflowDefinition(Nil)
     }
-    
-    err.println("%sDuctTape v0.2".format(conf.headerColor))
-    err.println("%sBy Jonathan Clark".format(conf.byColor))
-    err.println(conf.resetColor)
-    
+        
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
     val wd: WorkflowDefinition = {

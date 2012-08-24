@@ -4,7 +4,7 @@ shopt -s nullglob
 scriptDir=$(dirname $0)
 
 DUCTTAPE=$scriptDir/..
-VERSION=0.2
+VERSION=$(cat $DUCTTAPE/version.info)
 RELEASE_NAME=ducttape-${VERSION}
 #RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
 DIST_BASE=${DUCTTAPE}/dist
