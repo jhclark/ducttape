@@ -13,6 +13,7 @@ Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark
 
 Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
 
+
 Quick Start
 ===========
 
@@ -38,7 +39,16 @@ ducttape 01-01-hello-world.tape
 
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
-System-wide installation coming soon. See below for how to add emacs/vim syntax highlighting to your local install.
+
+System-wide Installation
+========================
+
+```bash
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.1.tgz
+tar -xvzf ducttape-0.2.1.tgz
+cd ducttape 0.2.1
+sudo make install
+```
 
 
 Design Principles
