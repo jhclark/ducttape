@@ -1132,7 +1132,7 @@ object Grammar {
     opt(whitespace) ~
     Keyword.importKeyword ~ opt(space) ~> literalValue
   }  ^^ {
-    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value))
+    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value), isImported=true)
   }
   
   val blocks: Parser[Seq[Block]] = {

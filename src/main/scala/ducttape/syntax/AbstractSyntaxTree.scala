@@ -7,9 +7,13 @@ import scala.collection.immutable.NumericRange.Inclusive
 
 object AbstractSyntaxTree {
 
+  object ASTType {
+    val UnknownFile = new File("unknown_file")
+  }
+
   /** Parent class of all types representing elements in an abstract syntax tree. */
   trait ASTType extends Positional {
-    private var _file = new File("unknown_file")
+    private var _file = ASTType.UnknownFile
     def declaringFile_=(f: File) { _file = f }
     def declaringFile: File = _file
     
@@ -319,7 +323,9 @@ object AbstractSyntaxTree {
   }
   
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val blocks: Seq[Block]) extends ASTType {
+  class WorkflowDefinition(val blocks: Seq[Block],
+                           private[syntax] val hadImports: Boolean = false,
+                           private[syntax] val isImported: Boolean = false) extends ASTType {
     override def children = blocks
     
     lazy val plans: Seq[PlanDefinition] = blocks.collect { case x: PlanDefinition => x }
@@ -337,9 +343,19 @@ object AbstractSyntaxTree {
     private lazy val taskDefs: Seq[TaskDef] = blocks.collect { case x: TaskDef => x }
     lazy val tasks: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "task" }
     lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
-    
+
     def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)
-    
+
+    // imports will always be collapsed for the outside world
+    private[syntax] lazy val subworkflows: Seq[WorkflowDefinition] = blocks.collect { case x: WorkflowDefinition => x }
+    lazy val hasImports: Boolean = subworkflows.size > 0
+    lazy val usesImports: Boolean = hasImports || hadImports
+    private[syntax] def collapseImports() = new WorkflowDefinition(
+      blocks.filter { x => !x.isInstanceOf[WorkflowDefinition] } ++ subworkflows.flatMap(_.blocks),
+      hadImports=this.hasImports,
+      isImported=this.isImported
+    )
+
     override def toString() = blocks.mkString("\n\n")
     
     def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks)

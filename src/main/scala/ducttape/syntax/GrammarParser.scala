@@ -16,18 +16,21 @@ object GrammarParser extends RegexParsers {
   override val skipWhitespace = false;
 
   private def addFileInfo(element: ASTType, file: File) {
-    element.declaringFile = file
+    // don't steamroll filenames from import statements!
+    if (element.declaringFile == ASTType.UnknownFile) {
+      element.declaringFile = file
+    }
     element.children.foreach(addFileInfo(_, file))
   }
   
-  def readWorkflow(file: File): WorkflowDefinition = {
+  def readWorkflow(file: File, isImported: Boolean = false): WorkflowDefinition = {
     val result: ParseResult[Seq[Block]] = parseAll(Grammar.blocks, IO.read(file, "UTF-8"))    
     val pos = result.next.pos
     
     return result match {
       case Success(blocks: Seq[Block], _) => {
         blocks.foreach(addFileInfo(_, file))
-        new WorkflowDefinition(blocks)
+        new WorkflowDefinition(blocks, isImported).collapseImports
       }
       case Failure(msg, _) =>
         throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
