@@ -10,7 +10,7 @@ import scala.collection.mutable.Set
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
-class BlocksTest extends AbstractTest("blocks", Grammar.blocks) {
+class BlocksTest extends AbstractTest("blocks", Grammar.elements) {
 
   def successCases = {
 
