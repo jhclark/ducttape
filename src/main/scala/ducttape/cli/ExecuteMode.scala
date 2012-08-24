@@ -1,8 +1,6 @@
-
 package ducttape.cli
 
 import collection._
-import sys.ShutdownHookThread
 
 import java.util.concurrent.ExecutionException
 import java.io.File
@@ -107,33 +105,22 @@ object ExecuteMode {
           builder.build(packageVersions.packagesToBuild)
 
           // TODO: Make locker take a thunk to create a scoping effect
+          // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
           val locker = new LockManager(myVersion)
-          // todo: centralize this by making a locker somehow scoped?
-          val unlocker = ShutdownHookThread {
-            // release all of our locks, even if we go down in flames
-            // note: 'finally' blocks aren't guaranteed to be executed on JVM shutdown and we really need these files removed...
-            System.err.println("EXITING: Cleaning up lock files...")
-            locker.shutdown()
-            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker, remove=true), planPolicy)
-          }
-          try {
-            System.err.println("Moving previous partial output to the attic...")
-            // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
-            
-            // Make a pass after moving partial output to write output files
-            // claiming those directories as ours so that we can later start another ducttape process
-            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
-            
-            System.err.println("Executing tasks...")
-            Visitors.visitAll(workflow,
-                              new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                              planPolicy, opts.jobs())
-          } finally {
-            // once we're done with this batch of jobs, kill our lock files and unregister the shutdown hook
-            unlocker.run()
-            unlocker.remove()
-          }
+
+          System.err.println("Moving previous partial output to the attic...")
+          // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
+          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
+          
+          // Make a pass after moving partial output to write output files
+          // claiming those directories as ours so that we can later start another ducttape process
+          Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
+          
+          System.err.println("Executing tasks...")
+          Visitors.visitAll(workflow,
+                            new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
+                            planPolicy, opts.jobs())
+          locker.shutdown()
         }
         case _ => System.err.println("Doing nothing")
       }
