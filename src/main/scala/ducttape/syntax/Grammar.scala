@@ -1127,17 +1127,17 @@ object Grammar {
     planBlock
   }
 
-  val importStatement: Parser[WorkflowDefinition] = {
+  def importStatement(importDir: File): Parser[WorkflowDefinition] = {
     opt(comments) ~
     opt(whitespace) ~
     Keyword.importKeyword ~ opt(space) ~> literalValue
-  }  ^^ {
-    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value), isImported=true)
+  } ^^ {
+    case (l:Literal) => GrammarParser.readWorkflow(new File(importDir, l.value), isImported=true)
   }
   
-  val elements: Parser[Seq[ASTType]] = {
+  def elements(importDir: File): Parser[Seq[ASTType]] = {
     opt(whitespace) ~> 
-    rep(block|importStatement) <~ 
+    rep(block|importStatement(importDir)) <~ 
     (
         opt(whitespace)~
         opt(comments)~
@@ -1145,12 +1145,5 @@ object Grammar {
     )
   } ^^ {
     case (e:Seq[ASTType]) => e // note: GrammarParser takes care of collapsing imports now
-  }
-
-//  val blocks: Parser[Seq[Block]] = {
-//    rep(blockSeq)
-//  } ^^ {
-//    case (seqOfSeqs:Seq[Seq[Block]]) => seqOfSeqs.flatten
-//  }
-  
+  }  
 }
