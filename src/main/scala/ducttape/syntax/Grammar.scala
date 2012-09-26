@@ -10,6 +10,7 @@ import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
 import ducttape.syntax.AbstractSyntaxTree._
+import ducttape.cli.ErrorUtils
 import scala.util.parsing.input.NoPosition
 
 object Grammar {
@@ -22,7 +23,7 @@ object Grammar {
   val space: Parser[String] = regex("""[ \t]+""".r)
   
   /** One or more whitespace characters */
-  val whitespace: Parser[String] = regex("""\s+""".r)
+  val whitespace: Parser[String] = regex("""\s+""".r) | failure("Expected whitespace but didn't find it here")
   
   object Keyword {
     
@@ -528,7 +529,7 @@ object Grammar {
          opt(whitespace)
       )~
       // Then the branch assignments or rvalues
-      rep1sep(branchAssignment,whitespace)<~
+      rep1sep(branchAssignment,(whitespace|failure("Expected whitespace after branch assignment, but didn't find it")))<~
       ( // Optionally whitespace
           opt(whitespace)~
           // Then closing parenthesis
@@ -703,9 +704,19 @@ object Grammar {
   
   /** Parameter variable declaration. */
   val paramAssignment: Parser[Spec] = positioned(
-      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
-          opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
-        (rvalue | err("Error in parameter variable assignment"))
+      (   // optional dot
+          opt(literal(".")) ~ 
+          (
+              name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ 
+              (
+                  opt(space) ~
+                  "=" ~
+                  opt(space)
+              )
+          ) ~ 
+          (
+              rvalue | err("Error in parameter variable assignment")
+          )
       ) ^^ {
         case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),true)
         case None            ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
@@ -917,7 +928,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing task-like block header, but didn't find it")) ~>
         header
     ) ~ 
     (
@@ -971,7 +982,7 @@ object Grammar {
         )
     ) ~ name ~
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing call block, but didn't find it")) ~>
         taskHeader
     ) <~ (eol | err("Missing newline"))
   } ^^ {
@@ -987,7 +998,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing group-like block, but didn't find it")) ~>
         header
     ) ~ 
     (
@@ -1087,7 +1098,9 @@ object Grammar {
         ) ~> 
         configLines <~
         (
-            opt(whitespace) ~ 
+            opt(whitespace) ~
+            opt(comments) ~
+            opt(whitespace) ~
             (
                 literal("}") ~ 
                 (
@@ -1128,11 +1141,14 @@ object Grammar {
   }
 
   def importStatement(importDir: File): Parser[WorkflowDefinition] = {
+    opt(whitespace) ~
     opt(comments) ~
     opt(whitespace) ~
-    Keyword.importKeyword ~ opt(space) ~> literalValue
-  } ^^ {
-    case (l:Literal) => GrammarParser.readWorkflow(new File(importDir, l.value), isImported=true)
+    Keyword.importKeyword ~ opt(space) ~> 
+    literalValue <~ 
+    (opt(space) ~ eol)
+  }  ^^ {
+    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value), isImported=true))
   }
   
   def elements(importDir: File): Parser[Seq[ASTType]] = {

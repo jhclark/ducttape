@@ -18,7 +18,7 @@ object EnvironmentMode {
           planPolicy: PlanPolicy,
           packageVersions: PackageVersioner,
           showCommands: Boolean = false)
-         (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
+         (implicit opts: Opts, dirs: DirectoryArchitect) {
     
     if (opts.taskName == None) {
       opts.exitHelp("env/commands requires a taskName", 1)
