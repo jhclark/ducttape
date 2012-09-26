@@ -1139,9 +1139,12 @@ object Grammar {
   }
 
   val importStatement: Parser[WorkflowDefinition] = {
+    opt(whitespace) ~
     opt(comments) ~
     opt(whitespace) ~
-    Keyword.importKeyword ~ opt(space) ~> literalValue
+    Keyword.importKeyword ~ opt(space) ~> 
+    literalValue <~ 
+    (opt(space) ~ eol)
   }  ^^ {
     case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value)))
   }
