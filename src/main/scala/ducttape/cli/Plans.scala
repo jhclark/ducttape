@@ -75,38 +75,51 @@ object Plans extends Logging {
     //   realizations that shouldn't be selected.
 
     debug("Finding graft relaxations...")
-    // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
-    val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
-    // don't visit the same vertex many times
-    val visited = new mutable.HashSet[PackedWorkVert]
-    
-    for (v: PackedWorkVert <- workflow.dag.delegate.delegate.packedWalker) {
+
+    // TODO: Do this in two phases: 1) get direct grafts 2) propagate to parents
+    val immediateGrafts = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
+
+    // 1) get grafts at each vertex (we'll propagate them to dependencies next)
+    // TODO: Packed walker seems to have odd behavior
+    for (v: PackedWorkVert <- workflow.dag.delegate.delegate.vertices) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
-        trace("Considering hyperedge with sources: " + workflow.dag.sources(hyperedge))
+        trace("Find graft relaxations for %s: Considering hyperedge with sources: %s".format(v, workflow.dag.sources(hyperedge)))
 
         // TODO: Record the realizations for which this graft is required?
         hyperedge.e.foreach { specGroup: SpecGroup =>
-          trace("Considering edge: %s".format(specGroup))
+          trace("Find graft relaxations for %s: Considering edge: %s".format(v, specGroup))
           if (specGroup != null && !specGroup.grafts.isEmpty) {
-            // recursively find all dependencies of this vertex & add graft relaxations
-
-            // TODO: This is overzealous since these are not necessarily
-            //   all dependencies in the unpacked DAG
-            def visitDependencies(dep: PackedWorkVert, specGroup: SpecGroup) {
-              val relaxationsAtDep = graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet)
-              // note: this check is key to making this code block efficient
-              if (!specGroup.grafts.forall { graft: Branch => relaxationsAtDep.contains(graft) }) {
-                debug("%s: Dependency %s added new grafts: %s".format(v, dep, specGroup.grafts))
-                specGroup.grafts.foreach { graft: Branch => relaxationsAtDep += graft }
-                workflow.dag.delegate.delegate.parents(dep).foreach(visitDependencies(_, specGroup))
-              } else {
-                trace("%s: Dependency %s already has grafts: %s".format(v, dep, specGroup.grafts))
-              }
-            }
-            visitDependencies(v, specGroup)
+            immediateGrafts.getOrElseUpdate(v, new mutable.HashSet) ++= specGroup.grafts
           }
         }
       }
+    }
+
+    debug("Propagating graft dependencies to recursive dependencies...")
+
+    // NOTE: We work directly on the backing HyperDAG, not the PhantomMetaHyperDAG
+    val graftRelaxations = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
+
+    // TODO: This is overzealous since these are not necessarily
+    //   all dependencies in the unpacked DAG
+    // "v" is the initial vertex that requires this graft relaxation
+    // "dep" is the current dependency we've reached
+    def visitDependencies(v: PackedWorkVert, dep: PackedWorkVert, grafts: Set[Branch]) {
+      val relaxationsAtDep = graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet)
+      // note: this check is key to making this code block efficient
+      if (!grafts.forall { graft: Branch => relaxationsAtDep.contains(graft) }) {
+        debug("Propagate graft relaxations of %s: Dependency %s added new grafts: %s".format(v, dep, grafts))
+        grafts.foreach { graft: Branch => relaxationsAtDep += graft }
+        workflow.dag.delegate.delegate.parents(dep).foreach(visitDependencies(v, _, grafts))
+      } else {
+        trace("Propagate graft relaxations of %s: Dependency %s already has grafts: %s".format(v, dep, grafts))
+      }
+    }
+
+    // TODO: Sort vertices?
+    for ( (v: PackedWorkVert, grafts: Set[Branch]) <- immediateGrafts) {
+      // recursively find all dependencies of this vertex & add graft relaxations
+      visitDependencies(v, v, grafts)
     }
     
     debug {

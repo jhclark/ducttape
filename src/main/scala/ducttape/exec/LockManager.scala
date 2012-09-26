@@ -1,5 +1,7 @@
 package ducttape.exec
 
+import sys.ShutdownHookThread
+
 import ducttape.workflow.RealTask
 import ducttape.util.Files
 import ducttape.util.Optional
@@ -42,6 +44,18 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   // key is absolute path to file
   val locks = new mutable.HashMap[String, FileLock] with mutable.SynchronizedMap[String, FileLock]
   private var isShutdown = false
+
+  private val locker = this
+  private val unlocker = ShutdownHookThread {
+    // release all of our locks, even if we go down in flames
+    // note: 'finally' blocks aren't guaranteed to be executed on JVM shutdown and we really need these files removed...
+    locker.shutdown()
+    if (locks.size > 0) {
+      System.err.println("EXITING: Cleaning up lock files...")
+      // don't accept any more locks for the lifefime of this object once we detect that a JVM shutdown is in progress
+      locker.maybeReleaseAll()
+    }
+  }
 
   override def skip(exec: Executor, taskEnv: TaskEnvironment) {}
   
@@ -186,22 +200,26 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
     }
   }
 
-  // release the lock iff we hold it
-  def maybeReleaseLock(taskEnv: TaskEnvironment): Boolean = {
-    locks.get(taskEnv.lockFile.getAbsolutePath) match {
+  def maybeReleaseAll() = locks.keys.foreach { absPath => maybeReleaseLock(absPath) }
+
+  private def maybeReleaseLock(absPath: String): Boolean = {
+    locks.get(absPath) match {
       case None => {
-        debug("No need to release lock (it's not ours): " + taskEnv.lockFile)
+        debug("No need to release lock (it's not ours): " + absPath)
         false
       }
       case Some(lock) => {
-        debug("Releasing lock (as part of cleanup): " + taskEnv.lockFile)
-        taskEnv.lockFile.delete()
-        locks -= taskEnv.lockFile.getAbsolutePath
+        debug("Releasing lock (as part of cleanup): " + absPath)
+        new File(absPath).delete()
+        locks -= absPath
         lock.release()
         true
       }
     }
   }
+
+  // release the lock iff we hold it
+  def maybeReleaseLock(taskEnv: TaskEnvironment): Boolean = maybeReleaseLock(taskEnv.lockFile.getAbsolutePath)
 
   // used to indicate that this lock manager should not accept any further requests
   // to acquire locks
@@ -209,6 +227,8 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
   // but not all worker threads have stopped yet. we need to guarantee that no new locks
   // will be issued during cleanup
   def shutdown() {
-    isShutdown = true
+    this.synchronized {
+      isShutdown = true
+    }
   }
 }

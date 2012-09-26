@@ -43,8 +43,8 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
   private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
     submitters.find { s => s.name == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s)".format(
-                       submitterName, requiredBy.name), 
+      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s). Have: %s".format(
+                       submitterName, requiredBy.name, submitters.map(_.name).mkString(" ")), 
                      requiredBy)
     }
   }
