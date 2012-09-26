@@ -704,9 +704,19 @@ object Grammar {
   
   /** Parameter variable declaration. */
   val paramAssignment: Parser[Spec] = positioned(
-      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
-          opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
-        (rvalue | err("Error in parameter variable assignment"))
+      (   // optional dot
+          opt(literal(".")) ~ 
+          (
+              name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ 
+              (
+                  opt(space) ~
+                  "=" ~
+                  opt(space)
+              )
+          ) ~ 
+          (
+              rvalue | err("Error in parameter variable assignment")
+          )
       ) ^^ {
         case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),true)
         case None            ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
