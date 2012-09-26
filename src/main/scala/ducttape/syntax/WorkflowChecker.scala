@@ -72,8 +72,8 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     for (a: ConfigAssignment <- confSpecs) {
       globals.get(a.spec.name) match {
         case Some(prev) => {
-          errors += new FileFormatException("Global variable originally defined at %s:%d redefined at %s:%d".
-                format(prev.declaringFile, prev.pos.line, a.spec.declaringFile, a.spec.pos.line),
+          errors += new FileFormatException("Global variable %s originally defined at %s:%d redefined at %s:%d".
+                format(a.spec.name, prev.declaringFile, prev.pos.line, a.spec.declaringFile, a.spec.pos.line),
                 List(prev, a))
         }
         case None => ;
