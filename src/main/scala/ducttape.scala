@@ -72,16 +72,16 @@ object Ducttape extends Logging {
   def main(args: Array[String]) {
     LogUtils.initJavaLogging()
     
-    implicit val conf = new Config
-    implicit val opts = new Opts(conf, args)
+    //implicit val conf = new Config
+    implicit val opts = new Opts(args)
     if (opts.no_color || !Environment.hasTTY) {
-      conf.clearColors()
+      Config.clearColors()
     }
     
     import ducttape.cli.ErrorUtils.ex2err
     ShutdownHookThread { // make sure we never leave the color in a bad state on exit
-      println(conf.resetColor)
-      System.err.println(conf.resetColor)
+      println(Config.resetColor)
+      System.err.println(Config.resetColor)
     }
 
     // read user config before printing anything to screen
@@ -93,9 +93,9 @@ object Ducttape extends Logging {
       new WorkflowDefinition(Nil)
     }
     
-    err.println("%sDuctTape v0.2".format(conf.headerColor))
-    err.println("%sBy Jonathan Clark".format(conf.byColor))
-    err.println(conf.resetColor)
+    err.println("%sDuctTape v0.2".format(Config.headerColor))
+    err.println("%sBy Jonathan Clark".format(Config.byColor))
+    err.println(Config.resetColor)
     
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
@@ -220,10 +220,10 @@ object Ducttape extends Logging {
         (warnings1 ++ warnings2, errors1 ++ errors2)
       }
       for (e: FileFormatException <- warnings) {
-        ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
+        ErrorUtils.prettyPrintError(e, prefix="WARNING", color=Config.warnColor)
       }
       for (e: FileFormatException <- errors) {
-        ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+        ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
       }
       if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
       if (errors.size > 0) System.err.println("%d errors".format(errors.size))
@@ -256,10 +256,10 @@ object Ducttape extends Logging {
         val workflowChecker = new WorkflowChecker(wd, confSpecs, builtins)
         val (warnings, errors) = workflowChecker.checkUnpacked(workflow, planPolicy)
         for (e: FileFormatException <- warnings) {
-          ErrorUtils.prettyPrintError(e, prefix="WARNING", color=conf.warnColor)
+          ErrorUtils.prettyPrintError(e, prefix="WARNING", color=Config.warnColor)
         }
         for (e: FileFormatException <- errors) {
-          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
         }
         if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
         if (errors.size > 0) System.err.println("%d errors".format(errors.size))
@@ -313,8 +313,8 @@ object Ducttape extends Logging {
         } else {
           if (!seen( (planName, vertexName, msg) )) {
             System.err.println("%s%s%s: %s%s%s: %s".format(
-              conf.greenColor, planName.getOrElse("Anonymous"), conf.resetColor,
-              conf.taskColor, vertexName, conf.resetColor,
+              Config.greenColor, planName.getOrElse("Anonymous"), Config.resetColor,
+              Config.taskColor, vertexName, Config.resetColor,
               msg))
             seen += ((planName, vertexName, msg))
           }
@@ -324,7 +324,7 @@ object Ducttape extends Logging {
 
       System.err.println("Accepted realizations: ")
       for ( (vertex, reals) <- have.toSeq.sortBy(_._1)) {
-        System.err.println("%s%s%s".format(conf.taskColor, vertex, conf.resetColor))
+        System.err.println("%s%s%s".format(Config.taskColor, vertex, Config.resetColor))
         for (real <- reals) {
           System.err.println("  %s".format(real))
         }
@@ -653,7 +653,7 @@ object Ducttape extends Logging {
           import ducttape.cli.ColorUtils.colorizeDir
           System.err.println("Remove locks:")
           for ( (task, real) <- cc.locked) {
-            System.err.println("%sUNLOCK:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+            System.err.println("%sUNLOCK:%s %s".format(Config.greenColor, Config.resetColor, colorizeDir(task, real)))
           }
         }
           

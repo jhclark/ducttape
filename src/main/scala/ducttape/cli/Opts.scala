@@ -3,7 +3,7 @@ package ducttape.cli
 import com.frugalmechanic.optparse.OptParse
 import java.io.File
   
-class Opts(conf: Config, args: Seq[String]) extends OptParse {
+class Opts(args: Seq[String]) extends OptParse {
  
   class Mode(val name: String, val desc: String) extends OptParse {
     def optCount = allOpts.size
@@ -69,7 +69,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
       // TODO: Change visibility of init to protected instead of this hack...
       mode.parse(Array())
 
-      System.err.println("%s%s%s: %s".format(conf.modeColor, mode.name, conf.resetColor, mode.desc))
+      System.err.println("%s%s%s: %s".format(Config.modeColor, mode.name, Config.resetColor, mode.desc))
       if(mode.optCount > 1) {
         mode.help
       }
@@ -79,7 +79,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   // TODO: Move to ErrorUtils?
   def exitHelp(msg: String, code: Int) {
     help
-    System.err.println("%sERROR: %s%s".format(conf.errorColor, msg, conf.resetColor))
+    System.err.println("%sERROR: %s%s".format(Config.errorColor, msg, Config.resetColor))
     System.exit(code)
   }
 

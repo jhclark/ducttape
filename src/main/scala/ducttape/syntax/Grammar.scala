@@ -10,6 +10,7 @@ import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
 import ducttape.syntax.AbstractSyntaxTree._
+import ducttape.cli.ErrorUtils
 import scala.util.parsing.input.NoPosition
 
 object Grammar {
@@ -1132,7 +1133,7 @@ object Grammar {
     opt(whitespace) ~
     Keyword.importKeyword ~ opt(space) ~> literalValue
   }  ^^ {
-    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value))
+    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value)))
   }
   
   val blocks: Parser[Seq[Block]] = {

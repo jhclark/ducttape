@@ -32,7 +32,7 @@ object ExecuteMode {
           planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
           getPackageVersions: () => PackageVersioner)
-         (implicit opts: Opts, conf: Config, dirs: DirectoryArchitect) {
+         (implicit opts: Opts, dirs: DirectoryArchitect) {
     
     if (cc.todo.isEmpty) {
       // TODO: Might need to re-run if any package versions have changed
@@ -46,7 +46,7 @@ object ExecuteMode {
       Visitors.visitAll(workflow, inputChecker, planPolicy)
       if (inputChecker.errors.size > 0) {
         for (e: FileFormatException <- inputChecker.errors) {
-          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+          ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
         }
         System.err.println("%d errors".format(inputChecker.errors.size))
         System.exit(1)
@@ -61,19 +61,19 @@ object ExecuteMode {
       
       System.err.println("Work plan:")
       for ( (task, real) <- cc.broken) {
-        System.err.println("%sDELETE:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
+        System.err.println("%sDELETE:%s %s".format(Config.redColor, Config.resetColor, colorizeDir(task, real)))
       }
       for ( (task, real) <- cc.partial) {
-        System.err.println("%sMOVE TO ATTIC:%s %s".format(conf.redColor, conf.resetColor, colorizeDir(task, real)))
+        System.err.println("%sMOVE TO ATTIC:%s %s".format(Config.redColor, Config.resetColor, colorizeDir(task, real)))
       }
       for (packageName <- packageVersions.packagesToBuild) {
-        System.err.println("%sBUILD:%s %s".format(conf.greenColor, conf.resetColor, packageName))
+        System.err.println("%sBUILD:%s %s".format(Config.greenColor, Config.resetColor, packageName))
       }
       for ( (task, real) <- cc.locked) {
-        System.err.println("%sWAIT FOR LOCK:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+        System.err.println("%sWAIT FOR LOCK:%s %s".format(Config.greenColor, Config.resetColor, colorizeDir(task, real)))
       }
       for ( (task, real) <- cc.todo) {
-        System.err.println("%sRUN:%s %s".format(conf.greenColor, conf.resetColor, colorizeDir(task, real)))
+        System.err.println("%sRUN:%s %s".format(Config.greenColor, Config.resetColor, colorizeDir(task, real)))
       }
   
       val answer = if (opts.yes) {
