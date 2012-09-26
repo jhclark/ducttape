@@ -1098,7 +1098,9 @@ object Grammar {
         ) ~> 
         configLines <~
         (
-            opt(whitespace) ~ 
+            opt(whitespace) ~
+            opt(comments) ~
+            opt(whitespace) ~
             (
                 literal("}") ~ 
                 (
