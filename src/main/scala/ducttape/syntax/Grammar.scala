@@ -23,7 +23,7 @@ object Grammar {
   val space: Parser[String] = regex("""[ \t]+""".r)
   
   /** One or more whitespace characters */
-  val whitespace: Parser[String] = regex("""\s+""".r)
+  val whitespace: Parser[String] = regex("""\s+""".r) | failure("Expected whitespace but didn't find it here")
   
   object Keyword {
     
@@ -529,7 +529,7 @@ object Grammar {
          opt(whitespace)
       )~
       // Then the branch assignments or rvalues
-      rep1sep(branchAssignment,whitespace)<~
+      rep1sep(branchAssignment,(whitespace|failure("Expected whitespace after branch assignment, but didn't find it")))<~
       ( // Optionally whitespace
           opt(whitespace)~
           // Then closing parenthesis
@@ -928,7 +928,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing task-like block header, but didn't find it")) ~>
         header
     ) ~ 
     (
@@ -982,7 +982,7 @@ object Grammar {
         )
     ) ~ name ~
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing call block, but didn't find it")) ~>
         taskHeader
     ) <~ (eol | err("Missing newline"))
   } ^^ {
@@ -998,7 +998,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing group-like block, but didn't find it")) ~>
         header
     ) ~ 
     (
