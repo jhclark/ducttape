@@ -1,0 +1,139 @@
+.code {
+  background: #F8F8F8;
+  border:1px solid #CACACA;
+  padding: 5px;
+  margin: 5px;
+}
+	
+#header {
+  background: -webkit-linear-gradient(top, #FAFAFA, #EAEAEA);
+  background-image: -webkit-linear-gradient(top, #FAFAFA, #EAEAEA);
+  margin: 0px;
+  padding: 10px 0px;
+  border: 0;
+  width: 100%;
+
+  border-bottom:1px solid #CACACA;
+  box-shadow:0 1px 0 #fff;
+}
+
+
+.container {
+  margin: 0px 10px;
+}
+
+.content {
+  margin: 10px 10px;
+  padding: 10px 10px;
+}
+
+.internal_bar {
+  //margin: 5px 10px;
+  background: lightgray;
+  //background: #08C;
+  margin: 0;
+  border-radius: 15px;
+  //padding: 5px;
+  width: 100%;
+}
+
+.internal_bar_content {
+  padding: 6px;
+}
+
+.internal_content {
+  padding: 5px;
+}
+
+.task_collapsible {
+  background: #ffffff;
+}
+
+.yellow_bar {
+  //background: #F8FFC9;
+  //background: #e6e61c;
+  //background: #ebeb2c;
+  background: #f5f534;
+}
+
+.red_bar {
+  background: #F06C6C; //#CF2121;
+}
+
+.green_bar {
+  background: #91E3A4;
+}
+
+.blue_bar {
+  //background: #E6F1F6;
+  //background: #40acdb;
+  background: #6bbde0;
+}
+
+.ringer {
+  padding: 3px;
+  background: #EEE;
+  border-radius: 6px;
+}
+
+.pane {
+  clear: both;
+}
+
+.box {
+  //margin: 0 0 0 0;
+  //padding: 0 0 0 0;
+  padding-top: 5px;
+  border-radius: 6px;
+  //display: block;
+  border-bottom: 6px solid #eeeeee;
+}
+
+.bar_text {
+  //font-family: "Lucida Console", Monospace, sans;
+  font-size: 18px;
+  color: #000000;
+  //color: #444;
+  //color: #484848;
+  margin: 5px 10px;
+}
+
+.box_content {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #444;
+  background-color: #eeeeee;
+  //border-top: 1px solid #D8E6EC;
+}
+
+
+
+
+
+// buttons:
+.scope {
+  float: left;
+  list-style: none;
+  margin-right: 10px;
+}
+.minibutton.switcher > span {
+  border-left: 1px solid #6A9FD3;
+  box-shadow: #3C74AB -1px 0 0;
+  padding: 0px 26px 0px 5px;
+}
+.minibutton {
+  color: white;
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.3);
+  border-color: #D4D4D4;
+  background: #DC5F59;
+  background: -moz-linear-gradient(#DC5F59,#B33630);
+  background: -webkit-linear-gradient(#DC5F59,#B33630);
+  -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr='#dc5f59',endColorstr='#b33630')";
+  padding: 0px 10px;
+  border: 1px solid;
+  border-radius: 3px;
+}
+
