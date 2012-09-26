@@ -15,12 +15,13 @@ import ducttape.workflow.Task
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.RealTask
 
+import grizzled.slf4j.Logging
+
 class DirectoryArchitect(val flat: Boolean,
                          val workflowBaseDir: File,
-                         val confName: Option[String]) {
+                         val confName: Option[String]) extends Logging {
 
-  val installDir = Environment.getJarDir
-  val builtinsDir = new File(installDir, "builtins")
+  val builtinsDir = new File(Environment.InstallDir, "builtins")
   
   val confBaseDir = workflowBaseDir
   

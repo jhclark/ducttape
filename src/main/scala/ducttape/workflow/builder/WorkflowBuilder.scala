@@ -345,7 +345,9 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
     // TODO: More checking on submitters and versioners?
     val submitters: Seq[SubmitterDef] = wd.submitters ++ builtins.flatMap { b: WorkflowDefinition => b.submitters }
+    debug("Workflow has submitters: %s".format(submitters.map(_.name).mkString(" ")))
     val versioners: Seq[VersionerDef] = wd.versioners ++ builtins.flatMap { b: WorkflowDefinition => b.versioners }
+    debug("Workflow has versioners: %s".format(versioners.map(_.name).mkString(" ")))
 
     // TODO: For params, we can resolve these values *ahead*
     // of time, prior to scheduling (but keep relationship info around)

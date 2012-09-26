@@ -1,20 +1,25 @@
 # Can be overriden by user using environment variable
 PREFIX?=/usr/local
+VIM?=/usr/share/vim/vimcurrent
 DUCTTAPE=.
 
-install: jar
+# TODO: Complain if ${VIM} doesn't exist
+
+install:
 	mkdir -p ${PREFIX}/bin ${PREFIX}/share/ducttape
 	cp ${DUCTTAPE}/ducttape ${PREFIX}/bin
 	cp ${DUCTTAPE}/ducttape.jar ${PREFIX}/bin
 	cp -r ${DUCTTAPE}/builtins ${PREFIX}/share/ducttape/
-	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim # TODO: System-wide
+	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ${VIM}/syntax/ducttape.vim
+	(fgrep -v '*.tape' /usr/share/vim/vimcurrent/filetype.vim; echo; echo '" ducttape files'; echo 'au BufNewFile,BufRead *.tape,*.tconf setf ducttape') > filetype.vim.new
+	mv filetype.vim.new /usr/share/vim/vimcurrent/filetype.vim
 	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el /usr/share/emacs/site-lisp/ducttape.el
 	echo '(load "/usr/share/emacs/site-lisp/ducttape.el")' >> ${PREFIX}/share/emacs/site-lisp/default.el # TODO: Only add once
 
-install-user:
-	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim
-	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el ~/.emacs.d/site-lisp/site-lisp/ducttape.el
-	echo '(load "~/.emacs.d/site-lisp/ducttape.el")' >> ~/.emacs # TODO: Only add once
+#install-user:
+#	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ~/.vim/syntax/ducttape.vim
+#	cp ${DUCTTAPE}/tool-support/emacs/ducttape.el ~/.emacs.d/site-lisp/site-lisp/ducttape.el
+#	echo '(load "~/.emacs.d/site-lisp/ducttape.el")' >> ~/.emacs # TODO: Only add once
 
 install-webui:
 	echo >&2 "TODO"

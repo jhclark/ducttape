@@ -4,12 +4,17 @@ shopt -s nullglob
 scriptDir=$(dirname $0)
 
 DUCTTAPE=$scriptDir/..
-VERSION=0.2
-RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
+VERSION=$(cat $DUCTTAPE/version.info)
+RELEASE_NAME=ducttape-${VERSION}
+#RELEASE_NAME=ducttape-${VERSION}-bleeding-$(date '+%Y-%m-%d')
 DIST_BASE=${DUCTTAPE}/dist
 DIST=${DIST_BASE}/${RELEASE_NAME}
 
 cd $DUCTTAPE
+
+echo "=============================================="
+echo "Creating Ducttape release for version $VERSION"
+echo "=============================================="
 
 echo "Original JAR stats:"
 du -csh lib/*.jar lib/webui/*.jar lib/scala/scala-library-2.9.2.jar
@@ -36,18 +41,24 @@ cp -r ${DUCTTAPE}/tool-support ${DIST}/
 cp -r ${DUCTTAPE}/builtins ${DIST}/
 
 mkdir -p $DIST/tutorial
-tutorialDir=$DUCTTAPE/syntax/tutorial
-for dir in $(cd $tutorialDir; find . -mindepth 1 -maxdepth 1 -type d); do
-    files=$(echo $tutorialDir/$dir/*.{tape,conf,sh})
-    if [ ! -z "$files" ]; then
-	mkdir -p $DIST/tutorial/$dir
-	cp $tutorialDir/$dir/*.{tape,conf,sh} $DIST/tutorial/$dir/
-    fi
+tutorialDir=$DUCTTAPE/tutorial
+cp $tutorialDir/*.tape \
+   $tutorialDir/*.txt \
+   $tutorialDir/*.md \
+   $tutorialDir/*.pdf \
+   $tutorialDir/*conf \
+   $tutorialDir/*.sh \
+   $DIST/tutorial
+  
+# Don't use xargs to avoid non-zero return when no sucn files exist  
+for file in $(find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~'); do
+  rm -f $file
 done
-    
-#find ${DIST} -type f | egrep '\.TODO|\.XXX|.DEPRECATED|~' | xargs rm -rf
 tar -C ${DIST_BASE} -cvzf ${DIST_BASE}/${RELEASE_NAME}.tgz ${RELEASE_NAME}
 
 # Update symlink for regression testing
 cd $DIST_BASE
-ln -sf ${RELEASE_NAME} ducttape-current
+rm -f ducttape-current
+ln -sf ${RELEASE_NAME}/ ducttape-current
+
+echo "Distribution ready."

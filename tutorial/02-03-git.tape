@@ -5,6 +5,12 @@
 # * To reproduce a workflow, you need to know what version of
 #   the software you ran
 # * in, out, and N are shown only to illustrate syntax
+
+# note: the package syntax is currently experimental since minor changes are planned for a future release.
+global {
+  ducttape_experimental_packages=enable
+}
+
 task lunchtime : lunchpy {
   $lunchpy/lunch.py Indian Mexican Italian
 }
@@ -37,7 +43,6 @@ versioner git :: repo ref {
   action repo_version > version {
     git ls-remote $repo $ref | cut -f1 > $version
   }
-  # TODO: Can we do without this? Just check repo version as we checkout? (potential race condition)
   # Used to confirm version after checkout
   action local_version > version date {
     git rev-parse HEAD > $version

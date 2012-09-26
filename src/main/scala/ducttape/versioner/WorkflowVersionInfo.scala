@@ -46,7 +46,7 @@ object WorkflowVersionInfo {
     val myVersionDir = dirs.assignVersionDir(history.nextVersion)
     
     if (myVersionDir.exists) {
-      throw new RuntimeException("Version history directory already exists!")
+      throw new RuntimeException("Version history directory already exists (this is probably a bug in ducttape. please report it. for now, you can try deleting the directory): %s".format(myVersionDir.getAbsolutePath))
     }
     Files.mkdirs(myVersionDir)
     

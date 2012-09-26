@@ -1,5 +1,6 @@
 package ducttape.syntax
 
+import ducttape.cli.Directives
 import ducttape.exec.Submitter
 import ducttape.exec.Versioners
 import ducttape.exec.PackageVersionerInfo
@@ -30,7 +31,8 @@ import ducttape.workflow.PlanPolicy
  */
 class WorkflowChecker(workflow: WorkflowDefinition,
                       confSpecs: Seq[ConfigAssignment],
-                      builtins: Seq[WorkflowDefinition])
+                      builtins: Seq[WorkflowDefinition],
+                      directives: Directives)
     extends Logging {
   
   // TODO: Break up into several methods
@@ -38,7 +40,29 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
-    
+
+    // check for using imports without explicitly enabling them
+    if (!directives.enableImports && workflow.usesImports) {
+      errors += new FileFormatException("Workflow uses the experimental 'import' feature, but does not explicitly enable them using 'ducttape_experimental_imports=true'", workflow)
+    }
+
+    // check for using experimental package syntax
+    if (!directives.enablePackages) {
+      for (task: TaskDef <- workflow.tasks; if (task.packages.size > 0) ) {
+        errors += new FileFormatException("Workflow uses the experimental 'package' syntax, but does not explicitly enable it using 'ducttape_experimental_packages=true'. Minor changes to this syntax are planned for a future release.", task)
+      }
+    }
+
+    // check for using experimental submitter syntax
+    if (!directives.enableSubmitters) {
+      for (task: TaskDef <- workflow.tasks) {
+        val hasSubmitter = task.params.exists { spec => spec.dotVariable && spec.name == "submitter" }
+        if (hasSubmitter) {
+          errors += new FileFormatException("Workflow uses the experimental 'submitter' syntax, but does not explicitly enable it using 'ducttape_experimental_submitters=true'. Major changes to this syntax are planned for a future release.", task)
+        }
+      }
+    }
+
     // check all task-like things declared with the task keyword
     for (task: TaskDef <- workflow.tasks ++ workflow.packages) {
       

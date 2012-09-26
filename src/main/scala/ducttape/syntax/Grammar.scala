@@ -1140,7 +1140,7 @@ object Grammar {
     planBlock
   }
 
-  val importStatement: Parser[WorkflowDefinition] = {
+  def importStatement(importDir: File): Parser[WorkflowDefinition] = {
     opt(whitespace) ~
     opt(comments) ~
     opt(whitespace) ~
@@ -1148,39 +1148,18 @@ object Grammar {
     literalValue <~ 
     (opt(space) ~ eol)
   }  ^^ {
-    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value)))
+    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value), isImported=true))
   }
   
-  val blocks: Parser[Seq[Block]] = {
+  def elements(importDir: File): Parser[Seq[ASTType]] = {
     opt(whitespace) ~> 
-    rep(block|importStatement) <~ 
+    rep(block|importStatement(importDir)) <~ 
     (
         opt(whitespace)~
         opt(comments)~
         opt(whitespace)
     )
   } ^^ {
-    case (s:Seq[ASTType]) => {
-      val result = scala.collection.mutable.ListBuffer[Block]()
-      s.foreach(entry => 
-         entry match {
-           case (b:Block) => result += b
-           case (w:WorkflowDefinition) => {
-             w.blocks.foreach(b => result += b)
-           }
-         }
-      )
-//      println("result: " + result.size)
-      result
-    }
-//    case (s:Seq[Block]) => s
-//    case (w:WorkflowDefinition) => w.blocks
-  }
-
-//  val blocks: Parser[Seq[Block]] = {
-//    rep(blockSeq)
-//  } ^^ {
-//    case (seqOfSeqs:Seq[Seq[Block]]) => seqOfSeqs.flatten
-//  }
-  
+    case (e:Seq[ASTType]) => e // note: GrammarParser takes care of collapsing imports now
+  }  
 }
