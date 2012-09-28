@@ -40,4 +40,5 @@ find $rootDir/src/main/scala $rootDir/src/test/scala \
 
 echo >&2 "Building JAR..."
 (cd $rootDir/bin/zinc; zip -qr $rootDir/ducttape.jar *)
+(cd $rootDir; zip -gqr $rootDir/ducttape.jar version.info)
 
