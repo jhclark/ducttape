@@ -20,7 +20,7 @@ object Grammar {
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
  
   /** Non-end of line white space characters */
-  val space: Parser[String] = regex("""[ \t]+""".r)
+  val space: Parser[String] = regex("""[ \t]+""".r) | failure("Expected one or more space or tab characters, but didn't find it here")
   
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r) | failure("Expected whitespace but didn't find it here")
