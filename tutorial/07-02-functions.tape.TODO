@@ -2,6 +2,7 @@
 # Lesson 2:  Functions
 
 # To define a "task function" in the same file
+# Functions may not declare submitters -- the mapping onto resources is separated out.
 func filter : cdec < in > out {
   cat < $in > $out
 }
@@ -9,5 +10,5 @@ func filter : cdec < in > out {
 # XXX: Still looks a bit odd
 # Using that function or subworkflow later in the file:
 # (Require naming inputs and outputs again for clarity, but
-   omit commands)
+#   omit commands)
 task X calls filter : cdec < in=x.txt > out
