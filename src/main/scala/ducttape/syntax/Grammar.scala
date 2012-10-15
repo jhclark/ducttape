@@ -41,6 +41,7 @@ object Grammar {
     val task: Parser[String] = keyword("task")
     val group: Parser[String] = keyword("group")
     val func: Parser[String] = keyword("func")
+    val calls: Parser[String] = keyword("calls")
     val summmary: Parser[String] = keyword("summary")
     val of: Parser[String] = keyword("of")
     val action: Parser[String] = keyword("action")
@@ -977,8 +978,7 @@ object Grammar {
         name <~
         (
             space ~
-            literal("=") ~
-            space
+            Keyword.calls
         )
     ) ~ name ~
     (
