@@ -27,14 +27,14 @@ object Grammar {
   
   object Keyword {
     
-    private def keyword(word: String): Parser[String] = {
+    private def keyword(word: String, typeOfWhitespace: Parser[Any] = space): Parser[String] = {
       (
           literal(word) |
           failure("""The keyword """"+word+"""" is required but missing.""")
       ) <~ 
       (
-          space |
-          err("""At least one space or tab must immediately follow the """"+word+"""" keyword.""")
+          typeOfWhitespace |
+          err("""One or more whitespace characters must immediately follow the """"+word+"""" keyword.""")
       )
     }
        
@@ -53,7 +53,7 @@ object Grammar {
     val branch: Parser[String] = keyword("branch")
     val config: Parser[String] = keyword("config")
     val reach: Parser[String] = keyword("reach")
-    val via: Parser[String] = keyword("via")
+    val via: Parser[String] = keyword("via", commentableWhitespace)
     val plan: Parser[String] = keyword("plan")
     val global: Parser[String] = keyword("global")
     val importKeyword: Parser[String] = keyword("import")
@@ -587,7 +587,7 @@ object Grammar {
             opt(commentableWhitespace)
         ) ~>
         (
-            rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
+            rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) |
             (
                 (literal("{")~opt(commentableWhitespace)) ~>
                 rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
