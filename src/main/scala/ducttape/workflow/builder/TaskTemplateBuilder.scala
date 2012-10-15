@@ -60,10 +60,24 @@ private[builder] class TaskTemplateBuilder(
   
   def findTasks(): FoundTasks = {
     
-    val taskMap: Map[String,TaskDef] = wd.tasks.map { t: TaskDef => (t.name, t) } toMap
-    
+    val tasks: Seq[TaskDef] = 
+      // Concatenate regular task definitions
+      // with task definitions constructed via function calls
+      (wd.tasks ++ wd.functionCallTasks)
+
+    val taskMap: Map[String,TaskDef] = {
+      tasks.
+      // Make each element in the list a tuple, 
+      // where the first element is the task name
+      // and the second element is the TaskDef object (that is, an AST node)
+      map { t: TaskDef => (t.name, t) }.
+      // then convert this list of tuples into a map
+      // where each TaskDef can be retrieved via its name      
+      toMap
+    }
+              
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
-    val parents: Map[TaskTemplate,BranchPointTreeData] = wd.tasks.map { taskDef: TaskDef =>
+    val parents: Map[TaskTemplate,BranchPointTreeData] = tasks.map { taskDef: TaskDef =>
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
       val treeData = new BranchPointTreeData(tree, Nil)
       val baselineTree = new BranchTree(Task.NO_BRANCH)

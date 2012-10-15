@@ -1,6 +1,6 @@
 package ducttape.cli
 
-class Config {
+object Config {
   // TODO: Use Map for color sot that we can remove all of them easily?
   var headerColor = Console.BLUE
   var byColor = Console.BLUE

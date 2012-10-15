@@ -125,7 +125,7 @@ class UnpackedDagWalker[V,H,E,D,F](
               debug("Vertex=%s; he=%s; Edge traversal resulted in illegal state. parent%d=%s; parentReal=%s; e%d=%s".
                 format(v, he, i, getParent, parentRealization, i, edge))
               if (verticesDiscarded % 10000 == 0) {
-                info("Traversed %d vertices so far (%d others discarded)".format(verticesAccepted, verticesDiscarded))
+                debug("Traversed %d vertices so far (%d others discarded)".format(verticesAccepted, verticesDiscarded))
               }
             }
             case Some(nextState) => {
