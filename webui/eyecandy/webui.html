@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>ducttape: Workflows</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Le styles -->
+    <link href="./assets/css/bootstrap.css" rel="stylesheet">
+    <style type="text/css">
+      body {
+        padding-top: 60px;
+        padding-bottom: 40px;
+      }
+      .sidebar-nav {
+        padding: 9px 0;
+      }
+    </style>
+    <!-- <link href="./assets/css/bootstrap-responsive.css" rel="stylesheet"> -->
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="./assets/ico/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="./assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="./assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="./assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="./assets/ico/apple-touch-icon-57-precomposed.png">
+
+    <!-- Other libraries -->
+    <link rel="stylesheet" type="text/css" href="./assets/font-awesome/font-awesome.css" />
+
+    <link rel="stylesheet" type="text/css" href="ducttape.css" />
+
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-fixed-top">
+      <div class="navbar-inner">
+        <div class="container-fluid">
+          <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </a>
+          <a class="brand" href="#">ducttape</a>
+          <div class="btn-group pull-right">
+            <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+              <i class="icon-sitemap"></i> Select Workflow
+              <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu">
+              <li><a href="#">Profile</a></li>
+              <li class="divider"></li>
+              <li><a href="#">Sign Out</a></li>
+            </ul>
+          </div>
+          <div class="nav-collapse">
+            <ul class="nav">
+              <li class="active"><a href="#"> <i class="icon-dashboard"></i> Tasks </a></li>
+              <li><a href="#summary"> <i class="icon-signal"></i> Summary </a></li>
+              <li><a href="#graph"> <i class="icon-eye-open"></i> Graph </a></li>
+              <li><a href="#usage"> <i class="icon-hdd"></i> Disk Usage </a></li>
+            </ul>
+          </div><!--/.nav-collapse -->
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid">
+      <div class="row-fluid">
+        <div class="span3">
+          <div class="well sidebar-nav">
+            <ul class="nav nav-list">
+              <li class="nav-header">Tasks</li>
+              <li class="active"><a href="#">
+                  <i class="icon-bell"></i>
+                  Failed
+                  <span class="badge badge-important">6</span>
+              </a></li>
+              <li><a href="#">
+                  <i class="icon-play-circle"></i>
+                  Running
+                  <span class="badge badge-success">2</span>
+              </a></li>
+              <li><a href="#">
+                  <i class="icon-reorder"></i>
+                  Blocked
+                  <span class="badge badge-warning">4</span>
+              </a></li>
+              <li><a href="#">
+                  <i class="icon-check"></i>
+                  Completed
+                  <span class="badge badge-info">8</span>
+              </a></li>
+              <li class="nav-header">Help</li>
+              <li><a href="#">Quickstart</a></li>
+              <li><a href="#">Tutorial</a></li>
+            </ul>
+          </div><!--/.well -->
+        </div><!--/span-->
+        <div class="span9">
+
+          <div class="red_bar box">
+	    <div class="bar_text">
+	      <i class="icon-bell"></i> Failed Tasks
+	    </div>
+	    <div class="box_content">
+              <div class="internal_content">
+                <div class="accordion" id="accordion2">
+
+                  <div class="accordion-group">
+                    <div class="accordion-heading task_collapsible">
+                      <!-- data-parent="#accordion2" -->
+                      <a class="accordion-toggle" data-toggle="collapse" href="#collapseOne">
+                        tune_mert <span class="badge badge-inverse">10</span>
+                      </a>
+                    </div>
+                    <div id="collapseOne" class="accordion-body collapse in">
+
+                      <div class="accordion-inner"> <!-- begin realization -->
+                  
+                        <div class="internal_bar">
+                          <div class="internal_bar_content">
+                            &nbsp;<a href="#" class="btn btn-mini" data-toggle="collapse" data-target="#BASELINE"><i id="toggle" class="icon-plus"></i></a>
+		            <span style="font-weight: bold;">Baseline.basline
+                            <span class="pull-right"><a href="#" class="btn btn-mini btn-primary" rel="dag-popover" data-content="A bit more info?" data-original-title="Local Unpacked DAG" id="example">DAG</a>&nbsp;</span>
+                          </div>
+                        </div>
+
+                        <div id="BASELINE" class="collapse in">
+                        <div class="internal_content">
+		          &nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-circle-arrow-left"></i></span> N=5 (@ <a href="#">config</a>) <br/>
+		          &nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-chevron-left"></i></span> grammar=out@<a href="#">extract_gra</a>
+                          <!-- [size=5GB, version=?] TODO: What do we do with multiple versions? -->
+                          <br/>
+		          &nbsp;&nbsp;<span style="font-size: 20px;"><i class="icon-chevron-right"></i></span> ini<br/>
+                          <!-- # Expand code separately? -->
+		          <div class="code">
+		            $cdec/dist_vest.pl --options<br/>
+		          </div><br/>
+                        </div>
+                        </div>
+                      </div> <!-- end realization -->
+
+                    </div>
+                  </div>
+                  
+                  
+                  <div class="accordion-group">
+                    <div class="accordion-heading task_collapsible">
+                      <!-- data-parent="#accordion2" -->
+                      <a class="accordion-toggle" data-toggle="collapse" href="#collapseTwo">
+                        decode <span class="badge badge-inverse">8</span>
+                      </a>
+                    </div>
+                    <div id="collapseTwo" class="accordion-body collapse" style="height: 0px; ">
+                      <div class="accordion-inner">
+                        Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+                <!-- end accordion -->
+
+                
+	      </div>
+            </div>
+          </div>
+          <br/>
+
+
+	    <div class="box green_bar">
+	      <div class="bar_text">
+		<i class="icon-play-circle"></i> Running Tasks
+	      </div>
+	      <div class="box_content">
+                ...
+	      </div>
+	    </div>
+	  <br/>
+	    
+	      <div class="box yellow_bar">
+		<div class="bar_text">
+		  <i class="icon-reorder"></i> Blocked Tasks
+		</div>
+		<div class="box_content">
+                  ...
+		</div>
+	      </div>
+	    <br/>
+
+	      <div class="box blue_bar">
+		<div class="bar_text">
+		  <i class="icon-check"></i> Completed Tasks
+		</div>
+		<div class="box_content">
+                  ...
+		</div>
+	      </div>
+	    <br/>
+
+
+
+
+
+      <hr>
+
+      <footer>
+        <p>&copy; Jonathan Clark 2011-2012</p>
+      </footer>
+
+    </div><!--/.fluid-container-->
+
+    <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="./assets/js/jquery.js"></script>
+    <script src="./assets/js/bootstrap-transition.js"></script>
+    <script src="./assets/js/bootstrap-alert.js"></script>
+    <script src="./assets/js/bootstrap-modal.js"></script>
+    <script src="./assets/js/bootstrap-dropdown.js"></script>
+    <script src="./assets/js/bootstrap-scrollspy.js"></script>
+    <script src="./assets/js/bootstrap-tab.js"></script>
+    <script src="./assets/js/bootstrap-tooltip.js"></script>
+    <script src="./assets/js/bootstrap-popover.js"></script>
+    <script src="./assets/js/bootstrap-button.js"></script>
+    <script src="./assets/js/bootstrap-collapse.js"></script>
+    <script src="./assets/js/bootstrap-carousel.js"></script>
+    <script src="./assets/js/bootstrap-typeahead.js"></script>
+    
+    <script type="text/javascript">
+      $("a[rel=dag-popover]")
+      .popover({placement: "left"})
+      .click(function(e) {
+        e.preventDefault()
+      })
+    </script>
+
+  </body>
+</html>

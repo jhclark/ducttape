@@ -218,6 +218,17 @@ object AbstractSyntaxTree {
                 val header: TaskHeader, 
                 val commands: BashCode) extends Block {
     
+    /**
+     * Constructs a concrete task definition
+     * from a function definition and a function call.
+     */
+    def this(functionDefinition:TaskDef, functionCall:CallDefinition) = 
+      this(functionCall.comments, 
+           functionDefinition.keyword, 
+           functionDefinition.name,
+           functionCall.header,
+           functionDefinition.commands)
+    
     override def children = Seq(comments, header, commands)
 
     private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
@@ -345,7 +356,43 @@ object AbstractSyntaxTree {
     private lazy val taskDefs: Seq[TaskDef] = blocks.collect { case x: TaskDef => x }
     lazy val tasks: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "task" }
     lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
+    
+    /** 
+     * List of those task definitions
+     * created by means of function calls.
+     */
+    lazy val functionCallTasks:Seq[TaskDef] = { 
+      
+      // Gather the list of function calls
+      val calls: Seq[CallDefinition] = blocks.collect { case x: CallDefinition => x }
+      
+      // Map from function names to function definitions
+      val funcs: Map[String,TaskDef] = {
+        // Gather a list of those TaskDef objects that represent functions 
+        taskDefs.filter{ t: TaskDef => t.keyword == "func" }.
+        // then make each element in the list a tuple, 
+        // where the first element is the function name
+        // and the second element is the TaskDef object (that is, an AST node)
+        map { t: TaskDef => (t.name, t) }.
+        // then convert this list of tuples into a map
+        // where each TaskDef can be retrieved via its name
+        toMap
+      }
 
+      // Construct a list of new concrete task definitions
+      calls.map( 
+          // For each function call
+          functionCall => {
+            // Use the function name to look up where that function is defined
+            val functionDefinition = funcs(functionCall.functionName)
+            // then create a new concrete task definition
+            // using the bash code from the function definition
+            // and the concrete inputs and parameters from the function call
+            new TaskDef(functionDefinition,functionCall)
+          } 
+      )
+    }
+    
     def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)
 
     // imports will always be collapsed for the outside world

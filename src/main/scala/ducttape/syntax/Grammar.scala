@@ -20,27 +20,28 @@ object Grammar {
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
  
   /** Non-end of line white space characters */
-  val space: Parser[String] = regex("""[ \t]+""".r)
+  val space: Parser[String] = regex("""[ \t]+""".r) | failure("Expected one or more space or tab characters, but didn't find it here")
   
   /** One or more whitespace characters */
   val whitespace: Parser[String] = regex("""\s+""".r) | failure("Expected whitespace but didn't find it here")
   
   object Keyword {
     
-    private def keyword(word: String): Parser[String] = {
+    private def keyword(word: String, typeOfWhitespace: Parser[Any] = space): Parser[String] = {
       (
           literal(word) |
           failure("""The keyword """"+word+"""" is required but missing.""")
       ) <~ 
       (
-          space |
-          err("""At least one space or tab must immediately follow the """"+word+"""" keyword.""")
+          typeOfWhitespace |
+          err("""One or more whitespace characters must immediately follow the """"+word+"""" keyword.""")
       )
     }
        
     val task: Parser[String] = keyword("task")
     val group: Parser[String] = keyword("group")
     val func: Parser[String] = keyword("func")
+    val calls: Parser[String] = keyword("calls")
     val summmary: Parser[String] = keyword("summary")
     val of: Parser[String] = keyword("of")
     val action: Parser[String] = keyword("action")
@@ -52,7 +53,7 @@ object Grammar {
     val branch: Parser[String] = keyword("branch")
     val config: Parser[String] = keyword("config")
     val reach: Parser[String] = keyword("reach")
-    val via: Parser[String] = keyword("via")
+    val via: Parser[String] = keyword("via", commentableWhitespace)
     val plan: Parser[String] = keyword("plan")
     val global: Parser[String] = keyword("global")
     val importKeyword: Parser[String] = keyword("import")
@@ -586,7 +587,7 @@ object Grammar {
             opt(commentableWhitespace)
         ) ~>
         (
-            rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
+            rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) |
             (
                 (literal("{")~opt(commentableWhitespace)) ~>
                 rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
@@ -977,8 +978,7 @@ object Grammar {
         name <~
         (
             space ~
-            literal("=") ~
-            space
+            Keyword.calls
         )
     ) ~ name ~
     (
