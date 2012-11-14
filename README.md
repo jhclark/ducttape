@@ -66,6 +66,8 @@ Updates
 
 To keep updated on the latest versions of ducttape, subscribe to our low-traffic announcement mailing list: https://groups.google.com/group/ducttape-announce
 
+If you have questions about how to use ducttape, please post on StackOverflow using the tag "ducttape": http://stackoverflow.com/questions/ask?tags=ducttape. If you'd like to help other ducttape users or keep up with questions being asked about ducttape, please use http://stackexchange.com/filters/new to create a daily email subscription to StackExchange questions with the tag "ducttape".
+
 To stay in the loop on ducttape development, subscribe to our higher traffic development mailing list: https://groups.google.com/group/ducttape-dev
 
 To keep updated on bleeding edge development of ducttape, subscribe to our higher traffic commits mailing list: https://groups.google.com/group/ducttape-commits
