@@ -1,0 +1,53 @@
+# Ducttape configuration file for the cdec tutorial
+# See also tutorial.tape
+
+global {
+  # Normally, you'll already have downloaded data on your hard drive
+  # and so you would use literal, absolute paths here
+  #
+  # But it's also possible to automatically download your data in ducttape by
+  # using the output of a task (see the "download" task below)
+  #  
+  # These global variables get used by the "preproc_corpus" task
+  train_data=$train@download
+  dev_data=$dev@download
+  devtest_data=$devtest@download
+
+  # For this simple tutorial system, we use only the target side of the parallel
+  # data for language modeling. For larger systems, consider using additional data.
+  # See the "grab_parallel_tgt" task below
+  lm_data=$out@grab_parallel_tgt
+
+  sym_heuristic=grow-diag-final-and
+  lm_order=3
+
+  # The creation of the weights.init file is described in tutorial step #9
+  # More on feature weights at http://www.cdec-decoder.org/concepts/weights.html
+  weights_init=weights.init
+
+  extract_gra_cores=2
+  tune_cores=2
+  decode_cores=2
+}
+
+task download : cdec
+    > train
+    > dev=cdec-spanish-demo/dev/2010.es-en
+    > devtest=cdec-spanish-demo/devtest/2011.es-en {
+  wget "http://data.cdec-decoder.org/cdec-spanish-demo.tar.gz"
+  tar -xvzf cdec-spanish-demo.tar.gz
+
+  # Paste training data together in format that cdec expects: src ||| tgt
+  $cdec/corpus/paste-files.pl \
+    cdec-spanish-demo/training/news-commentary-v7.es-en/news-commentary-v7.es-en.es \
+    cdec-spanish-demo/training/news-commentary-v7.es-en/news-commentary-v7.es-en.en \
+    > $train
+}
+
+# Along with the "build_lm" task, this is part of tutorial step #7
+# This depends on the "filter_training" task in tutorial.tape
+task grab_parallel_tgt : cdec
+    < corpus=$out@filter_training
+    > out {
+  $cdec/corpus/cut-corpus.pl 2 $corpus > $out
+}
