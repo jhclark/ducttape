@@ -37,6 +37,15 @@ cd ducttape-0.2/tutorial
 ducttape 01-01-hello-world.tape
 ```
 
+Or, if you're coming from machine translation, try building the entire cdec tutorial in a single command (see http://www.cdec-decoder.org/guide/tutorial.html):
+
+```bash
+wget www.cs.cmu.edu/~jhclark/cdec_tutorial.tar.gz
+cd cdec_tutorial/
+# Run 2 jobs at a time
+ducttape tutorial.tape -C tutorial.tconf -j2
+```
+
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
 
