@@ -44,6 +44,8 @@ wget www.cs.cmu.edu/~jhclark/cdec_tutorial.tar.gz
 cd cdec_tutorial/
 # Run 2 jobs at a time
 ducttape tutorial.tape -C tutorial.tconf -j2
+# Now view a summary table of the results! (All 1 of them)
+ducttape tutorial.tape -C tutorial.tconf summary scores
 ```
 
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
