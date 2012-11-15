@@ -186,7 +186,15 @@ task decode : cdec
     < devtest_sgm=$sgm@extract_gra[ExtractSection:devtest]
     > scores
     :: cores=$decode_cores {
-  $cdec/dpmert/decode-and-evaluate.pl -c $cdec_ini -w $weights -i $devtest_sgm -j $cores > $scores
+  $cdec/dpmert/decode-and-evaluate.pl -c $cdec_ini -w $weights -i $devtest_sgm -j $cores &> $scores
+}
+
+# Grab the primary field that we care about from the scores
+summary scores {
+  # 'bleu' will become a field name in our summary
+  of decode > bleu {
+    awk -F= '/BLEU=/{print $2}' < $scores > $bleu
+  }
 }
 
 # Nuts and bolts:
