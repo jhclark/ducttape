@@ -223,7 +223,12 @@ Packages: Understanding the git versioner
    the software you ran
  * in, out, and N are shown only to illustrate syntax
 
+ note: the package syntax is currently experimental since minor changes are planned for a future release.
+
 ```
+global {
+  ducttape_experimental_packages=enable
+}
 task lunchtime : lunchpy {
   $lunchpy/lunch.py Indian Mexican Italian
 }
@@ -560,7 +565,12 @@ submitter shell :: COMMANDS {
 Submitters: Sun Grid Engine (Simple)
 ------------------------------------
 
+ note: submitter syntax is currently experimental since a major change is planned for a future release
+
 ```
+global {
+  ducttape_experimental_submitters=enable
+}
 task hello_sge :: .submitter=sge .walltime="00:01:00" .vmem=1g .q=all.q {
   echo hello
 }
@@ -651,12 +661,17 @@ For the new hyper structure, this makes the $TASK directory: $TRANS/$TASK _ NAME
 
 Your original flat tasks will be symlinked into $TRANS as: $TRANS/$TASK _ NAME/baseline - >  $DEST/$TASK _ NAME, since each flat task represents the baseline branch of the Baseline branch point in a hyperworkflow.
 
-TODO: This README file needs to be updated.
+What directives are available in Ducttape?
+------------------------------------------
+
+* ducttape _ output: Specify the output directory for your workflow ducttape _ unused _ vars: What should we do when we detect an unused variable? Values: ignore|warn|error ducttape _ undeclared _ vars: What should we do when we detect an undeclared variable? Values: ignore|warn|error ducttape _ experimental _ imports: Enable imports. Syntax and semantics are subject to change. ducttape _ experimental _ packages: We are planning on making minor changes to the package syntax in a future release. ducttape _ experimental _ submitters: We are planning on making significant changes to the submitter syntax in a future release.
 
 Why are tasks more like Make targets than functions?
 ----------------------------------------------------
 
 Because you typically only use them once, even over a large number of experimental comparisons (thanks to branch points). Really, you should be thinking about bash scripts and their arguments as the basic unit of reusable functions in ducttape.
+
+Coming soon: A nice big example.
 
 Job control
 -----------

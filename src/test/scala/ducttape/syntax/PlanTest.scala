@@ -27,6 +27,15 @@ class PlanTest extends AbstractTest("plan",Grammar.planBlock) {
     reach here, there via (a: a1 a2 a3 a4)
     }""",
     
+    """plan basic {
+      reach score via
+        (TrainSize: 10k 100k all) *
+        (WhichLM: baseline chris_lm) *
+        (Genres: none genres) *
+        (FeatReg: yes) *
+        (ConjObsWithLM: yes)
+    }""",
+    
     // With comments
     """plan {
     reach goal via {(

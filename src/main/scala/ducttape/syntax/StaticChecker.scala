@@ -82,7 +82,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
     // check for unsupported block types that are in the grammar, but
     // not yet implemented
     for (block <- wd.blocks) block match {
-      case funcCall: CallDefinition => errors += new FileFormatException("Function calls are not supported yet", funcCall)
+      case funcCall: CallDefinition => ;
   
       case groupLike: GroupDefinition => {
         groupLike.keyword match {
@@ -100,7 +100,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
           case "branch" => errors += new FileFormatException("Branch blocks are not supported yet", taskLike)
           case "action" => errors += new FileFormatException("Action blocks are not supported yet", taskLike)
           case "of" => errors += new FileFormatException("'of' blocks are not supported yet", taskLike)
-          case "func" => errors += new FileFormatException("Function definitions are not supported yet", taskLike)
+          case "func" => ;
           case "package" => ;
           case "task" => ;
           case _ => throw new RuntimeException("Unrecognized task-like block type: " + taskLike.keyword)

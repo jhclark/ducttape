@@ -10,6 +10,7 @@ import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
 import ducttape.syntax.AbstractSyntaxTree._
+import ducttape.cli.ErrorUtils
 import scala.util.parsing.input.NoPosition
 
 object Grammar {
@@ -19,27 +20,28 @@ object Grammar {
   val eol: Parser[String] = literal("\r\n") | literal("\n") | regex("""\z""".r) | literal(CharArrayReader.EofCh.toString) 
  
   /** Non-end of line white space characters */
-  val space: Parser[String] = regex("""[ \t]+""".r)
+  val space: Parser[String] = regex("""[ \t]+""".r) | failure("Expected one or more space or tab characters, but didn't find it here")
   
   /** One or more whitespace characters */
-  val whitespace: Parser[String] = regex("""\s+""".r)
+  val whitespace: Parser[String] = regex("""\s+""".r) | failure("Expected whitespace but didn't find it here")
   
   object Keyword {
     
-    private def keyword(word: String): Parser[String] = {
+    private def keyword(word: String, typeOfWhitespace: Parser[Any] = space): Parser[String] = {
       (
           literal(word) |
           failure("""The keyword """"+word+"""" is required but missing.""")
       ) <~ 
       (
-          space |
-          err("""At least one space or tab must immediately follow the """"+word+"""" keyword.""")
+          typeOfWhitespace |
+          err("""One or more whitespace characters must immediately follow the """"+word+"""" keyword.""")
       )
     }
        
     val task: Parser[String] = keyword("task")
     val group: Parser[String] = keyword("group")
     val func: Parser[String] = keyword("func")
+    val calls: Parser[String] = keyword("calls")
     val summmary: Parser[String] = keyword("summary")
     val of: Parser[String] = keyword("of")
     val action: Parser[String] = keyword("action")
@@ -51,7 +53,7 @@ object Grammar {
     val branch: Parser[String] = keyword("branch")
     val config: Parser[String] = keyword("config")
     val reach: Parser[String] = keyword("reach")
-    val via: Parser[String] = keyword("via")
+    val via: Parser[String] = keyword("via", commentableWhitespace)
     val plan: Parser[String] = keyword("plan")
     val global: Parser[String] = keyword("global")
     val importKeyword: Parser[String] = keyword("import")
@@ -528,7 +530,7 @@ object Grammar {
          opt(whitespace)
       )~
       // Then the branch assignments or rvalues
-      rep1sep(branchAssignment,whitespace)<~
+      rep1sep(branchAssignment,(whitespace|failure("Expected whitespace after branch assignment, but didn't find it")))<~
       ( // Optionally whitespace
           opt(whitespace)~
           // Then closing parenthesis
@@ -585,7 +587,7 @@ object Grammar {
             opt(commentableWhitespace)
         ) ~>
         (
-            rep1sep(branchPointRef(space),opt(space)~literal("*")~opt(space)) |
+            rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) |
             (
                 (literal("{")~opt(commentableWhitespace)) ~>
                 rep1sep(branchPointRef(commentableWhitespace),opt(commentableWhitespace)~literal("*")~opt(commentableWhitespace)) <~
@@ -703,9 +705,19 @@ object Grammar {
   
   /** Parameter variable declaration. */
   val paramAssignment: Parser[Spec] = positioned(
-      ( //guard(literal("{")~failure("Unexpectedly encountered opening { brace")) |
-          opt(literal("."))~(name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ "=") ~ 
-        (rvalue | err("Error in parameter variable assignment"))
+      (   // optional dot
+          opt(literal(".")) ~ 
+          (
+              name("parameter variable","""[=\s]|\z""".r,failure(_),err(_)) <~ 
+              (
+                  opt(space) ~
+                  "=" ~
+                  opt(space)
+              )
+          ) ~ 
+          (
+              rvalue | err("Error in parameter variable assignment")
+          )
       ) ^^ {
         case Some(_: String) ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),true)
         case None            ~ (variableName: String) ~ (rhs: ShorthandTaskVariable) => new Spec(variableName,new TaskVariable(rhs.taskName,variableName),false)
@@ -917,7 +929,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing task-like block header, but didn't find it")) ~>
         header
     ) ~ 
     (
@@ -966,12 +978,11 @@ object Grammar {
         name <~
         (
             space ~
-            literal("=") ~
-            space
+            Keyword.calls
         )
     ) ~ name ~
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing call block, but didn't find it")) ~>
         taskHeader
     ) <~ (eol | err("Missing newline"))
   } ^^ {
@@ -987,7 +998,7 @@ object Grammar {
         name 
     ) ~ 
     (
-        whitespace ~>
+        (whitespace | failure("Expected whitespace while parsing group-like block, but didn't find it")) ~>
         header
     ) ~ 
     (
@@ -1087,7 +1098,9 @@ object Grammar {
         ) ~> 
         configLines <~
         (
-            opt(whitespace) ~ 
+            opt(whitespace) ~
+            opt(comments) ~
+            opt(whitespace) ~
             (
                 literal("}") ~ 
                 (
@@ -1127,17 +1140,20 @@ object Grammar {
     planBlock
   }
 
-  val importStatement: Parser[WorkflowDefinition] = {
+  def importStatement(importDir: File): Parser[WorkflowDefinition] = {
+    opt(whitespace) ~
     opt(comments) ~
     opt(whitespace) ~
-    Keyword.importKeyword ~ opt(space) ~> literalValue
+    Keyword.importKeyword ~ opt(space) ~> 
+    literalValue <~ 
+    (opt(space) ~ eol)
   }  ^^ {
-    case (l:Literal) => GrammarParser.readWorkflow(new File(l.value), isImported=true)
+    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value), isImported=true))
   }
   
-  val elements: Parser[Seq[ASTType]] = {
+  def elements(importDir: File): Parser[Seq[ASTType]] = {
     opt(whitespace) ~> 
-    rep(block|importStatement) <~ 
+    rep(block|importStatement(importDir)) <~ 
     (
         opt(whitespace)~
         opt(comments)~
@@ -1145,12 +1161,5 @@ object Grammar {
     )
   } ^^ {
     case (e:Seq[ASTType]) => e // note: GrammarParser takes care of collapsing imports now
-  }
-
-//  val blocks: Parser[Seq[Block]] = {
-//    rep(blockSeq)
-//  } ^^ {
-//    case (seqOfSeqs:Seq[Seq[Block]]) => seqOfSeqs.flatten
-//  }
-  
+  }  
 }

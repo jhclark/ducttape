@@ -24,7 +24,8 @@ object GrammarParser extends RegexParsers {
   }
   
   def readWorkflow(file: File, isImported: Boolean = false): WorkflowDefinition = {
-    val result: ParseResult[Seq[ASTType]] = parseAll(Grammar.elements, IO.read(file, "UTF-8"))    
+    val importDir: File = file.getAbsoluteFile.getParentFile
+    val result: ParseResult[Seq[ASTType]] = parseAll(Grammar.elements(importDir), IO.read(file, "UTF-8"))
     val pos = result.next.pos
     
     return result match {

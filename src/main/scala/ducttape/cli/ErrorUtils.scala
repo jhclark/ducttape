@@ -10,27 +10,27 @@ import grizzled.slf4j.Logging
 
 object ErrorUtils extends Logging {
   
-  def prettyPrintError(e: FileFormatException, prefix: String, color: String)(implicit conf: Config) {
+  def prettyPrintError(e: FileFormatException, prefix: String, color: String) {
     debug(e.getMessage)
     debug(e.getStackTraceString)
       
-    System.err.println("%s%s: %s%s".format(color, prefix, e.getMessage, conf.resetColor))
+    System.err.println("%s%s: %s%s".format(color, prefix, e.getMessage, Config.resetColor))
     for ( (file: File, line: Int, col: Int, untilLine: Int) <- e.refs) {
-      System.err.println("%s%s:%d%s".format(conf.errorLineColor, file.getAbsolutePath, line, conf.resetColor))
+      System.err.println("%s%s:%d%s".format(Config.errorLineColor, file.getAbsolutePath, line, Config.resetColor))
       val badLines = Files.read(file).drop(line-1).take(line-untilLine+1)
-      System.err.println(conf.errorScriptColor + badLines.mkString("\n"))
+      System.err.println(Config.errorScriptColor + badLines.mkString("\n"))
       System.err.println(" " * (col-2) + "^")
     }
   }
       
   // format exceptions as nice error messages
-  def ex2err[T](func: => T)(implicit conf: Config): T = {
+  def ex2err[T](func: => T) : T = {
     
     def exitError(e: Exception): T = {
       debug(e.getMessage)
       debug(e.getStackTraceString)
       
-      System.err.println("%sERROR: %s".format(conf.errorColor, e.getMessage))
+      System.err.println("%sERROR: %s".format(Config.errorColor, e.getMessage))
       System.exit(1)
       throw new Error("Unreachable") // make the compiler happy
     }
@@ -48,7 +48,7 @@ object ErrorUtils extends Logging {
       
       e match {
         case e: FileFormatException => {
-          prettyPrintError(e, prefix="ERROR", color=conf.errorColor)
+          prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
           System.exit(1)
           throw new Error("Unreachable") // make the compiler happy
         }

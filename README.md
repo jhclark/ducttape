@@ -13,20 +13,21 @@ Want to learn how to use Ducttape? Read [TUTORIAL.md](https://github.com/jhclark
 
 Want to help develop ducttape? Read [HACKING.md](https://github.com/jhclark/ducttape/blob/master/HACKING.md).
 
+
 Quick Start
 ===========
 
 First, download and unpack the program:
 
 ```bash
-wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.tgz
-tar -xvzf ducttape-0.2.tgz
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.1.tgz
+tar -xvzf ducttape-0.2.1.tgz
 ```
 
 Add ducttape to your PATH:
 
 ```bash
-export PATH=$PWD/ducttape-0.2:$PATH
+export PATH=$PWD/ducttape-0.2.1:$PATH
 ```
 
 Run a tutorial example:
@@ -36,9 +37,29 @@ cd ducttape-0.2/tutorial
 ducttape 01-01-hello-world.tape
 ```
 
+Or, if you're coming from machine translation, try building the entire cdec tutorial in a single command (see http://www.cdec-decoder.org/guide/tutorial.html):
+
+```bash
+wget www.cs.cmu.edu/~jhclark/cdec_tutorial.tar.gz
+cd cdec_tutorial/
+# Run 2 jobs at a time
+ducttape tutorial.tape -C tutorial.tconf -j2
+# Now view a summary table of the results! (All 1 of them)
+ducttape tutorial.tape -C tutorial.tconf summary scores
+```
+
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
-System-wide installation coming soon. See below for how to add emacs/vim syntax highlighting to your local install.
+
+System-wide Installation
+========================
+
+```bash
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.2.1.tgz
+tar -xvzf ducttape-0.2.1.tgz
+cd ducttape 0.2.1
+sudo make install
+```
 
 
 Design Principles
@@ -55,6 +76,8 @@ Updates
 =======
 
 To keep updated on the latest versions of ducttape, subscribe to our low-traffic announcement mailing list: https://groups.google.com/group/ducttape-announce
+
+If you have questions about how to use ducttape, please post on StackOverflow using the tag "ducttape": http://stackoverflow.com/questions/ask?tags=ducttape. If you'd like to help other ducttape users or keep up with questions being asked about ducttape, please use http://stackexchange.com/filters/new to create a daily email subscription to StackExchange questions with the tag "ducttape".
 
 To stay in the loop on ducttape development, subscribe to our higher traffic development mailing list: https://groups.google.com/group/ducttape-dev
 

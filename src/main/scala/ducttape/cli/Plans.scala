@@ -66,7 +66,7 @@ object Plans extends Logging {
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
                          planName: Option[String] = None)
-                        (implicit conf: Config): PlanPolicy = {
+                        : PlanPolicy = {
     
     // Pass 1: One backward pass per task that has a branch graft
     //   tasks that are dependents of branch grafts will always be run for the realization
