@@ -155,9 +155,10 @@ object BashGrammar {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
 
-  // named variables $hi and ${hi}, builtin variable $$ or $? or $!, command substitution $(echo), etc.
+  // named variables $hi and ${hi}, builtin variable $$ or $? or $!, command substitution $(echo), or string expansion $'\n', etc.
   // NOTE: String manipulation must be matched *after* variable
-  def variableLike: Parser[BashCode] = dollarOnly | internalVariable | commandSub | variable | stringManipulation
+  // See http://tldp.org/LDP/abs/html/bashver2.html for more on string expansion
+  def variableLike: Parser[BashCode] = dollarOnly | internalVariable | commandSub | variable | stringManipulation | stringExpansion
 
   // command substitution: $(echo)
   def commandSub: Parser[BashCode] = (literal("$(") ~ bashBlock ~ literal(")")) ^^ {
@@ -216,6 +217,10 @@ object BashGrammar {
   } ^^ {
     case (dollar:String) ~ (name:String) => new BashCode(dollar + name, Set(name))
     case (dollar:String) ~ (open:String) ~ (name:String) ~ (close:String) => new BashCode(dollar + open + name + close, Set(name))
+  }
+
+  def stringExpansion: Parser[BashCode] = regex("""\$'\\[A-Za-z0-9]+'""".r) ^^ {
+    case (str:String) => new BashCode(str)
   }
 
   def variableName: Parser[String] = regex("[A-Za-z_][A-Za-z0-9_]*".r)
