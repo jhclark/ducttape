@@ -28,7 +28,7 @@ class Opts(conf: Config, args: Seq[String]) extends OptParse {
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
 
-  val plan = StrOpt(desc="Specify which plan name should be used (If not specified, all plans will be used.)", short='p')
+  val plan = StrOpt(desc="Specify which plan name(s) should be used (If not specified, all plans will be used.)", short='p')
   
   val yes = BoolOpt(desc="Don't prompt or confirm actions. Assume the answer is 'yes' and just do it.")
   val no_color = BoolOpt(desc="Don't colorize output")
