@@ -2,6 +2,7 @@ package ducttape.cli
 
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
+import ducttape.util.Booleans._
 
 // may throw a FileFormatException
 class Directives(confSpecs: Seq[ConfigAssignment]) {
@@ -38,20 +39,6 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
   getLiteralSpecValue("ducttape_branchpoint_delimiter") match {
     case Some(value) => ducttape.workflow.Realization.delimiter = value.toLowerCase.slice(0, 1)
     case None => ;
-  }
-
-  def parseBoolean(str: String): Boolean = str.toLowerCase match {
-    case "true" => true
-    case "false" => false
-
-    case "1" => true
-    case "0" => false
-
-    case "enable" => true
-    case "disable" => false
-    
-    case "t" => true
-    case "f" => false
   }
 
   def parseExperimental(key: String): Boolean = getLiteralSpecValue(key) match {
