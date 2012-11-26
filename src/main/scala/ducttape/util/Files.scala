@@ -32,7 +32,7 @@ object Files extends Logging {
     try {
       fw.write(str)
     } finally {
-      fw.close
+      fw.close()
     }
   }
 
