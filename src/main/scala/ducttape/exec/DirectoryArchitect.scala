@@ -64,7 +64,7 @@ class DirectoryArchitect(val flat: Boolean,
       None
     } else {
       val orig = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toString)
-      val link = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toFullString)
+      val link = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toFullString())
       if (orig.getAbsolutePath == link.getAbsolutePath || task.realization.hasSingleBranchBaseline) {
         None
       } else {
