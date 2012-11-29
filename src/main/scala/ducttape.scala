@@ -98,10 +98,6 @@ object Ducttape extends Logging {
       new WorkflowDefinition(Nil)
     }
     
-    err.println("%sDuctTape v0.2".format(Config.headerColor))
-    err.println("%sBy Jonathan Clark".format(Config.byColor))
-    err.println(Config.resetColor)
-    
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
     val wd: WorkflowDefinition = {
