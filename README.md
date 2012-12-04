@@ -110,3 +110,10 @@ syntax on
 filetype on
 au BufRead,BufNewFile *.tape set filetype=ducttape
 ```
+
+Related Projects
+================
+
+Minimal Web UI for ducttape: https://github.com/vchahun/ducttape-web
+
+Better Vim Mode: https://github.com/vchahun/vim-ducttape (This will either replace or be merged with the current vim files)
