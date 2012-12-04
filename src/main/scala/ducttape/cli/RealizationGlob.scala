@@ -6,6 +6,8 @@ import ducttape.util.Globs
 
 import java.util.regex.Pattern
 
+import org.apache.commons.lang3.StringUtils
+
 import grizzled.slf4j.Logging
 
 class RealizationGlob(glob: String) extends Logging {
@@ -20,11 +22,9 @@ class RealizationGlob(glob: String) extends Logging {
   // branch point name -> pattern
   val patterns: Map[String,Pattern] = {
     globElems.filter(_ != "*").map { elem: String =>
-      if (elem.count(_ == '.') != 1) {
-        // TODO: Not a runtime exception?
-        throw new RuntimeException("Realization glob element must have exactly one dot to separate branch point and branch: " + elem)
-      }
-      val Array(branchPoint, branchGlob) = elem.split("\\.")
+      // Note: Branch POINTS may NOT contain a dot. However, BRANCHES CAN contain a dot.
+      // limit to 2 elements to include branch point and branch only
+      val Array(branchPoint, branchGlob) = StringUtils.split(elem, ".", 2)
 
       // we explicitly disallow globbing within branch names to keep the semantics of
       // branch globbing easy to understand
