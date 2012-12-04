@@ -56,7 +56,7 @@ object ExecuteMode {
       // TODO: Check for existing PID lock files from some other process... and make sure we're on the same machine
 
       if (!directives.enableMultiproc && cc.locked.size > 0) {
-        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_enable_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
+        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_experimental_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
       }
       
       import ducttape.cli.ColorUtils.colorizeDir
