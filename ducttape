@@ -16,8 +16,17 @@ libs=$libs:$scriptDir/lib/grizzled-slf4j_2.9.1-1-0.6.8.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/slf4j-api-1.6.4.jar # DEV-ONLY
 libs=$libs:$scriptDir/lib/slf4j-jdk14-1.6.4.jar # DEV-ONLY
 
+# Use drip for fast JVM startup, if installed
+export JAVA=$(which drip)
+if [[ "$JAVA" == "/"* ]]; then
+    echo >/dev/null; # we found drip
+else
+    echo >&2 "drip not found. Falling back to vanilla Java"
+    JAVA="java"
+fi
+
 #     -XX:MaxJavaStackTraceDepth=25 \
-java -Xmx1g -Xss2M \
+$JAVA -Xmx1g -Xss2M \
      -cp $libs \
      -Dfile.encoding="UTF-8" \
      Ducttape "$@"
