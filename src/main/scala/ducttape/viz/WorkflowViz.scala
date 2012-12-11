@@ -35,6 +35,8 @@ object WorkflowViz {
     // now list edges
     for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
       val taskT: TaskTemplate = v.packed.value.get
+
+      // TODO: Distinguish between realized tasks and versioned tasks?
       val task: RealTask = taskT.realize(v)
       val child = getName(Some(task.taskDef), task.realization)
       task.inputVals.map { inputVal =>
