@@ -276,7 +276,7 @@ object AbstractSyntaxTree {
                         val blocks: Seq[Block]) extends Block {
     private lazy val taskLikes = blocks.collect{ case x: ActionDef => x}
     
-    // only has members for SubmitterDefs (but adding more info to the typesystem gets ridiculous)
+    // only has members for SubmitterDefs and VersionerDefs (but adding more info to the typesystem gets ridiculous)
     lazy val actions: Seq[ActionDef] = taskLikes.filter(_.keyword == "action")
 
     // only has members for SummaryDefs (but adding more info to the typesystem gets ridiculous)
