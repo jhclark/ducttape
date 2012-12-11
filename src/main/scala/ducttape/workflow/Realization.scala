@@ -39,12 +39,12 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     result
   }
     
-  private def fullRealizationName(): String = {
+  private def fullRealizationName(hashLongNames: Boolean = true): String = {
     // TODO: Prohibit the branch point name "Baseline"?
     val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT }
     val names = filteredBranches.map { branch => "%s.%s".format(branch.branchPoint.name, branch.name) }
     val result = names.mkString(Realization.delimiter)
-    if (result.length > 255) {
+    if (result.length > 255 && hashLongNames) {
       warn("Very long filename is being hashed: " + result)
       HashUtils.md5(result)
       //throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
@@ -60,7 +60,7 @@ class Realization(val branches: Seq[Branch]) extends Logging {
   override def toString() = str
   
   // unshortened realization name
-  def toFullString(): String = fullRealizationName()
+  def toFullString(hashLongNames: Boolean = true): String = fullRealizationName(hashLongNames)
   
   // returns true if this realization has only one branch and it is Baseline.baseline
   def hasSingleBranchBaseline(): Boolean = {

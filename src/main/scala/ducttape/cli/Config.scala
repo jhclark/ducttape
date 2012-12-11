@@ -16,6 +16,7 @@ object Config {
 
   var taskNameColor = Console.CYAN
   var realNameColor = Console.BLUE
+  var realFullNameColor = Console.YELLOW
 
   var greenColor = Console.GREEN
   var redColor = Console.RED

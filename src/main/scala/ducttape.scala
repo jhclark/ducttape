@@ -97,10 +97,6 @@ object Ducttape extends Logging {
       new WorkflowDefinition(Nil)
     }
     
-    err.println("%sDuctTape v0.2".format(Config.headerColor))
-    err.println("%sBy Jonathan Clark".format(Config.byColor))
-    err.println(Config.resetColor)
-    
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
     val wd: WorkflowDefinition = {
@@ -219,7 +215,7 @@ object Ducttape extends Logging {
     
     def getPlannedVertices(): PlanPolicy = {
       // pass in user-specified plan name -- iff it was specified by the user -- otherwise use all plans
-      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, planName=opts.plan)
+      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, planNames=opts.plans)
       planPolicy match {
         case VertexFilter(plannedVertices) => {
           System.err.println("Planned %s vertices".format(plannedVertices.size))
