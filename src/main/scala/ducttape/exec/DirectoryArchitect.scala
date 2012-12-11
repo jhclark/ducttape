@@ -77,8 +77,15 @@ class DirectoryArchitect(val flat: Boolean,
   def assignAtticDir(task: RealTask, version: Int)
     = assignDir(task, relativeTo=new File(atticDir, version.toString)) 
 
+  // the directory where various versions of a software package will get built
+  def assignBuildPackageDir(packageName: String): File = {
+    new File(confBaseDir, ".packages/%s".format(packageName))
+  }
+
+  // the directory where a specific version of a software package will get built
   def assignBuildDir(packageName: String, packageVersion: String): File = {
-    new File(confBaseDir, ".packages/%s/%s".format(packageName, packageVersion))
+    val packageDir = assignBuildPackageDir(packageName)
+    new File(packageDir, packageVersion)
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization): File = {
