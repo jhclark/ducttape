@@ -133,7 +133,7 @@ object Ducttape extends Logging {
     }
     
     // TODO: Can we remove this entirely now that config files have the same syntax as regular .tape files?
-    val confSpecs: Seq[ConfigAssignment] = {
+    val confSpecs: Seq[ConfigAssignment] = ex2err {
       opts.config_file.value match {
         // use anonymous conf from config file, if any
         case Some(_) => wd.anonymousConfig match {
