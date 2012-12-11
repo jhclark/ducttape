@@ -16,6 +16,14 @@ import grizzled.slf4j.Logging
 import collection._
 
 object LockManager extends Logging {
+  // take a thunk so that we can create a scoping effect
+  def apply[U](version: WorkflowVersionInfo)(func: LockManager => U) {
+    // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
+    val locker = new LockManager(myVersion)
+    func(locker)
+    locker.shutdown()
+  }
+
   // DO NOT use this during normal workflow execution
   // it is meant for manual one-time cleanup only
   def forceReleaseLock(taskEnv: TaskEnvironment) {
