@@ -67,7 +67,6 @@ import ducttape.workflow.Visitors
 
 import grizzled.slf4j.Logging
 
-
 object Ducttape extends Logging {
   
   def main(args: Array[String]) {
@@ -258,11 +257,18 @@ object Ducttape extends Logging {
       Visitors.visitAll(workflow, new CompletionChecker(dirs, msgCallback), planPolicy)
     }
     
-    def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy) = {
+    // get what packages are needed by the planned vertices and
+    // what repo version of each of those we have built already (if any)
+    def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy): PackageVersioner = {
+
+      // find what packages are required by the planned vertices
+      // TODO: Always return all packages when using auto_update?
       val packageFinder = new PackageFinder(cc.map(_.todo), workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, planPolicy)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
+      // now see what the repo version is for these packages
+      // and also determine if they need to be rebuilt in execute mode
       err.println("Checking for already built packages...")
       val packageVersions = new PackageVersioner(dirs, workflow.versioners)
       packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)
