@@ -1,8 +1,8 @@
 package ducttape.cli
+// TODO: Move out of CLI
 
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
-import ducttape.util.Booleans._
 
 // may throw a FileFormatException
 class Directives(confSpecs: Seq[ConfigAssignment]) {
@@ -29,6 +29,10 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
       case None => false // not flat by default (hyper)
     }
   }
+
+  // use a separate directory inside each task-realization for each workflow version that is run?
+  // TODO: false to maintain backward compatibility -- preferred is true
+  val versionedTasks: Boolean = parse("ducttape_versioned_tasks", default=false)
   
   val output: Option[String] = getLiteralSpecValue("ducttape_output")
 
@@ -41,10 +45,12 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
     case None => ;
   }
 
-  def parseExperimental(key: String): Boolean = getLiteralSpecValue(key) match {
-    case Some(value) => parseBoolean(value)
-    case None => false
+  def parse(key: String, default: Boolean): Boolean = getLiteralSpecValue(key) match {
+    case Some(value) => Booleans.parseBoolean(value)
+    case None => default
   }
+
+  def parseExperimental(key: String): Boolean = parse(key, default=false)
 
   // TODO: Identify unrecognized ducttape directives and error out?
 
