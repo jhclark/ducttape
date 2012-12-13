@@ -1,16 +1,21 @@
 package ducttape.exec
 
 import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.Realization
+import ducttape.workflow.SpecTypes._
 import java.io.File
 import grizzled.slf4j.Logging
 
 /**
+ * TaskEnvironment prepares all of the paths and environment variables needed
+ * to run or work with a task.
+ * 
  * Unlike the FullTaskEnvironment, does not require knowledge of packageVersions,
- * but does not provide full list of environment variables
+ * but does not provide full list of environment variables.
  */
 class TaskEnvironment(val dirs: DirectoryArchitect,
-                      val task: RealTask) extends Logging {
+                      val task: VersionedTask) extends Logging {
   
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
@@ -25,11 +30,11 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-  val inputs: Seq[(String, String)] = for (inputVal <- task.inputVals) yield {
+  val inputs: Seq[(String, String)] = for (inputVal: VersionedSpec <- task.inputValVersions) yield {
     val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
-                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal)
-    debug("For inSpec %s with srcSpec %s and srcReal %s with parent task %s, got path: %s".format(
-            inputVal.origSpec, inputVal.srcSpec, inputVal.srcReal, inputVal.srcTask, inFile))
+                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion)
+    debug("For inSpec %s with srcSpec %s @ %s/%s/%d, got path: %s".format(
+            inputVal.origSpec, inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion, inFile))
     (inputVal.origSpec.name, inFile.getAbsolutePath)
   }
     
@@ -43,7 +48,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
 
   // assign output paths
   val outputs: Seq[(String, String)] = for (outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization)
+    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
     debug("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
@@ -73,7 +78,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
  */
 class FullTaskEnvironment(dirs: DirectoryArchitect,
                           val packageVersions: PackageVersioner,
-                          task: RealTask) extends TaskEnvironment(dirs, task) {
+                          task: VersionedTask) extends TaskEnvironment(dirs, task) {
   val packageNames: Seq[String] = task.packages.map(_.name)
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map { name =>

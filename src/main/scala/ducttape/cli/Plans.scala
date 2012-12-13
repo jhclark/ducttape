@@ -11,6 +11,7 @@ import ducttape.workflow.OneOff
 import ducttape.workflow.PatternFilter
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.SpecGroup
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.Types.PackedWorkVert
@@ -19,6 +20,7 @@ import ducttape.workflow.Types.WorkflowEdge
 import ducttape.workflow.RealizationPlan
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.builder.WorkflowBuilder
+import ducttape.versioner.WorkflowVersionInfo
 import ducttape.util.Optional
 
 import grizzled.slf4j.Logging
@@ -30,6 +32,7 @@ object Plans extends Logging {
   // using a PatternFilter
   def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
+                    workflowVersion: WorkflowVersionInfo,
                     explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
                     graftRelaxations: Map[PackedWorkVert, Set[Branch]])
       : Map[(String,Realization), RealTask] = {
@@ -48,7 +51,7 @@ object Plans extends Logging {
     workflow.unpackedWalker(PatternFilter(plan.realizations, graftRelaxations), explainCallbackCurried).
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
-        val task: RealTask = taskT.realize(v)
+        val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
         trace("Found new candidate: %s".format(task))
         candidates += (task.name, task.realization) -> task
     })
@@ -63,6 +66,7 @@ object Plans extends Logging {
    */
   def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
+                         workflowVersion: WorkflowVersionInfo,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
                          planName: Option[String] = None)
@@ -164,7 +168,7 @@ object Plans extends Logging {
           // Note: This isn't as simple as taking the cross-product of branches that have been seen at all dependents
           //   since some branch points may become visible or invisible based on which branches are active.
           val candidates: Map[(String,Realization), RealTask]
-            = getCandidates(workflow, plan, explainCallback, graftRelaxations)
+            = getCandidates(workflow, plan, workflowVersion, explainCallback, graftRelaxations)
           val fronteir = new mutable.Queue[RealTask]
           
           System.err.println("Have %d candidate tasks matching plan's realizations: %s".format(

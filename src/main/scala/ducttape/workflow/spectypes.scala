@@ -21,14 +21,25 @@ class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
                                       val srcTask: Option[TaskDef],
                                       val srcSpec: SpecT,
                                       val srcReal: Realization) {
+  def this(that: ResolvedSpecType[SpecT]) = this(that.origSpec, that.srcTask, that.srcSpec, that.srcReal)
   override def toString() = "%s => %s (%s)".format(origSpec.name, srcSpec, srcReal)
 }
+
+class VersionedSpecType[SpecT <: Spec](spec: ResolvedSpecType[SpecT], val srcVersion: Int)
+  extends ResolvedSpecType[SpecT](spec)
+
 
 object SpecTypes {
   type ResolvedSpec = ResolvedSpecType[Spec]
   type ResolvedLiteralSpec = ResolvedSpecType[LiteralSpec]
   type SpecPair = SpecPairType[Spec]
   type LiteralSpecPair = SpecPairType[LiteralSpec]
+
+  // literal specs don't need versions since we always use the
+  // current workflow's version
+  // TODO: XXX: This means the md5 hashing mechanism must
+  // detect and prompt to invalidate old parameter versions
+  type VersionedSpec = VersionedSpecType[Spec]
 }
 import SpecTypes._
 

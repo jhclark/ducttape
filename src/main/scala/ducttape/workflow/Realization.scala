@@ -57,7 +57,10 @@ class Realization(val branches: Seq[Branch]) extends Logging {
 
   override def hashCode() = str.hashCode // TODO: More efficient?
   override def equals(obj: Any) = obj match { case that: Realization => this.str == that.str } // TODO: More efficient?
-  override def toString() = str
+  // a canonical representation that should hold constant even when new branch points are added
+  // (assuming users follow our best practices for creating baseline branches)
+  def toCanonicalString() = str
+  override def toString() = toCanonicalString
   
   // unshortened realization name
   def toFullString(): String = fullRealizationName()

@@ -4,11 +4,14 @@ import java.io.File
 
 import collection._
 
-import ducttape.workflow.Realization
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
-import ducttape.workflow.RealTask
+import ducttape.workflow.Realization
+import ducttape.workflow.VersionedTask
+import ducttape.workflow.VersionedTaskId
+import ducttape.versioner.WorkflowVersionInfo
+
 import grizzled.slf4j.Logging
 
 // checks the state of a task directory to make sure things completed as expected
@@ -76,34 +79,51 @@ object CompletionChecker extends Logging {
 // the most recent result is untouched, invalid, partial, or complete
 //
 // use msgCallback to show info about why tasks aren't complete
-class CompletionChecker(dirs: DirectoryArchitect, msgCallback: String => Unit) extends UnpackedDagVisitor with Logging {
+class CompletionChecker(dirs: DirectoryArchitect,
+                        unionVersion: WorkflowVersionInfo,
+                        nextWorkflowVersion: Int,
+                        msgCallback: String => Unit) extends UnpackedDagVisitor with Logging {
+
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
+  // note: this is one of the major reasons that ducttape is a graph specification
+  // language with an imperative language (bash) nested within --
+  // if ducttape were turing complete, this multi-pass approach wouldn't be possible
+  private val _completedVersions = new MutableOrderedSet[VersionedTaskId]
+  private val _todoVersions = new MutableOrderedSet[VersionedTaskId]
   private val _completed = new MutableOrderedSet[(String,Realization)] // TODO: Change datatype of realization?
   private val _partial = new MutableOrderedSet[(String,Realization)] // not complete, but has partial output
   private val _todo = new MutableOrderedSet[(String,Realization)]
   private val _broken = new MutableOrderedSet[(String,Realization)]
   private val _locked = new MutableOrderedSet[(String,Realization)]
 
-  // what is the workflow version of the completed version that we'll be reusing?
-  private val _foundVersions = new mutable.HashMap[(String,Realization), Int]
-  private val completeVersions = new mutable.HashMap[(String,Realization), Int]
-
   // NOTE: completed never includes invalidated
+  def completedVersions: OrderedSet[VersionedTaskId] = _completedVersions
+  def todoVersions: OrderedSet[VersionedTaskId] = _todoVersions
   def completed: OrderedSet[(String,Realization)] = _completed
   def partial: OrderedSet[(String,Realization)] = _partial
   def todo: OrderedSet[(String,Realization)] = _todo
   def broken: OrderedSet[(String,Realization)] = _broken
   def locked: OrderedSet[(String,Realization)] = _locked
 
-  override def visit(task: RealTask) {
+  // the version of this task will be drawn from the "union" workflow version info
+  override def visit(task: VersionedTask) {
     debug("Checking " + task)
     val taskEnv = new TaskEnvironment(dirs, task)
 
     if (CompletionChecker.isComplete(taskEnv, msgCallback)) {
+      _completedVersions += task.toVersionedTaskId
       _completed += ((task.name, task.realization))
-//      completeVersions += (task.name, task.realization) -> task.version
     } else {
+      // do NOT reuse the existing task for its version
+      // since we're about to create a new version
+      // and there's no way for the union workflow versioner
+      // to know whether or not we'll use the existing version or not
+      //
+      // The walker is versioning with the "union" version --
+      // If it has no version for this task, we'll get the "next" workflow version (which is fine)
+      // But if it gave us a previous version, we want to reject that version and start a new one
+      _todoVersions += new VersionedTaskId(task.name, task.realization.toCanonicalString, nextWorkflowVersion)
       _todo += ((task.name, task.realization))
       
       if (CompletionChecker.isBroken(taskEnv)) {

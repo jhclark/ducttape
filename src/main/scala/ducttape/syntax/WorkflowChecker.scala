@@ -6,7 +6,11 @@ import ducttape.exec.Versioners
 import ducttape.exec.PackageVersionerInfo
 import ducttape.exec.UnpackedDagVisitor
 import ducttape.workflow.HyperWorkflow
-import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
+import ducttape.workflow.Visitors
+import ducttape.workflow.Realization
+import ducttape.workflow.PlanPolicy
+import ducttape.versioner.WorkflowVersionInfo
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.AbstractSyntaxTree.Spec
@@ -19,9 +23,6 @@ import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import grizzled.slf4j.Logging
 import collection._
-import ducttape.workflow.Visitors
-import ducttape.workflow.Realization
-import ducttape.workflow.PlanPolicy
 
 /**
  * Most checks can be done on the raw WorkflowDefinition.
@@ -213,14 +214,15 @@ class WorkflowChecker(workflow: WorkflowDefinition,
   // Grumble: It's only tractable to do this for the selection?
   // Is there any way we can do this for tasks that use only literal submitters?
   def checkUnpacked(hyperworkflow: HyperWorkflow,
-                    planPolicy: PlanPolicy): (Seq[FileFormatException],Seq[FileFormatException]) = {
+                    planPolicy: PlanPolicy,
+                    workflowVersion: WorkflowVersionInfo): (Seq[FileFormatException],Seq[FileFormatException]) = {
     
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
     
     val submitter = new Submitter(hyperworkflow.submitters)
     val visitor = new UnpackedDagVisitor {
-      override def visit(task: RealTask) {
+      override def visit(task: VersionedTask) {
         for (packageSpec: Spec <- task.packages) {
           // TODO: Check for each task having the params defined for each of its versioners
           packageSpec
@@ -250,7 +252,9 @@ class WorkflowChecker(workflow: WorkflowDefinition,
       }
     }
     
-    Visitors.visitAll(hyperworkflow, visitor, planPolicy)
+    // TODO: We could really get away without versions here if we
+    // wanted to maintain another code path
+    Visitors.visitAll(hyperworkflow, visitor, planPolicy, workflowVersion)
     
     (warnings, errors)
   }

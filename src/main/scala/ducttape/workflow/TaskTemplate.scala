@@ -46,7 +46,7 @@ class TaskTemplate(val taskDef: TaskDef,
    // NOTE: MEMORY WARNING: These realizations are not uniqued in any way. We might want to pool them at some point!
 
    // realize this task by specifying which realizations should be used for this task and parent tasks
-   def realize(v: UnpackedWorkVert): RealTask = {
+   def toRealTask(v: UnpackedWorkVert): RealTask = {
      val realization = new Realization(v.realization)
      debug("Realizing task template %s for realization %s => %s".format(name, v.realization, realization))
      

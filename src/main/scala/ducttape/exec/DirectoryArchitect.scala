@@ -9,15 +9,17 @@ import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Spec
+import ducttape.syntax.FileFormatException
 import ducttape.util.Environment
 import ducttape.util.Files
 import ducttape.workflow.Task
-import ducttape.syntax.FileFormatException
 import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 
 import grizzled.slf4j.Logging
 
 class DirectoryArchitect(val flat: Boolean,
+                         val versionedTasks: Boolean,
                          val workflowBaseDir: File,
                          val confName: Option[String]) extends Logging {
 
@@ -26,7 +28,7 @@ class DirectoryArchitect(val flat: Boolean,
   val confBaseDir = workflowBaseDir
   
   val versionHistoryDir = new File(confBaseDir, ".versions")
-  def assignVersionDir(version: Int) = new File(versionHistoryDir, version.toString)
+  def assignVersionDir(workflowVersion: Int) = new File(versionHistoryDir, workflowVersion.toString)
   
   val xdotFile = new File(confBaseDir, ".xdot")
   val dbFile = new File(confBaseDir, ".db")
@@ -35,13 +37,25 @@ class DirectoryArchitect(val flat: Boolean,
     new File(relativeTo, taskName).getAbsoluteFile
   }
   
-  def assignDir(task: RealTask, relativeTo: File = confBaseDir): File
-    = assignDir(task.taskDef, task.realization, relativeTo, task.realization.toString)
+  // assign a version and realization-specific task directory (convenience method)
+  def assignDir(task: VersionedTask): File = assignDir(task, relativeTo=confBaseDir)
+
+  // assign a version and realization-specific task directory (convenience method)
+  def assignDir(task: VersionedTask, relativeTo: File): File
+    = assignDir(task.taskDef, task.realization, task.version, relativeTo, task.realization.toString)
   
-  def assignDir(taskDef: TaskDef, realization: Realization): File
-    = assignDir(taskDef, realization, confBaseDir, realization.toString)
+  // assign a version and realization-specific task directory (convenience method)
+  def assignDir(taskDef: TaskDef, realization: Realization, workflowVersion: Int,
+                relativeTo: File = confBaseDir): File
+    = assignDir(taskDef, realization, workflowVersion, relativeTo, realization.toString)
   
-  private def assignDir(taskDef: TaskDef, realization: Realization, relativeTo: File, realName: String): File = {
+  // assign a version and realization-specific task directory
+  private def assignDir(taskDef: TaskDef,
+                        realization: Realization,
+                        workflowVersion: Int,
+                        relativeTo: File,
+                        realName: String): File = {
+
     val packedDir = assignPackedDir(taskDef.name, relativeTo)
     if (flat) {
       if (realization != Task.NO_REALIZATION) { // TODO: Statically check this elsewhere, too?
@@ -49,7 +63,12 @@ class DirectoryArchitect(val flat: Boolean,
       }
       packedDir
     } else { // using hyper structure
-      new File(packedDir, realName).getAbsoluteFile 
+      val realizationDir = new File(packedDir, realName).getAbsoluteFile
+      if (versionedTasks) {
+        new File(realizationDir, workflowVersion.toString).getAbsoluteFile
+      } else {
+        realizationDir
+      }
     }
   }
 
@@ -59,12 +78,12 @@ class DirectoryArchitect(val flat: Boolean,
   //   internally by ducttape
   // will return None if we are using flat structure since we will never
   //   have multiple realizations there OR if the symlink would be the same as the original dir
-  def assignLongSymlink(task: RealTask): Option[File] = {
+  def assignLongSymlink(task: VersionedTask): Option[File] = {
     if (flat) {
       None
     } else {
-      val orig = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toString)
-      val link = assignDir(task.taskDef, task.realization, confBaseDir, task.realization.toFullString)
+      val orig = assignDir(task.taskDef, task.realization, task.version, confBaseDir, task.realization.toString)
+      val link = assignDir(task.taskDef, task.realization, task.version, confBaseDir, task.realization.toFullString)
       if (orig.getAbsolutePath == link.getAbsolutePath || task.realization.hasSingleBranchBaseline) {
         None
       } else {
@@ -74,16 +93,16 @@ class DirectoryArchitect(val flat: Boolean,
   }
   
   val atticDir = new File(confBaseDir, ".attic")
-  def assignAtticDir(task: RealTask, version: Int)
-    = assignDir(task, relativeTo=new File(atticDir, version.toString)) 
+  def assignAtticDir(task: VersionedTask)
+    = assignDir(task, relativeTo=new File(atticDir, task.version.toString))
 
   def assignBuildDir(packageName: String, packageVersion: String): File = {
     new File(confBaseDir, ".packages/%s/%s".format(packageName, packageVersion))
   }
 
-  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization): File = {
+  def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, taskVersion: Int): File = {
     //println("Assigning outfile for " + spec)
-    val taskDir = assignDir(taskDef, realization)
+    val taskDir = assignDir(taskDef, realization, taskVersion)
     assert(!spec.isInstanceOf[BranchPointDef])
 
     spec.rval match {
@@ -113,7 +132,8 @@ class DirectoryArchitect(val flat: Boolean,
                 realization: Realization,
                 srcSpec: Spec,
                 srcTaskDefOpt: Option[TaskDef],
-                srcRealization: Realization): File = {
+                srcRealization: Realization,
+                srcVersion: Int): File = {
 
     srcTaskDefOpt match {
       // no source task? this better be a literal
@@ -124,7 +144,7 @@ class DirectoryArchitect(val flat: Boolean,
       }
       
       // has a source task? just recover the output path in the same way as when we originally produced it
-      case Some(srcTaskDef) => assignOutFile(srcSpec, srcTaskDef, srcRealization) 
+      case Some(srcTaskDef) => assignOutFile(srcSpec, srcTaskDef, srcRealization, srcVersion)
     }
   }
   

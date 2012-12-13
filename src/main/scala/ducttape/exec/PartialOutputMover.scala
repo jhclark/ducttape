@@ -6,7 +6,7 @@ import ducttape.workflow.Realization
 import ducttape.util.Files
 import ducttape.util.OrderedSet
 import ducttape.util.MutableOrderedSet
-import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.versioner.TaskVersion
 
 import grizzled.slf4j.Logging
@@ -25,7 +25,7 @@ class PartialOutputMover(dirs: DirectoryArchitect,
                          broken: Set[(String,Realization)],
                          locker: LockManager) extends UnpackedDagVisitor with Logging {
   
-  override def visit(task: RealTask) {
+  override def visit(task: VersionedTask) {
     
     debug("Considering %s".format(task))
     
@@ -50,11 +50,8 @@ class PartialOutputMover(dirs: DirectoryArchitect,
 
 object PartialOutputMover {
   def moveToAttic(taskEnv: TaskEnvironment) {
-    val task = taskEnv.task
-
-    val version = TaskVersion.read(taskEnv.versionFile)
-    val origDir = taskEnv.dirs.assignDir(task)
-    val atticDir = taskEnv.dirs.assignAtticDir(task, version)
+    val origDir = taskEnv.dirs.assignDir(taskEnv.task)
+    val atticDir = taskEnv.dirs.assignAtticDir(taskEnv.task)
     Files.moveDir(origDir, atticDir)
   }
 }

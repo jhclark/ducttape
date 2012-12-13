@@ -1,15 +1,17 @@
 package ducttape.cli
 
 import collection.Set
+import ducttape.exec.FullTaskEnvironment
+import ducttape.exec.DirectoryArchitect
+import ducttape.exec.PackageVersioner
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.PlanPolicy
-import ducttape.exec.FullTaskEnvironment
 import ducttape.workflow.TaskTemplate
-import ducttape.exec.DirectoryArchitect
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
-import ducttape.exec.PackageVersioner
+import ducttape.versioner.WorkflowVersionInfo
 import ducttape.util.Shell
 
 object EnvironmentMode {
@@ -17,6 +19,7 @@ object EnvironmentMode {
   def run(workflow: HyperWorkflow,
           planPolicy: PlanPolicy,
           packageVersions: PackageVersioner,
+          workflowVersion: WorkflowVersionInfo, // this should be from some *previous* version
           showCommands: Boolean = false)
          (implicit opts: Opts, dirs: DirectoryArchitect) {
     
@@ -37,10 +40,10 @@ object EnvironmentMode {
     }.toIterable
     System.err.println("Found %d vertices with matching task name".format(matchingTasks.size))
     
-    val matchingReals: Iterable[RealTask] = {
+    val matchingReals: Iterable[VersionedTask] = {
       matchingTasks.map { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
-        val task: RealTask = taskT.realize(v)
+        val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
         if (goalRealName == "*" || task.realization.toString == goalRealName) {
           Some(task)
         } else {
@@ -50,7 +53,7 @@ object EnvironmentMode {
     }
     System.err.println("Found %d vertices with matching realizations".format(matchingReals.size))
     
-    for (task: RealTask <- matchingReals) {
+    for (task: VersionedTask <- matchingReals) {
       println("# " + task.name + " " + task.realization + ":")
       val env = new FullTaskEnvironment(dirs, packageVersions, task)
       for ( (k,v) <- env.env) {
