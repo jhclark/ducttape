@@ -152,7 +152,7 @@ class BlockTest extends AbstractTest("block",Grammar.block) {
     // Looking for a piece
     (d: *) // of cheese
     }}""",       
-"""task x = filter < in=x.txt > out""",
+"""task x calls filter < in=x.txt > out""",
 """group g {
 }""",
 """group g {

@@ -59,13 +59,13 @@ object Plans extends Logging {
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
    *
-   * planName specifies a specific plan name that should be used. if not specified, the union of all plans is used.
+   * planNames specifies specific plan names that should be used. if not specified, the union of all plans is used.
    */
   def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
-                         planName: Option[String] = None)
+                         planNames: Option[Seq[String]] = None)
                         : PlanPolicy = {
     
     // Pass 1: One backward pass per task that has a branch graft
@@ -147,12 +147,20 @@ object Plans extends Logging {
         System.err.println("Finding hyperpaths contained in plan...")
          
         val vertexFilter = new mutable.HashSet[(String,Realization)]
-        val plans: Seq[RealizationPlan] = planName match {
-          case None => workflow.plans
-          case Some(name) => workflow.plans.filter(_.name == Some(name)) match {
-            // TODO: Change to CLI exception?
-            case Seq() => throw new RuntimeException("Specified plan not found: '%s'. Candidates are: ".format(name, workflow.plans.map(_.name.getOrElse("*anonymous*")).mkString(" ")))
-            case matches @ _ => matches
+        val plans: Seq[RealizationPlan] = planNames match {
+          case None => workflow.plans // use union of all plans if none are specified
+          case Some(names) => {
+            val requestedNames: Set[String] = names.toSet
+            workflow.plans.filter { plan: RealizationPlan =>
+              plan.name match {
+                case None => false
+                case Some(name) => requestedNames.contains(name)
+              }
+            } match {
+              // TODO: Change to CLI exception?
+              case Seq() => throw new RuntimeException("One of the specified plans was not found: '%s'. Candidates are: ".format(planNames.mkString(" "), workflow.plans.map(_.name.getOrElse("*anonymous*")).mkString(" ")))
+              case matches @ _ => matches
+            }
           }
         }
         for (plan: RealizationPlan <- plans) {

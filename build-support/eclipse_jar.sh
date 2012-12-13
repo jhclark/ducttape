@@ -5,3 +5,5 @@ rootDir=$scriptDir/..
 
 echo >&2 "Building JAR..."
 (cd $rootDir/bin/eclipse; zip -qr $rootDir/ducttape.jar *)
+(cd $rootDir; zip -gqr $rootDir/ducttape.jar version.info)
+

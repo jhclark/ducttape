@@ -37,6 +37,17 @@ cd ducttape-0.2/tutorial
 ducttape 01-01-hello-world.tape
 ```
 
+Or, if you're coming from machine translation, try building the entire cdec tutorial in a single command (see http://www.cdec-decoder.org/guide/tutorial.html):
+
+```bash
+wget www.cs.cmu.edu/~jhclark/cdec_tutorial.tar.gz
+cd cdec_tutorial/
+# Run 2 jobs at a time
+ducttape tutorial.tape -C tutorial.tconf -j2
+# Now view a summary table of the results! (All 1 of them)
+ducttape tutorial.tape -C tutorial.tconf summary scores
+```
+
 What's next? Read [TUTORIAL.md](https://github.com/jhclark/ducttape/blob/master/tutorial/TUTORIAL.md).
 
 
@@ -65,6 +76,8 @@ Updates
 =======
 
 To keep updated on the latest versions of ducttape, subscribe to our low-traffic announcement mailing list: https://groups.google.com/group/ducttape-announce
+
+If you have questions about how to use ducttape, please post on StackOverflow using the tag "ducttape": http://stackoverflow.com/questions/ask?tags=ducttape. If you'd like to help other ducttape users or keep up with questions being asked about ducttape, please use http://stackexchange.com/filters/new to create a daily email subscription to StackExchange questions with the tag "ducttape".
 
 To stay in the loop on ducttape development, subscribe to our higher traffic development mailing list: https://groups.google.com/group/ducttape-dev
 
@@ -97,3 +110,10 @@ syntax on
 filetype on
 au BufRead,BufNewFile *.tape set filetype=ducttape
 ```
+
+Related Projects
+================
+
+Minimal Web UI for ducttape: https://github.com/vchahun/ducttape-web
+
+Better Vim Mode: https://github.com/vchahun/vim-ducttape (This will either replace or be merged with the current vim files)

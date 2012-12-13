@@ -3,11 +3,15 @@
 
 # To define a subworkflow in the same file:
 # NOTE: Packages are not allowed following group definition
-group TM < in1=x.txt > out1=$out@Y {
-  task X < in=$TM/in1 > out {
+func group TM < in1=x.txt > out1=$out@Y {
+  task X < in=$in1@TM > out {
     cat < $in >$out
   }
-  task Y: package < in=$X/out > out {
+  task Y : my_fine_tool < in=$out@X > out {
     cat < $in > $out
   }
 }
+
+# Groups cause nested directory structure
+# Any functions declared within a group are local to that function
+# TODO: A func group can be instantiated as a task later
