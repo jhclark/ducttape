@@ -69,7 +69,6 @@ import ducttape.util.Shell
 
 import grizzled.slf4j.Logging
 
-
 object Ducttape extends Logging {
   
   def main(args: Array[String]) {
@@ -99,10 +98,6 @@ object Ducttape extends Logging {
     } else {
       new WorkflowDefinition(Nil)
     }
-    
-    err.println("%sDuctTape v0.2".format(Config.headerColor))
-    err.println("%sBy Jonathan Clark".format(Config.byColor))
-    err.println(Config.resetColor)
     
     // make these messages optional with verbosity levels?
     debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
@@ -135,7 +130,7 @@ object Ducttape extends Logging {
     }
     
     // TODO: Can we remove this entirely now that config files have the same syntax as regular .tape files?
-    val confSpecs: Seq[ConfigAssignment] = {
+    val confSpecs: Seq[ConfigAssignment] = ex2err {
       opts.config_file.value match {
         // use anonymous conf from config file, if any
         case Some(_) => wd.anonymousConfig match {
@@ -287,12 +282,19 @@ object Ducttape extends Logging {
       val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, msgCallback)
       Visitors.visitAll(workflow, cc, planPolicy, unionVersion)
     }
-    
+
+    // get what packages are needed by the planned vertices and
+    // what repo version of each of those we have built already (if any)    
     def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy, workflowVersion: WorkflowVersionInfo) = {
+
+      // find what packages are required by the planned vertices
+      // TODO: Always return all packages when using auto_update?
       val packageFinder = new PackageFinder(cc.map(_.todo), workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, planPolicy, workflowVersion)
       System.err.println("Found %d packages".format(packageFinder.packages.size))
 
+      // now see what the repo version is for these packages
+      // and also determine if they need to be rebuilt in execute mode
       err.println("Checking for already built packages...")
       val packageVersions = new PackageVersioner(dirs, workflow.versioners)
       packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)

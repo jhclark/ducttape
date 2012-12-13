@@ -125,14 +125,16 @@ class CompletionChecker(dirs: DirectoryArchitect,
       // But if it gave us a previous version, we want to reject that version and start a new one
       _todoVersions += new VersionedTaskId(task.name, task.realization.toCanonicalString, nextWorkflowVersion)
       _todo += ((task.name, task.realization))
-      
-      if (CompletionChecker.isBroken(taskEnv)) {
-        debug("Broken: " + task)
-        _broken += ((task.name, task.realization))
-        
-      } else if (CompletionChecker.isLocked(taskEnv)) {
+
+      // Important: Check for locking *before* checking if something is broken
+      // since not all output files may exist while another process is working on this task
+      if (CompletionChecker.isLocked(taskEnv)) {
         debug("Locked: " + task)
         _locked += ((task.name, task.realization))
+        
+      } else if (CompletionChecker.isBroken(taskEnv)) {
+        debug("Broken: " + task)
+        _broken += ((task.name, task.realization))
         
       } else if (CompletionChecker.hasPartialOutput(taskEnv)) {
         debug("Partially complete: " + task)

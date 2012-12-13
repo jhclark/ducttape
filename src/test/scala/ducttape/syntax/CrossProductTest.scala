@@ -129,12 +129,8 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     }""",
     
     // Default via
-    "reach goal"
+    "reach goal",
     
-  ) 
-  
-  def failureCases = Set(
-      
     // With comments
     """reach goal via (
       // Here is a comment
@@ -203,7 +199,11 @@ class CrossProductTest extends AbstractTest("cross product",Grammar.crossProduct
     // And more
     // and more
     // and More
-    )""",
+    )"""    
+    
+  ) 
+  
+  def failureCases = Set(     
     
     // Anonymous branch point with bare rvalues
     "(foo)",

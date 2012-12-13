@@ -10,7 +10,8 @@ object ColorUtils {
     if (dirs.flat) {
       x
     } else {
-      x + "/%s%s%s".format(Config.realNameColor, real.toString, Config.resetColor)
+      x + "/%s%s%s (%s%s%s)".format(Config.realNameColor, real.toString, Config.resetColor,
+                                    Config.realFullNameColor, real.toFullString(hashLongNames=false), Config.resetColor)
     }
   }
   

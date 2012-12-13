@@ -55,6 +55,10 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
 
   // TODO: Identify unrecognized ducttape directives and error out?
 
+  // do we check for new versions of software every time we run a workflow?
+  // or only when we initiate a new workflow and then only on-demand?
+  val autoUpdatePackages: Boolean = parseExperimental("ducttape_auto_update_packages")
+
   // experimental directives
   val enableImports: Boolean = parseExperimental("ducttape_experimental_imports")
   val enablePackages: Boolean = parseExperimental("ducttape_experimental_packages")
