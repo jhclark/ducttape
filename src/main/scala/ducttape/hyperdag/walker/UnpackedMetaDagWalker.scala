@@ -10,7 +10,11 @@ import annotation.tailrec
 
 /** our only job is to hide epsilon vertices during iteration
  *  see UnpackedDagWalker for definitions of filter and state types
- *  F is the FilterState */
+ * 
+ * see [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types V,M,H,E
+ * see [[ducttape.hyperdag.walker.UnpackedDagWalker]] for definitions of generic types D,F
+ */
+
 class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
     munger: RealizationMunger[V,H,E,D,F],

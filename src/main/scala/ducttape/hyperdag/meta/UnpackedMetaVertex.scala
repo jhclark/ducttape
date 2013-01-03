@@ -4,10 +4,6 @@ import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.UnpackedVertex
 
 /**
- *  Unlike a plain UnpackedVertex, with a MetaHyperDAG, our choice of incoming
- * Meta edge may affect what our previous constraint state is (since we traverse
- * multiple hyperedges). Therefore, we must include a mapping from metaEdge to prevState
- *
  * All incoming metaedges to a vertex will be assigned exactly one of their member hyperedges.
  * This is represented by the sequence "edges". The parentRealizations are actually parallel
  * with the number of incoming metaedges for a vertex. The next sequence is parallel with the
@@ -19,8 +15,21 @@ import ducttape.hyperdag.UnpackedVertex
  * the prevState can store information such as "what realizations does my parent have?"
  * NOTE: It's actually the incoming edges that are meta -- not the vertex itself
  * 
- * parentRealizations is parallel with the edges -- the second layer of sequences is parallel
- *   with the plain edges inside each hyperedge. The final sequence represents a realization. */
+ * parentRealizations is parallel (i.e. has the same array length) with "edges", which is
+ *   the hyperedges associated with this metaedge
+ *   the second layer of sequences is parallel with the plain edges inside each hyperedge (Seq[Seq[D]]).
+ *   the inner-most sequence represents a realization (Seq[D]).
+ *
+ * For readability, you could mentally typedef:
+ * type Realization = Seq[D]
+ * type HyperEdgeParentRealizations = Seq[Realization]
+ * type MetaEdgeParentRealizations = Seq[Seq[Realization]]
+ *
+ * dual: The "dualistic" representation of this meta vertex in underlying HyperDag (not MetaHyperDag)
+ *       used to represent this MetaHyperDag.
+ *
+ * see [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types
+ */
 class UnpackedMetaVertex[V,H,E,D](val packed: PackedVertex[V],
                                   val edges: Seq[HyperEdge[H,E]],
                                   val realization: Seq[D],

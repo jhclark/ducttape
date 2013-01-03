@@ -13,6 +13,31 @@ import ducttape.hyperdag.walker.DefaultRealizationMunger
 
 import collection._
 
+/** Adds the ability to specify "phantom" vertices, which are not explicitly
+  * traversed when walking the DAG. These can serve as axiomatic vertices
+  * (such as an already-existing input path in a workflow) or can be structural
+  * placeholders to allow extra elements to be added to the derivation between
+  * non-phantom vertices. For example, phantom vertices allow nested branch points
+  * in ducttape. This preserves AND-OR alternation in the MetaHyperDag.
+  *
+  * All packed vertices in a PhantomMetaHyperDag are of type PackedVertex[Option[V]]
+  * rather than PackedVertex[V] for unfortunate technical reasons.
+  * Phantom vertices are indicated by a PackedVertex having a payload value of None.
+  * However, a PhantomMetaHyperDagWalker will only ever return vertices with a
+  * "Some" value. The walker returns unpacked vertices of type
+  * [[ducttape.hyperdag.meta.UnpackedChainedMetaVertex]]
+  * 
+  * phantom edge: an edge with no source vertices
+  * phantom vertex: the source vertex of a phantom edge
+  *   used in ducttape for literal file paths, which may be linked with branches
+  *   but don't have any executable code associated with them
+  * TODO: Should this be incorporated into HyperDAG, too?
+  *
+  * See [[ducttape.hyperdag.meta.UnpackedChainedMetaVertex]] for information on
+  * how a phantom meta hyperdag is traversed.
+  *
+  * See [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types.
+  */
 class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) {
   
   def packedWalker() = new PackedPhantomMetaDagWalker[V](this)

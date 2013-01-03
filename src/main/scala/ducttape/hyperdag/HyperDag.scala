@@ -11,7 +11,29 @@ import ducttape.hyperdag.walker.DefaultRealizationMunger
 // XXX: HACK
 import ducttape.workflow.SpecGroup
 
-// immutable
+/**
+ * An immutable representation of a Directed Acyclic Hypergraph (HyperDAG), returned
+ * by a builder.
+ *
+ * roots: the vertices that have no parents
+ * vertices: a complete list of all vertices in the HyperDAG
+ * inEdgesMap: a map from a packed vertex to its incoming hyperdges
+ * outEdgesMap: a map from a packed vertex to a sequence of hyperedges. each hyperedge
+ *              will have one or more source vertices. the specified packed vertex must be
+ *              one of those source vertices.
+ * edges: a map from a hyperedge to a pair. the first element of the pair specifies
+ *        the source vertices of the hyperedge (which are isomorphic to the hyperedge's edges).
+ *        the second element of the pair specifies the sink vertex of the hyperedge.
+ *
+ * Note: In GraphViz or written notation, a "sink" vertex is the vertex pointed to by
+ *       the hyperedge's arrow.
+ *
+ * V is the vertex payload type (in a workflow, this will be a TaskTemplate)
+ * H is the hyperedge payload type (each hyperedge is composed of component "incoming" edges;
+ *                                  in a workflow, this might be a Branch)
+ * E is the edge payload type (in a workflow, this will be the set of input-output file pair
+ *                             connected by the edge)
+ */
 class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
                       val vertices: Seq[PackedVertex[V]],
                       private[hyperdag] val inEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],

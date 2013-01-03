@@ -12,9 +12,14 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
 import ducttape.hyperdag.HyperEdge
 import scala.annotation.tailrec
 
-// NOTE: Root/terminal phantom vertices behave very different than internal phantom vertices
-//       perhaps they deserve different names or special treatment otherwise?
-// TODO: Create ChainedUnpackedVertex and return those instead
+/**
+ * The main job of this walker is to skip phantom vertices while remembering which phantom
+ * vertices were skipped. The skipped phantom vertices are then flattened into a
+ * [[ducttape.hyperdag.meta.UnpackedChainedMetaVertex]].
+ * 
+ * See [[ducttape.hyperdag.meta.PhantomMetaHyperDag]] for definitions of terms and generic types.
+ * See [[ducttape.hyperdag.walker.UnpackedDagWalker]] for definitions of generic types D,F
+ */
 class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         val dag: PhantomMetaHyperDag[V,M,H,E],
         munger: RealizationMunger[Option[V],H,E,D,F],

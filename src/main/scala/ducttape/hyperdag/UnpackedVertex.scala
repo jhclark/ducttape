@@ -1,8 +1,16 @@
 package ducttape.hyperdag
 
-/** this interface explicitly avoids giving unpacked vertices as
- * parents so that we can eventually discard more of the explored space
- * the prevState can store information such as "what realizations does my parent have?" */
+/**
+ * An UnpackedVertex is returned by a walker while traversing and
+ * unpacking a HyperDAG.
+ * 
+ * Note: this interface explicitly avoids giving unpacked vertices as
+ * parents so that we cabn eventually discard more of the explored space
+ * the prevState can store information such as "what realizations does my parent have?"
+ *
+ * see [[ducttape.hyperdag.HyperDag]] for definitions of generic types V, H, E
+ * see [[ducttape.hyperdag.walker.UnpackedDagWalker]] for definition of generic type D
+ */
 class UnpackedVertex[V,H,E,D](val packed: PackedVertex[V],
                               val edge: Option[HyperEdge[H,E]],
                               val realization: Seq[D],
