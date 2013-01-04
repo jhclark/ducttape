@@ -232,7 +232,7 @@ object Ducttape extends Logging {
 
     def getPlannedVertices(workflowVersion: WorkflowVersionInfo): PlanPolicy = {
       // pass in user-specified plan name -- iff it was specified by the user -- otherwise use all plans
-      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, workflowVersion, planName=opts.plan)
+      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, workflowVersion, planNames=opts.plans)
       planPolicy match {
         case VertexFilter(plannedVertices) => {
           System.err.println("Planned %s vertices".format(plannedVertices.size))

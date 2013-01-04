@@ -290,7 +290,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     debug("Workflow has versioners: %s".format(versioners.map(_.name).mkString(" ")))
 
     val result = new HyperWorkflow(dag.build(), packageDefs, plans, submitters, versioners, branchPointFactory, branchFactory)
-    debug("Workflow has %d vertices".format(x.dag.size))
+    debug("Workflow has %d vertices".format(result.dag.size))
     result
   } // end build()
 }
