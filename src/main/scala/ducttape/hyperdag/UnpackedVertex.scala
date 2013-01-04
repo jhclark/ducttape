@@ -8,6 +8,10 @@ package ducttape.hyperdag
  * parents so that we cabn eventually discard more of the explored space
  * the prevState can store information such as "what realizations does my parent have?"
  *
+ * @param parentRealizations The realizations for each parent of this vertex.
+ *                           The ordering of the parent realizations is parallel with the 
+ *                           ordering returned by [[HyperDag.parents()]]
+ *
  * see [[ducttape.hyperdag.HyperDag]] for definitions of generic types V, H, E
  * see [[ducttape.hyperdag.walker.UnpackedDagWalker]] for definition of generic type D
  */

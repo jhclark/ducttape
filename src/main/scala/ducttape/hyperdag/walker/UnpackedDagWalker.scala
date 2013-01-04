@@ -44,7 +44,8 @@ class UnpackedDagWalker[V,H,E,D,F](
     val dag: HyperDag[V,H,E],
     munger: RealizationMunger[V,H,E,D,F],
     vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-    toD: H => D = new DefaultToD[H])
+    toD: H => D = new DefaultToD[H],
+    traversal: Traversal = Arbitrary)
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
@@ -183,6 +184,31 @@ class UnpackedDagWalker[V,H,E,D,F](
     }
 
   } // end ActiveVertex
+
+  private val agendaComparator = {
+  
+    def assignVertexIndices() : Map[(PackedVertex[_],Seq[_]),Int] = {
+  	
+  	  val vertexIDs = new mutable.HashMap[(PackedVertex[_],Seq[_]),Int]
+  	
+  	  dag.unpackedWalker(munger,vertexFilter,toD).foreach { vertex:UnpackedVertex[V,H,E,D] =>   	
+  	  	val packedParents = dag.parents(vertex.packed)
+  		val tuples        = packedParents.zip(vertex.parentRealizations)
+  		val maxParentID: Int   = if (tuples.isEmpty) 0 
+  			                else tuples.maxBy[Int]{ tuple => vertexIDs(tuple) }
+  		vertexIDs.put((vertex.packed,vertex.realization), maxParentID+1)
+  	  }
+  	  
+  	  return vertexIDs	
+  	
+  	}
+  	
+  	traversal match { 
+  		case Arbitrary    => Arbitrary.comparator;
+  		case BreadthFirst => BreadthFirst.comparator(assignVertexIndices());
+  		case DepthFirst   => DepthFirst.comparator(assignVertexIndices());
+  	}
+  }
 
   // NOTE: All synchronization is done via our 2 lock objects
   private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
