@@ -262,7 +262,7 @@ object Ducttape extends Logging {
             
     // Check version information
     val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
-    err.println("Have %d previous workflow versions".format(history.prevVersion))
+    err.println("Have %d previous workflow versions".format(history.prevVersion.getOrElse(0)))
     
     // this is a critical stage for versioning -- here, we decide whether or not
     // we have an acceptable existing version of a task or if we'll need a new
