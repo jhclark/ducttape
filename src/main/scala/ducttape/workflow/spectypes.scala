@@ -16,7 +16,7 @@ class SpecPairType[SpecT <: Spec](
   }
 }
                                         
-// TaskTemplate is responsible for turning a Resolvable into a Resolved
+// TaskTemplate is responsible for turning a Resolvable into a Resolved (i.e. realized)
 class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
                                       val srcTask: Option[TaskDef],
                                       val srcSpec: SpecT,
@@ -43,7 +43,9 @@ object SpecTypes {
 }
 import SpecTypes._
 
-// NOTE: This is primarily how edges are visualized in the GraphViz representation
+/** This is the payload type of an edge. See [[ducttape.workflow.Types]] and UnpackedWorkVert.
+ * 
+ * NOTE: This is primarily how edges are visualized in the GraphViz representation */
 class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
   def toString(withNewlines: Boolean) = {
     if (withNewlines) {

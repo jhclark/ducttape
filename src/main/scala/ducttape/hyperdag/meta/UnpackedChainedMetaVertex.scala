@@ -33,6 +33,8 @@ import ducttape.hyperdag.UnpackedVertex
  *        hide all phantom and epsilon vertices from the user (via flattening). However, due to
  *        the flattening, we no longer know which phantom vertices these are parallel/isomorphic to.
  *        This means client code does not need recursion to access this data structure.
+ *
+ * See [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types.
  */
 class UnpackedChainedMetaVertex[V,H,E,D](
     val packed: PackedVertex[Option[V]],

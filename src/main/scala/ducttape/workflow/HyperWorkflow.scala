@@ -28,6 +28,10 @@ object HyperWorkflow {
   type UnpackedWalker = UnpackedPhantomMetaDagWalker[TaskTemplate,BranchPoint,Branch,SpecGroup,Branch,UnpackState]
   type HyperWorkflowMunger = RealizationMunger[Option[TaskTemplate], Branch, SpecGroup, Branch, UnpackState]
   
+/**
+ * See also [[ducttape.workflow.Types.UnpackState]] for an explanation
+ * of how the UnpackState functions.
+ */  
   trait HyperWorkflowStateMunger extends HyperWorkflowMunger {
     
     // heBranch might be None if this vertex has no incoming hyperedge
@@ -35,6 +39,13 @@ object HyperWorkflow {
       case None => UnpackState.empty
       // This line is cool: It cleanly states that branches introduced at a hyperedge
       // are never subject to the grafts of that hyperedge's component edges
+      //
+      // For example, consider a task t1 that has a realization BP1.b1. We also have a
+      // task t2 has an incoming hyperedge that introduces branch BP1.b2, but one of
+      // its component edges matches and grafts away BP1.b1 such that it doesn't conflict
+      // with BP1.b1. The separation of the hyperedgeState and edgeState allows this.
+      // This line also shows that just-introduced branches such as BP1.b2 can never be
+      // grafted away by component edges.
       case Some(branch: Branch) => new UnpackState(
         hyperedgeState=UnpackState.emptyMap + ((branch.branchPoint, branch)),
         edgeState=UnpackState.emptyMap)
