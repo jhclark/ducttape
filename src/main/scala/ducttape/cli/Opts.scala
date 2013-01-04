@@ -24,7 +24,6 @@ class Opts(args: Seq[String]) extends OptParse {
     }
   }
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
-  val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
 
