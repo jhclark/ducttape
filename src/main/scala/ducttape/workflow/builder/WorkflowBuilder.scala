@@ -219,6 +219,14 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   }
 
   // create dependency pointers based on workflow definition
+  //
+  // TODO: Implement branch globbing. Here are some notes on how that might be done:
+  /*
+  	The AST creation needs to recognize globs and create an AST node for the glob
+ 	 The TaskTemplateBuilder will pattern match this new node at some point
+ 	 At that point it needs to create a new GlobSpec type
+ 	 
+   */
   def build(): HyperWorkflow = {
     val confSpecs: Map[String, Spec] = configSpecs.map { a: ConfigAssignment => (a.spec.name, a.spec) }.toMap
 
