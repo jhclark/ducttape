@@ -6,11 +6,12 @@ import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.workflow.SpecTypes._
 import ducttape.versioner.WorkflowVersionInfo
 
-// short for "realized task"
-// we might shorten this to Task
+/** One step away from the main task class of VersionedTask.
+ *  Can be created via TaskTemplate.toRealTask
+ *  short for "realized task"
+ */
 class RealTask(val taskT: TaskTemplate,
                val realization: Realization,
-               // TODO: Change inputVals and paramVals over to Realization?
                val inputVals: Seq[ResolvedSpec],
                val paramVals: Seq[ResolvedLiteralSpec]) {
 

@@ -20,6 +20,16 @@ import ducttape.hyperdag.UnpackedVertex
  *   the second layer of sequences is parallel with the plain edges inside each hyperedge (Seq[Seq[D]]).
  *   the inner-most sequence represents a realization (Seq[D]).
  *
+ * The incoming hyperedges for this UnpackedMetaVertex (edges) are parallel with the the outer-most
+ * sequence of parentRealizations. This allows us to access each parent vertex's active realization
+ * using the following pattern:
+ *   val v: UnpackedMetaVertex = ...
+ *   v.edges.zip(v.parentRealizations).foreach { case (hyperedgeElements: HyperEdge[H,E], parentReals: Seq[Seq[D]]) =>
+ *     hyperedgeElements.zip(parentReals).foreach { case (e, parentReal) =>
+ *       System.out.println("Parent realization of edge " + e + "is " + parentReal)
+ *     }
+ *   }
+ *
  * For readability, you could mentally typedef:
  * type Realization = Seq[D]
  * type HyperEdgeParentRealizations = Seq[Realization]

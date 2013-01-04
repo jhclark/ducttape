@@ -30,7 +30,7 @@ object Plans extends Logging {
   
   // implemented the second forward pass through the HyperDAG
   // using a PatternFilter
-  def getCandidates(workflow: HyperWorkflow,
+  private def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
                     workflowVersion: WorkflowVersionInfo,
                     explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
@@ -64,7 +64,7 @@ object Plans extends Logging {
    *
    * planNames specifies specific plan names that should be used. if not specified, the union of all plans is used.
    */
-  def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
+  private def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
                          workflowVersion: WorkflowVersionInfo,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
@@ -72,24 +72,28 @@ object Plans extends Logging {
                          planNames: Option[Seq[String]] = None)
                         : PlanPolicy = {
     
-    // Pass 1: One backward pass per task that has a branch graft
-    //   tasks that are dependents of branch grafts will always be run for the realization
-    //   required by the branch graft
-    // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
-    //   realizations that shouldn't be selected.
-
     debug("Finding graft relaxations...")
 
     // TODO: Do this in two phases: 1) get direct grafts 2) propagate to parents
     val immediateGrafts = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
 
-    // 1) get grafts at each vertex (we'll propagate them to dependencies next)
+    // 1) Accumulate graft relaxations:
+    //    get grafts at each vertex (we'll propagate them to dependencies next).
+    //    we must do this because we don't want to force the user to mention grafts 
+    //    explicitly in the plan
     // TODO: Packed walker seems to have odd behavior
+    //
+    // Pass 1: One backward pass per task that has a branch graft
+    //   tasks that are dependents of branch grafts will always be run for the realization
+    //   required by the branch graft
+    // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
+    //   realizations that shouldn't be selected.
     for (v: PackedWorkVert <- workflow.dag.delegate.delegate.vertices) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
         trace("Find graft relaxations for %s: Considering hyperedge with sources: %s".format(v, workflow.dag.sources(hyperedge)))
 
-        // TODO: Record the realizations for which this graft is required?
+        // TODO: Record the realizations for which this graft is required -- if we want to save some time
+        //       (It could occur inside a nested branch point)
         hyperedge.e.foreach { specGroup: SpecGroup =>
           trace("Find graft relaxations for %s: Considering edge: %s".format(v, specGroup))
           if (specGroup != null && !specGroup.grafts.isEmpty) {
@@ -121,6 +125,7 @@ object Plans extends Logging {
     }
 
     // TODO: Sort vertices?
+    // Iterate over tasks that have any grafts
     for ( (v: PackedWorkVert, grafts: Set[Branch]) <- immediateGrafts) {
       // recursively find all dependencies of this vertex & add graft relaxations
       visitDependencies(v, v, grafts)
@@ -177,15 +182,15 @@ object Plans extends Logging {
           //   since some branch points may become visible or invisible based on which branches are active.
           val candidates: Map[(String,Realization), RealTask]
             = getCandidates(workflow, plan, workflowVersion, explainCallback, graftRelaxations)
-          val fronteir = new mutable.Queue[RealTask]
           
           System.err.println("Have %d candidate tasks matching plan's realizations: %s".format(
             candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
           
-          // Initialize for Pass 3: Take the union over active plans
+          // Initialize for Pass 3: Take the union over active plans, working inside the *unpacked* workflow
           //   to obtain the realizations desired for each goal task 
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
+          val fronteir = new mutable.Queue[RealTask]
           for (goalTask <- plan.goalTasks) {
             val goalRealTasks: Iterable[RealTask] = candidates.filter {
               case ( (tName, _), _) => tName == goalTask

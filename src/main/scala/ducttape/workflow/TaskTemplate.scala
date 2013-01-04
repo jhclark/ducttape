@@ -26,7 +26,6 @@ import grizzled.slf4j.Logging
  * elements such as parameters here, which do not induce temporal dependencies, but may
  * be used in branch points and branch grafts.
  */
-// TODO: fix these insane types for inputVals and paramVals
 class TaskTemplate(val taskDef: TaskDef,
                    val inputVals: Seq[SpecPair],
                    val paramVals: Seq[LiteralSpecPair])
@@ -52,7 +51,11 @@ class TaskTemplate(val taskDef: TaskDef,
      
      // get the specs that are active for this realization
      val specs: Seq[(SpecPair, Realization)] = {
+       // v has a list of edges for each parent and a list of the realization for each parent
+       // iterate over these in parallel
+       // see [[ducttape.hyperdag.UnpackedMetaVertex]]
        v.edges.zip(v.parentRealizations).flatMap { case (hyperedgeElements, parentReals) =>
+         // hyperedgeElements is parallel with the parent realizations
          hyperedgeElements.zip(parentReals).flatMap { case (e, parentBranches) =>
            val parentReal = new Realization(parentBranches)
            e.specPairs.map { spec: SpecPair =>
