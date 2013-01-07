@@ -190,15 +190,20 @@ class UnpackedDagWalker[V,H,E,D,F](
     def assignVertexIndices() : Map[(PackedVertex[_],Seq[_]),Int] = {
   	
   	  val vertexIDs = new mutable.HashMap[(PackedVertex[_],Seq[_]),Int]
-  	
-  	  dag.unpackedWalker(munger,vertexFilter,toD).foreach { vertex:UnpackedVertex[V,H,E,D] =>   	
-  	  	val packedParents = dag.parents(vertex.packed)
-  		val tuples        = packedParents.zip(vertex.parentRealizations)
-  		val maxParentID: Int   = if (tuples.isEmpty) 0 
-  			                else tuples.maxBy[Int]{ tuple => vertexIDs(tuple) }
-  		vertexIDs.put((vertex.packed,vertex.realization), maxParentID+1)
+
+  	  dag.unpackedWalker(munger,vertexFilter,toD).foreach { 
+  	    vertex:UnpackedVertex[V,H,E,D] => { 
+
+  	      val packedParents = dag.parents(vertex.packed)
+  	      val tuples        = packedParents.zip(vertex.parentRealizations)
+  	      val maxParentID: Int   = 
+  	        if (tuples.isEmpty) 0 
+  	        else tuples.map( tuple => vertexIDs(tuple) ).max
+  	      vertexIDs.put((vertex.packed,vertex.realization), maxParentID+1)
+
+  	    }
   	  }
-  	  
+
   	  return vertexIDs	
   	
   	}
