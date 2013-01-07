@@ -214,7 +214,7 @@ object AbstractSyntaxTree {
    */
   class TaskDef(val comments: Comments,
                 val keyword: String,
-                val name: String, 
+                val name: Namespace, 
                 val header: TaskHeader, 
                 val commands: BashCode) extends Block {
     
@@ -255,7 +255,7 @@ object AbstractSyntaxTree {
     
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
-    override def toString() = name
+    override def toString() = name.toString
   }
   type PackageDef = TaskDef
   type ActionDef = TaskDef
@@ -264,14 +264,14 @@ object AbstractSyntaxTree {
   class CallDefinition(val comments: Comments,
                        val name: String, 
                        val header: TaskHeader, 
-                       val functionName: String) extends Block {
+                       val functionName: Namespace) extends Block {
     override def children = Seq(comments, header)
     override def toString() = name
   }
   
   class GroupDefinition(val comments: Comments,
                         val keyword: String,
-                        val name: String, 
+                        val name: Namespace, 
                         val header: TaskHeader,
                         val blocks: Seq[Block]) extends Block {
     private lazy val taskLikes = blocks.collect{ case x: ActionDef => x}
@@ -295,7 +295,7 @@ object AbstractSyntaxTree {
     lazy val allSpecs: Seq[Spec] = header.specsList.flatMap { specs: Specs => specs.specs }
     
     override def children = Seq(comments, header) ++ blocks
-    override def toString() = name
+    override def toString() = name.toString
   }
   type VersionerDef = GroupDefinition
   type SubmitterDef = GroupDefinition
@@ -367,7 +367,7 @@ object AbstractSyntaxTree {
       val calls: Seq[CallDefinition] = blocks.collect { case x: CallDefinition => x }
       
       // Map from function names to function definitions
-      val funcs: Map[String,TaskDef] = {
+      val funcs: Map[Namespace,TaskDef] = {
         // Gather a list of those TaskDef objects that represent functions 
         taskDefs.filter{ t: TaskDef => t.keyword == "func" }.
         // then make each element in the list a tuple, 

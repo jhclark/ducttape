@@ -959,7 +959,7 @@ object Grammar {
     ) 
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) =>
-        new TaskDef(comments, blockType, name, header, commands)
+        new TaskDef(comments, blockType, new Namespace(name), header, commands)
   })  
   
   val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline, "baseline", taskHeader)
@@ -987,7 +987,7 @@ object Grammar {
     ) <~ (eol | err("Missing newline"))
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (functionName: String) ~ (header: TaskHeader) => 
-      new CallDefinition(comments,name,header,functionName)    
+      new CallDefinition(comments,name,header,new Namespace(functionName))    
   })
   
   def groupLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader], childBlock: Parser[Block]): Parser[GroupDefinition] = positioned({
@@ -1029,7 +1029,7 @@ object Grammar {
     ) 
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (blocks: Seq[Block]) => 
-      new GroupDefinition(comments,blockType,name,header,blocks)
+      new GroupDefinition(comments,blockType,new Namespace(name),header,blocks)
   })
   
   def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)

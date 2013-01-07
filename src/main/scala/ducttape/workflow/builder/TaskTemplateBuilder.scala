@@ -65,7 +65,7 @@ private[builder] class TaskTemplateBuilder(
       // with task definitions constructed via function calls
       (wd.tasks ++ wd.functionCallTasks)
 
-    val taskMap: Map[String,TaskDef] = {
+    val taskMap: Map[Namespace,TaskDef] = {
       tasks.
       // Make each element in the list a tuple, 
       // where the first element is the task name
