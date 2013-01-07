@@ -56,7 +56,7 @@ object ExecuteMode {
       // TODO: Check for existing PID lock files from some other process... and make sure we're on the same machine
 
       if (!directives.enableMultiproc && cc.locked.size > 0) {
-        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_enable_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
+        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_experimental_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
       }
       
       import ducttape.cli.ColorUtils.colorizeDir
@@ -95,7 +95,9 @@ object ExecuteMode {
         case true => {
           // create a new workflow version
           val configFile: Option[File] = opts.config_file.value.map(new File(_))
-          val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
+          val existingTasks: Seq[RealTaskId] = cc.completedVersions
+          val todoTasks: Seq[RealTaskId] = cc.todoVersions
+          val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history, existingTasks, todoTasks)
           
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)
@@ -104,23 +106,23 @@ object ExecuteMode {
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
 
-          // TODO: Make locker take a thunk to create a scoping effect
+          // Locker takes a thunk to create a scoping effect
           // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
-          val locker = new LockManager(myVersion)
+          LockManager(myVersion) { locker: LockManager =>
 
-          System.err.println("Moving previous partial output to the attic...")
-          // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
+            System.err.println("Moving previous partial output to the attic...")
+            // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
+            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
           
-          // Make a pass after moving partial output to write output files
-          // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
-          
-          System.err.println("Executing tasks...")
-          Visitors.visitAll(workflow,
-                            new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                            planPolicy, opts.jobs())
-          locker.shutdown()
+            // Make a pass after moving partial output to write output files
+            // claiming those directories as ours so that we can later start another ducttape process
+            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
+            
+            System.err.println("Executing tasks...")
+            Visitors.visitAll(workflow,
+                              new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
+                              planPolicy, opts.jobs())
+          }
         }
         case _ => System.err.println("Doing nothing")
       }

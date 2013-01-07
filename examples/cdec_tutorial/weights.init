@@ -1,0 +1,11 @@
+CountEF 0.1
+EgivenFCoherent -0.1
+Glue 0.01
+IsSingletonF -0.01
+IsSingletonFE -0.01
+LanguageModel 0.1
+LanguageModel_OOV -1
+MaxLexFgivenE -0.1
+MaxLexEgivenF -0.1
+PassThrough -0.1
+SampleCountF -0.1

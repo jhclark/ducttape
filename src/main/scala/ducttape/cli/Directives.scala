@@ -1,4 +1,5 @@
 package ducttape.cli
+// TODO: Move out of CLI
 
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
@@ -28,6 +29,10 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
       case None => false // not flat by default (hyper)
     }
   }
+
+  // use a separate directory inside each task-realization for each workflow version that is run?
+  // TODO: false to maintain backward compatibility -- preferred is true
+  val versionedTasks: Boolean = parse("ducttape_versioned_tasks", default=false)
   
   val output: Option[String] = getLiteralSpecValue("ducttape_output")
 
@@ -40,26 +45,18 @@ class Directives(confSpecs: Seq[ConfigAssignment]) {
     case None => ;
   }
 
-  def parseBoolean(str: String): Boolean = str.toLowerCase match {
-    case "true" => true
-    case "false" => false
-
-    case "1" => true
-    case "0" => false
-
-    case "enable" => true
-    case "disable" => false
-    
-    case "t" => true
-    case "f" => false
+  def parse(key: String, default: Boolean): Boolean = getLiteralSpecValue(key) match {
+    case Some(value) => Booleans.parseBoolean(value)
+    case None => default
   }
 
-  def parseExperimental(key: String): Boolean = getLiteralSpecValue(key) match {
-    case Some(value) => parseBoolean(value)
-    case None => false
-  }
+  def parseExperimental(key: String): Boolean = parse(key, default=false)
 
   // TODO: Identify unrecognized ducttape directives and error out?
+
+  // do we check for new versions of software every time we run a workflow?
+  // or only when we initiate a new workflow and then only on-demand?
+  val autoUpdatePackages: Boolean = parseExperimental("ducttape_auto_update_packages")
 
   // experimental directives
   val enableImports: Boolean = parseExperimental("ducttape_experimental_imports")

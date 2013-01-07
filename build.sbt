@@ -6,7 +6,7 @@ scalaVersion := "2.9.2"
 
 docDirectory in Compile := file("scaladoc")
 
-scalacOptions ++= Seq("-unchecked", "-deprecation")
+//scalacOptions ++= Seq("-unchecked", "-deprecation")
 
 unmanagedBase in Test <<= baseDirectory { base => base / "lib/test" }
 

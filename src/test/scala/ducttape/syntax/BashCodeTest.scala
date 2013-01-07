@@ -19,14 +19,14 @@ class BashCodeTest extends AbstractTest("bash code",BashGrammar.bashBlock) {
     """echo "export CLASSPATH=${classpath_dir}/antlr-3.1.1.jar:${CLASSPATH:+:$CLASSPATH}" > ${environment}""",
     "echo ${variable##*/}",
     """echo "it's ok"""",
-    """echo 'my favorite is the " mark'"""
-
+    """echo 'my favorite is the " mark'""",
+    """awk -F$'\n' '{print "This is a test of string expansion for tabs"}'"""
   ) 
   
   def failureCases = Set(
     "${x",
     """echo "hello,
-    world"""    
+    world"""
   ) 
   
   def errorCases = Set(
