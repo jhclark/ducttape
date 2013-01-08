@@ -285,6 +285,13 @@ private[builder] class TaskTemplateBuilder(
         debug("Generated sequence branch specs: " + branchSpecs)
         handleBranchPoint(branchPointName, branchSpecs, isFromSeq=true)
       }
+      
+      // TODO: match a new GlobbedBranchPoint (or something like that) here
+      //       The GlobbedBranchPoint will need to come from the parser that returns the AST
+      //       We need to generate one SpecPair per branch of the globbed branch point
+      //       In each of these SpecPairs, the input spec will be the same lhs.
+      //       We will also need to modify TaskEnvironment.
+            
       // we found a global config variable -- we first have to look inside
       // that variable to determine what to do next
       case ConfigVariable(varName) => {

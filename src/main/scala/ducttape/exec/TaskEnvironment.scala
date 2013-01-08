@@ -17,6 +17,11 @@ import grizzled.slf4j.Logging
 class TaskEnvironment(val dirs: DirectoryArchitect,
                       val task: VersionedTask) extends Logging {
   
+  // TODO: Modify both inputs and params to be able to handle globs
+  //       This is the point where we need to handle the set of SpecPairs that all share the same lhs
+  //       and convert the right-hand sides into a whitespace-delimited list of values
+  //       and then associate that with the lhs
+  
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
   // no knowledge of that branch point. However, we might *still* have
