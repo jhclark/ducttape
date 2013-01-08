@@ -1,44 +1,36 @@
 #!/usr/bin/env bash
 set -ueo pipefail
-scriptDir=$(scala -e 'println(new java.io.File("'$(dirname $0)'").getAbsolutePath)')
+scriptDir=$(cd $(dirname $0); pwd)
 rootDir=$scriptDir/..
 libDir=$rootDir/lib
 
-# NOTE: This build file is intended primarily for builds
-# where SBT cannot be used (i.e. there is no Internet connection)
-# Subtitle: If you're not Lane, consider just running "sbt"
+# Pass extra arguments to zinc
+ZINC_OPTS="$@"
 
-libs=""
-libs="$libs:$libDir/sqlitejdbc-v056.jar"
-libs="$libs:$libDir/scala-optparse-1.1.jar"
-libs="$libs:$libDir/commons-lang3-3.1.jar"
-libs="$libs:$libDir/commons-io-2.2.jar"
-libs="$libs:$libDir/grizzled-slf4j_2.9.1-1-0.6.8.jar"
-libs="$libs:$libDir/pegdown-1.1.0.jar"
-libs="$libs:$libDir/parboiled-core-1.0.2.jar"
-libs="$libs:$libDir/parboiled-java-1.0.2.jar"
-libs="$libs:$libDir/webui/servlet-api-3.0.jar"
-libs="$libs:$libDir/webui/jetty-all-8.0.4.v20111024.jar"
+# Include both webui and test JARs
+libs=$(find $rootDir/lib/ -iname '*.jar')
+# Delimit with colon
+classpath=$(echo "$libs" | paste -s -d':')
 
-libs="$libs:$libDir/test/junit-4.10.jar"
-libs="$libs:$libDir/test/scalatest-1.7.1.jar"
-
-echo >&2 "Building source..."
+echo >&2 "Building source using zinc..."
 mkdir -p $rootDir/bin
-find $rootDir/src/main/scala $rootDir/src/test/scala \
+find $rootDir/src/main/scala $rootDir/src/test/scala -iname '*.scala' \
   | egrep '\.scala$' \
-  | xargs zinc \
-    -cp $libs \
+  | xargs zinc $ZINC_OPTS \
+    -cp $classpath \
     -d $rootDir/bin/zinc \
-    -S-unchecked -S-deprecation -nailed -analysis-cache bin/zinc.cache
+    -S-unchecked -S-deprecation -nailed -analysis-cache $rootDir/bin/zinc.cache
 
-#  | xargs scalac \
-#    -Dscala.timings=true \
-#    -unchecked -deprecation -cp $libs  \
-#    -d $rootDir/bin/ \
-#  | $rootDir/build-support/color_scalac.awk
+echo >&2 "Building initial JAR..."
+(cd $rootDir/bin/zinc; zip -qr $rootDir/ducttape.tmp.jar *)
 
-echo >&2 "Building JAR..."
-(cd $rootDir/bin/zinc; zip -qr $rootDir/ducttape.jar *)
-(cd $rootDir; zip -gqr $rootDir/ducttape.jar version.info)
+# Reads $rootDir/ducttape.tmp.jar as an intermediate input and writes $rootDir/ducttape.jar
+jarPath=$rootDir/ducttape.jar
+echo >&2 "Minimizing JAR using proguard..."
+time java -jar $scriptDir/proguard-4.8.jar @$scriptDir/proguard.ini
 
+# Add version.info
+(cd $rootDir; zip -gqr $jarPath version.info)
+rm $rootDir/ducttape.tmp.jar
+
+echo >&2 "Wrote JAR: $jarPath"
