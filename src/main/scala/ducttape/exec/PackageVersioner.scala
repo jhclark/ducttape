@@ -147,6 +147,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     // we only get previous version (which requires a comparator) if we
     // aren't forced to rebuild
     def getPreviousVersion(info: PackageVersionerInfo): Option[String] = {
+      System.err.println("WARNING: Skipping previous package check (currently under development)")
+      return None
+
       // First, we need either a way of comparing version hashes (git and friends)
       // or a way of turning revisions into integers (SVN)
       val comparatorDef: ActionDef = info.getComparatorDef() match {
