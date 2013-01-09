@@ -106,7 +106,7 @@ object ExecuteMode {
           // user has given us the green light, so now switch over from using
           // fake/hallucinated version that wasn't actually written to disk
           // to using version info that's written in stone (i.e. on disk)
-          // TODO: XXX: We should just add a "commit" method to the version
+          // TODO: We should just add a "commit" method to the version
           val committedVersion = WorkflowVersionStore.create(dirs, opts.workflowFile, configFile, history, existingTasks, todoTasks)
           
           // before doing *anything* else, make sure our output directory exists, so that we can lock things

@@ -15,6 +15,6 @@ JAVA="java"
 
 #     -XX:MaxJavaStackTraceDepth=25 \
 $JAVA -Xmx1g -Xss2M \
-     -cp ducttape.jar \
+     -cp $scriptDir/ducttape.jar \
      -Dfile.encoding="UTF-8" \
      Ducttape "$@"

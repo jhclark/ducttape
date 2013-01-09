@@ -1,6 +1,7 @@
 package ducttape.versioner
 
 import ducttape.util.Files
+import ducttape.workflow.VersionedTaskId
 import java.io.File
 
 class WorkflowVersionHistory(val history: Seq[WorkflowVersionInfo]) {
@@ -14,9 +15,12 @@ class WorkflowVersionHistory(val history: Seq[WorkflowVersionInfo]) {
     case Some(i) => Some(history(i))
   }
 
+  /** returns a UnionWorkflowVersionInfo that whose apply method will return the current version
+   *  if no existing version exists for a task */
   def union(): WorkflowVersionInfo = {
-    // TODO: Produce something info-like that returns a version from any previous version
-    throw new Error("Unimplemented")
+    val existing: Seq[VersionedTaskId] = history.flatMap { info: WorkflowVersionInfo => info.existing }
+    val curVersion: Int = ( Seq(0) ++ existing.map(_.version) ).max
+    new UnionWorkflowVersionInfo(curVersion, existing, fallbackVersion=curVersion)
   }
 }
 

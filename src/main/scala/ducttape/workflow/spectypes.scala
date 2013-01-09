@@ -22,6 +22,13 @@ class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
                                       val srcSpec: SpecT,
                                       val srcReal: Realization) {
   def this(that: ResolvedSpecType[SpecT]) = this(that.origSpec, that.srcTask, that.srcSpec, that.srcReal)
+
+  // Some for inputs, None for params
+  def srcRealTaskId: Option[RealTaskId] = srcTask match {
+    case Some(t) => Some(new RealTaskId(t.name, srcReal.toCanonicalString))
+    case None => None
+  }
+
   override def toString() = "%s => %s (%s)".format(origSpec.name, srcSpec, srcReal)
 }
 

@@ -37,7 +37,7 @@ class WorkflowVersionStore(val tapeFile: File,
     extends WorkflowVersionInfo {
 
   lazy val taskVersions: Map[RealTaskId,Int] = {
-    existing.map { t => (t.realTaskId, t.version) }.toMap
+    (existing ++ todo).map { t => (t.realTaskId, t.version) }.toMap
   }
   override def apply(task: RealTaskId): Int = taskVersions(task)
   override def get(task: RealTaskId): Option[Int] = taskVersions.get(task)
@@ -54,9 +54,9 @@ object WorkflowVersionStore {
     val (hostname, pid) = Files.read(pidFile).headOption match {
       case Some(line) => line.split(":") match {
         case Array(hostname, pid) => (hostname, pid.toInt)
-          case _ => throw new RuntimeException("Malformed pid file: %s".format(pidFile.getAbsolutePath))
+          case _ => throw new RuntimeException(s"Malformed pid file: ${pidFile.getAbsolutePath}")
       }
-       case None => throw new RuntimeException("Empty pid file: %s".format(pidFile.getAbsolutePath))
+       case None => throw new RuntimeException(s"Empty pid file: ${pidFile.getAbsolutePath}")
      }
      val version = versionInfoDir.getName.toInt
 
@@ -71,14 +71,15 @@ object WorkflowVersionStore {
       status match {
         case "existing" => existing += id
         case "todo" => todo += id
-        case _ => throw new RuntimeException("Invalid task status in file %s: %s".format(manifestFile.getAbsolutePath, status))
+        case _ => throw new RuntimeException(s"Invalid task status in file ${manifestFile.getAbsolutePath}: ${status}")
       }
     }
     
     new WorkflowVersionStore(workflowCopy, confCopy, hostname, pid, version, existing, todo)
   }
   
-  // create the next version of the workflow history
+  // create the next version of the workflow history and write it to disk
+  // TODO: There should be a disk lock during this to prevent a race condition
   // TODO: Replace this with a "commit" method
   def create(dirs: DirectoryArchitect,
              workflowFile: File,
@@ -86,11 +87,11 @@ object WorkflowVersionStore {
              history: WorkflowVersionHistory,
              existing: Seq[VersionedTaskId],
              todo: Seq[VersionedTaskId]): WorkflowVersionStore = {
-    
+
     val myVersionDir = dirs.assignVersionDir(history.nextVersion)
     
     if (myVersionDir.exists) {
-      throw new RuntimeException("Version history directory already exists (this is probably a bug in ducttape. please report it. for now, you can try deleting the directory): %s".format(myVersionDir.getAbsolutePath))
+      throw new RuntimeException(s"Version history directory already exists (this is probably a bug in ducttape. please report it. for now, you can try deleting the directory): ${myVersionDir.getAbsolutePath}")
     }
     Files.mkdirs(myVersionDir)
     
@@ -109,7 +110,7 @@ object WorkflowVersionStore {
     val hostname = Environment.hostname
     val pid = Environment.pid
     val pidFile = new File(myVersionDir, "pid.txt")
-    Files.write("%s:%d".format(hostname, pid), pidFile)
+    Files.write(s"${hostname}:${pid}", pidFile)
     
     // TODO: Save args?
     new WorkflowVersionStore(workflowCopy, confCopy, hostname, pid, history.nextVersion, existing, todo)

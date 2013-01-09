@@ -17,14 +17,14 @@ echo "Creating Ducttape release for version $VERSION"
 echo "=============================================="
 
 echo "Original JAR stats:"
-du -csh lib/*.jar lib/webui/*.jar lib/scala/scala-library-2.9.2.jar
+du -csh $DUCTTAPE/lib/*.jar $DUCTTAPE/lib/webui/*.jar $DUCTTAPE/lib/scala/*.jar
 
 echo "Shrunken JAR stats:"
-du -csh ducttape.min.jar
+du -csh $DUCTTAPE/ducttape.jar
 
 rm -rf ${DIST}
 mkdir -p ${DIST}
-cp ducttape.min.jar ${DIST}/ducttape.jar
+cp $DUCTTAPE/ducttape.jar ${DIST}/ducttape.jar
 
 fgrep -v DEV-ONLY ducttape > ${DIST}/ducttape
 chmod a+x ${DIST}/ducttape

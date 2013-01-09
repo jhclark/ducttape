@@ -7,7 +7,7 @@ rootDir=$scriptDir/..
 # (see Makefile)
 
 echo >&2 $PATH
-DUCTTAPE=$(which ducttape)
+DUCTTAPE=$rootDir/ducttape
 
 tutorialDir=$(cd $rootDir/tutorial; pwd)
 for tape in $tutorialDir/*.tape; do

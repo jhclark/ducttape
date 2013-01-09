@@ -18,7 +18,7 @@ object Visitors extends Logging {
     workflow.unpackedWalker(planPolicy).foreach(numCores, { v: UnpackedWorkVert =>
       val taskT: TaskTemplate = v.packed.value.get
       val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
-      debug("Visiting %s".format(task))
+      debug(s"Visiting $task")
       visitor.visit(task)
     })
     visitor
