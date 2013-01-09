@@ -3,15 +3,18 @@ package ducttape.syntax
 import java.io.File
 import java.math.BigDecimal
 import org.apache.commons.lang3.StringEscapeUtils
+
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
+import scala.util.parsing.input.NoPosition
+
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.cli.ErrorUtils
-import scala.util.parsing.input.NoPosition
+import ducttape.util.Files
 
 object Grammar {
   import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
