@@ -11,6 +11,7 @@ package ducttape.workflow
 // (see also docs for RealTaskId)
 class VersionedTaskId(val name: String, val realization: String, val version: Int) {
   lazy val realTaskId = new RealTaskId(name, realization)
+  def toRealTaskId(): RealTaskId = realTaskId
 
   // TODO: Smear hash code better
   override def hashCode() = name.hashCode ^ realization.hashCode ^ version

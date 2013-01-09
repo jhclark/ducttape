@@ -38,7 +38,6 @@ import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
 import ducttape.syntax.ErrorBehavior
 import ducttape.syntax.ErrorBehavior._
-import ducttape.versioner.WorkflowVersionHistory
 import ducttape.workflow.builder.WorkflowBuilder
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
@@ -55,6 +54,7 @@ import ducttape.workflow.BuiltInLoader
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.Visitors
 import ducttape.versioner.WorkflowVersionInfo
+import ducttape.versioner.WorkflowVersionHistory
 import ducttape.syntax.FileFormatException
 import ducttape.syntax.WorkflowChecker
 import ducttape.util.Files
@@ -710,7 +710,8 @@ object Ducttape extends Logging {
 
         val history = getVersionHistory()
         val cc = getCompletedTasks(planPolicy, history)
-        ExecuteMode.run(workflow, cc, planPolicy, history, uncommittedVersion, { () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion) })
+        val packageVersionThunk = { () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion) }
+        ExecuteMode.run(workflow, cc, planPolicy, history, uncommittedVersion, packageVersionThunk)
       }
     })
   }

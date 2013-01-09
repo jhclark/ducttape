@@ -31,8 +31,18 @@ class RealTask(val taskT: TaskTemplate,
 
    // augment with version information
    def toVersionedTask(workflowVersion: WorkflowVersionInfo): VersionedTask = {
-     throw new Error("Unimplemented")
-     val inputValVersions: Seq[VersionedSpec] = Nil
+     val inputValVersions: Seq[VersionedSpec] = inputVals.map { inputVal =>
+       inputVal.srcRealTaskId match {
+         case Some(srcRealTaskId) => {
+           val srcVer = workflowVersion(srcRealTaskId)
+           new VersionedSpec(inputVal, srcVer)
+         }
+         case None => {
+           // this must be a literal spec (i.e. literal path) -- assign it the current workflow version
+           new VersionedSpec(inputVal, workflowVersion.version)
+         }
+       }
+     }
      new VersionedTask(this, inputValVersions, workflowVersion.version)
    }
 

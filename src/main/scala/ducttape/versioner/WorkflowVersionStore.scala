@@ -37,7 +37,7 @@ class WorkflowVersionStore(val tapeFile: File,
     extends WorkflowVersionInfo {
 
   lazy val taskVersions: Map[RealTaskId,Int] = {
-    existing.map { t => (t.realTaskId, t.version) }.toMap
+    (existing ++ todo).map { t => (t.realTaskId, t.version) }.toMap
   }
   override def apply(task: RealTaskId): Int = taskVersions(task)
   override def get(task: RealTaskId): Option[Int] = taskVersions.get(task)
@@ -71,14 +71,15 @@ object WorkflowVersionStore {
       status match {
         case "existing" => existing += id
         case "todo" => todo += id
-        case _ => throw new RuntimeException("Invalid task status in file %s: %s".format(manifestFile.getAbsolutePath, status))
+        case _ => throw new RuntimeException(s"Invalid task status in file ${manifestFile.getAbsolutePath}: ${status}")
       }
     }
     
     new WorkflowVersionStore(workflowCopy, confCopy, hostname, pid, version, existing, todo)
   }
   
-  // create the next version of the workflow history
+  // create the next version of the workflow history and write it to disk
+  // TODO: There should be a disk lock during this to prevent a race condition
   // TODO: Replace this with a "commit" method
   def create(dirs: DirectoryArchitect,
              workflowFile: File,
