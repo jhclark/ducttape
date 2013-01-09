@@ -1148,7 +1148,13 @@ object Grammar {
     literalValue <~ 
     (opt(space) ~ eol)
   }  ^^ {
-    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value), isImported=true))
+    // read import statements with regard to the directory the current file is in.
+    case (l:Literal) => {
+      val filename: String = l.value
+      val file: File = if (Files.isAbsolutePath(filename)) new File(filename)
+                       else new File(importDir, filename)
+      ErrorUtils.ex2err(GrammarParser.readWorkflow(file, isImported=true))
+    }
   }
   
   def elements(importDir: File): Parser[Seq[ASTType]] = {

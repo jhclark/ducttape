@@ -136,6 +136,9 @@ object Files extends Logging {
   def copyToDir(src: File, destDir: File) = copy(src, new File(destDir, src.getName))
 
   def isGlob(path: String) = path.contains("*") || path.contains("?")
+
+  // TODO: This might not be sufficient if we want to support expanding home directories, etc.
+  def isAbsolutePath(path: String) = path.startsWith("/") || path.startsWith("~")
   
   def glob(pattern: String): Seq[File] = isGlob(pattern) match {
     case false => Seq(new File(pattern))
