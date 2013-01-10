@@ -16,4 +16,4 @@ after_script:
   - sudo apt-get install -qq texlive-latex-base texlive-fonts-recommended texlive-science
   - ./build-support/doc.sh
   - ./build-support/dist.sh
-  - PATH=$PWD/dist/ducttape-current:$PATH ./build-support/test-regression.sh
+  - ./build-support/test-regression.sh $PWD/dist/ducttape-current
