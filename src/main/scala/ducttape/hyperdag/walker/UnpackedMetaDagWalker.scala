@@ -20,6 +20,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     munger: RealizationMunger[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     toD: H => D = new DefaultToD[H],
+    traversal: Traversal = DepthFirst,
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
@@ -65,7 +66,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD)
+    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD, traversal)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps

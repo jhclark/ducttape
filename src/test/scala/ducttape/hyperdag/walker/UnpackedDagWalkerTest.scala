@@ -50,7 +50,7 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
   }
 
   it should "traverse a diamond with an iterator" in {
-    val vertices = diamond.unpackedWalker().iterator.toList
+    val vertices = diamond.unpackedWalker(traversal=Arbitrary).iterator.toList
     for (v: UnpackedVertex[String,String,String,String] <- vertices) {
       debug(v)
     }
@@ -138,7 +138,7 @@ class UnpackedDagWalkerTest extends FlatSpec with Logging{
     for (i <- 0 until 1000) {
 	    val verts = new collection.mutable.HashSet[String]
 	    val reals = new collection.mutable.HashSet[Seq[String]]
-	    diamond.unpackedWalker().foreach(10, { v =>
+	    diamond.unpackedWalker(traversal=Arbitrary).foreach(10, { v =>
 	      verts.synchronized { verts += v.packed.value }
 	      reals.synchronized { reals += v.realization }
 	    })

@@ -10,6 +10,8 @@ import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.UnpackedPhantomMetaDagWalker
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 
 import collection._
 
@@ -45,18 +47,20 @@ class PhantomMetaHyperDag[V,M,H,E](val delegate: MetaHyperDag[Option[V],M,H,E]) 
   def unpackedWalker[D,F](munger: RealizationMunger[Option[V],H,E,D,F],
                           vertexFilter: MetaVertexFilter[Option[V],H,E,D],
                           toD: H => D,
+                          traversal: Traversal = DepthFirst,
                           observer: UnpackedVertex[Option[V], H,E,D] => Unit)
                          (implicit ordering: Ordering[D])
                          : UnpackedPhantomMetaDagWalker[V,M,H,E,D,F] = {
-    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD, observer)(ordering)
+    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD, traversal, observer)(ordering)
   }
   
   def unpackedWalker[D](vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
                         toD: H => D = new DefaultToD[H],
+                        traversal: Traversal = DepthFirst,
                         observer: UnpackedVertex[Option[V], H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
                        (implicit ordering: Ordering[D]): UnpackedPhantomMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]] = {
     val munger = new DefaultRealizationMunger[Option[V],H,E,D]
-    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, observer)(ordering)
+    new UnpackedPhantomMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, traversal, observer)(ordering)
   }
   
   private[hyperdag] def removePhantoms(list: Traversable[PackedVertex[Option[V]]])

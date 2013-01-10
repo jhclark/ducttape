@@ -15,6 +15,8 @@ echo >&2 $PATH
 DUCTTAPE=$DUCTTAPE_DIR/ducttape
 export PATH=$DUCTTAPE_DIR:$PATH
 
+export PATH=$rootDir:$PATH
+
 tutorialDir=$(cd $rootDir/tutorial; pwd)
 for tape in $tutorialDir/*.tape; do
     dir=$(dirname $tape)
