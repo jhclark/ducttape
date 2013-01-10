@@ -90,6 +90,7 @@ class CompletionChecker(dirs: DirectoryArchitect, msgCallback: String => Unit) e
   private val completeVersions = new mutable.HashMap[(String,Realization), Int]
 
   // NOTE: completed never includes invalidated
+  // TODO: Change these tuples to "RealTaskId"?
   def completed: OrderedSet[(String,Realization)] = _completed
   def partial: OrderedSet[(String,Realization)] = _partial
   def todo: OrderedSet[(String,Realization)] = _todo

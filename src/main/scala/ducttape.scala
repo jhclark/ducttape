@@ -312,21 +312,27 @@ object Ducttape extends Logging {
       if (opts.realNames.size < 1) {
         opts.exitHelp("mark_done requires realization names", 1)
       }
-      val goalTaskName = opts.taskName.get
-      val goalRealNames = opts.realNames.toSet
+
+      val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(opts.taskName.get))
+      val realPatterns: Seq[RealizationGlob] = opts.realNames.toSeq.map(new RealizationGlob(_))
 
       // TODO: Apply filters so that we do much less work to get here
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
-        if (taskT.name == goalTaskName) {
+
+        if (taskPattern.matcher(taskT.name).matches) {
           val task: RealTask = taskT.realize(v)
-          if (goalRealNames(task.realization.toString)) {
+          if (realPatterns.exists(_.matches(task.realization))) {
             val env = new TaskEnvironment(dirs, task)
             if (CompletionChecker.isComplete(env)) {
               err.println("Task already complete: " + task.name + "/" + task.realization)
             } else {
-              CompletionChecker.forceCompletion(env)
-              err.println("Forced completion of task: " + task.name + "/" + task.realization)
+              try {
+                CompletionChecker.forceCompletion(env)
+                err.println("Forced completion of task: " + task)
+              } catch {
+                case e: Exception => System.err.println("WARNING: Failed to force completion of " + task)
+              }
             }
           }
         }
@@ -352,10 +358,10 @@ object Ducttape extends Logging {
     def getVictims(taskToKill: String,
                    realsToKill: Set[String],
                    planPolicy: PlanPolicy): OrderedSet[RealTask] = {
-      
+
       val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(taskToKill))
       val realPatterns: Seq[RealizationGlob] = realsToKill.toSeq.map(new RealizationGlob(_))
-
+      
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[RealTask]
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
@@ -619,32 +625,60 @@ object Ducttape extends Logging {
         }
       }
       case "unlock" => {
-        val planPolicy = getPlannedVertices()
-        val cc = getCompletedTasks(planPolicy)
+        if (opts.taskName == None) {
+          opts.exitHelp("unlock requires a taskName (or singled-quoted glob)", 1)
+        }
+        if (opts.realNames.size < 1) {
+          opts.exitHelp("unlock requires realization names (or singled-quoted glob)", 1)
+        }
 
-        if (cc.locked.size > 0) {
+        val taskToUnlock = opts.taskName.get
+        val realsToUnlock = opts.realNames.toSet
+        val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(taskToUnlock))
+        val realPatterns: Seq[RealizationGlob] = realsToUnlock.toSeq.map(new RealizationGlob(_))
+
+        // first, find all locked tasks
+        val planPolicy = getPlannedVertices()
+        val victims: Seq[(String,Realization)] = {
+          err.println("Finding all locked tasks in this plan")
+          val cc = getCompletedTasks(planPolicy)
+          val locked: Seq[(String,Realization)] = cc.locked.toSeq
+          
+          // then, filter down based on the task/real pattern
+          err.println("Filtering based on task/realization pattern")
+          val victims: Seq[(String,Realization)] = locked.filter { case (task: String, real: Realization) =>
+            taskPattern.matcher(task).matches && realPatterns.exists(_.matches(real))
+          }
+          victims
+        }
+
+        // is there anything to do?
+        if (victims.size == 0) {
+          System.err.println("No tasks in this plan that match %s / %s are currently locked -- nothing to do".format(taskToUnlock, realsToUnlock.mkString(" ")))
+        } else {
+          // 2) Prompt user
           import ducttape.cli.ColorUtils.colorizeDir
           System.err.println("Remove locks:")
-          for ( (task, real) <- cc.locked) {
+          for ( (task, real) <- victims) {
             System.err.println("%sUNLOCK:%s %s".format(Config.greenColor, Config.resetColor, colorizeDir(task, real)))
           }
-        }
           
-        val answer = if (opts.yes) {
-          true
-        } else {
-          // note: user must still press enter
-          if (cc.locked.size > 0) {
-            System.err.print("Are you sure you want to FORCE UNLOCK these %d tasks? (Only do this if you sure no other process is using them) [y/n] ".format(cc.todo.size))
-            Console.readBoolean
+          val answer = if (opts.yes) {
+            true
           } else {
-            false
+            // note: user must still press enter
+            if (victims.size > 0) {
+              System.err.print("Are you sure you want to FORCE UNLOCK these %d tasks? (Only do this if you sure no other process is using them) [y/n] ".format(victims.size))
+              Console.readBoolean
+            } else {
+              false
+            }
           }
-        }
         
-        answer match {
-          case true => Visitors.visitAll(workflow, new ForceUnlocker(dirs, todo=cc.locked), planPolicy)
-          case _ => System.err.println("Doing nothing")
+          answer match {
+            case true => Visitors.visitAll(workflow, new ForceUnlocker(dirs, todo=victims.toSet), planPolicy)
+            case _ => System.err.println("Doing nothing")
+          }
         }
        }
       case "exec" | _ => {
