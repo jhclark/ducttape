@@ -9,6 +9,8 @@ rootDir=$scriptDir/..
 echo >&2 $PATH
 DUCTTAPE=$rootDir/ducttape
 
+export PATH=$rootDir:$PATH
+
 tutorialDir=$(cd $rootDir/tutorial; pwd)
 for tape in $tutorialDir/*.tape; do
     dir=$(dirname $tape)
