@@ -550,7 +550,9 @@ object Ducttape extends Logging {
         //    to make the control variables of each experiment more obvious
         val branchPointMap = new mutable.HashMap[BranchPoint, mutable.HashSet[Branch]]
         val labelSet = new mutable.HashSet[String]
-        val results = new mutable.HashMap[(String,Realization), mutable.HashMap[String,String]]
+
+        // we enforce that only one task may write to each row (realization) for each column below
+        val results = new mutable.HashMap[Realization, mutable.HashMap[String,String]]
         for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
           val taskT: TaskTemplate = v.packed.value.get
           val task: RealTask = taskT.realize(v)
@@ -590,7 +592,11 @@ object Ducttape extends Logging {
                 }
                 val label = outputName
                 val result: String = lines(0)
-                results.getOrElseUpdate( (task.name, task.realization), new mutable.HashMap[String,String] ) += label -> result
+                val row = results.getOrElseUpdate(task.realization, new mutable.HashMap[String,String] )
+                if (row.get(label) != None) {
+                  throw new RuntimeException("Multiple tasks are attempting to write to the column %s for the realization %s".format(label, task.realization.toFullString()))
+                }
+                row += label -> result
                 for (branch <- task.realization.branches) {
                   branchPointMap.getOrElseUpdate(branch.branchPoint, new mutable.HashSet) += branch
                 }
@@ -603,21 +609,23 @@ object Ducttape extends Logging {
           }
         }
 
+        // TODO: Command line option to prevent comments from being written to stdout
+
         // 3) print the table out in a nice tab-delimited format
         // first line is header
         val allBranchPoints = branchPointMap.keys.toSeq.sortBy(_.name)
         val (constantBranchPointMap, variableBranchPointMap)
           = branchPointMap.toSeq.sortBy(_._1.name).partition { case (bp, branches) => branches.size == 1 }
         for ( (bp, branches) <- constantBranchPointMap) {
-          System.err.println("Constant branch point: %s=%s".format(bp, branches.head))
+          System.out.println("# Constant branch point: %s=%s".format(bp, branches.head))
         }
         val variableBranchPoints: Seq[BranchPoint] = variableBranchPointMap.map(_._1)
-        System.err.println("Variable branch points: " + variableBranchPoints.mkString(" "))
+        System.out.println("# Variable branch points: " + variableBranchPoints.mkString(" "))
 
         val labels: Seq[String] = labelSet.toSeq.sorted
         val header: Seq[String] = variableBranchPoints.map(_.name) ++ labels
         System.out.println(header.mkString("\t"))
-        for ( ((taskName, real), values) <- results) {
+        for ( (real, values) <- results) {
           val branches: Map[BranchPoint, String] = real.branches.map { branch => (branch.branchPoint, branch.name) }.toMap
           val cols: Seq[String] = variableBranchPoints.map { bp => branches.getOrElse(bp, "--") } ++
             labels.map { label => values.getOrElse(label, "--") }
