@@ -7,7 +7,7 @@ rootDir=$scriptDir/..
 # (see Makefile)
 
 echo >&2 $PATH
-DUCTTAPE=$rootDir/ducttape
+export DUCTTAPE=$rootDir/ducttape
 
 export PATH=$rootDir:$PATH
 
