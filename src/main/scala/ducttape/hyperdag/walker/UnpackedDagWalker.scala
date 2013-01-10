@@ -218,7 +218,8 @@ class UnpackedDagWalker[V,H,E,D,F](
   // NOTE: All synchronization is done via our 2 lock objects
   private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
   private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
-  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E,D]]
+  private val agenda: java.util.Queue[UnpackedVertex[V,H,E,D]] = 
+    new java.util.PriorityQueue[UnpackedVertex[V,H,E,D]](11,agendaComparator)
   private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   
