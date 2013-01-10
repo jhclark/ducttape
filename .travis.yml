@@ -1,19 +1,4 @@
 language: scala
 jdk:
   - openjdk7
-before_script:
-  - wget http://repo.typesafe.com/typesafe/zinc/com/typesafe/zinc/dist/0.1.4/zinc-0.1.4.tgz
-  - tar -xvzf zinc-0.1.4.tgz
-  - export PATH=$PWD/zinc-0.1.4/bin:$PATH
-  - wget http://www.scala-lang.org/downloads/distrib/files/scala-2.10.0.tgz
-  - tar -xvzf scala-2.10.0.tgz
-  - export SCALA_HOME=$PWD/scala-2.10.0
-  - export PATH=$SCALA_HOME/bin:$PATH
-script: ./build-support/build.sh
-after_script:
-  - ./build-support/test-unit.sh
-  - ./build-support/ensure_unique_tutorial_tasks.sh
-  - sudo apt-get install -qq texlive-latex-base texlive-fonts-recommended texlive-science
-  - ./build-support/doc.sh
-  - ./build-support/dist.sh
-  - ./build-support/test-regression.sh $PWD/dist/ducttape-current
+script: ./build-support/full_build_server_test.sh
