@@ -3,11 +3,17 @@ set -eo pipefail
 scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
 rootDir=$scriptDir/..
 
-# NOTE: This script requires ducttape to be in PATH
-# (see Makefile)
+# Allow user to specify which ducttape directory to test so that we can test the packaged distribution on Travis
+if (( $# > 1 )); then
+    DUCTTAPE_DIR=$1
+else
+    DUCTTAPE_DIR=$rootDir
+fi
 
+# Make sure we're testing the version of ducttape in our current environment
 echo >&2 $PATH
-export DUCTTAPE=$rootDir/ducttape
+DUCTTAPE=$DUCTTAPE_DIR/ducttape
+export PATH=$DUCTTAPE_DIR:$PATH
 
 tutorialDir=$(cd $rootDir/tutorial; pwd)
 for tape in $tutorialDir/*.tape; do
