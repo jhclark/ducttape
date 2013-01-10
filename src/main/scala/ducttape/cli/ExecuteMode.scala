@@ -20,6 +20,8 @@ import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
 import ducttape.workflow.VersionedTaskId
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 import ducttape.versioner.WorkflowVersionHistory
 import ducttape.versioner.WorkflowVersionInfo
 import ducttape.versioner.WorkflowVersionStore
@@ -35,7 +37,8 @@ object ExecuteMode {
           planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
           uncommittedVersion: WorkflowVersionInfo,
-          getPackageVersions: () => PackageVersioner)
+          getPackageVersions: () => PackageVersioner,
+          traversal: Traversal = DepthFirst)
          (implicit opts: Opts, dirs: DirectoryArchitect, directives: Directives) {
     
     if (cc.todo.isEmpty) {
@@ -67,7 +70,7 @@ object ExecuteMode {
       import ducttape.cli.ColorUtils.colorizeDir
       import ducttape.cli.ColorUtils.colorizeDirs
       
-      System.err.println("Work plan:")
+      System.err.println("Work plan ("+traversal+" traversal):")
       for ( (task, real) <- cc.broken) {
         System.err.println("%sDELETE:%s %s".format(Config.redColor, Config.resetColor, colorizeDir(task, real)))
       }
@@ -131,7 +134,7 @@ object ExecuteMode {
             System.err.println("Executing tasks...")
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                              planPolicy, committedVersion, opts.jobs())
+                              planPolicy, committedVersion, opts.jobs(), traversal)
           }
         }
         case _ => System.err.println("Doing nothing")

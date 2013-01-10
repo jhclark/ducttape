@@ -23,6 +23,7 @@ class Opts(args: Seq[String]) extends OptParse {
       IntOpt(desc="Number of concurrent jobs to run", default=1)
     }
   }
+  val traversal = StrOpt(desc="hypergraph traversal algorithm to use when running the workflow (Arbitrary, BreadthFirst, DepthFirst). Default is DepthFirst.",short='t')
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')

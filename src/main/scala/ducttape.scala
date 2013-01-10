@@ -33,6 +33,10 @@ import ducttape.exec.PackageVersioner
 import ducttape.exec.FullTaskEnvironment
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.ForceUnlocker
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.Arbitrary
+import ducttape.hyperdag.walker.BreadthFirst
+import ducttape.hyperdag.walker.DepthFirst
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
@@ -206,6 +210,12 @@ object Ducttape extends Logging {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
+    val traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase() match {
+      case "arbitrary"    => Arbitrary
+      case "breadthfirst" => BreadthFirst
+      case _              => DepthFirst
+    }
+
     // Our dag is directed from antecedents toward their consequents
     // After an initial forward pass that uses a realization filter
     // to generate vertices whose realizations are part of the plan
@@ -277,7 +287,7 @@ object Ducttape extends Logging {
       }
       def msgCallback(msg: String) = System.err.println(msg)
       val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, msgCallback)
-      Visitors.visitAll(workflow, cc, planPolicy, unionVersion)
+      Visitors.visitAll(workflow, cc, planPolicy, unionVersion, traversal=traversal)
     }
 
     // get what packages are needed by the planned vertices and
@@ -711,7 +721,7 @@ object Ducttape extends Logging {
         val history = getVersionHistory()
         val cc = getCompletedTasks(planPolicy, history)
         val packageVersionThunk = { () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion) }
-        ExecuteMode.run(workflow, cc, planPolicy, history, uncommittedVersion, packageVersionThunk)
+        ExecuteMode.run(workflow, cc, planPolicy, history, uncommittedVersion, packageVersionThunk,traversal)
       }
     })
   }

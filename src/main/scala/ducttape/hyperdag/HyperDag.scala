@@ -7,6 +7,8 @@ import ducttape.hyperdag.walker.DefaultVertexFilter
 import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 
 // XXX: HACK
 import ducttape.workflow.SpecGroup
@@ -46,15 +48,17 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
 
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
                           vertexFilter: VertexFilter[V,H,E,D],
-                          toD: H => D)
+                          toD: H => D,
+                          traversal: Traversal = DepthFirst)
                          (implicit ordering: Ordering[D])
-    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD)
+    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD, traversal)
     
   def unpackedWalker[D](vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-                        toD: H => D = new DefaultToD[H])
+                        toD: H => D = new DefaultToD[H],
+                        traversal: Traversal = DepthFirst)
                        (implicit ordering: Ordering[D]) = {
     val munger = new DefaultRealizationMunger[V,H,E,D]
-    new walker.UnpackedDagWalker[V,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD)
+    new walker.UnpackedDagWalker[V,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, traversal)
   }
     
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]

@@ -191,7 +191,7 @@ class UnpackedDagWalker[V,H,E,D,F](
   	
   	  val vertexIDs = new mutable.HashMap[(PackedVertex[_],Seq[_]),Int]
 
-  	  dag.unpackedWalker(munger,vertexFilter,toD).foreach { 
+  	  dag.unpackedWalker(munger,vertexFilter,toD,Arbitrary).foreach { 
   	    vertex:UnpackedVertex[V,H,E,D] => { 
 
   	      val packedParents = dag.parents(vertex.packed)

@@ -25,6 +25,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         munger: RealizationMunger[Option[V],H,E,D,F],
         vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
         toD: H => D = new DefaultToD[H],
+        traversal: Traversal = DepthFirst,
         observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
        (implicit ordering: Ordering[D])
   extends Walker[UnpackedChainedMetaVertex[V,H,E,D]] with Logging {
@@ -37,7 +38,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
   }
   
   val delegate = new UnpackedMetaDagWalker[Option[V],M,H,E,D,F](
-    dag.delegate, munger, MetaVertexFilterAdapter, toD, observer)
+    dag.delegate, munger, MetaVertexFilterAdapter, toD, traversal, observer)
     
   // we must be able to recover the phantom-antecedents of non-phantom vertices
   // so that we can properly populate their state maps
