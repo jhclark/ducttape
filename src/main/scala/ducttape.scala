@@ -9,6 +9,7 @@ import java.util.regex.Pattern
 import ducttape.cli.Config
 import ducttape.cli.Directives
 import ducttape.cli.ErrorUtils
+import ducttape.cli.ErrorUtils.ex2err
 import ducttape.cli.Opts
 import ducttape.cli.EnvironmentMode
 import ducttape.cli.Plans
@@ -78,21 +79,25 @@ object Ducttape extends Logging {
   def main(args: Array[String]) {
     LogUtils.initJavaLogging()
 
-    val ducttapeVersion = Files.readJarResource("/version.info").head
-    err.println("ducttape %s".format(ducttapeVersion))
-    err.println("By Jonathan Clark")
-    
-    //implicit val conf = new Config
     implicit val opts = new Opts(args)
     if (opts.no_color || !Environment.hasTTY) {
       Config.clearColors()
     }
-    
-    import ducttape.cli.ErrorUtils.ex2err
+
     ShutdownHookThread { // make sure we never leave the color in a bad state on exit
       println(Config.resetColor)
       System.err.println(Config.resetColor)
     }
+    
+    val ducttapeVersion = 
+      try { 
+        Files.readJarResource("/version.info").head
+      } catch {
+        case _ => "(version unknown)"
+      }
+    err.println("%sducttape %s".format(Config.headerColor,ducttapeVersion))
+    err.println("%sby Jonathan Clark".format(Config.byColor))
+    err.println(Config.resetColor)
 
     // read user config before printing anything to screen
     val userConfigFile = new File(Environment.UserHomeDir, ".ducttape")

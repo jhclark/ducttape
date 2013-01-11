@@ -11,16 +11,15 @@ import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.FileFormatException
+import ducttape.syntax.Namespace
+import java.io.File
 import ducttape.util.Files
 import ducttape.util.Shell
 import ducttape.util.BashException
-
-import java.io.File
-
 import grizzled.slf4j.Logging
 
 object Versioners {
-  def getVersioner(packageDef: PackageDef, versionerDefs: Map[String, VersionerDef]): VersionerDef = {
+  def getVersioner(packageDef: PackageDef, versionerDefs: Map[Namespace, VersionerDef]): VersionerDef = {
     val dotVars: Seq[LiteralSpec] = packageDef.params.filter { spec => spec.dotVariable }.map(_.asInstanceOf[LiteralSpec])
   
     val versionerName: String = dotVars.find { spec => spec.name == "versioner" } match {
