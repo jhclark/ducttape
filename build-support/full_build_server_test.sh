@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -ueo pipefail
+set -x
 scriptDir=$(cd $(dirname $0); pwd)
 
 if [[ "$CI" == true ]]; then
