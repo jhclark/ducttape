@@ -67,50 +67,6 @@ class PackageVersionerInfo(val versionerDef: VersionerDef) extends Logging {
     val packageDotParams: Seq[LiteralSpec] = packageDef.params.filter(_.dotVariable).map(_.asInstanceOf[LiteralSpec])
     packageDotParams.map { spec => (spec.name, spec.rval.value) }
   }
-
-  // do we have either a version_to_int action or a repo_history action?
-  // a comparator is necessary to determine which previously built package
-  // is most recent
-  def getComparatorDef(): Option[ActionDef] = {
-    val actions: Seq[ActionDef] = actionDefs.filter {
-      action => action.name == "version_to_int" || action.name == "repo_history"
-    }
-    actions.size match {
-      case 0 => None // TODO: Is it an error not to define one of these?
-      case 1 => Some(actions(0))
-      case _ => throw new FileFormatException(
-        "Versioner should define exactly one of 'version_to_int' or 'repo_history'".
-          format(versionerDef.name), versionerDef)
-    }
-  }
-}
-
-// we serialize package versions to disk and just try to reload them
-// the package versions are the version control system's native versioning strings
-// (e.g. sha1 hashes for git or 'r000' for SVN) separated by newlines
-// with the newest versions being at the top of the file
-class PackageVersionComparator(compareAction: ActionDef) {
-
-  throw new RuntimeException("Unimplemented")
-
-  // TODO: Create temporary action directory and get version history... depending
-  // which comparator is defined
-  val versionList: Seq[String] = Nil
-
-  // this comparator does *NOT* allow versions to be equal
-  def isANewerThanB(versionA: String, versionB: String): Boolean = {
-    // we just do linear lookup since we're never looking at more than a few thousand versions
-    // and we only do this lookup a tiny number of times per ducttape execution
-    val idxA: Int = versionList.indexOf(versionA)
-    val idxB: Int = versionList.indexOf(versionB)
-    assert(idxA != idxB)
-    // TODO: What about -1?
-    return idxA < idxB
-  }
-  def isAOlderThanB(versionA: String, versionB: String) = !isANewerThanB(versionA, versionB)
-
-  // ordering on string-typed versions
-  val ordering: Ordering[String] = Ordering.fromLessThan(isAOlderThanB)
 }
 
 // TODO: Rename as "PackagesVersioner" or something to reflect
@@ -142,49 +98,38 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     packagesExisting = alreadyDone
     packagesToBuild = notDone
   }
+
+  def writeHeadVersion(packageDef: PackageDef, version: String) {
+    // TODO: Some locking at a much higher context (e.g. the whole build process)
+    val headVersionFile: File = dirs.assignBuildHeadFile(packageDef.name)
+    Files.write(version, headVersionFile)
+  }
+  // we only get previous version (which requires a comparator) if we
+  // aren't forced to rebuild
+  def getPreviousVersion(packageDef: PackageDef): Option[String] = {
+    val headVersionFile: File = dirs.assignBuildHeadFile(packageDef.name)
+    if (headVersionFile.exists) {
+      Files.read(headVersionFile) match {
+        case Seq(version) => Some(version) // only line in the file
+        case _ => {
+          System.err.println(s"WARNING: Found corrupt HEAD pointer at ${headVersionFile.getAbsolutePath} (It is safe to ignore this warning)")
+          None
+        }
+      }
+    } else {
+      None
+    }
+  }
   
   // analyze all previous versions of a particular software package
   // to see if it's up-to-date
   private def isAlreadyBuilt(packageDef: PackageDef): Boolean = {
-    // we only get previous version (which requires a comparator) if we
-    // aren't forced to rebuild
-    def getPreviousVersion(info: PackageVersionerInfo): Option[String] = {
-      System.err.println("WARNING: Skipping previous package check (currently under development)")
-      return None
-
-      // First, we need either a way of comparing version hashes (git and friends)
-      // or a way of turning revisions into integers (SVN)
-      val comparatorDef: ActionDef = info.getComparatorDef() match {
-        case Some(action) => action
-        case None => throw new FileFormatException(
-          "We need to determine the latest version of the package '%s' but versioner '%s' doesn't define a comparator of either 'version_to_int' or 'repo_history'".
-            format(packageDef.name, info.versionerDef.name), info.versionerDef)
-      }
-      val comparator = new PackageVersionComparator(comparatorDef)
-
-      // 1) list all existing directories/versions of this package
-      val packageDir: File = dirs.assignBuildPackageDir(packageDef.name)
-      val packageBuildDirs: Seq[File] = Files.ls(packageDir)
-
-      // 2) Filter them by which builds are successful
-      val prevBuilds: Seq[BuildEnvironment] = packageBuildDirs.map { versionDir: File =>
-        val versionStr: String = versionDir.getName
-        new BuildEnvironment(dirs, versionStr, packageDef.name)
-      }
-      val successfulBuilds: Seq[BuildEnvironment] = {
-        prevBuilds.filter { buildEnv => PackageBuilder.isBuildSuccessful(buildEnv) }
-      }
-
-      // 3) sort the successful builds by the version comparator
-      val sortedBuilds: Seq[String] = successfulBuilds.map(_.packageVersion).sorted(comparator.ordering)
-      sortedBuilds.headOption
-    }
 
     // if we're using auto-update mode, we must check if the version is current
     // otherwise, just check if this is the first time we've encountered this package
     val versionerDef: VersionerDef = Versioners.getVersioner(packageDef, versionerDefs)
     val info = new PackageVersionerInfo(versionerDef)
-    if (directives.autoUpdatePackages || forceUpdate || getPreviousVersion(info).isEmpty) {
+    if (directives.autoUpdatePackages || forceUpdate || getPreviousVersion(packageDef).isEmpty) {
       // TODO: Assign inputs and outputs to actions
     
       // TODO: Create an "ActionEnvironment" for these sorts of situations?
@@ -229,8 +174,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     } else {
       // we don't need to auto-update so just check if this is the first time we've had any need
       // to build this package
-      getPreviousVersion(info) match {
+      getPreviousVersion(packageDef) match {
         case Some(previouslyBuiltRepoVersion: String) => {
+          System.err.println(s"Found existing version of package ${packageDef.name}: ${previouslyBuiltRepoVersion}")
           packageVersions += packageDef.name -> previouslyBuiltRepoVersion
           true
         }

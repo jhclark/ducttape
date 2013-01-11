@@ -102,6 +102,8 @@ class DirectoryArchitect(val flat: Boolean,
   def assignBuildPackageDir(packageName: Namespace): File = {
     new File(confBaseDir, s".packages/${packageName.toString}")
   }
+  
+  def assignBuildHeadFile(packageName: Namespace) = new File(assignBuildPackageDir(packageName), "HEAD")
 
   // the directory where a specific version of a software package will get built
   def assignBuildDir(packageName: Namespace, packageVersion: String): File = {

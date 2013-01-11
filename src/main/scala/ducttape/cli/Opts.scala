@@ -42,8 +42,9 @@ class Opts(args: Seq[String]) extends OptParse {
   val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
   val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
   val unlock = new Mode("unlock", desc="Forcibly release any locks held by defunct instances of ducttape");
+  val update = new Mode("update", desc="Update software packages used by this workflow by querying remote version control repositories and building any new versions")
 
-  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate, unlock)
+  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate, unlock, update)
 
   // Positional arguments:
   private var _workflowFile = new File(".")

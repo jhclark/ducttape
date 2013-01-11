@@ -214,14 +214,11 @@ object Ducttape extends Logging {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
-    val traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase.charAt(0) match {
-      case "a" => Arbitrary
-      case "b" => BreadthFirst
-      case "d" => DepthFirst
-      case str @ _ => {
-        System.err.println(s"ERROR: Unknown traversal type: '${str}'")
-        exit(1)
-      }
+    val traversal: Traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase.charAt(0) match {
+      case 'a' => Arbitrary
+      case 'b' => BreadthFirst
+      case 'd' => DepthFirst
+      case str @ _ => throw new RuntimeException(s"ERROR: Unknown traversal type: '${str}'")
     }
 
     // Our dag is directed from antecedents toward their consequents
@@ -719,6 +716,37 @@ object Ducttape extends Logging {
           case true => Visitors.visitAll(workflow, new ForceUnlocker(dirs, todo=cc.locked), planPolicy, workflowVersion)
           case _ => System.err.println("Doing nothing")
         }
+       }
+       case "update" => {
+         // update *all* packages in the current workflow atomically
+         val packages: Seq[PackageDef] = workflow.packageDefs.values.toSet.toSeq
+         System.err.println(s"Found ${packages.size} packages")
+         err.println("Checking for new versions of packages...")
+         val packageVersions = new PackageVersioner(dirs, workflow.versioners, forceUpdate=true)
+         packageVersions.findAlreadyBuilt(packages)
+
+         for (packageName <- packageVersions.packagesToBuild) {
+           System.err.println(s"${Config.greenColor}BUILD:${Config.resetColor} ${packageName}")
+         }
+
+         if (packageVersions.packagesToBuild.size > 0) {
+           val answer = if (opts.yes) {
+             true
+           } else {
+             // note: user must still press enter
+             System.err.print(s"Are you sure you want to build these ${packageVersions.packagesToBuild.size} packages? [y/n] ")
+             System.err.flush()
+             Console.readBoolean
+           }
+           
+           if (answer) {
+             System.err.println("Retreiving code and building...")
+             val builder = new PackageBuilder(dirs, packageVersions)
+             builder.build(packageVersions.packagesToBuild)
+           } else {
+             System.err.println("Doing nothing.")
+           }
+         }
        }
       case "exec" | _ => {
         // for now, we'll hallucinate a fake version of what we're about to do

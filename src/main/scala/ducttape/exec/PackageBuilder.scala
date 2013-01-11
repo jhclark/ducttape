@@ -26,7 +26,8 @@ class PackageBuilder(dirs: DirectoryArchitect,
     for (myPackage: PackageDef <- packages) {
       val packageNamespace: Namespace = myPackage.name // may contain slash delimited namespace
       val packageName: String = packageNamespace.toString
-      val buildEnv = new BuildEnvironment(dirs, packageVersions(packageNamespace), packageNamespace)
+      val version: String = packageVersions(packageNamespace)
+      val buildEnv = new BuildEnvironment(dirs, version, packageNamespace)
 
       // TODO: XXX: Can build ever interfere with another running workflow?
       if (buildEnv.buildDir.exists) {
@@ -53,6 +54,7 @@ class PackageBuilder(dirs: DirectoryArchitect,
         // just bail out, this workflow is doomed without its tools
         throw new BashException(s"Build task ${packageName} returned ${exitCode}")
       }
+      packageVersions.writeHeadVersion(myPackage, version)
     }
   }
 }
