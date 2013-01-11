@@ -2,6 +2,7 @@ package ducttape.exec
 
 import java.io.File
 import ducttape.workflow.Realization
+import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.Unbound
@@ -33,8 +34,9 @@ class DirectoryArchitect(val flat: Boolean,
   val xdotFile = new File(confBaseDir, ".xdot")
   val dbFile = new File(confBaseDir, ".db")
 
-  def assignPackedDir(taskName: String, relativeTo: File = confBaseDir): File = {
-    new File(relativeTo, taskName).getAbsoluteFile
+  def assignPackedDir(taskName: Namespace, relativeTo: File = confBaseDir): File = {
+    // note: taskName will include various group names delimited by / such that they will create subdirectories
+    new File(relativeTo, taskName.toString).getAbsoluteFile
   }
   
   // assign a version and realization-specific task directory (convenience method)
@@ -97,20 +99,19 @@ class DirectoryArchitect(val flat: Boolean,
     = assignDir(task, relativeTo=new File(atticDir, task.version.toString))
 
   // the directory where various versions of a software package will get built
-  def assignBuildPackageDir(packageName: String): File = {
-    new File(confBaseDir, ".packages/%s".format(packageName))
+  def assignBuildPackageDir(packageName: Namespace): File = {
+    new File(confBaseDir, s".packages/${packageName.toString}")
   }
 
   // the directory where a specific version of a software package will get built
-  def assignBuildDir(packageName: String, packageVersion: String): File = {
+  def assignBuildDir(packageName: Namespace, packageVersion: String): File = {
     val packageDir = assignBuildPackageDir(packageName)
     new File(packageDir, packageVersion)
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, taskVersion: Int): File = {
-    //println("Assigning outfile for " + spec)
+    debug(s"Assigning outfile for ${spec}")
     val taskDir = assignDir(taskDef, realization, taskVersion)
-    assert(!spec.isInstanceOf[BranchPointDef])
 
     spec.rval match {
       case Unbound() => { // user didn't specify a name for this output file
@@ -147,7 +148,7 @@ class DirectoryArchitect(val flat: Boolean,
       case None => srcSpec.rval match {
         // gah, erasure!
         case Literal(path) => resolveLiteralPath(srcSpec.asInstanceOf[LiteralSpec])
-        case _ => throw new RuntimeException("No source task found for spec %s with source %s ".format(mySpec, srcSpec))
+        case _ => throw new RuntimeException(s"No source task found for spec ${mySpec} with source ${srcSpec}")
       }
       
       // has a source task? just recover the output path in the same way as when we originally produced it

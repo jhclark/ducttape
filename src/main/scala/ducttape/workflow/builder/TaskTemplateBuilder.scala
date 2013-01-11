@@ -3,6 +3,7 @@ package ducttape.workflow.builder
 import WorkflowBuilder.InputMode
 import WorkflowBuilder.ParamMode
 import WorkflowBuilder.ResolveMode
+import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.ASTType
 import ducttape.syntax.AbstractSyntaxTree.BranchGraft
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
@@ -138,10 +139,10 @@ private[builder] class TaskTemplateBuilder(
   // return the resolved output spec or literal param spec and we will add it to the branch
   // point tree
   private def resolveBranchPoint[SpecT <: Spec]
-    (taskDef: TaskDef, origSpec: Spec, taskMap: Map[String,TaskDef], isParam: Boolean)
+    (taskDef: TaskDef, origSpec: Spec, taskMap: Map[Namespace,TaskDef], isParam: Boolean)
     (prevTree: BranchTree, branchHistory: Seq[Branch], curTask: Option[TaskDef],
      curSpec: Spec, prevGrafts: Seq[Branch])
-    (resolveVarFunc: (TaskDef, Map[String,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
+    (resolveVarFunc: (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) {
 
     debug("Task=%s: Recursively resolving potential branch point: %s @ %s".format(taskDef, curSpec, curTask))
 
@@ -314,11 +315,11 @@ private[builder] class TaskTemplateBuilder(
   } // handleBranchPoint -- TODO: This method is obese, split it up.
 
   // the resolved Spec is guaranteed to be a literal for params
-  private def resolveParam(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
+  private def resolveParam(taskDef: TaskDef, taskMap: Map[Namespace,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
     resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)(src=curTask)
   }
    
-  private def resolveInput(taskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
+  private def resolveInput(taskDef: TaskDef, taskMap: Map[Namespace,TaskDef], spec: Spec, curTask: Option[TaskDef]) = {
     resolveNonBranchVar(InputMode())(taskDef, taskMap, spec)(src=curTask)
   }
   
@@ -331,7 +332,7 @@ private[builder] class TaskTemplateBuilder(
   // call itself, modifying only the last 3 arguments
   private def resolveNonBranchVar(mode: ResolveMode)
                                  (origTaskDef: TaskDef,
-                                  taskMap: Map[String,TaskDef], spec: Spec)
+                                  taskMap: Map[Namespace,TaskDef], spec: Spec)
                                  (curSpec: Spec=spec,
                                   src: Option[TaskDef],
                                   grafts: Seq[Branch] = Nil)
@@ -393,12 +394,14 @@ private[builder] class TaskTemplateBuilder(
    
   // helper for resolveNonBranchVar
   def resolveTaskVar(mode: ResolveMode)
-                    (origTaskDef: TaskDef, taskMap: Map[String,TaskDef], spec: Spec)
+                    (origTaskDef: TaskDef, taskMap: Map[Namespace,TaskDef], spec: Spec)
                     (curSpec: Spec, prevTask: Option[TaskDef], grafts: Seq[Branch])
                     (srcTaskName: String, srcOutName: String)
                     : (Spec, Option[TaskDef], Seq[Branch]) = {
      
-    taskMap.get(srcTaskName) match {
+    // TODO: XXX: Lane: This may not handle namespaces properly
+    val srcTaskNamespace = Namespace.fromString(srcTaskName)
+    taskMap.get(srcTaskNamespace) match {
       case Some(srcDef: TaskDef) => {
         // determine where to search when resolving this variable's parent spec
         val specSet = mode match {

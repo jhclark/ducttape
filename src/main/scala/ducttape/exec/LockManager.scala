@@ -81,7 +81,7 @@ class LockManager(version: WorkflowVersionStore) extends ExecutionObserver with 
         // throw MatchError if file is malformed
       }
     } catch {
-      case _ => throw new RuntimeException("Corrupt lock file: " + file.getAbsolutePath)
+      case _: Throwable => throw new RuntimeException("Corrupt lock file: " + file.getAbsolutePath)
     }
   }
   
@@ -107,7 +107,7 @@ class LockManager(version: WorkflowVersionStore) extends ExecutionObserver with 
           val (hostname, pid) = readLockFile(taskEnv.lockFile)
           debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
         } catch {
-          case _ => ; // something went wrong, but just ignore it since this was only informational
+          case _: Throwable => ; // something went wrong, but just ignore it since this was only informational
         }
       }
         
@@ -142,7 +142,7 @@ class LockManager(version: WorkflowVersionStore) extends ExecutionObserver with 
                 val oldVersion = Files.read(taskEnv.versionFile).head.toInt
                 oldVersion == version.version
               } catch {
-                case _ => false
+                case _: Throwable => false
               }
             }
     

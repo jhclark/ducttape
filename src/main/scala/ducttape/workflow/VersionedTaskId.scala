@@ -1,5 +1,7 @@
 package ducttape.workflow
 
+import ducttape.syntax.Namespace
+
 // holds the information necessary to uniquely identify a task's directory
 //
 // "realization" should be the *canonical* string representation
@@ -9,7 +11,7 @@ package ducttape.workflow
 // (and are therefore invalid under the current definition of those types). 
 //
 // (see also docs for RealTaskId)
-class VersionedTaskId(val name: String, val realization: String, val version: Int) {
+class VersionedTaskId(val name: Namespace, val realization: String, val version: Int) {
   lazy val realTaskId = new RealTaskId(name, realization)
   def toRealTaskId(): RealTaskId = realTaskId
 
@@ -24,5 +26,5 @@ class VersionedTaskId(val name: String, val realization: String, val version: In
       this.realization == that.realization
     }
   }
-  override def toString(): String = "%s/%s/%d".format(name, realization.toString, version)
+  override def toString() = s"${name}/${realization}/${version}"
 }

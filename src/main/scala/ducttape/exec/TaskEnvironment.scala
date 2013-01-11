@@ -1,9 +1,11 @@
 package ducttape.exec
 
+import ducttape.syntax.Namespace
 import ducttape.workflow.RealTask
 import ducttape.workflow.VersionedTask
 import ducttape.workflow.Realization
 import ducttape.workflow.SpecTypes._
+
 import java.io.File
 import grizzled.slf4j.Logging
 
@@ -84,7 +86,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
 class FullTaskEnvironment(dirs: DirectoryArchitect,
                           val packageVersions: PackageVersioner,
                           task: VersionedTask) extends TaskEnvironment(dirs, task) {
-  val packageNames: Seq[String] = task.packages.map(_.name)
+  val packageNames: Seq[Namespace] = task.packages.map { spec => Namespace.fromString(spec.name) }
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map { name =>
       val packageVersion = packageVersions(name)
@@ -92,9 +94,14 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
     }
   }
   val packageEnvs: Seq[(String,String)] = {
-    packageBuilds.map(build => (build.packageName, build.buildDir.getAbsolutePath) )
+    // TODO: XXX: HACK: Lane: We need a syntax for accessing fully qualified package names
+    // For now, we're just arbitrarily picking the package name to represent the whole shebang, which is silly
+    packageBuilds.map { build =>
+      val packageVariableName: String = build.packageName.name
+      (packageVariableName, build.buildDir.getAbsolutePath)
+    }
   }
 
   lazy val env = inputs ++ outputs ++ params ++ packageEnvs
-  lazy val taskVariables = env.map { case (key, value) => "%s=%s".format(key,value) }.mkString("\n")
+  lazy val taskVariables = env.map { case (key, value) => s"${key}=${value}" }.mkString("\n")
 }

@@ -16,7 +16,7 @@ class VersionedTask(realTask: RealTask,
                     val version: Int)
   extends RealTask(realTask) {
 
-  def toVersionedTaskId() = new VersionedTaskId(name, realization.toCanonicalString, version)
+  def toVersionedTaskId() = new VersionedTaskId(namespace, realization.toCanonicalString, version)
 
   // TODO: Smear hash code better
   override def hashCode() = name.hashCode ^ realization.hashCode

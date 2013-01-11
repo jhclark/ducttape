@@ -2,6 +2,7 @@ package ducttape.versioner
 
 import collection._
 import java.io.File
+import ducttape.syntax.Namespace
 import ducttape.exec.DirectoryArchitect
 import ducttape.util.Files
 import ducttape.util.Environment
@@ -67,7 +68,9 @@ object WorkflowVersionStore {
      for (line <- Files.read(manifestFile)) {
       val Seq(taskInfo, status) = Strings.splitOn(line, "\t")
       val Seq(name, real, ver) = Strings.splitOn(taskInfo, "/")
-      val id = new VersionedTaskId(name, real, ver.toInt)
+      // TODO: XXX: HACK: Lane: Make sure this handles namespaces appropriately
+      val namespace = Namespace.fromString(name)
+      val id = new VersionedTaskId(namespace, real, ver.toInt)
       status match {
         case "existing" => existing += id
         case "todo" => todo += id

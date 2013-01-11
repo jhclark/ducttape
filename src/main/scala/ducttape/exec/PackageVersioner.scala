@@ -5,6 +5,7 @@ import math.Ordering
 
 import ducttape.cli.Directives
 import ducttape.workflow.Realization
+import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
@@ -12,26 +13,28 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.FileFormatException
 import ducttape.syntax.Namespace
-import java.io.File
 import ducttape.util.Files
 import ducttape.util.Shell
 import ducttape.util.BashException
+
+import java.io.File
 import grizzled.slf4j.Logging
 
 object Versioners {
   def getVersioner(packageDef: PackageDef, versionerDefs: Map[Namespace, VersionerDef]): VersionerDef = {
     val dotVars: Seq[LiteralSpec] = packageDef.params.filter { spec => spec.dotVariable }.map(_.asInstanceOf[LiteralSpec])
   
-    val versionerName: String = dotVars.find { spec => spec.name == "versioner" } match {
-      case Some(spec) => spec.asInstanceOf[LiteralSpec].rval.value
-      case None => throw new FileFormatException(
-        "No versioner specified for package %s".format(packageDef.name), packageDef)
+    val versionerName: Namespace = dotVars.find { spec => spec.name == "versioner" } match {
+      case Some(spec) => {
+        val namespaceStr: String = spec.asInstanceOf[LiteralSpec].rval.value
+        Namespace.fromString(namespaceStr)
+      }
+      case None => throw new FileFormatException(s"No versioner specified for package ${packageDef.name}", packageDef)
     }
     
     val versionerDef: VersionerDef = versionerDefs.get(versionerName) match {
       case Some(v) => v
-      case None => throw new FileFormatException(
-        "Versioner not defined '%s' for package '%s'".format(versionerName, packageDef.name), packageDef)
+      case None => throw new FileFormatException(s"Versioner not defined '${versionerName}' for package '${packageDef.name}'", packageDef)
     }
     versionerDef
   }
@@ -43,20 +46,20 @@ class PackageVersionerInfo(val versionerDef: VersionerDef) extends Logging {
     case x: ActionDef => x
   }.filter(_.keyword == "action")
 
-  val checkoutDef: ActionDef = actionDefs.find { a => a.name == "checkout" } match {
+  val checkoutDef: ActionDef = actionDefs.find { a => a.name.toString == "checkout" } match {
     case Some(v) => v
     case None => throw new FileFormatException(
-      "Checkout action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+      s"Checkout action not defined for versioner '${versionerDef.name}", versionerDef)
   }
-  val repoVersionDef: ActionDef = actionDefs.find { a => a.name == "repo_version" } match {
+  val repoVersionDef: ActionDef = actionDefs.find { a => a.name.toString == "repo_version" } match {
     case Some(v) => v
     case None => throw new FileFormatException(
-      "repo_version action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+      s"repo_version action not defined for versioner '${versionerDef.name}'", versionerDef)
   }
-  val localVersionDef: ActionDef = actionDefs.find { a => a.name == "local_version" } match {
+  val localVersionDef: ActionDef = actionDefs.find { a => a.name.toString == "local_version" } match {
     case Some(v) => v
     case None => throw new FileFormatException(
-      "local_version action not defined for versioner '%s'".format(versionerDef.name), versionerDef)
+      s"local_version action not defined for versioner '${versionerDef.name}'", versionerDef)
   }
   val requiredParams: Set[String] = versionerDef.params.map(_.name).toSet
   
@@ -125,11 +128,11 @@ class PackageVersioner(val dirs: DirectoryArchitect,
   
   // the following 3 fields get populated by findAlreadyBuilt() and isAlreadyBuild()
   // TODO: Change these to immutable and initialize them on object creation?
-  val packageVersions = new mutable.HashMap[String,String] // packageName -> repoVersion
+  val packageVersions = new mutable.HashMap[Namespace,String] // packageName -> repoVersion
   var packagesToBuild: Seq[PackageDef] = Nil
   var packagesExisting: Seq[PackageDef] = Nil // both existing *and* up-to-date
   
-  def apply(packageName: String) = packageVersions(packageName)
+  def apply(packageName: Namespace) = packageVersions(packageName)
   
   /**
    * Returns a tuple of (alreadyBuilt, needsBuilding)
@@ -198,30 +201,30 @@ class PackageVersioner(val dirs: DirectoryArchitect,
         
         val stdPrefix = versionerDef.name + " repo_version " + packageDef.name
         val exitCode = Shell.run(info.repoVersionDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
-        Files.write("%d".format(exitCode), exitCodeFile)
+        Files.write(s"${exitCode}", exitCodeFile)
         if (exitCode != 0) {
-          throw new BashException("Action repo_version for versioner %s for package %s (%s:%d) returned %s".format(
-            info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line, exitCode))
+          throw new BashException(s"Action repo_version for versioner '${info.versionerDef.name}' for package '${packageDef.name}' " +
+                                  s"(${packageDef.declaringFile}:${packageDef.pos.line}) returned ${exitCode}")
       }
         
         val repoVersion = Files.read(versionFile).headOption match {
           case Some(v) => v
           case None => throw new BashException(
-            "Action repo_version for versioner %s for package %s (%s:%d) returned a blank version".format(
-              info.versionerDef.name, packageDef.name, packageDef.declaringFile, packageDef.pos.line))
+            s"Action repo_version for versioner '${info.versionerDef.name}' for package '${packageDef.name}' " +
+            s"(${packageDef.declaringFile}:${packageDef.pos.line}) returned a blank version")
         }
         
         Files.deleteDir(workDir) // workDir goes out of scope here as we delete it
         repoVersion
       }
       
-      System.err.println("Package %s: Repository version is %s".format(packageDef.name, repoVersion))
+      System.err.println(s"Package ${packageDef.name}: Repository version is ${repoVersion}")
       packageVersions += packageDef.name -> repoVersion
     
       // TODO: Different messages depending on build failed, etc.
       val buildEnv = new BuildEnvironment(dirs, repoVersion, packageDef.name)
       val exists = PackageBuilder.isBuildSuccessful(buildEnv)
-      System.err.println("Package %s: %s".format(packageDef.name, if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
+      System.err.println(s"Package ${packageDef.name}: %s".format(if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
       exists
     } else {
       // we don't need to auto-update so just check if this is the first time we've had any need
@@ -252,8 +255,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     // we should be checking for collissions
     val env = Seq( ("dir", buildDir.getAbsolutePath) ) ++ info.getEnv(packageDef)
     
-    System.err.println("Checking out %s into %s via %s".format(
-      packageDef.name, buildDir.getAbsolutePath, workDir.getAbsolutePath))
+    System.err.println(s"Checking out ${packageDef.name} into ${buildDir.getAbsolutePath} via ${workDir.getAbsolutePath}")
 
     Files.mkdirs(workDir)
     Files.mkdirs(buildDir)
@@ -269,8 +271,7 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     Files.deleteDir(workDir)
     
     if (exitCode != 0) {
-      throw new BashException("Action checkout for versioner %s returned %s".format(
-        info.versionerDef.name, exitCode))
+      throw new BashException(s"Action checkout for versioner ${info.versionerDef.name} returned ${exitCode}")
     }
   }
 }

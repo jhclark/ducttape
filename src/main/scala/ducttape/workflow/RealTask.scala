@@ -1,5 +1,6 @@
 package ducttape.workflow
 
+import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
@@ -18,7 +19,11 @@ class RealTask(val taskT: TaskTemplate,
    // used by VersionedTask
    private[workflow] def this(t: RealTask) = this(t.taskT, t.realization, t.inputVals, t.paramVals)
 
-   def name = taskT.name
+   // TODO: XXX: HACK: name should be removed and namespace should be renamed to "name"
+   // to be consistent with other classes -- however, this will mean a lot more refactoring
+   def name: String = taskT.name.toString
+   def namespace: Namespace = taskT.name
+
    def taskDef = taskT.taskDef
    def comments = taskT.comments
    def packages = taskT.packages
@@ -27,7 +32,7 @@ class RealTask(val taskT: TaskTemplate,
    def params = taskT.params
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
   
-   def toRealTaskId() = new RealTaskId(name, realization.toCanonicalString)
+   def toRealTaskId() = new RealTaskId(namespace, realization.toCanonicalString)
 
    // augment with version information
    def toVersionedTask(workflowVersion: WorkflowVersionInfo): VersionedTask = {
@@ -49,7 +54,9 @@ class RealTask(val taskT: TaskTemplate,
   // the tasks and realizations that must temporally precede this task (due to having required input files)
    lazy val antecedents: Set[(String, Realization)] = inputVals.collect {
      case inputVal if (inputVal.srcTask.isDefined) => {
-       (inputVal.srcTask.get.name, inputVal.srcReal)
+       val srcTask: TaskDef = inputVal.srcTask.get
+       // TODO: Change this from a String to a Namespace
+       (srcTask.name.toString, inputVal.srcReal)
      }
    }.toSet
 

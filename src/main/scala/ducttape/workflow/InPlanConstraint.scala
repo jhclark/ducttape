@@ -20,7 +20,7 @@ import grizzled.slf4j.Logging
 // TODO: Move these to top-level classes
 trait PlanPolicy;
 case class OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) extends PlanPolicy;
-case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;
+case class VertexFilter(plannedVertices: Set[RealTaskId]) extends PlanPolicy;
 case class PatternFilter(
     planFilter: Map[BranchPoint, Set[String]],
     graftRelaxations: Map[PackedWorkVert, Set[Branch]]
@@ -33,10 +33,11 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
   
   // for MetaVertexFilter -- this is used iff we're using the VertexFilter policy
   override def apply(v: UnpackedMetaVertex[Option[TaskTemplate],Branch,SpecGroup,Branch]): Boolean = {
+    val taskT: TaskTemplate = v.packed.value.get
     policy match {
       case VertexFilter(plannedVertices) => {
         // TODO: Less extraneous Realization creation?
-        val included = plannedVertices.contains( (v.packed.value.get.name, new Realization(v.realization)) )
+        val included = plannedVertices.contains(new RealTaskId(taskT.name, v.realization))
         if (!included) {
           explainCallback(v.toString, "Plan excludes vertex", false)
         }

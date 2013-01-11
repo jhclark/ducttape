@@ -33,26 +33,27 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
   private def getSubmitter(submitterSpec: ResolvedLiteralSpec): SubmitterDef = {
     
     val submitterName = submitterSpec.srcSpec.rval.value
-    submitters.find { s => s.name == submitterName } match {
+    submitters.find { s => s.name.toString == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Submitter %s not defined".format(submitterName),
+      case None => throw new FileFormatException(s"Submitter ${submitterName} not defined",
                      List(submitterSpec.origSpec, submitterSpec.srcSpec))
     }
   }
   
   private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
-    submitters.find { s => s.name == submitterName } match {
+    submitters.find { s: SubmitterDef => s.name.toString == submitterName } match {
       case Some(s) => s
-      case None => throw new FileFormatException("Default submitter %s not defined (required by task %s). Have: %s".format(
-                       submitterName, requiredBy.name, submitters.map(_.name).mkString(" ")), 
-                     requiredBy)
+      case None => throw new FileFormatException(
+        s"Default submitter '${submitterName}' not defined (required by task ${requiredBy.name})." +
+          s"We have these submitters: ${submitters.map(_.name).mkString(" ")}",
+        requiredBy)
     }
   }
   
   private def getRunAction(submitterDef: SubmitterDef): ActionDef = {
-    submitterDef.actions.find { action => action.name == "run" } match {
+    submitterDef.actions.find { action => action.name.toString == "run" } match {
       case Some(action: ActionDef) => action
-      case None => throw new FileFormatException("No 'run' action defined for submitter %s".format(submitterDef.name), 
+      case None => throw new FileFormatException(s"No 'run' action defined for submitter ${submitterDef.name}",
                      submitterDef)
     }
   }
@@ -74,7 +75,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
       requiredParams.contains(litSpec.origSpec.name)
     }
     val dotParamsEnv: Seq[(String,String)] = dotParamsForSubmitter.map { p => (p.origSpec.name, p.srcSpec.rval.value) }
-    debug("Dot parameters going into environment for run action are: " + dotParamsEnv)
+    debug(s"Dot parameters going into environment for run action are: ${dotParamsEnv}")
     val runAction = getRunAction(submitterDef)
 
     // note that run requires the entire environment from the original task
@@ -90,14 +91,14 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     // TODO: Were there ever any quoting bugs here?
     val code = runAction.commands.toString
-    debug("Execution environment is: %s".format(env))
+    debug(s"Execution environment is: ${env}")
 
-    System.err.println("Using submitter %s".format(submitterDef.name))
-    val stdPrefix = "%s/%s".format(taskEnv.task.name, taskEnv.task.realization)
+    System.err.println(s"Using submitter ${submitterDef.name}")
+    val stdPrefix = s"${taskEnv.task.name}/${taskEnv.task.realization}"
     val exitCode = Shell.run(code, stdPrefix, taskEnv.where, env, taskEnv.stdoutFile, taskEnv.stderrFile)
-    Files.write("%d".format(exitCode), taskEnv.exitCodeFile)
+    Files.write(s"${exitCode}", taskEnv.exitCodeFile)
     if (exitCode != 0) {
-      throw new BashException("Task %s/%s failed".format(taskEnv.task.name, taskEnv.task.realization))
+      throw new BashException(s"Task ${taskEnv.task} failed")
     }
   }
 }

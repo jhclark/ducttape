@@ -23,7 +23,7 @@ object CompletionChecker extends Logging {
     try {
       Files.read(exitCodeFile)(0).trim == "0"
     } catch {
-      case _ => false
+      case _: Throwable => false
     }
   } 
   
@@ -123,7 +123,7 @@ class CompletionChecker(dirs: DirectoryArchitect,
       // The walker is versioning with the "union" version --
       // If it has no version for this task, we'll get the "next" workflow version (which is fine)
       // But if it gave us a previous version, we want to reject that version and start a new one
-      _todoVersions += new VersionedTaskId(task.name, task.realization.toCanonicalString, nextWorkflowVersion)
+      _todoVersions += new VersionedTaskId(task.namespace, task.realization.toCanonicalString, nextWorkflowVersion)
       _todo += ((task.name, task.realization))
       debug(s"Todo: $task (Version $nextWorkflowVersion)")
 

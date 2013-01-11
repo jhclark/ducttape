@@ -1,5 +1,7 @@
 package ducttape.workflow
 
+import ducttape.syntax.Namespace
+
 // holds the information necessary to uniquely identify a task's directory
 // minus the version
 //
@@ -10,7 +12,14 @@ package ducttape.workflow
 // (and are therefore invalid under the current definition of those types). 
 //
 // (see also docs for VersionedTaskId)
-class RealTaskId(val name: String, val realization: String) {
+class RealTaskId(val name: Namespace, val realization: String) {
+
+  /** constructor used by InPlanConstraint -- needs to be fast */
+  def this(name: Namespace, realization: Seq[Branch]) = this(
+    name,
+    realization=realization.map(_.toString).mkString(Realization.delimiter)
+  )
+
   def toVersionedTaskId(version: Int) = new VersionedTaskId(name, realization, version)
 
   // TODO: Smear hash code better
@@ -23,5 +32,5 @@ class RealTaskId(val name: String, val realization: String) {
       this.realization == that.realization
     }
   }
-  override def toString(): String = "%s/%s".format(name, realization.toString)
+  override def toString(): String = s"${name}/${realization}"
 }

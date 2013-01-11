@@ -41,6 +41,7 @@ import ducttape.hyperdag.walker.DepthFirst
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.GrammarParser
 import ducttape.syntax.StaticChecker
+import ducttape.syntax.Namespace
 import ducttape.syntax.ErrorBehavior
 import ducttape.syntax.ErrorBehavior._
 import ducttape.workflow.builder.WorkflowBuilder
@@ -89,19 +90,17 @@ object Ducttape extends Logging {
       System.err.println(Config.resetColor)
     }
     
-    val ducttapeVersion = 
-      try { 
-        Files.readJarResource("/version.info").head
-      } catch {
-        case _ => "(version unknown)"
-      }
-    err.println("%sducttape %s".format(Config.headerColor,ducttapeVersion))
-    err.println("%sby Jonathan Clark".format(Config.byColor))
-    err.println(Config.resetColor)
+    val ducttapeVersion: String = try { 
+      Files.readJarResource("/version.info").head
+    } catch {
+      case _: Throwable => "(version unknown)"
+    }
+    err.println(s"ducttape $ducttapeVersion")
+    err.println("by Jonathan Clark")
 
     // read user config before printing anything to screen
     val userConfigFile = new File(Environment.UserHomeDir, ".ducttape")
-    debug("Checking for user config at: %s".format(userConfigFile.getAbsolutePath))
+    debug(s"Checking for user config at: ${userConfigFile.getAbsolutePath}")
     val userConfig: WorkflowDefinition = if (userConfigFile.exists) {
       GrammarParser.readConfig(userConfigFile)
     } else {
@@ -109,7 +108,7 @@ object Ducttape extends Logging {
     }
     
     // make these messages optional with verbosity levels?
-    debug("Reading workflow from %s".format(opts.workflowFile.getAbsolutePath))
+    debug(s"Reading workflow from ${opts.workflowFile.getAbsolutePath}")
     val wd: WorkflowDefinition = {
       val workflowOnly = ex2err(GrammarParser.readWorkflow(opts.workflowFile))
       
@@ -121,7 +120,7 @@ object Ducttape extends Logging {
             case None => ;
           }
           
-          err.println("Reading workflow configuration: %s".format(confFile))
+          err.println(s"Reading workflow configuration: ${confFile}")
           GrammarParser.readConfig(new File(confFile))
         }
         case None => new WorkflowDefinition(Nil)
@@ -149,7 +148,7 @@ object Ducttape extends Logging {
             case Some(name) => {
               wd.configs.find { case c: ConfigDefinition => c.name == confNameOpt } match {
                 case Some(x) => x.lines
-                case None => throw new DucttapeException("Configuration not found: %s".format(name))
+                case None => throw new DucttapeException(s"Configuration not found: ${name}")
               }
             }
             case None => wd.anonymousConfig match {
@@ -205,8 +204,8 @@ object Ducttape extends Logging {
       for (e: FileFormatException <- errors) {
         ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
       }
-      if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
-      if (errors.size > 0) System.err.println("%d errors".format(errors.size))
+      if (warnings.size > 0) System.err.println(s"${warnings.size} warnings")
+      if (errors.size > 0) System.err.println(s"${errors.size} errors")
       if (errors.size > 0) {
         exit(1)
       }
@@ -235,10 +234,10 @@ object Ducttape extends Logging {
     def getPrevWorkflowVersion(mode: String): WorkflowVersionInfo = {
       getVersionHistory().prevVersionInfo match {
         case Some(versionInfo) => {
-          System.err.println("Using workflow version: %s".format(versionInfo))
+          System.err.println(s"Using workflow version: ${versionInfo}")
           versionInfo
         }
-        case None => throw new RuntimeException("No previous version history exists for this workflow, but '%s' mode requires a previous version".format(mode))
+        case None => throw new RuntimeException(s"No previous version history exists for this workflow, but '${mode}' mode requires a previous version")
       }
     }
 
@@ -247,7 +246,7 @@ object Ducttape extends Logging {
       val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, workflowVersion, planNames=opts.plans)
       planPolicy match {
         case VertexFilter(plannedVertices) => {
-          System.err.println("Planned %s vertices".format(plannedVertices.size))
+          System.err.println(s"Planned ${plannedVertices.size} vertices")
         }
         case _ => ;
       }
@@ -262,8 +261,8 @@ object Ducttape extends Logging {
         for (e: FileFormatException <- errors) {
           ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
         }
-        if (warnings.size > 0) System.err.println("%d warnings".format(warnings.size))
-        if (errors.size > 0) System.err.println("%d errors".format(errors.size))
+        if (warnings.size > 0) System.err.println(s"${warnings.size} warnings")
+        if (errors.size > 0) System.err.println(s"${errors.size} errors")
         if (errors.size > 0) {
           exit(1)
         }
@@ -274,7 +273,7 @@ object Ducttape extends Logging {
             
     // Check version information
     val history = WorkflowVersionHistory.load(dirs.versionHistoryDir)
-    err.println("Have %d previous workflow versions".format(history.prevVersion.getOrElse(0)))
+    err.println(s"Have ${history.prevVersion.getOrElse(0)} previous workflow versions")
     
     // this is a critical stage for versioning -- here, we decide whether or not
     // we have an acceptable existing version of a task or if we'll need a new
@@ -287,7 +286,7 @@ object Ducttape extends Logging {
       val unionVersion: WorkflowVersionInfo = history.union()
 
       history.prevVersion match {
-        case Some(prev) => System.err.println("Checking for completed steps from versions through %d...".format(prev))
+        case Some(prev) => System.err.println(s"Checking for completed steps from versions through ${prev}...")
         case None => System.err.println("No previous workflow versions -- no tasks completed yet.")
       }
       def msgCallback(msg: String) = System.err.println(msg)
@@ -303,7 +302,7 @@ object Ducttape extends Logging {
       // TODO: Always return all packages when using auto_update?
       val packageFinder = new PackageFinder(cc.map(_.todo), workflow.packageDefs)
       Visitors.visitAll(workflow, packageFinder, planPolicy, workflowVersion)
-      System.err.println("Found %d packages".format(packageFinder.packages.size))
+      System.err.println(s"Found ${packageFinder.packages.size} packages")
 
       // now see what the repo version is for these packages
       // and also determine if they need to be rebuilt in execute mode
@@ -321,7 +320,7 @@ object Ducttape extends Logging {
         val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
         // we don't actually need the versioned task here... yet.
         // TODO: but it might make sense to add a switch to list dependent versions, etc.
-        println("%s %s".format(task.name, task.realization))
+        println(s"${task.name} ${task.realization}")
         //println("Actual realization: " + v.realization)
       }
     }
@@ -336,10 +335,8 @@ object Ducttape extends Logging {
           have.getOrElseUpdate(vertexName, new mutable.HashSet[String]) += msg
         } else {
           if (!seen( (planName, vertexName, msg) )) {
-            System.err.println("%s%s%s: %s%s%s: %s".format(
-              Config.greenColor, planName.getOrElse("Anonymous"), Config.resetColor,
-              Config.taskColor, vertexName, Config.resetColor,
-              msg))
+            System.err.println(s"${Config.greenColor}${planName.getOrElse("Anonymous")}${Config.resetColor}: " +
+                               s"${Config.taskColor}${vertexName}${Config.resetColor}: ${msg}")
             seen += ((planName, vertexName, msg))
           }
         }
@@ -349,9 +346,9 @@ object Ducttape extends Logging {
 
       System.err.println("Accepted realizations: ")
       for ( (vertex, reals) <- have.toSeq.sortBy(_._1)) {
-        System.err.println("%s%s%s".format(Config.taskColor, vertex, Config.resetColor))
+        System.err.println(s"${Config.taskColor}${vertex}${Config.resetColor}")
         for (real <- reals) {
-          System.err.println("  %s".format(real))
+          System.err.println(s"  ${real}")
         }
       }
     }
@@ -417,8 +414,8 @@ object Ducttape extends Logging {
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
         val taskT: TaskTemplate = v.packed.value.get
         val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
-
-        if (taskPattern.matcher(taskT.name).matches) {
+        val taskName: Namespace = taskT.name
+        if (taskPattern.matcher(taskName.toString).matches) {
         //if (taskToKill == "*" || taskT.name == taskToKill) {
           //if (realsToKill == Set("*") || realsToKill(task.realization.toString)) {
           if (realPatterns.exists(_.matches(task.realization))) {
@@ -446,7 +443,7 @@ object Ducttape extends Logging {
         if (taskEnv.where.exists) {
           extantVictims += task
         } else {
-          err.println("No previous output for: %s".format(task))
+          err.println(s"No previous output for: ${task}")
         }
       }
       extantVictims
@@ -467,7 +464,7 @@ object Ducttape extends Logging {
       val workflowVersion = getPrevWorkflowVersion("invalidate")
       val planPolicy = getPlannedVertices(workflowVersion)
       
-      err.println("Finding tasks to be invalidated: %s for realizations: %s".format(taskToKill, realsToKill))
+      err.println(s"Finding tasks to be invalidated: ${taskToKill} for realizations: ${realsToKill}")
 
       // 1) Accumulate the set of changes
       val victims: OrderedSet[VersionedTask] = getVictims(taskToKill, realsToKill, planPolicy, workflowVersion)
@@ -488,7 +485,7 @@ object Ducttape extends Logging {
       
       answer match {
         case 'y' | 'Y' => victims.foreach(task => {
-          err.println("Invalidating %s".format(task))
+          err.println(s"Invalidating ${task}")
           CompletionChecker.invalidate(new TaskEnvironment(dirs, task))
         })
         case _ => err.println("Doing nothing")
@@ -509,7 +506,7 @@ object Ducttape extends Logging {
       val workflowVersion = getPrevWorkflowVersion("purge")
       val planPolicy = getPlannedVertices(workflowVersion)
       
-      err.println("Finding tasks to be purged: %s for realizations: %s".format(taskToKill, realsToKill))
+      err.println(s"Finding tasks to be purged: ${taskToKill} for realizations: ${realsToKill}")
 
       // 1) Accumulate the set of changes
       val victimList: Seq[VersionedTask] = getVictims(taskToKill, realsToKill, planPolicy, workflowVersion).toSeq
@@ -529,7 +526,10 @@ object Ducttape extends Logging {
       }
 
       answer match {
-        case 'y' | 'Y' => absDirs.foreach { f: File => err.println("Deleting %s".format(f.getAbsolutePath)); Files.deleteDir(f) }
+        case 'y' | 'Y' => absDirs.foreach { f: File =>
+          err.println(s"Deleting ${f.getAbsolutePath}")
+          Files.deleteDir(f)
+        }
         case _ => err.println("Doing nothing")
       }
     }
@@ -570,15 +570,15 @@ object Ducttape extends Logging {
       case "status" => {
         val db = new WorkflowDatabase(dirs.dbFile)
         for (task: TaskInfo <- db.getTasks) {
-          System.out.println("%s/%s: %s".format(task.name, task.realName, task.status))
+          System.out.println(s"${task.name}/${task.realName}: ${task.status}")
           for (input: InputInfo <- task.inputs) {
-            System.out.println("  < %s: %s".format(input.name, input.path))
+            System.out.println(s"  < ${input.name}: ${input.path}")
           }
           for (output: OutputInfo <- task.outputs) {
-            System.out.println("  > %s: %s".format(output.name, output.path))
+            System.out.println(s"  > ${output.name}: ${output.path}")
           }
           for (param: ParamInfo <- task.params) {
-            System.out.println("  :: %s: %s".format(param.name, param.value))
+            System.out.println(s"  :: ${param.name}: ${param.value}")
           }
         }
       }
@@ -631,23 +631,23 @@ object Ducttape extends Logging {
 
               // f) run the summary command
               val code = ofDef.commands.toString
-              val stdPrefix = "%s/%s".format(taskEnv.task.name, taskEnv.task.realization)
+              val stdPrefix = taskEnv.task.toString
               val stdoutFile = new File(workDir, "summary_stdout.txt")
               val stderrFile = new File(workDir, "summary_stderr.txt")
               val exitCodeFile = new File(workDir, "summary_exit_code.txt")
 
-              err.println("Summarizing %s: %s/%s".format(summaryDef.name, task.name, task.realization))
+              err.println(s"Summarizing ${summaryDef.name}: ${task}")
               val exitCode = Shell.run(code, stdPrefix, workDir, env, stdoutFile, stderrFile)
-              Files.write("%d".format(exitCode), exitCodeFile)
+              Files.write(s"${exitCode}", exitCodeFile)
               if (exitCode != 0) {
-                throw new BashException("Summary '%s' of %s/%s failed".format(summaryDef.name, taskEnv.task.name, taskEnv.task.realization))
+                throw new BashException(s"Summary '${summaryDef.name}' of ${taskEnv.task} failed")
               }
               
               // g) extract the result from the file and put it in our table
               for ( (outputName, path) <- summaryOutputs) {
                 val lines: Seq[String] = Files.read(new File(path))
                 if (lines.size != 1) {
-                  throw new BashException("For summary '%s', expected exactly one line in '%s', but instead found %d".format(summaryDef.name, path, lines.size))
+                  throw new BashException(s"For summary '${summaryDef.name}', expected exactly one line in '${path}', but instead found ${lines.size}")
                 }
                 val label = outputName
                 val result: String = lines(0)
@@ -670,10 +670,10 @@ object Ducttape extends Logging {
         val (constantBranchPointMap, variableBranchPointMap)
           = branchPointMap.toSeq.sortBy(_._1.name).partition { case (bp, branches) => branches.size == 1 }
         for ( (bp, branches) <- constantBranchPointMap) {
-          System.err.println("Constant branch point: %s=%s".format(bp, branches.head))
+          System.err.println(s"Constant branch point: ${bp}=${branches.head}".format(bp, branches.head))
         }
         val variableBranchPoints: Seq[BranchPoint] = variableBranchPointMap.map(_._1)
-        System.err.println("Variable branch points: " + variableBranchPoints.mkString(" "))
+        System.err.println(s"Variable branch points: ${variableBranchPoints.mkString(" ")}")
 
         val labels: Seq[String] = labelSet.toSeq.sorted
         val header: Seq[String] = variableBranchPoints.map(_.name) ++ labels
@@ -695,7 +695,7 @@ object Ducttape extends Logging {
           import ducttape.cli.ColorUtils.colorizeDir
           System.err.println("Remove locks:")
           for ( (task, real) <- cc.locked) {
-            System.err.println("%sUNLOCK:%s %s".format(Config.greenColor, Config.resetColor, colorizeDir(task, real)))
+            System.err.println(s"${Config.greenColor}UNLOCK:${Config.resetColor} ${colorizeDir(task, real)}")
           }
         }
           
@@ -704,7 +704,7 @@ object Ducttape extends Logging {
         } else {
           // note: user must still press enter
           if (cc.locked.size > 0) {
-            System.err.print("Are you sure you want to FORCE UNLOCK these %d tasks? (Only do this if you sure no other process is using them) [y/n] ".format(cc.todo.size))
+            System.err.print(s"Are you sure you want to FORCE UNLOCK these ${cc.todo.size} tasks? (Only do this if you sure no other process is using them) [y/n] ")
             Console.readBoolean
           } else {
             false

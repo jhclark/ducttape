@@ -5,6 +5,7 @@ import WorkflowBuilder.ParamMode
 import WorkflowBuilder.ResolveMode
 import ducttape.hyperdag.meta.PhantomMetaHyperDagBuilder
 import ducttape.hyperdag.PackedVertex
+import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.ASTType
 import ducttape.syntax.AbstractSyntaxTree.BranchGraft
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
@@ -267,14 +268,14 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
     // == we've just completed our first pass over the workflow file and linked everything together ==
 
-    val vertices = new mutable.HashMap[String, PackedVertex[Option[TaskTemplate]]]
+    val vertices = new mutable.HashMap[Namespace, PackedVertex[Option[TaskTemplate]]]
     for (tt <- foundTasks.taskTemplates) {
       if (vertices.contains(tt.name)) {
         val prev: TaskTemplate = vertices(tt.name).value.get
-        throw new FileFormatException("Duplicate task name: %s".format(tt.name),
+        throw new FileFormatException("Duplicate task name: %s".format(tt.name.toString),
           List(tt.taskDef, prev.taskDef))
       }
-      vertices += tt.name -> dag.addVertex(tt, comment = tt.name)
+      vertices += tt.name -> dag.addVertex(tt, comment=tt.name.toString)
     }
     implicit def toVertex(t: TaskDef): PackedVertex[Option[TaskTemplate]] = vertices(t.name)
 

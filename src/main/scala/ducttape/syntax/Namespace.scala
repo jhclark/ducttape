@@ -1,7 +1,12 @@
 package ducttape.syntax
 
-  
-class Namespace(val name:String, val ancestry:Option[String] = None) {
+import ducttape.util.Strings
+
+/** Represents a task name along with all of the groups that
+ *  contain it.
+ *  ancestry is delimited by forward slashes without a leading nor trailing slash
+ */
+class Namespace(val name: String, val ancestry: Option[String] = None) {
     
   override def equals(that: Any) = {
     that match { 
@@ -9,15 +14,20 @@ class Namespace(val name:String, val ancestry:Option[String] = None) {
       case _                => false
     }
   }
+  
+  // TODO: More smearing
+  override def hashCode() = name.hashCode ^ ancestry.hashCode
     
-  override def hashCode = toString.hashCode
-    
-  override def toString = {
-    ancestry match {
-      case Some(s:String) => name + "/" + s
-      case None           => name
-    }
+  /** Note: This is used by CLI globbing, so this representation must stay consistent */
+  override def toString() = ancestry match {
+    case Some(groupNames: String) => s"${name}/${groupNames}"
+    case None                     => name
   }
-    
 }
 
+object Namespace {
+  def fromString(str: String) = {
+    val (groupNames: Option[String], taskName: String) = Strings.splitOnLast(str, '/')
+    new Namespace(taskName, groupNames)
+  }
+}
