@@ -4,7 +4,7 @@ import collection._
 import ducttape.util.Shell
 import ducttape.util.Files
 import ducttape.workflow.Realization
-import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.PlanPolicy
 import ducttape.util.BashException
@@ -26,7 +26,7 @@ class Executor(val dirs: DirectoryArchitect,
 
   observers.foreach(_.init(this))
 
-  override def visit(task: RealTask) {
+  override def visit(task: VersionedTask) {
     if (todo( (task.name, task.realization) )) {
       
       val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)

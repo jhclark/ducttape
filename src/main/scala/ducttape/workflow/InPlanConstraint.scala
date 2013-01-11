@@ -17,6 +17,7 @@ import ducttape.hyperdag.meta.UnpackedMetaVertex
 
 import grizzled.slf4j.Logging
 
+// TODO: Move these to top-level classes
 trait PlanPolicy;
 case class OneOff(graftRelaxations: Map[PackedWorkVert, Set[Branch]]) extends PlanPolicy;
 case class VertexFilter(plannedVertices: Set[(String,Realization)]) extends PlanPolicy;

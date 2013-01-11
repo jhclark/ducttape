@@ -2,6 +2,15 @@ package ducttape.hyperdag
 
 import ducttape.util.Optional
 
+/**
+ * A hyperedge is composed of one or more "incoming" edges
+ * and has a single implicit "outgoing" edge.
+ *
+ * e will be isomorophic to the sequence of source vertices
+ * returned by HyperDag.sources(hyperdge)
+ *
+ * see [[ducttape.hyperdag.HyperDag]] for definitions of generic types
+ */
 class HyperEdge[H,E](private[hyperdag] val id: Int, val h: H, val e: Seq[E]) {
   override def hashCode() = id
   override def equals(that: Any) = that match { case other: HyperEdge[_,_] => (other.id == this.id) }

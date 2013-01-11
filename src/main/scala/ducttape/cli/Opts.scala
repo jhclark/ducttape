@@ -23,8 +23,8 @@ class Opts(args: Seq[String]) extends OptParse {
       IntOpt(desc="Number of concurrent jobs to run", default=1)
     }
   }
+  val traversal = StrOpt(desc="hypergraph traversal algorithm to use when running the workflow (Arbitrary, BreadthFirst, DepthFirst). Default is DepthFirst.",short='t')
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
-  val config_name = StrOpt(desc="Workflow configuration name to run", short='c', invalidWith=config_file)
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
 
@@ -41,8 +41,9 @@ class Opts(args: Seq[String]) extends OptParse {
   val mark_done = new Mode("mark_done", desc="Mark a specific task/realization as complete (useful if some manual recovery or resumption was necessary)");
   val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
   val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
+  val unlock = new Mode("unlock", desc="Forcibly release any locks held by defunct instances of ducttape");
 
-  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate)
+  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate, unlock)
 
   // Positional arguments:
   private var _workflowFile = new File(".")

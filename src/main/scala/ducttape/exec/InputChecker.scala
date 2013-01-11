@@ -8,7 +8,7 @@ import ducttape.syntax.FileFormatException
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.workflow.Branch
 import ducttape.workflow.Realization
-import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.SpecTypes.ResolvedSpec
 import ducttape.util.Files
 
@@ -18,7 +18,7 @@ class InputChecker(dirs: DirectoryArchitect) extends UnpackedDagVisitor with Log
 
   val errors = new mutable.ArrayBuffer[FileFormatException]
 
-  override def visit(task: RealTask) {
+  override def visit(task: VersionedTask) {
     for (inSpec: ResolvedSpec <- task.inputVals) {
       inSpec.srcTask match {
         case Some(_) => ; // input will be generated during workflow execution

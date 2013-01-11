@@ -11,16 +11,24 @@ import ducttape.hyperdag.walker.DefaultMetaVertexFilter
 import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 
 /** essentially -- an AND-OR HyperDAG 
  * an implementation of MetaHyperDAGs based on transforming
  * meta-edges into epsilon vertices (but these are hidden from the user)
  *
- * immutable
+ * this immutable representation is returned by a builder.
  *
  * walker will note when epsilon vertices are completed, but not actually
- * return them to the user */
-// TODO: Pass filters to dag walker
+ * return them to the user
+ *
+ * V is the vertex payload type (in a workflow, this will be a TaskTemplate)
+ * M is the metaedge payload type (in a workflow, this will be the BranchPoint)
+ * H is the hyperedge payload type (each hyperedge is composed of component "incoming" edges;
+ *                                  in a workflow, this might be a Branch)
+ * E is the edge payload type (in a workflow, this will be the set of input-output file pair
+ *                             connected by the edge) */
 class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
                             private[hyperdag] val metaEdgesByEpsilon: Map[PackedVertex[_],MetaEdge[M,H,E]],
                             private[hyperdag] val epsilonEdges: Set[HyperEdge[H,E]]) {
@@ -36,21 +44,21 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
 
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
                           vertexFilter: MetaVertexFilter[V,H,E,D],
-                          toD: H => D)
+                          toD: H => D,
+                          traversal: Traversal = DepthFirst)
                          (implicit ordering: Ordering[D])= {
-    // TODO: Combine this hedgeFilter with an external one?
-    // TODO: Allow filtering baseline from realizations
     // TODO: Exclude epsilons from completed, etc.
-    // TODO: Map epsilons and phantoms for constraintFiler in this class instead of putting
-    // the burden on the filter
-    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD)
+    // TODO: Map epsilons and phantoms for the munger in this class instead of putting
+    // the burden on the munger
+    new UnpackedMetaDagWalker[V,M,H,E,D,F](this, munger, vertexFilter, toD, traversal)
   }
   
   def unpackedWalker[D](vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
-                        toD: H => D = new DefaultToD[H])
+                        toD: H => D = new DefaultToD[H],
+                        traversal: Traversal = DepthFirst)
                        (implicit ordering: Ordering[D]) = {
     val munger = new DefaultRealizationMunger[V,H,E,D]
-    new UnpackedMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD)
+    new UnpackedMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, traversal)
   }
 
   def inMetaEdges(v: PackedVertex[_]): Seq[MetaEdge[M,H,E]]

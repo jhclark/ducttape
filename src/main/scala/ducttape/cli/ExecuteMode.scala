@@ -5,10 +5,8 @@ import collection._
 import java.util.concurrent.ExecutionException
 import java.io.File
 
-import ducttape.cli.Directives
 import ducttape.syntax.FileFormatException
 import ducttape.exec.PackageBuilder
-import ducttape.versioner.WorkflowVersionInfo
 import ducttape.exec.PackageVersioner
 import ducttape.exec.InputChecker
 import ducttape.exec.DirectoryArchitect
@@ -21,16 +19,26 @@ import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
+import ducttape.workflow.VersionedTaskId
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 import ducttape.versioner.WorkflowVersionHistory
+import ducttape.versioner.WorkflowVersionInfo
+import ducttape.versioner.WorkflowVersionStore
 import ducttape.util.Files
 
 object ExecuteMode {
   
+  // uncommittedVersion is the version we hallucinate before the user
+  // has officially given us the greenlight to proceed with execution
+  // (and therefore the greenlight to commit this version of the workflow to disk)
   def run(workflow: HyperWorkflow,
           cc: CompletionChecker,
           planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
-          getPackageVersions: () => PackageVersioner)
+          uncommittedVersion: WorkflowVersionInfo,
+          getPackageVersions: () => PackageVersioner,
+          traversal: Traversal = DepthFirst)
          (implicit opts: Opts, dirs: DirectoryArchitect, directives: Directives) {
     
     if (cc.todo.isEmpty) {
@@ -42,7 +50,7 @@ object ExecuteMode {
       
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
-      Visitors.visitAll(workflow, inputChecker, planPolicy)
+      Visitors.visitAll(workflow, inputChecker, planPolicy, uncommittedVersion)
       if (inputChecker.errors.size > 0) {
         for (e: FileFormatException <- inputChecker.errors) {
           ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
@@ -62,7 +70,7 @@ object ExecuteMode {
       import ducttape.cli.ColorUtils.colorizeDir
       import ducttape.cli.ColorUtils.colorizeDirs
       
-      System.err.println("Work plan:")
+      System.err.println("Work plan ("+traversal+" traversal):")
       for ( (task, real) <- cc.broken) {
         System.err.println("%sDELETE:%s %s".format(Config.redColor, Config.resetColor, colorizeDir(task, real)))
       }
@@ -95,9 +103,14 @@ object ExecuteMode {
         case true => {
           // create a new workflow version
           val configFile: Option[File] = opts.config_file.value.map(new File(_))
-          val existingTasks: Seq[RealTaskId] = cc.completedVersions
-          val todoTasks: Seq[RealTaskId] = cc.todoVersions
-          val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history, existingTasks, todoTasks)
+          val existingTasks: Seq[VersionedTaskId] = cc.completedVersions.toSeq
+          val todoTasks: Seq[VersionedTaskId] = cc.todoVersions.toSeq
+
+          // user has given us the green light, so now switch over from using
+          // fake/hallucinated version that wasn't actually written to disk
+          // to using version info that's written in stone (i.e. on disk)
+          // TODO: We should just add a "commit" method to the version
+          val committedVersion = WorkflowVersionStore.create(dirs, opts.workflowFile, configFile, history, existingTasks, todoTasks)
           
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)
@@ -108,20 +121,20 @@ object ExecuteMode {
 
           // Locker takes a thunk to create a scoping effect
           // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
-          LockManager(myVersion) { locker: LockManager =>
+          LockManager(committedVersion) { locker: LockManager =>
 
             System.err.println("Moving previous partial output to the attic...")
             // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
+            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy, committedVersion)
           
             // Make a pass after moving partial output to write output files
             // claiming those directories as ours so that we can later start another ducttape process
-            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
+            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy, committedVersion)
             
             System.err.println("Executing tasks...")
             Visitors.visitAll(workflow,
                               new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                              planPolicy, opts.jobs())
+                              planPolicy, committedVersion, opts.jobs(), traversal)
           }
         }
         case _ => System.err.println("Doing nothing")

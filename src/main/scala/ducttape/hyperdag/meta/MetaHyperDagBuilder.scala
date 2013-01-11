@@ -4,16 +4,10 @@ import collection._
 
 import ducttape.hyperdag._
 
-/** epsilonValue is just a dummy value that will never be given back to the user
-  * (needed since we can't directly created objects with generic types)
+/** See [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of a MetaHyperDag, etc.
   * 
-  *  phantom edge: an edge with no source vertices
-  * phantom vertex: the source vertex of a phantom edge
-  * used in ducttape for literal file paths, which may be linked with branches
-  * but don't have any executable code associated with them
-  * TODO: Should this be incorporated into HyperDAG, too?
-  * this method allows sources to be optional, indicating that edges *may*
-  * have phantom source vertices
+  * epsilonValue is just a dummy value that will never be given back to the user
+  * (needed since we can't directly created objects with generic types)
   *
   * <img src="x.gif" /> */
 class MetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null, epsilonE: E = null) {
@@ -24,6 +18,9 @@ class MetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null, epsil
   
   def addVertex(v: V, comment: Option[String] = None): PackedVertex[V] = delegate.addVertex(v, comment)
 
+  /** hyperEdgeInfo is a sequence of component hyperedges, represented by pairs of (H, he_info)
+   *    where he_info is a sequence of the component edges of each hyperedge
+   *    (see [[ducttape.hyperdag.HyperDagBuilder.addEdge]] for more) */
   def addMetaEdge(m: M,
                   hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[V],E)])],
                   sink: PackedVertex[V],
@@ -49,6 +46,7 @@ class MetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null, epsil
     me
   }
 
+  // create a usable immutable representation of this MetaHyperDag
   def build() = {
     // add single hyperedge that represents all incoming meta-edges
     // for all non-epsilon vertices

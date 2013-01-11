@@ -7,11 +7,35 @@ import ducttape.hyperdag.walker.DefaultVertexFilter
 import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.DepthFirst
 
 // XXX: HACK
 import ducttape.workflow.SpecGroup
 
-// immutable
+/**
+ * An immutable representation of a Directed Acyclic Hypergraph (HyperDAG), returned
+ * by a builder.
+ *
+ * roots: the vertices that have no parents
+ * vertices: a complete list of all vertices in the HyperDAG
+ * inEdgesMap: a map from a packed vertex to its incoming hyperdges
+ * outEdgesMap: a map from a packed vertex to a sequence of hyperedges. each hyperedge
+ *              will have one or more source vertices. the specified packed vertex must be
+ *              one of those source vertices.
+ * edges: a map from a hyperedge to a pair. the first element of the pair specifies
+ *        the source vertices of the hyperedge (which are isomorphic to the hyperedge's edges).
+ *        the second element of the pair specifies the sink vertex of the hyperedge.
+ *
+ * Note: In GraphViz or written notation, a "sink" vertex is the vertex pointed to by
+ *       the hyperedge's arrow.
+ *
+ * V is the vertex payload type (in a workflow, this will be a TaskTemplate)
+ * H is the hyperedge payload type (each hyperedge is composed of component "incoming" edges;
+ *                                  in a workflow, this might be a Branch)
+ * E is the edge payload type (in a workflow, this will be the set of input-output file pair
+ *                             connected by the edge)
+ */
 class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
                       val vertices: Seq[PackedVertex[V]],
                       private[hyperdag] val inEdgesMap: Map[PackedVertex[_], Seq[HyperEdge[H,E]]],
@@ -24,15 +48,17 @@ class HyperDag[V,H,E](val roots: Seq[PackedVertex[V]],
 
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
                           vertexFilter: VertexFilter[V,H,E,D],
-                          toD: H => D)
+                          toD: H => D,
+                          traversal: Traversal = DepthFirst)
                          (implicit ordering: Ordering[D])
-    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD)
+    = new walker.UnpackedDagWalker[V,H,E,D,F](this, munger, vertexFilter, toD, traversal)
     
   def unpackedWalker[D](vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-                        toD: H => D = new DefaultToD[H])
+                        toD: H => D = new DefaultToD[H],
+                        traversal: Traversal = DepthFirst)
                        (implicit ordering: Ordering[D]) = {
     val munger = new DefaultRealizationMunger[V,H,E,D]
-    new walker.UnpackedDagWalker[V,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD)
+    new walker.UnpackedDagWalker[V,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, traversal)
   }
     
   def inEdges(v: PackedVertex[_]): Seq[HyperEdge[H,E]]

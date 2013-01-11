@@ -1,9 +1,5 @@
 package ducttape.exec
 
-import ducttape.workflow.Realization
-import ducttape.workflow.RealTask
-
-
 trait ExecutionObserver {
   def init(exec: Executor) {}
   

@@ -8,11 +8,16 @@ import ducttape.hyperdag.meta.UnpackedChainedMetaVertex
 
 import collection._
 
+// TODO: Some classes here should probably be put into their own
+// own package or perhaps seperate files.
+
 // these really better belong in companion objects
 // for UnpackedDagWalker and UnpackedMetaDagWalker
 // however, that caused inscrutable compiler errors
 // for some bizarre reasons
 
+/** See [[ducttape.hyperdag.walker.UnpackedMetaDagWalker]] for usage
+ *  and generic type definitions. */
 trait MetaVertexFilter[V,H,E,D] {
   def apply(v: UnpackedMetaVertex[V,H,E,D]): Boolean
 }
@@ -21,6 +26,8 @@ class DefaultMetaVertexFilter[V,H,E,D] extends MetaVertexFilter[V,H,E,D] {
   override def apply(v: UnpackedMetaVertex[V,H,E,D]) = true
 }
 
+/** See [[ducttape.hyperdag.walker.UnpackedDagWalker]] for usage
+ *  and generic type definitions. */
 trait VertexFilter[V,H,E,D] {
   def apply(v: UnpackedVertex[V,H,E,D]): Boolean
 }
@@ -29,11 +36,22 @@ class DefaultVertexFilter[V,H,E,D] extends VertexFilter[V,H,E,D] {
   override def apply(v: UnpackedVertex[V,H,E,D]) = true
 }
 
+/** See [[ducttape.hyperdag.walker.UnpackedDagWalker]] for usage
+ *  and generic type definitions. */
 class DefaultToD[H] extends Function1[H,H] {
   override def apply(h: H) = h
 }
 
-// rename to TraversalMunger? or DerivationMunger?
+/**
+ * See [[ducttape.hyperdag.walker.UnpackedDagWalker]] for an explanation
+ * of what this class does and generic type definitions.
+ * 
+ * This could also be called a TraversalMunger or DerivationMunger.
+ *
+ * For example usages, see [[ducttape.workflow.GlobalBranchPointConstraint]]
+ * and [[ducttape.workflow.BranchGraftMunger]]
+ * (See known subclasses for more example usages.)
+ */
 trait RealizationMunger[V,H,E,D,F] {
 
   // 1) the initial state when we begin traversing each hyperedge
@@ -42,16 +60,17 @@ trait RealizationMunger[V,H,E,D,F] {
   
   // 2) when we first encounter the hyperedge, we must add the payload that this hyperedge will introduce
   //    we might choose to ignore that payload (e.g. if a branch is from an epsilon vertex)
+  // prevState is the state from initHyperedge (this is necessary due to generics by erasure)
   def beginHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], prevState: F): Option[F]
     = Some(prevState)
   
   // 3) Called for each incoming component edge of the current hyperedge
-  //    he is passed mainly for debugging
-  // TODO: Should this remain abstract?
+  //    he is passed mainly for debugging, but we've already observed the hyperedge
+  //    in beginHyperedge()
   def traverseEdge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], e: E, parentReal: Seq[D], prevState: F): Option[F]
     = Some(prevState)
   
-  // 4) Finish hyperedges
+  // 4) Finish the hyperedge
   // when we finish traversing the hyperedge, we're free to accept it or not, but we should be done modifying realizations
   def finishHyperedge(v: PackedVertex[V], heOpt: Option[HyperEdge[H,E]], state: F): Option[F] = Some(state)
 
@@ -68,6 +87,7 @@ trait RealizationMunger[V,H,E,D,F] {
 // second: the munger to run after than
 // init: which munger will be used to initialize the unpacking state?
 // end: which munger's toRealization() method will be used to convert the state back to a realization?
+// These may be chained together to form long chains of mungers.
 class CompositeRealizationMunger[V,H,E,D,F](
     first: RealizationMunger[V,H,E,D,F],
     second: RealizationMunger[V,H,E,D,F])

@@ -11,13 +11,6 @@ import grizzled.slf4j.Logging
 
 
 /** Actually, this is an UnpackedHyperDagWalker... 
- * 
- *  the constraintFilter allows for higher order semantics to be imposed on the traversal
- *  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
- *  we want to choose a branch once and consistently use the same branch choice within each derivation.
- *  The initState is used for intializing the beginning of each unpack iteration for each
- *  active hyperedge. The final state is sent to the constraintFilter just before accepting
- *  a candidate unpacked vertex, after which the state is discarded.
  *
  *  the vertex filter allows early termination when it is guaranteed that no future
  *  vertices should be reachable
@@ -31,30 +24,52 @@ import grizzled.slf4j.Logging
  *    version (e.g. branch grafts remove entirely one of these edges from the combo and state F). it allows us to
  *    prevent exhaustive traversal of all derivations (i.e. prevent combinatorial explosion) by returning None
  *    if any single component incoming edge of a hyperedge does not match its constraints.
+ *  -  for example, that for hyperedges (branches) linked to the same metaedge (branch point),
+ *     we want to choose a branch once and consistently use the same branch choice within each derivation.
+ * For example usages, see [[ducttape.hyperdag.walker.RealizationMunger]]
  *
  *  the "edge derivation" == the realization
- *  
- *  The type D is the "derivation type" of the hyperedge. Usually, having D=H is fine, but
- *  D may be any function of H via the function toD() */
-// NOTE: F must be immutable.HashSet[D] to use DefaultRealizationMunger
+ *
+ *  vertexFilter: specifies a specific set of unpacked vertices that may be included in the traversal
+ *
+ *  Generic Type Definitions:
+ * 
+ *  D is the "derivation atom type" of the hyperedge. Usually, having D=H is fine, but
+ *  D may be any function of H via the function toD() -- in a workflow, this will be a Branch
+ *
+ *  F is the [[ducttape.hyperdag.walker.RealizationMunger]] state (historically, a Filter state)
+ *  NOTE: F must be immutable.HashSet[D] to use DefaultRealizationMunger
+ */
 class UnpackedDagWalker[V,H,E,D,F](
     val dag: HyperDag[V,H,E],
     munger: RealizationMunger[V,H,E,D,F],
     vertexFilter: VertexFilter[V,H,E,D] = new DefaultVertexFilter[V,H,E,D],
-    toD: H => D = new DefaultToD[H])
+    toD: H => D = new DefaultToD[H],
+    traversal: Traversal = Arbitrary)
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
-  // TODO: Factor this out into a class all its own?
-  // TODO: Document why active vertices are isomorphic to hyperedges (or no hyperedge)
-  // v is the sink vertex
-  // he is the active hyperedge that leads to this vertex
-  //   (only one hyperedge will be active per derivation)
-  //   (the hyperedge will be None iff this vertex has zero incoming hyperedges in the original hyperdag)
+  /**
+   * An ActiveVertex builds up the information necessary to create an UnpackedVertex
+   * from a PackedVertex and a specific HyperEdge that has been selected as part of the
+   * current derivation.
+   * 
+   * TODO: Factor this out into a class all its own?
+   * 
+   * v is the sink vertex
+   * he is the active hyperedge that leads to this vertex
+   *   (only one hyperedge will be active per derivation)
+   *   (the hyperedge will be None iff this vertex has zero incoming hyperedges in the original hyperdag)
+   */
   class ActiveVertex(val v: PackedVertex[V],
                      val he: Option[HyperEdge[H,E]]) {
 
     // accumulate parent realizations (parallel array with the sources of this hyperedge)
+    // each realization (Seq[D]) corresponds to a source vertex of the hyperedge.
+    // elements of the Array are isomorphic to the source vertices of the hyperedge (its parents).
+    // the variable-sized ListBuffer contains the different realizations of that parent vertex
+    // that have been completed so far.
+    //
     // TODO: Could we make this more space efficient by only accumulating deltas?
     // indices: sourceEdge, whichUnpacking, whichRealization
     val filled = {
@@ -71,9 +86,38 @@ class UnpackedDagWalker[V,H,E,D,F](
     var verticesAccepted: Int = 0
     var verticesDiscarded: Int = 0
 
+    /** get the *new* unpackings possible based on all
+     * backpointers we've saved so far, but fixing
+     * one of the hyperedge sources at a particular realization
+     *
+     * iFixed: the index of component edge that was just completed, thus triggering this unpacking
+     * fixedRealization: the realization of the component edge that was just completed
+     * callback: called at the terminal recursive call to create a new UnpackedVertex */
+    def unpack(iFixed: Int,
+               fixedRealization: Seq[D],
+               callback: UnpackedVertex[V,H,E,D] => Unit) {
+
+      // turn derivation state D into an unpacking state F
+      val initState = munger.initHyperedge(he.map(heVal => toD(heVal.h)))
+      
+      // allow user to filter out certain hyperedges from the derivation
+      // (e.g. hyperedges from Epsilon vertices)
+      // did munger decide to no longer continue with this hyperedge?
+      munger.beginHyperedge(v, he, initState) match {
+        case None => ;
+        case Some(nextState) => {
+          "Began hyperedge %s".format(he)
+          // TODO: Can we avoid re-allocating this over and over?
+          val parentReals = new Array[Seq[D]](filled.size)
+          parentReals(iFixed) = fixedRealization
+          unpack(0, iFixed, parentReals, nextState, callback)
+        }
+      }
+    }
+
     // recursively scan left-to-right across the array called filled,
     //   building up the combination of hyperedges that forms a realization
-    //   we can bail at any point during this process if a filter fails
+    //   we can bail at any point during this process if a RealizationMunger (filter) fails
     // each recursive call to unpack() is isomorphic to one of the component edges of this vertex's active hyperedge
     //   Note: the final call terminal to unpack() overruns the length of the edges (aka filled).
     private def unpack(i: Int,
@@ -139,36 +183,43 @@ class UnpackedDagWalker[V,H,E,D,F](
       }
     }
 
-    // get the *new* unpackings possible based on all
-    // backpointers we've saved so far, but fixing
-    // one of the hyperedge sources at a particular realization
-    def unpack(iFixed: Int,
-               fixedRealization: Seq[D],
-               callback: UnpackedVertex[V,H,E,D] => Unit) {
-
-      // turn derivation state D into an unpacking state F
-      val initState = munger.initHyperedge(he.map(heVal => toD(heVal.h)))
-      
-      // allow user to filter out certain hyperedges from the derivation
-      // (e.g. hyperedges from Epsilon vertices)
-      // did munger decide to no longer continue with this hyperedge?
-      munger.beginHyperedge(v, he, initState) match {
-        case None => ;
-        case Some(nextState) => {
-          "Began hyperedge %s".format(he)
-          // TODO: Can we avoid re-allocating this over and over?
-          val parentReals = new Array[Seq[D]](filled.size)
-          parentReals(iFixed) = fixedRealization
-          unpack(0, iFixed, parentReals, nextState, callback)
-        }
-      }
-    }
   } // end ActiveVertex
+
+  private val agendaComparator = {
+  
+    def assignVertexIndices() : Map[(PackedVertex[_],Seq[_]),Int] = {
+  	
+  	  val vertexIDs = new mutable.HashMap[(PackedVertex[_],Seq[_]),Int]
+
+  	  dag.unpackedWalker(munger,vertexFilter,toD,Arbitrary).foreach { 
+  	    vertex:UnpackedVertex[V,H,E,D] => { 
+
+  	      val packedParents = dag.parents(vertex.packed)
+  	      val tuples        = packedParents.zip(vertex.parentRealizations)
+  	      val maxParentID: Int   = 
+  	        if (tuples.isEmpty) 0 
+  	        else tuples.map( tuple => vertexIDs(tuple) ).max
+  	      vertexIDs.put((vertex.packed,vertex.realization), maxParentID+1)
+
+  	    }
+  	  }
+
+  	  return vertexIDs	
+  	
+  	}
+  	
+  	traversal match { 
+  		case Arbitrary    => Arbitrary.comparator;
+  		case BreadthFirst => BreadthFirst.comparator(assignVertexIndices());
+  		case DepthFirst   => DepthFirst.comparator(assignVertexIndices());
+  	}
+  }
 
   // NOTE: All synchronization is done via our 2 lock objects
   private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
   private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
-  private val agenda = new java.util.LinkedList[UnpackedVertex[V,H,E,D]]
+  private val agenda: java.util.Queue[UnpackedVertex[V,H,E,D]] = 
+    new java.util.PriorityQueue[UnpackedVertex[V,H,E,D]](11,agendaComparator)
   private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   
@@ -194,7 +245,7 @@ class UnpackedDagWalker[V,H,E,D,F](
   // (use foreach to prevent this)
   override def take(): Option[UnpackedVertex[V,H,E,D]] = {
 
-    def poll() = { // atomically get both the size and any waiting vertex
+    def poll() = { // atomically get both the taken size and any waiting vertex
       agendaTakenLock.synchronized {
         // after polling the agenda, we must update taken
         // before releasing our lock

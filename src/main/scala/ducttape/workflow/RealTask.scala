@@ -4,14 +4,20 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.workflow.SpecTypes._
+import ducttape.versioner.WorkflowVersionInfo
 
-// short for "realized task"
-// we might shorten this to Task
+/** One step away from the main task class of VersionedTask.
+ *  Can be created via TaskTemplate.toRealTask
+ *  short for "realized task"
+ */
 class RealTask(val taskT: TaskTemplate,
                val realization: Realization,
-               // TODO: Change inputVals and paramVals over to Realization?
                val inputVals: Seq[ResolvedSpec],
-               val paramVals: Seq[ResolvedLiteralSpec]) { // workflow version
+               val paramVals: Seq[ResolvedLiteralSpec]) {
+
+   // used by VersionedTask
+   private[workflow] def this(t: RealTask) = this(t.taskT, t.realization, t.inputVals, t.paramVals)
+
    def name = taskT.name
    def taskDef = taskT.taskDef
    def comments = taskT.comments
@@ -20,6 +26,25 @@ class RealTask(val taskT: TaskTemplate,
    def outputs = taskT.outputs
    def params = taskT.params
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
+  
+   def toRealTaskId() = new RealTaskId(name, realization.toCanonicalString)
+
+   // augment with version information
+   def toVersionedTask(workflowVersion: WorkflowVersionInfo): VersionedTask = {
+     val inputValVersions: Seq[VersionedSpec] = inputVals.map { inputVal =>
+       inputVal.srcRealTaskId match {
+         case Some(srcRealTaskId) => {
+           val srcVer = workflowVersion(srcRealTaskId)
+           new VersionedSpec(inputVal, srcVer)
+         }
+         case None => {
+           // this must be a literal spec (i.e. literal path) -- assign it the current workflow version
+           new VersionedSpec(inputVal, workflowVersion.version)
+         }
+       }
+     }
+     new VersionedTask(this, inputValVersions, workflowVersion.version)
+   }
 
   // the tasks and realizations that must temporally precede this task (due to having required input files)
    lazy val antecedents: Set[(String, Realization)] = inputVals.collect {

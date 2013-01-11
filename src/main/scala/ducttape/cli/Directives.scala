@@ -3,6 +3,7 @@ package ducttape.cli
 
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.syntax.FileFormatException
+import ducttape.util.Booleans
 
 // may throw a FileFormatException
 class Directives(confSpecs: Seq[ConfigAssignment]) {
