@@ -214,10 +214,14 @@ object Ducttape extends Logging {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
-    val traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase() match {
-      case "arbitrary"    => Arbitrary
-      case "breadthfirst" => BreadthFirst
-      case _              => DepthFirst
+    val traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase.charAt(0) match {
+      case "a" => Arbitrary
+      case "b" => BreadthFirst
+      case "d" => DepthFirst
+      case str @ _ => {
+        System.err.println(s"ERROR: Unknown traversal type: '${str}'")
+        exit(1)
+      }
     }
 
     // Our dag is directed from antecedents toward their consequents
