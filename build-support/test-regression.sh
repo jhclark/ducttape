@@ -11,14 +11,15 @@ else
 fi
 
 # Make sure we're testing the version of ducttape in our current environment
-echo >&2 $PATH
-DUCTTAPE=$DUCTTAPE_DIR/ducttape
-export PATH=$DUCTTAPE_DIR:$PATH
+function test_all {
+  echo >&2 $PATH
+  DUCTTAPE=$DUCTTAPE_DIR/ducttape
+  export PATH=$DUCTTAPE_DIR:$PATH
 
-export PATH=$rootDir:$PATH
+  export PATH=$rootDir:$PATH
 
-tutorialDir=$(cd $rootDir/tutorial; pwd)
-for tape in $tutorialDir/*.tape; do
+  tutorialDir=$(cd $rootDir/tutorial; pwd)
+  for tape in $tutorialDir/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)
     customSh=$dir/$basefile.sh
@@ -39,4 +40,10 @@ for tape in $tutorialDir/*.tape; do
 
     # Remove output, if test was successful
     rm -rf $output
-done
+  done
+}
+
+time test_all
+GREEN="\033[0;32m"
+RESET="\033[0m"
+echo -e "${GREEN}ALL REGRESSION TESTS PASSED${RESET}"
