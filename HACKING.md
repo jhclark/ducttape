@@ -46,12 +46,20 @@ Finally, select Import existing projects.
 Console
 =======
 
-If you wish to develop from the command line, you should use either the emacs or vi syntax highlighting mode that is distributed with Scala.
+If you wish to develop from the command line, you should use either the emacs or vi syntax highlighting mode that is distributed with Scala. Ducttape requires Scala 2.10 and the Zinc compiler to be installed on your system (see https://github.com/typesafehub/zinc).
 
 To build ducttape from the command line, use:
 
 ```
-./build-support/sbt compile
+./build-support/build.sh
+```
+
+This will build a minimized JAR file called ducttape.jar.
+
+Use the following commands to test:
+```
+./build-support/test-unit.sh
+./build-support/test-regression.sh
 ```
 
 

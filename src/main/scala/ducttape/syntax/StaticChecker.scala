@@ -117,7 +117,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
       case plan: PlanDefinition => ;
     }
     
-    val seenTasks = new mutable.HashMap[String,TaskDef]
+    val seenTasks = new mutable.HashMap[Namespace,TaskDef]
     for (task: TaskDef <- wd.tasks) {
       seenTasks.get(task.name) match {
         case None => seenTasks += task.name -> task

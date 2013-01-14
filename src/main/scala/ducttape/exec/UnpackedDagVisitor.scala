@@ -1,7 +1,7 @@
 package ducttape.exec
 
-import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 
 trait UnpackedDagVisitor {
-  def visit(task: RealTask)
+  def visit(task: VersionedTask)
 }

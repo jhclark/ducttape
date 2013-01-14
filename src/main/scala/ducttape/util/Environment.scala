@@ -24,7 +24,11 @@ object Environment {
       if (shareDir.exists) {
         shareDir
       } else {
-        throw new RuntimeException("System-wide ducttape share directory not found: %s".format(shareDir.getAbsolutePath))
+        val parentDir = jarDir.getParentFile
+        if (Debug) {
+          System.err.println("System-wide ducttape share directory not found: %s\nUsing %s".format(shareDir.getAbsolutePath,parentDir.getAbsolutePath))
+        } 
+        parentDir
       }
     } else {
       if (Debug)

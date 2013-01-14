@@ -1,16 +1,28 @@
 package ducttape.exec
 
+import ducttape.syntax.Namespace
 import ducttape.workflow.RealTask
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.Realization
+import ducttape.workflow.SpecTypes._
+
 import java.io.File
 import grizzled.slf4j.Logging
 
 /**
+ * TaskEnvironment prepares all of the paths and environment variables needed
+ * to run or work with a task.
+ * 
  * Unlike the FullTaskEnvironment, does not require knowledge of packageVersions,
- * but does not provide full list of environment variables
+ * but does not provide full list of environment variables.
  */
 class TaskEnvironment(val dirs: DirectoryArchitect,
-                      val task: RealTask) extends Logging {
+                      val task: VersionedTask) extends Logging {
+  
+  // TODO: Modify both inputs and params to be able to handle globs
+  //       This is the point where we need to handle the set of SpecPairs that all share the same lhs
+  //       and convert the right-hand sides into a whitespace-delimited list of values
+  //       and then associate that with the lhs
   
   // grab input paths -- how are these to be resolved?
   // If this came from a branch point, its source vertex *might* not
@@ -25,11 +37,11 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // TODO: Move unit tests from LoonyBin to ducttape to test for these sorts of corner cases
   // TODO: Then associate Specs with edge info to link parent realizations properly
   //       (need realization FOR EACH E, NOT HE, since some vertices may have no knowlege of peers' metaedges)
-  val inputs: Seq[(String, String)] = for (inputVal <- task.inputVals) yield {
+  val inputs: Seq[(String, String)] = for (inputVal: VersionedSpec <- task.inputValVersions) yield {
     val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
-                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal)
-    debug("For inSpec %s with srcSpec %s and srcReal %s with parent task %s, got path: %s".format(
-            inputVal.origSpec, inputVal.srcSpec, inputVal.srcReal, inputVal.srcTask, inFile))
+                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion)
+    debug("For inSpec %s with srcSpec %s @ %s/%s/%d, got path: %s".format(
+            inputVal.origSpec, inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion, inFile))
     (inputVal.origSpec.name, inFile.getAbsolutePath)
   }
     
@@ -43,7 +55,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
 
   // assign output paths
   val outputs: Seq[(String, String)] = for (outSpec <- task.outputs) yield {
-    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization)
+    val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
     debug("For outSpec %s got path: %s".format(outSpec, outFile))
     (outSpec.name, outFile.getAbsolutePath)
   }
@@ -73,8 +85,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
  */
 class FullTaskEnvironment(dirs: DirectoryArchitect,
                           val packageVersions: PackageVersioner,
-                          task: RealTask) extends TaskEnvironment(dirs, task) {
-  val packageNames: Seq[String] = task.packages.map(_.name)
+                          task: VersionedTask) extends TaskEnvironment(dirs, task) {
+  val packageNames: Seq[Namespace] = task.packages.map { spec => Namespace.fromString(spec.name) }
   val packageBuilds: Seq[BuildEnvironment] = {
     packageNames.map { name =>
       val packageVersion = packageVersions(name)
@@ -82,9 +94,14 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
     }
   }
   val packageEnvs: Seq[(String,String)] = {
-    packageBuilds.map(build => (build.packageName, build.buildDir.getAbsolutePath) )
+    // TODO: XXX: HACK: Lane: We need a syntax for accessing fully qualified package names
+    // For now, we're just arbitrarily picking the package name to represent the whole shebang, which is silly
+    packageBuilds.map { build =>
+      val packageVariableName: String = build.packageName.name
+      (packageVariableName, build.buildDir.getAbsolutePath)
+    }
   }
 
   lazy val env = inputs ++ outputs ++ params ++ packageEnvs
-  lazy val taskVariables = env.map { case (key, value) => "%s=%s".format(key,value) }.mkString("\n")
+  lazy val taskVariables = env.map { case (key, value) => s"${key}=${value}" }.mkString("\n")
 }

@@ -2,10 +2,16 @@ package ducttape.hyperdag.meta
 
 import ducttape.hyperdag.PackedVertex
 
+/**
+ * See [[ducttape.hyperdag.meta.PhantomMetaHyperDag]] for definitions of phantom, etc.
+ *
+ * "comment" in all methods below indicates a GraphViz comment.
+ */
 class PhantomMetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null, epsilonE: E = null) {
   
   private val delegate = new MetaHyperDagBuilder[Option[V],M,H,E](Some(epsilonV), epsilonH, epsilonE)
   
+
   def addPhantomVertex(comment: Option[String] = None): PackedVertex[Option[V]]
     = delegate.addVertex(None, comment)
     
@@ -17,7 +23,9 @@ class PhantomMetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null
     
   def addVertex(v: V, comment: String): PackedVertex[Option[V]]
     = delegate.addVertex(Some(v), Some(comment))
-  
+
+  /* this method allows sources to be optional, indicating that edges *may*
+   * have phantom source vertices */
   def addMetaEdge(m: M,
                   hyperEdgeInfo: Seq[(H, Seq[(PackedVertex[Option[V]],E)])],
                   sink: PackedVertex[Option[V]],
@@ -32,5 +40,6 @@ class PhantomMetaHyperDagBuilder[V,M,H,E](epsilonV: V = null, epsilonH: H = null
     delegate.addMetaEdge(m, hyperEdgeInfo, sink, Some(comment))
   }
   
+  // create an immutable version of this graph
   def build() = new PhantomMetaHyperDag[V,M,H,E](delegate.build())
 }

@@ -22,7 +22,7 @@ object WorkflowViz {
     // first, list vertices
     for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
       val taskT: TaskTemplate = v.packed.value.get
-      val task: RealTask = taskT.realize(v)
+      val task: RealTask = taskT.toRealTask(v)
       val color = (task.name, task.realization) match {
         case t if completed(t) => "dodgerblue1"
         case t if running(t) => "darkolivegreen4"
@@ -35,7 +35,8 @@ object WorkflowViz {
     // now list edges
     for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
       val taskT: TaskTemplate = v.packed.value.get
-      val task: RealTask = taskT.realize(v)
+
+      val task: RealTask = taskT.toRealTask(v)
       val child = getName(Some(task.taskDef), task.realization)
       task.inputVals.map { inputVal =>
         getName(inputVal.srcTask, inputVal.srcReal)
