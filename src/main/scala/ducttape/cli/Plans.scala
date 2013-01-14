@@ -71,7 +71,8 @@ object Plans extends Logging {
                          workflowVersion: WorkflowVersionInfo,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
-                         planNames: Option[Seq[String]] = None)
+                         planNames: Option[Seq[String]] = None,
+                         verbose: Boolean = false)
                         : PlanPolicy = {
     
     debug("Finding graft relaxations...")
@@ -188,7 +189,7 @@ object Plans extends Logging {
           val candidates: Map[(String,Realization), RealTask]
             = getCandidates(workflow, plan, workflowVersion, explainCallback, graftRelaxations)
           
-          {
+          if (verbose) {
             val matches = candidates.map(_._1).map(_._1).toSet.toSeq.sorted
             System.err.println(s"Have ${candidates.size} candidate tasks matching plan's realizations: ${matches.mkString(" ")}")
           }
@@ -202,8 +203,10 @@ object Plans extends Logging {
             val goalRealTasks: Iterable[RealTask] = candidates.filter {
               case ( (tName, _), _) => tName == goalTask
             } map { _._2 }
-            val goalRealizations: Iterable[Realization] = goalRealTasks.map(_.realization)
-            System.err.println(s"Found ${goalRealTasks.size} realizations of goal task ${goalTask}: ${goalRealizations.mkString(" ")}")
+            if (verbose) {
+              val goalRealizations: Iterable[Realization] = goalRealTasks.map(_.realization)
+              System.err.println(s"Found ${goalRealTasks.size} realizations of goal task ${goalTask}: ${goalRealizations.mkString(" ")}")
+            }
               
             // TODO: Now we need to trim off any extra realizations that were introduced for the sake
             // of grafts?
