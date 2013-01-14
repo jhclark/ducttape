@@ -21,7 +21,7 @@ import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
 import ducttape.workflow.VersionedTaskId
 import ducttape.hyperdag.walker.Traversal
-import ducttape.hyperdag.walker.DepthFirst
+import ducttape.hyperdag.walker.Arbitrary
 import ducttape.versioner.WorkflowVersionHistory
 import ducttape.versioner.WorkflowVersionInfo
 import ducttape.versioner.WorkflowVersionStore
@@ -38,7 +38,7 @@ object ExecuteMode {
           history: WorkflowVersionHistory,
           uncommittedVersion: WorkflowVersionInfo,
           getPackageVersions: () => PackageVersioner,
-          traversal: Traversal = DepthFirst)
+          traversal: Traversal = Arbitrary)
          (implicit opts: Opts, dirs: DirectoryArchitect, directives: Directives) {
     
     if (cc.todo.isEmpty) {

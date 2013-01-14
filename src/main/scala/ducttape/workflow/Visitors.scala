@@ -5,7 +5,7 @@ import ducttape.exec.UnpackedDagVisitor
 import ducttape.versioner.WorkflowVersionInfo
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.hyperdag.walker.Traversal
-import ducttape.hyperdag.walker.DepthFirst
+import ducttape.hyperdag.walker.Arbitrary
 import grizzled.slf4j.Logging
 
 object Visitors extends Logging {
@@ -15,7 +15,7 @@ object Visitors extends Logging {
       planPolicy: PlanPolicy,
       workflowVersion: WorkflowVersionInfo,
       numCores: Int = 1,
-      traversal: Traversal = DepthFirst): A = {
+      traversal: Traversal = Arbitrary): A = {
     
     debug("Visiting workflow in a(n) " + traversal + " traversal")
     workflow.unpackedWalker(planPolicy,traversal=traversal).foreach(numCores, { v: UnpackedWorkVert =>

@@ -20,7 +20,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     munger: RealizationMunger[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     toD: H => D = new DefaultToD[H],
-    traversal: Traversal = DepthFirst,
+    traversal: Traversal = Arbitrary,
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {

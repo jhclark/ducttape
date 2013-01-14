@@ -25,7 +25,7 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         munger: RealizationMunger[Option[V],H,E,D,F],
         vertexFilter: MetaVertexFilter[Option[V],H,E,D] = new DefaultMetaVertexFilter[Option[V],H,E,D],
         toD: H => D = new DefaultToD[H],
-        traversal: Traversal = DepthFirst,
+        traversal: Traversal = Arbitrary,
         observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
        (implicit ordering: Ordering[D])
   extends Walker[UnpackedChainedMetaVertex[V,H,E,D]] with Logging {

@@ -12,7 +12,7 @@ import ducttape.hyperdag.walker.DefaultToD
 import ducttape.hyperdag.walker.RealizationMunger
 import ducttape.hyperdag.walker.DefaultRealizationMunger
 import ducttape.hyperdag.walker.Traversal
-import ducttape.hyperdag.walker.DepthFirst
+import ducttape.hyperdag.walker.Arbitrary
 
 /** essentially -- an AND-OR HyperDAG 
  * an implementation of MetaHyperDAGs based on transforming
@@ -45,7 +45,7 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
   def unpackedWalker[D,F](munger: RealizationMunger[V,H,E,D,F],
                           vertexFilter: MetaVertexFilter[V,H,E,D],
                           toD: H => D,
-                          traversal: Traversal = DepthFirst)
+                          traversal: Traversal = Arbitrary)
                          (implicit ordering: Ordering[D])= {
     // TODO: Exclude epsilons from completed, etc.
     // TODO: Map epsilons and phantoms for the munger in this class instead of putting
@@ -55,7 +55,7 @@ class MetaHyperDag[V,M,H,E](val delegate: HyperDag[V,H,E],
   
   def unpackedWalker[D](vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
                         toD: H => D = new DefaultToD[H],
-                        traversal: Traversal = DepthFirst)
+                        traversal: Traversal = Arbitrary)
                        (implicit ordering: Ordering[D]) = {
     val munger = new DefaultRealizationMunger[V,H,E,D]
     new UnpackedMetaDagWalker[V,M,H,E,D,immutable.HashSet[D]](this, munger, vertexFilter, toD, traversal)
