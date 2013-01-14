@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eu
+
+sortArgs="$@"
+
+(
+  (
+    while read line; do
+      if [[ "$line" == "#"* ]]; then
+        echo >&2 $line
+      else
+        echo $line
+      fi
+    done
+  ) | (     # Sort and columnify stdout
+    read header
+    echo $header
+    LC_ALL=c sort $sortArgs 
+  ) | column -t
+) &>/dev/stdout # Redirect both to same stream
+
