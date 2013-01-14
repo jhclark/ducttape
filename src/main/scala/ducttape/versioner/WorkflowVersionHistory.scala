@@ -33,11 +33,8 @@ object WorkflowVersionHistory {
         Some(WorkflowVersionStore.load(dir))
       } catch {
         case ex => {
-          val DELAY_SECS = 3
-          System.err.println("WARNING: Version is corrupt or incomplete, DELETING in %d sec: %s: %s".format(DELAY_SECS, dir, ex.getMessage))
+          System.err.println(s"WARNING: Ignoring corrupt or incomplete version: ${dir} --  ${ex.getMessage}")
           System.err.println("NOTE: This warning could be due to upgrading from an older version of ducttape that doesn't support versioning")
-          Thread.sleep(DELAY_SECS)
-          Files.deleteDir(dir)
           None
         }
       }
