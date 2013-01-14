@@ -3,8 +3,9 @@ package ducttape.versioner
 import ducttape.util.Files
 import ducttape.workflow.VersionedTaskId
 import java.io.File
+import grizzled.slf4j.Logging
 
-class WorkflowVersionHistory(val history: Seq[WorkflowVersionInfo]) {
+class WorkflowVersionHistory(val history: Seq[WorkflowVersionInfo]) extends Logging {
   lazy val prevVersion: Option[Int] = history.size match {
     case 0 => None
     case _ => Some(history.map(_.version).max)
@@ -24,23 +25,30 @@ class WorkflowVersionHistory(val history: Seq[WorkflowVersionInfo]) {
   }
 }
 
-object WorkflowVersionHistory {
-  def load(versionHistoryDir: File) = new WorkflowVersionHistory(
-    Files.ls(versionHistoryDir).filter {
-      _.isDirectory
-    }.map { dir =>
-      try {
-        Some(WorkflowVersionStore.load(dir))
-      } catch {
-        case ex => {
-          System.err.println(s"WARNING: Ignoring corrupt or incomplete version: ${dir} --  ${ex.getMessage}")
-          System.err.println("NOTE: This warning could be due to upgrading from an older version of ducttape that doesn't support versioning")
-          None
+object WorkflowVersionHistory extends Logging {
+  def load(versionHistoryDir: File) = {
+    var errors = 0
+    val history = new WorkflowVersionHistory(
+      Files.ls(versionHistoryDir).filter {
+        _.isDirectory
+      }.map { dir =>
+        try {
+          Some(WorkflowVersionStore.load(dir))
+        } catch {
+          case ex => {
+            debug(s"Ignoring corrupt or incomplete version: ${dir} --  ${ex.getMessage}")
+            errors += 1
+            None
+          }
         }
+      }.collect {
+        // only keep versions that are non-broken
+        case Some(info) => info
       }
-    }.collect {
-      // only keep versions that are non-broken
-      case Some(info) => info
+    )
+    if (errors > 0) {
+      System.err.println(s"WARNING: ${errors} corrupt or incomplete workflow versions found. Ignoring them. (This could be due to upgrading from an older version of ducttape that doesn't support versioning)")
     }
-  )
+    history
+  }
 }
