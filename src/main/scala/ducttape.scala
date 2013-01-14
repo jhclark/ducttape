@@ -31,6 +31,7 @@ import ducttape.exec.TaskEnvironment
 import ducttape.exec.UnpackedDagVisitor
 import ducttape.exec.DirectoryArchitect
 import ducttape.exec.PackageVersioner
+import ducttape.exec.PackageStatus
 import ducttape.exec.FullTaskEnvironment
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.ForceUnlocker
@@ -244,9 +245,11 @@ object Ducttape extends Logging {
       }
     }
 
-    def getPlannedVertices(workflowVersion: WorkflowVersionInfo): PlanPolicy = {
+    def getPlannedVertices(workflowVersion: WorkflowVersionInfo, verbose: Boolean = false): PlanPolicy = {
       // pass in user-specified plan name -- iff it was specified by the user -- otherwise use all plans
-      val planPolicy: PlanPolicy = Plans.getPlannedVertices(workflow, workflowVersion, planNames=opts.plans)
+      val planPolicy: PlanPolicy = {
+        Plans.getPlannedVertices(workflow, workflowVersion, planNames=opts.plans, verbose=verbose)
+      }
       planPolicy match {
         case VertexFilter(plannedVertices) => {
           System.err.println(s"Planned ${plannedVertices.size} vertices")
@@ -299,7 +302,10 @@ object Ducttape extends Logging {
 
     // get what packages are needed by the planned vertices and
     // what repo version of each of those we have built already (if any)    
-    def getPackageVersions(cc: Option[CompletionChecker], planPolicy: PlanPolicy, workflowVersion: WorkflowVersionInfo) = {
+    def getPackageVersions(cc: Option[CompletionChecker],
+                           planPolicy: PlanPolicy,
+                           workflowVersion: WorkflowVersionInfo,
+                           verbose: Boolean = false) = {
 
       // find what packages are required by the planned vertices
       // TODO: Always return all packages when using auto_update?
@@ -310,7 +316,7 @@ object Ducttape extends Logging {
       // now see what the repo version is for these packages
       // and also determine if they need to be rebuilt in execute mode
       err.println("Checking for already built packages...")
-      val packageVersions = new PackageVersioner(dirs, workflow.versioners)
+      val packageVersions = new PackageVersioner(dirs, workflow.versioners, verbose)
       packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)
       packageVersions
     }
@@ -792,6 +798,24 @@ object Ducttape extends Logging {
            }
          }
        }
+       case "versions" => {
+         // list both package and workflow versions
+         // update *all* packages in the current workflow atomically
+         err.println("Checking for package versions in workflow output directory...")
+         val packages: Map[String,Seq[PackageStatus]] = PackageVersioner.getAllExisting(dirs)
+
+         // TODO: *all* versions, show size on disk and when built
+         // TODO: List even versions not in the workflow? Do this from object!
+         // TODO: Compare for versions that are no longer used by workflow?
+         System.err.println("Already built package versions:")
+         for ( (packageName, packageVersions) <- packages) {
+           System.err.println(s"${Config.greenColor}PACKAGE:${Config.resetColor} ${packageName}")
+           for (version: PackageStatus <- packageVersions) {
+             System.err.println(s"  ${version}")
+           }
+         }         
+       }
+      // TODO: Change this from _ to "None" -- all other cases will need to be Some(x)
       case "exec" | _ => {
         // for now, we'll hallucinate a fake version of what we're about to do
         // then, inside ExecuteMode, we might call create() for real,
@@ -803,7 +827,9 @@ object Ducttape extends Logging {
         System.err.println("Discovering versions")
         val history = getVersionHistory()
         val cc = getCompletedTasks(planPolicy, history)
-        val packageVersionThunk = { () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion) }
+        val packageVersionThunk = {
+          () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion, verbose=true)
+        }
         ExecuteMode.run(workflow, cc, planPolicy, history, uncommittedVersion, packageVersionThunk, traversal)
       }
     })

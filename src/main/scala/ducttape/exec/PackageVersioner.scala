@@ -17,6 +17,8 @@ import ducttape.util.Files
 import ducttape.util.Shell
 import ducttape.util.BashException
 
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.io.File
 import grizzled.slf4j.Logging
 
@@ -69,11 +71,33 @@ class PackageVersionerInfo(val versionerDef: VersionerDef) extends Logging {
   }
 }
 
+class PackageStatus(val name: String, val version: String, val dateBuilt: Date) {
+  override def toString() = {
+    val formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    s"${version} (${formatter.format(dateBuilt)})"
+  }
+}
+
+object PackageVersioner {
+  def getAllExisting(dirs: DirectoryArchitect): Map[String, Seq[PackageStatus]] = {
+    val packageDirs: Seq[File] = Files.ls(dirs.assignPackagesDir())
+    packageDirs.map { packageDir =>
+      val packageName = packageDir.getName
+      val packageVersionDirs: Seq[File] = Files.ls(packageDir)
+      val packageVersions: Seq[PackageStatus] = packageVersionDirs.map { versionDir =>
+        new PackageStatus(packageName, versionDir.getName, new Date(versionDir.lastModified))
+      }
+      (packageName, packageVersions)
+    }.toMap
+  }
+}
+
 // TODO: Rename as "PackagesVersioner" or something to reflect
 // that it manages the version of *all* packages
 class PackageVersioner(val dirs: DirectoryArchitect,
                        val versioners: Seq[VersionerDef],
-                       val forceUpdate: Boolean = false)
+                       val forceUpdate: Boolean = false,
+                       verbose: Boolean = false)
                       (implicit val directives: Directives) extends Logging {
 
   // we need a package version comparator if we might need to detect the current version
@@ -163,13 +187,17 @@ class PackageVersioner(val dirs: DirectoryArchitect,
         repoVersion
       }
       
-      System.err.println(s"Package ${packageDef.name}: Repository version is ${repoVersion}")
       packageVersions += packageDef.name -> repoVersion
     
       // TODO: Different messages depending on build failed, etc.
       val buildEnv = new BuildEnvironment(dirs, repoVersion, packageDef.name)
       val exists = PackageBuilder.isBuildSuccessful(buildEnv)
-      System.err.println(s"Package ${packageDef.name}: %s".format(if (exists) "ALREADY BUILT" else "VERSION NOT CURRENT"))
+
+      if (verbose) {
+        val status = if (exists) "Version is current" else "Needs to be built"
+        System.err.println(s"Package ${packageDef.name}: Repository version is ${repoVersion} ($status)")
+      }
+
       exists
     } else {
       // we don't need to auto-update so just check if this is the first time we've had any need
@@ -206,10 +234,10 @@ class PackageVersioner(val dirs: DirectoryArchitect,
     Files.mkdirs(workDir)
     Files.mkdirs(buildDir)
 
-    debug("Running checkout commands: " + info.checkoutDef.commands.toString)
-    val stdPrefix = packageDef.name + " checkout " + info.versionerDef.name
+    debug("Running checkout commands: ${info.checkoutDef.commands.toString}")
+    val stdPrefix = s"${packageDef.name} checkout ${info.versionerDef.name}"
     val exitCode = Shell.run(info.checkoutDef.commands.toString, stdPrefix, workDir, env, stdoutFile, stderrFile)
-    Files.write("%d".format(exitCode), exitCodeFile)
+    Files.write(s"{exitCode}", exitCodeFile)
     Files.moveFileToDir(stdoutFile, buildDir)
     Files.moveFileToDir(stderrFile, buildDir)
     Files.moveFileToDir(exitCodeFile, buildDir)
