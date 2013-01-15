@@ -47,11 +47,43 @@
 \section{Branch points and branches}
 
 \begin{enumerate}
-\item Traverse the AST to identify all branch points used in the workflow (see \texttt{findBranchPoints()} in \texttt{WorkflowBuilder.build()}; also see \texttt{BranchPoint} and \texttt{BranchPointFactory})
-\item For each branch point, identify all branch names associated with that branch point (see \texttt{Branch} and \texttt{BranchFactory}, especially \texttt{BranchFactory.getAll()})
+
+\item Traverse the AST to identify all branch points used in the workflow 
+      (see \texttt{findBranchPoints()} in \texttt{WorkflowBuilder.build()}; also 
+       see \texttt{BranchPoint} and \texttt{BranchPointFactory})
+
+\item For each branch point, identify all branch names associated with that branch point 
+      (see \texttt{Branch} and \texttt{BranchFactory}, especially \texttt{BranchFactory.getAll()})
+
 \end{enumerate}
 
+
 \section{Building task templates}
+
+\subsection{Found tasks}
+
+See \texttt{TaskTemplateBuilder.findTasks()}, called from \texttt{WorkflowBuilder.build()}
+
+\begin{enumerate}
+
+\item Gather a list of all task definitions
+
+\item By iterating over this list, construct a map where 
+      the keys are globally unique task names and 
+      the values are task definitions
+
+\item For each task, iterate over all input specifications and parameter specifications for that task
+      (see \texttt{TaskTemplateBuilder.findTasks()})
+
+\item This step is extremely complicated and involves several mutually recursive functions.
+      For each input specification and parameter specification in a task, 
+      collect the set of possible values that each input and parameter can take. 
+      This set of possible values will be recorded as a \texttt{BranchPointTree}.
+      See \texttt{TaskTemplateBuilder.resolveBranchPoint()}, called from \texttt{TaskTemplateBuilder.findTasks()}.
+      
+
+\end{enumerate}
+
 
 \section{Temporal and structural dependencies}
 
