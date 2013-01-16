@@ -157,6 +157,8 @@ object Files extends Logging {
       throw new IOException("Could not create directory: " + dir.getAbsolutePath)
     }
   }
+
+  def exists(file: String): Boolean = new File(file).exists
 }
 
 object NullWriter extends Writer {
