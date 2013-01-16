@@ -15,10 +15,8 @@ import ducttape.syntax.Namespace
 class RealTaskId(val name: Namespace, val realization: String) {
 
   /** constructor used by InPlanConstraint -- needs to be fast */
-  def this(name: Namespace, realization: Seq[Branch]) = this(
-    name,
-    realization=realization.map(_.toString).mkString(Realization.delimiter)
-  )
+  def this(name: Namespace, branches: Seq[Branch])
+    = this(name, new Realization(branches).toCanonicalString)
 
   def toVersionedTaskId(version: Int) = new VersionedTaskId(name, realization, version)
 
