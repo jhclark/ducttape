@@ -258,12 +258,6 @@ object Ducttape extends Logging {
       val planPolicy: PlanPolicy = {
         Plans.getPlannedVertices(workflow, workflowVersion, planNames=opts.plans, verbose=verbose)
       }
-      planPolicy match {
-        case VertexFilter(plannedVertices) => {
-          System.err.println(s"Planned ${plannedVertices.size} vertices")
-        }
-        case _ => ;
-      }
 
       // pass 2 error checking: use unpacked workflow
       {

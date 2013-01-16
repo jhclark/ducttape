@@ -82,7 +82,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
   def buildPlans(planDefs: Seq[PlanDefinition]): Seq[RealizationPlan] = {
     planDefs.flatMap { planDef: PlanDefinition =>
+      val numReachClauses = planDef.crossProducts.size
+      var i = 0
       planDef.crossProducts.map { cross: CrossProduct =>
+        i += 1
         val realizations: Map[BranchPoint, Set[String]] = cross.value.map { implicit ref: BranchPointRef =>
           catcher {
             val branchPoint: BranchPoint = branchPointFactory(ref.name)
@@ -101,7 +104,10 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
             (branchPoint, branches) // map entry
           }
         }.toMap
-        new RealizationPlan(planDef, cross.goals, realizations)
+
+        val fullName = if (numReachClauses > 1) s"${planDef} (Clause $i of $numReachClauses)"
+                       else planDef.toString
+        new RealizationPlan(planDef, cross.goals, realizations, fullName)
       }
     }
   }

@@ -310,7 +310,7 @@ object AbstractSyntaxTree {
     override def children = Seq(comments) ++ lines
     override def toString() = {
       name match {
-        case None => "GLOBAL"
+        case None => "*anonymous*"
         case Some(s: String) => s
       }
     }
@@ -328,7 +328,7 @@ object AbstractSyntaxTree {
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def children = Seq(comments) ++ crossProducts
     override def toString() = name match {
-      case None => "GLOBAL"
+      case None => "*anonymous*"
       case Some(s: String) => s
     }
   }

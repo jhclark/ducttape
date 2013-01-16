@@ -179,9 +179,6 @@ object Plans extends Logging {
           }
         }
         for (plan: RealizationPlan <- plans) {
-          val planName: String = plan.name.getOrElse("*anonymous*")
-          System.err.println(s"Finding vertices for plan: ${planName}")
-          
           // Pass 2: Forward pass through the HyperDAG using a PatternFilter
           //   so that we can discover which realizations are valid at each goal task
           // Note: This isn't as simple as taking the cross-product of branches that have been seen at all dependents
@@ -235,7 +232,7 @@ object Plans extends Logging {
           }
           
           // everything we saw is required to execute this realization plan to its goal vertices
-          System.err.println(s"Found ${seen.size} vertices implied by realization plan ${planName}")
+          System.err.println(s"Found ${seen.size} vertices implied by realization plan ${plan.fullName}")
           
           // this is almost certainly not what the user intended
           if (seen.isEmpty && errorOnZeroTasks) {
