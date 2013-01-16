@@ -93,7 +93,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
     def toD(branch: Branch): Branch = if (branch != null) branch else Task.NO_BRANCH
     
     def observe(v: UnpackedVertex[Option[TaskTemplate], Branch, SpecGroup, Branch])
-      = explainCallback(v.packed.toString, v.realization.mkString("-"), true)
+      = explainCallback(v.packed.toString, v.realization.mkString(Realization.delimiter), true)
 
     // the inPlanConstraint implements both a RealizationMunger and a MetaVertexFilter
     val inPlanConstraint = new InPlanConstraint(policy, explainCallback)
