@@ -77,7 +77,7 @@ class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch
   
   import HyperWorkflow._
 
-  def packedWalker: PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
+  def packedWalker(): PackedPhantomMetaDagWalker[TaskTemplate] = dag.packedWalker
 
   // TODO: Currently only used by initial pass to find goals
   // TODO: Document different use cases of planFilter vs plannedVertices

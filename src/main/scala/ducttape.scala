@@ -418,6 +418,7 @@ object Ducttape extends Logging {
         }
         case Some("packed") => {
           err.println("Generating GraphViz dot visualization of packed workflow...")
+          println(WorkflowViz.toPackedGraphViz(workflow))
         }
         case Some("unpacked") | None => {
           val workflowVersion = WorkflowVersionInfo.createFake()
