@@ -24,6 +24,7 @@ class Opts(args: Seq[String]) extends OptParse {
     }
   }
   val traversal = StrOpt(desc="hypergraph traversal algorithm to use when running the workflow (Arbitrary, BreadthFirst, DepthFirst). Default is DepthFirst.",short='t')
+  val typeFlag = StrOpt(desc="type of viz to perform. one of: unpacked (default), packed, or debug",short='T')
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
@@ -36,8 +37,7 @@ class Opts(args: Seq[String]) extends OptParse {
   val list = new Mode("list", desc="List the tasks and realizations defined in the workflow");
   val env = new Mode("env", desc="Show the environment variables that will be used for a task/realization");
   val explain = new Mode("explain", desc="Explains why realizations get filtered out by a given plan");
-  val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow");
-  val debug_viz = new Mode("debug_viz", desc="Output a GraphViz dot visualization of the packed MetaHyperDAG");
+  val viz = new Mode("viz", desc="Output a GraphViz dot visualization of the unpacked workflow. Use with --unpacked --packed or --debug");
   val mark_done = new Mode("mark_done", desc="Mark a specific task/realization as complete (useful if some manual recovery or resumption was necessary)");
   val invalidate = new Mode("invalidate", desc="Mark a specific task/realization and all of its children as invalid -- they won't be deleted, but they will be re-run with the latest version of your code and data");
   val purge = new Mode("purge", desc="Permenantly delete a specific task/realization and all of its children (recommend purging instead)");
@@ -45,7 +45,7 @@ class Opts(args: Seq[String]) extends OptParse {
   val update = new Mode("update", desc="Update software packages used by this workflow by querying remote version control repositories and building any new versions")
   val versions = new Mode("versions", desc="Show previously built packages and previously executed workflow versions")
 
-  val modes = Seq(exec, list, env, explain, viz, debug_viz, mark_done, invalidate, unlock, update, versions)
+  val modes = Seq(exec, list, env, explain, viz, mark_done, invalidate, unlock, update, versions)
 
   // Positional arguments:
   private var _workflowFile = new File(".")

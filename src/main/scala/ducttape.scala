@@ -410,18 +410,26 @@ object Ducttape extends Logging {
     }
 
     def viz {
-      val workflowVersion = WorkflowVersionInfo.createFake()
-      val planPolicy = getPlannedVertices(workflowVersion)
-      
-      err.println("Generating GraphViz dot visualization...")
       import ducttape.viz._
-      println(GraphViz.compileXDot(WorkflowViz.toGraphViz(workflow, planPolicy)))
-    }
-
-    def debugViz {
-      err.println("Generating GraphViz dot visualization of MetaHyperDAG...")
-      import ducttape.viz._
-      println(workflow.dag.toGraphVizDebug)
+      opts.typeFlag.value match {
+        case Some("debug") => {
+          err.println("Generating GraphViz dot visualization of PhantomMetaHyperDAG...")
+          println(workflow.dag.toGraphVizDebug)
+        }
+        case Some("packed") => {
+          err.println("Generating GraphViz dot visualization of packed workflow...")
+        }
+        case Some("unpacked") | None => {
+          val workflowVersion = WorkflowVersionInfo.createFake()
+          val planPolicy = getPlannedVertices(workflowVersion)
+          
+          err.println("Generating GraphViz dot visualization of unpacked workflow...")
+          println(WorkflowViz.toGraphViz(workflow, planPolicy))
+        }
+        case _ => {
+          throw new RuntimeException(s"Unknown visualization type: ${opts.typeFlag.value}")
+        }
+      }
     }
 
     // supports '*' as a task or realization
@@ -580,7 +588,6 @@ object Ducttape extends Logging {
       }
       case "mark_done" => markDone
       case "viz" => viz
-      case "debug_viz" => debugViz
       case "invalidate" => invalidate
       case "purge" => purge
       case "populate" => {
