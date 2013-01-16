@@ -395,7 +395,7 @@ object Ducttape extends Logging {
           if (realPatterns.exists(_.matches(task.realization))) {
             val env = new TaskEnvironment(dirs, task)
             if (CompletionChecker.isComplete(env)) {
-              err.println("Task already complete: " + task.name + "/" + task.realization)
+              err.println(s"Task already complete: ${task.name}/${task.realization}")
             } else {
               try {
                 CompletionChecker.forceCompletion(env)
@@ -434,6 +434,7 @@ object Ducttape extends Logging {
       val taskPattern: Pattern = Pattern.compile(Globs.globToRegex(taskToKill))
       val realPatterns: Seq[RealizationGlob] = realsToKill.toSeq.map(new RealizationGlob(_))
       
+      // TODO: Store namespace instead
       val victims = new mutable.HashSet[(String,Realization)]
       val victimList = new MutableOrderedSet[VersionedTask]
       for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
@@ -639,58 +640,63 @@ object Ducttape extends Logging {
 
         // we enforce that only one task may write to each row (realization) for each column below
         val results = new mutable.HashMap[Realization, mutable.HashMap[String,String]]
+        // TODO: Move this code to its own SummaryMode file
         for (v: UnpackedWorkVert <- workflow.unpackedWalker(planPolicy).iterator) {
           val taskT: TaskTemplate = v.packed.value.get
           val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
 
           for (summaryDef: SummaryDef <- wd.summaries) {
-            for (ofDef: SummaryTaskDef <- summaryDef.ofs; if (ofDef.name == task.name && cc.completed( (task.name, task.realization) ))) {
-              val taskEnv = new FullTaskEnvironment(dirs, packageVersions, task)
-              val workDir = dirs.getTempActionDir("summary")
-              Files.mkdirs(workDir)
-                  
-              val summaryOutputs: Seq[(String,String)] = ofDef.outputs.map { spec: Spec =>
-                (spec.name, new File(workDir, spec.name).getAbsolutePath)
-              }
-
-              // TODO: Use all the same variables as a submitter?
-              val env: Seq[(String,String)] = Seq( ("TASK_DIR", taskEnv.where.getAbsolutePath) ) ++ summaryOutputs ++ taskEnv.env
-
-              // f) run the summary command
-              val code = ofDef.commands.toString
-              val stdPrefix = taskEnv.task.toString
-              val stdoutFile = new File(workDir, "summary_stdout.txt")
-              val stderrFile = new File(workDir, "summary_stderr.txt")
-              val exitCodeFile = new File(workDir, "summary_exit_code.txt")
-
-              err.println(s"Summarizing ${summaryDef.name}: ${task}")
-              val exitCode = Shell.run(code, stdPrefix, workDir, env, stdoutFile, stderrFile)
-              Files.write(s"${exitCode}", exitCodeFile)
-              if (exitCode != 0) {
-                throw new BashException(s"Summary '${summaryDef.name}' of ${taskEnv.task} failed")
-              }
-              
-              // g) extract the result from the file and put it in our table
-              for ( (outputName, path) <- summaryOutputs) {
-                val lines: Seq[String] = Files.read(new File(path))
-                if (lines.size != 1) {
-                  throw new BashException(s"For summary '${summaryDef.name}', expected exactly one line in '${path}', but instead found ${lines.size}")
+            // TODO: Check for namespace issues
+            for (ofDef: SummaryTaskDef <- summaryDef.ofs; if (ofDef.name.name == task.name)) {
+              val isComplete = cc.completed( (task.name, task.realization) )
+              if (isComplete) {
+                val taskEnv = new FullTaskEnvironment(dirs, packageVersions, task)
+                val workDir = dirs.getTempActionDir("summary")
+                Files.mkdirs(workDir)
+                
+                val summaryOutputs: Seq[(String,String)] = ofDef.outputs.map { spec: Spec =>
+                  (spec.name, new File(workDir, spec.name).getAbsolutePath)
                 }
-                val label = outputName
-                val result: String = lines(0)
-                val row = results.getOrElseUpdate(task.realization, new mutable.HashMap[String,String] )
-                if (row.get(label) != None) {
-                  throw new RuntimeException("Multiple tasks are attempting to write to the column %s for the realization %s".format(label, task.realization.toFullString()))
+                
+                // TODO: Use all the same variables as a submitter?
+                val env: Seq[(String,String)] = Seq( ("TASK_DIR", taskEnv.where.getAbsolutePath) ) ++ summaryOutputs ++ taskEnv.env
+                
+                // f) run the summary command
+                val code = ofDef.commands.toString
+                val stdPrefix = taskEnv.task.toString
+                val stdoutFile = new File(workDir, "summary_stdout.txt")
+                val stderrFile = new File(workDir, "summary_stderr.txt")
+                val exitCodeFile = new File(workDir, "summary_exit_code.txt")
+                
+                err.println(s"Summarizing ${summaryDef.name}: ${task}")
+                val exitCode = Shell.run(code, stdPrefix, workDir, env, stdoutFile, stderrFile)
+                Files.write(s"${exitCode}", exitCodeFile)
+                if (exitCode != 0) {
+                  throw new BashException(s"Summary '${summaryDef.name}' of ${taskEnv.task} failed")
                 }
-                row += label -> result
-                for (branch <- task.realization.branches) {
-                  branchPointMap.getOrElseUpdate(branch.branchPoint, new mutable.HashSet) += branch
+                
+                // g) extract the result from the file and put it in our table
+                for ( (outputName, path) <- summaryOutputs) {
+                  val lines: Seq[String] = Files.read(new File(path))
+                  if (lines.size != 1) {
+                    throw new BashException(s"For summary '${summaryDef.name}', expected exactly one line in '${path}', but instead found ${lines.size}")
+                  }
+                  val label = outputName
+                  val result: String = lines(0)
+                  val row = results.getOrElseUpdate(task.realization, new mutable.HashMap[String,String] )
+                  if (row.get(label) != None) {
+                    throw new RuntimeException("Multiple tasks are attempting to write to the column %s for the realization %s".format(label, task.realization.toFullString()))
+                  }
+                  row += label -> result
+                  for (branch <- task.realization.branches) {
+                    branchPointMap.getOrElseUpdate(branch.branchPoint, new mutable.HashSet) += branch
+                  }
+                  labelSet += label
                 }
-                labelSet += label
+                
+                // h) cleanup
+                Files.deleteDir(workDir)
               }
-              
-              // h) cleanup
-              Files.deleteDir(workDir)
             }
           }
         }

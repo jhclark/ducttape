@@ -214,7 +214,7 @@ object AbstractSyntaxTree {
    */
   class TaskDef(val comments: Comments,
                 val keyword: String,
-                val name: Namespace, 
+                val name: Namespace, // TODO: Rename name to namespace to prevent namespace == name confusion
                 val header: TaskHeader, 
                 val commands: BashCode) extends Block {
     
