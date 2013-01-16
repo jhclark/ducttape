@@ -41,7 +41,11 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     
   private def fullRealizationName(hashLongNames: Boolean = true): String = {
     // TODO: Prohibit the branch point name "Baseline"?
-    val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT }
+    val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT } match {
+      // make sure we have at least baseline, if nothing else
+      case Seq() => Seq(Task.NO_BRANCH)
+      case myBranches => myBranches 
+    }
     val names = filteredBranches.map { branch => s"${branch.branchPoint.name}.${branch.name}" }
     val result = names.mkString(Realization.delimiter)
     if (result.length > 255 && hashLongNames) {
