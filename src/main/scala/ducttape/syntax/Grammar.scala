@@ -84,36 +84,11 @@ object Grammar {
       literal("*/") |
       err("Comment is missing closing */")
     )
-//    (
-//      literal("/**/") |  
-//      
-//      (
-//        (literal("/*")) ~> 
-//        rep(
-//          blockComment | 
-//          (
-//            regex("""([^\*]|\*(?!/))+""".r) ~
-//            opt(blockComment)
-//          )
-//        ) <~
-//        (
-//          literal("*/") |
-//          err("Comment is missing closing */")        
-//        )
-//      )
-//    )
     
   } ^^ {
-//    case s:String => ""
     case list:List[String] => {
       val sb = new StringBuilder()
       list.foreach((item:String) => sb.append(item) )
-//        item match {
-//          case (s:String) => 
-////          case ()~(s:String) ~ Some(c:String) => { sb.append(s); sb.append(c) }
-////          case (s:String) ~ None => sb.append(s)
-//        }
-//      )
       sb.toString
     }
   }
@@ -645,8 +620,6 @@ object Grammar {
         case (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
   )
-
-//  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
   val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_),branchName) | rvalue) ^^ (
@@ -941,12 +914,7 @@ object Grammar {
             (
                 literal("{") |
                 failure("Missing opening { brace for " +blockType+" block.")
-            ) //~
-//            opt(space) ~
-//            (
-//                eol |
-//                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
-//            )
+            )
         ) ~> 
         BashGrammar.bashBlock <~
         (
