@@ -26,8 +26,10 @@ rm -rf ${DIST}
 mkdir -p ${DIST}
 cp $DUCTTAPE/ducttape.jar ${DIST}/ducttape.jar
 
-fgrep -v DEV-ONLY ducttape > ${DIST}/ducttape
+fgrep -v DEV-ONLY $DUCTTAPE/ducttape > ${DIST}/ducttape
 chmod a+x ${DIST}/ducttape
+cp $DUCTTAPE/tabular ${DIST}/tabular
+chmod a+x ${DIST}/tabular
 
 cp Makefile.dist ${DIST}/Makefile
 cp logging.properties ${DIST}/
