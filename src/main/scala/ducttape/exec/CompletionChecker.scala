@@ -27,26 +27,33 @@ object CompletionChecker extends Logging {
     }
   } 
   
-  def isComplete(taskEnv: TaskEnvironment, msgCallback: String => Unit = (msg: String) => { ; } ): Boolean = {
+  def NO_CALLBACK(task: VersionedTask, msg: String) {}
+  def isComplete(taskEnv: TaskEnvironment,
+                 incompleteCallback: (VersionedTask, String) => Unit = NO_CALLBACK): Boolean = {
     
     // TODO: Grep stdout/stderr for "error"
     // TODO: Move this check and make it check file size and date with fallback to checksums? or always checksums? or checksum only if files are under a certain size?
     // use a series of thunks so that we don't try to open non-existent files
-    val conditions: Seq[(() => Boolean, String)] = (
-      Seq(( () => taskEnv.where.exists, "No previous output"),
-          ( () => taskEnv.exitCodeFile.exists, "Exit code file does not exist"),
-          ( () => isExitCodeZero(taskEnv.exitCodeFile), "Non-zero exit code"),
-          ( () => taskEnv.stdoutFile.exists, "Stdout file does not exist"),
-          ( () => taskEnv.stderrFile.exists, "Stderr file does not exist"),
-          ( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated")) ++
-          
-      taskEnv.outputs.map { case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f)) }
+    val conditions: Seq[(() => Boolean, Option[String])] = (
+      Seq(( () => taskEnv.where.exists, None), // no message, since this is normal
+          ( () => taskEnv.exitCodeFile.exists, Some("Exit code file does not exist")),
+          ( () => isExitCodeZero(taskEnv.exitCodeFile), Some("Non-zero exit code")),
+          ( () => taskEnv.stdoutFile.exists, Some("Stdout file does not exist")),
+          ( () => taskEnv.stderrFile.exists, Some("Stderr file does not exist")),
+          ( () => !isInvalidated(taskEnv), Some("Previous version is complete, but invalidated"))) ++
+      taskEnv.outputs.map { case (_, f: String) =>
+        ( () => Files.exists(f), Some(s"${f} does not exist"))
+      }
     )
     
-    conditions.forall { case (cond, msg) =>
+    // check each condition necessary for a task to be complete
+    // if a condition fails, notify the user why, if a message is provided
+    conditions.forall { case (cond, msgOpt) =>
       val conditionHolds = cond()
-      if (!conditionHolds)
-        msgCallback("Task incomplete %s/%s: %s".format(taskEnv.task.name, taskEnv.task.realization.toString, msg))
+      if (!conditionHolds) msgOpt match {
+        case Some(msg) => incompleteCallback(taskEnv.task, msg)
+        case None => ;
+      }
       conditionHolds
     }
   }
@@ -78,11 +85,12 @@ object CompletionChecker extends Logging {
 // the initVersioner is generally the MostRecentWorkflowVersioner, so that we can check if
 // the most recent result is untouched, invalid, partial, or complete
 //
-// use msgCallback to show info about why tasks aren't complete
+// use incompleteCallback to show info about why tasks aren't complete
 class CompletionChecker(dirs: DirectoryArchitect,
                         unionVersion: WorkflowVersionInfo,
                         nextWorkflowVersion: Int,
-                        msgCallback: String => Unit) extends UnpackedDagVisitor with Logging {
+                        incompleteCallback: (VersionedTask, String) => Unit)
+    extends UnpackedDagVisitor with Logging {
 
   // we make a single pass to atomically determine what needs to be done
   // so that we can then prompt the user for confirmation
@@ -112,7 +120,7 @@ class CompletionChecker(dirs: DirectoryArchitect,
     debug("Checking $task")
     val taskEnv = new TaskEnvironment(dirs, task)
 
-    if (CompletionChecker.isComplete(taskEnv, msgCallback)) {
+    if (CompletionChecker.isComplete(taskEnv, incompleteCallback)) {
       _completedVersions += task.toVersionedTaskId
       _completed += ((task.name, task.realization))
     } else {

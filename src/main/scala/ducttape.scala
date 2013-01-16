@@ -51,6 +51,7 @@ import ducttape.workflow.Realization
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.RealTask
 import ducttape.workflow.VersionedTask
+import ducttape.workflow.VersionedTaskId
 import ducttape.workflow.BranchPoint
 import ducttape.workflow.Branch
 import ducttape.workflow.RealizationPlan
@@ -61,6 +62,7 @@ import ducttape.workflow.BuiltInLoader
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.Visitors
 import ducttape.versioner.WorkflowVersionInfo
+import ducttape.versioner.FakeWorkflowVersionInfo
 import ducttape.versioner.WorkflowVersionHistory
 import ducttape.syntax.FileFormatException
 import ducttape.syntax.WorkflowChecker
@@ -235,13 +237,19 @@ object Ducttape extends Logging {
       WorkflowVersionHistory.load(dirs.versionHistoryDir)
     }
 
-    def getPrevWorkflowVersion(mode: String): WorkflowVersionInfo = {
-      getVersionHistory().prevVersionInfo match {
-        case Some(versionInfo) => {
-          System.err.println(s"Using workflow version: ${versionInfo}")
-          versionInfo
+    def getPrevWorkflowVersion(mode: String)(implicit directives: Directives): WorkflowVersionInfo = {
+      if (directives.versionedTasks) {
+        // if we're using version directories, we need to know which directory to look inside for each task
+        getVersionHistory().prevVersionInfo match {
+          case Some(versionInfo) => {
+            System.err.println(s"Using workflow version: ${versionInfo}")
+            versionInfo
+          }
+          case None => throw new RuntimeException(s"No previous version history exists for this workflow, but '${mode}' mode requires a previous version")
         }
-        case None => throw new RuntimeException(s"No previous version history exists for this workflow, but '${mode}' mode requires a previous version")
+      } else {
+        // there's no need for us to know which versions were used
+        FakeWorkflowVersionInfo
       }
     }
 
@@ -292,12 +300,16 @@ object Ducttape extends Logging {
       val unionVersion: WorkflowVersionInfo = history.union()
 
       history.prevVersion match {
-        case Some(prev) => System.err.println(s"Checking for completed steps from versions through ${prev}...")
-        case None => System.err.println("No previous workflow versions -- no tasks completed yet.")
+        case Some(prev) => System.err.println(s"Checking for completed tasks from versions through ${prev}...")
+        case None => System.err.println("Checking for completed tasks") // we can't actually reason that there's no completed versions since this might be a fake version info
       }
-      def msgCallback(msg: String) = System.err.println(msg)
-      val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, msgCallback)
+      def incompleteCallback(task: VersionedTask, msg: String) {
+        import ducttape.cli.ColorUtils.colorizeDir
+        System.err.println(s"Task incomplete: ${colorizeDir(task.name, task.realization)}: ${msg}")
+      }
+      val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, incompleteCallback)
       Visitors.visitAll(workflow, cc, planPolicy, unionVersion, traversal=traversal)
+      cc
     }
 
     // get what packages are needed by the planned vertices and
@@ -807,14 +819,29 @@ object Ducttape extends Logging {
          // TODO: *all* versions, show size on disk and when built
          // TODO: List even versions not in the workflow? Do this from object!
          // TODO: Compare for versions that are no longer used by workflow?
-         System.err.println("Already built package versions:")
+         System.out.println("Already built package versions:")
          for ( (packageName, packageVersions) <- packages) {
-           System.err.println(s"${Config.greenColor}PACKAGE:${Config.resetColor} ${packageName}")
+           System.out.println(s"${Config.greenColor}PACKAGE:${Config.resetColor} ${packageName}")
            for (version: PackageStatus <- packageVersions) {
-             System.err.println(s"  ${version}")
+             System.out.println(s"  ${version}")
            }
-         }         
+         }
+
+         val history = getVersionHistory()
+         val workflowVersions: Seq[WorkflowVersionInfo] = history.history
+         System.out.println()
+         System.out.println("Previously executed workflow versions:")
+         for (info: WorkflowVersionInfo <- workflowVersions) {
+           // TODO: Show date, time, and status
+           System.out.println(s"  == ${info.version} ==")
+           for (task: VersionedTaskId <- info.existing) {
+             System.out.println(s"  Existing: ${task}")
+           }
+           // TODO: Show new tasks (also show dependent tasks to right)
+           // TODO: Record which tasks were successful and failed for each workflow version? (in progress is also possible)
+         }
        }
+
       // TODO: Change this from _ to "None" -- all other cases will need to be Some(x)
       case "exec" | _ => {
         // for now, we'll hallucinate a fake version of what we're about to do
