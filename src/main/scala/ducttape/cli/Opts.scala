@@ -24,7 +24,7 @@ class Opts(args: Seq[String]) extends OptParse {
     }
   }
   val traversal = StrOpt(desc="hypergraph traversal algorithm to use when running the workflow (Arbitrary, BreadthFirst, DepthFirst). Default is DepthFirst.",short='t')
-  val typeFlag = StrOpt(desc="type of viz to perform. one of: unpacked (default), packed, or debug",short='T')
+  val typeFlag = StrOpt("viz-type", desc="type of viz to perform. one of: unpacked (default), packed, or debug", short='T')
   val config_file = StrOpt(desc="Stand-off workflow configuration file to read", short='C')
   val output = StrOpt(desc="Directory where workflow output should be placed" +
   		" (You can also specify this as the variable 'ducttape_output') [default=$PWD]", short='O')
