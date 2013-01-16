@@ -286,7 +286,9 @@ object Ducttape extends Logging {
     // this is a critical stage for versioning -- here, we decide whether or not
     // we have an acceptable existing version of a task or if we'll need a new
     // version for that task
-    def getCompletedTasks(planPolicy: PlanPolicy, history: WorkflowVersionHistory): CompletionChecker = {
+    def getCompletedTasks(planPolicy: PlanPolicy,
+                          history: WorkflowVersionHistory,
+                          verbose: Boolean = false): CompletionChecker = {
       
       // We need to check for any completed version of this task (that's not invalidated)
       // in *any* previous version (not just the most recent)
@@ -299,7 +301,9 @@ object Ducttape extends Logging {
       }
       def incompleteCallback(task: VersionedTask, msg: String) {
         import ducttape.cli.ColorUtils.colorizeDir
-        System.err.println(s"Task incomplete: ${colorizeDir(task.name, task.realization)}: ${msg}")
+        if (verbose) {
+          System.err.println(s"Task incomplete: ${colorizeDir(task.name, task.realization)}: ${msg}")
+        }
       }
       val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, incompleteCallback)
       Visitors.visitAll(workflow, cc, planPolicy, unionVersion, traversal=traversal)
@@ -847,7 +851,7 @@ object Ducttape extends Logging {
 
         System.err.println("Discovering versions")
         val history = getVersionHistory()
-        val cc = getCompletedTasks(planPolicy, history)
+        val cc = getCompletedTasks(planPolicy, history, verbose=true)
         val packageVersionThunk = {
           () => getPackageVersions(Some(cc), planPolicy, uncommittedVersion, verbose=true)
         }
