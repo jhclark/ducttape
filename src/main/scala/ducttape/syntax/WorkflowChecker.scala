@@ -4,9 +4,9 @@ import ducttape.cli.Directives
 import ducttape.exec.Submitter
 import ducttape.exec.Versioners
 import ducttape.exec.PackageVersionerInfo
-import ducttape.exec.UnpackedDagVisitor
+import ducttape.exec.UnpackedRealDagVisitor
 import ducttape.workflow.HyperWorkflow
-import ducttape.workflow.VersionedTask
+import ducttape.workflow.RealTask
 import ducttape.workflow.Visitors
 import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
@@ -214,15 +214,14 @@ class WorkflowChecker(workflow: WorkflowDefinition,
   // Grumble: It's only tractable to do this for the selection?
   // Is there any way we can do this for tasks that use only literal submitters?
   def checkUnpacked(hyperworkflow: HyperWorkflow,
-                    planPolicy: PlanPolicy,
-                    workflowVersion: WorkflowVersionInfo): (Seq[FileFormatException],Seq[FileFormatException]) = {
+                    planPolicy: PlanPolicy): (Seq[FileFormatException],Seq[FileFormatException]) = {
     
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
     
     val submitter = new Submitter(hyperworkflow.submitters)
-    val visitor = new UnpackedDagVisitor {
-      override def visit(task: VersionedTask) {
+    val visitor = new UnpackedRealDagVisitor {
+      override def visit(task: RealTask) {
         for (packageSpec: Spec <- task.packages) {
           // TODO: Check for each task having the params defined for each of its versioners
           packageSpec
@@ -240,8 +239,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           for (requiredParam <- requiredParams) {
             if (!dotParams(requiredParam.name)) {
               errors += new FileFormatException(
-                "Dot parameter '%s' required by submitter '%s' not defined by task '%s'".format(
-                   requiredParam.name, taskSubmitter.name, task.name),
+                s"Dot parameter '${requiredParam.name}' required by submitter '${taskSubmitter.name}' not defined by task '${task.name}'",
                 List(task.taskDef, requiredParam))
             }
           }
@@ -254,7 +252,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     
     // TODO: We could really get away without versions here if we
     // wanted to maintain another code path
-    Visitors.visitAll(hyperworkflow, visitor, planPolicy, workflowVersion)
+    Visitors.visitAllRealTasks(hyperworkflow, visitor, planPolicy)
     
     (warnings, errors)
   }

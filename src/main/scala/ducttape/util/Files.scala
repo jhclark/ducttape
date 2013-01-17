@@ -36,6 +36,8 @@ object Files extends Logging {
     }
   }
 
+  def write(str: Seq[String], file: File) { write(str.mkString("\n") + "\n", file) }
+
   def writer(file: File): PrintWriter = {
     new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
   }
@@ -107,6 +109,14 @@ object Files extends Logging {
     debug("Relativized %s relative to %s: %s".format(pointTo, link, relativePointTo))
     debug("Symlinking to %s in %s".format(relativePointTo, absLinkDir))
     Shell.run("cd %s && ln -sf %s %s".format(absLinkDir.getAbsolutePath, relativePointTo, linkName), stdPrefix="ln")
+  }
+
+  def cat(inFiles: Seq[File], outFile: File, separator: String = "", variable: String = "") {
+    val allLines: Seq[String] = inFiles.flatMap { inFile: File =>
+      val lines: Seq[String] = read(inFile)
+      Seq(separator.replace(variable, inFile.getAbsolutePath)) ++ lines
+    }
+    write(allLines, outFile)
   }
 
   def ls(dir: File): Seq[File] = {

@@ -231,10 +231,10 @@ object AbstractSyntaxTree {
     
     override def children = Seq(comments, header, commands)
 
-    private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
-    private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
-    private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
-    private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
+    private def packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
+    private def inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
+    private def outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
+    private def paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
     lazy val packages: Seq[Spec] = packageSpecList.flatMap(_.specs)
@@ -335,6 +335,7 @@ object AbstractSyntaxTree {
   
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val elements: Seq[ASTType],
+                           val files: Seq[File], // what files is this workflow definition composed of?
                            private val hadImports: Boolean = false,
                            private val isImported: Boolean = false) extends ASTType {
     override def children = elements
@@ -401,12 +402,13 @@ object AbstractSyntaxTree {
     lazy val usesImports: Boolean = isImported || hasImports || hadImports
     private[syntax] def collapseImports() = new WorkflowDefinition(
       blocks ++ imported.flatMap(_.blocks),
+      files ++ imported.flatMap(_.files),
       hadImports=this.usesImports,
       isImported=this.isImported
     )
 
     override def toString() = blocks.mkString("\n\n")
     
-    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks, hadImports, isImported)
+    def ++(other: WorkflowDefinition) = new WorkflowDefinition(blocks ++ other.blocks, files ++ other.files, hadImports, isImported)
   }
 }
