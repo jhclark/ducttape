@@ -370,7 +370,7 @@ object WorkflowBuilder {
     //   are populated by the *original* unresolved specs
     // In the end, each element of terminalData will become an edge
     //   within some hyperedge
-    var terminalData = new mutable.ArrayBuffer[TerminalData]
+    val terminalData = new mutable.ArrayBuffer[TerminalData]
     val children = new mutable.ArrayBuffer[BranchPointTreeData]
 
     def getOrAdd(bp: BranchPoint, grafts: Seq[Branch]): BranchPointTreeData = {
