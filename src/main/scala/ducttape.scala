@@ -633,6 +633,7 @@ object Ducttape extends Logging {
         val planPolicy = getPlannedVertices()
         val history = getVersionHistory()
         val cc = getCompletedTasks(planPolicy, history)
+        // we need packageVersions in case user wants to use current tool to perform the summarizing
         val packageVersions = getPackageVersions(None, planPolicy)
         val workflowVersion = getPrevWorkflowVersion("summary")
         
@@ -691,7 +692,7 @@ object Ducttape extends Logging {
                   val result: String = lines(0)
                   val row = results.getOrElseUpdate(task.realization, new mutable.HashMap[String,String] )
                   if (row.get(label) != None) {
-                    throw new RuntimeException("Multiple tasks are attempting to write to the column %s for the realization %s".format(label, task.realization.toFullString()))
+                    throw new RuntimeException(s"Multiple tasks are attempting to write to the column '${label}' for the realization ${task.realization.toFullString(hashLongNames=false)}")
                   }
                   row += label -> result
                   for (branch <- task.realization.branches) {
