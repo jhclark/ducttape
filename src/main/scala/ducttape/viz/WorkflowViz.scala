@@ -9,6 +9,53 @@ object WorkflowViz {
   import ducttape.workflow.SpecTypes._
   import ducttape.workflow.Types._
 
+  def toPackedGraphViz(workflow: HyperWorkflow) = {
+    val str = new StringBuilder(1000)
+    str ++= "digraph G {\n"
+
+    def getName(t: Option[TaskDef]) = GraphViz.escape(t match {
+      case Some(taskDef) => taskDef.name.name
+      case None => "Literal"
+    })
+
+    // first, list vertices
+    for (v: PackedWorkVert <- workflow.packedWalker.iterator) {
+      val taskT: TaskTemplate = v.value.get
+      val taskName = getName(Some(taskT.taskDef))
+      val color = "dodgerblue1"
+      val QUOT = "\""
+      str ++= s"${QUOT}${taskName}${QUOT} [fillcolor=${color},style=filled];\n"
+    }
+
+    // now, list edges
+    for (v: PackedWorkVert <- workflow.packedWalker.iterator) {
+      val taskT: TaskTemplate = v.value.get
+      val taskName = getName(Some(taskT.taskDef))
+      val color = "dodgerblue1"
+      val QUOT = "\""
+      str ++= s"${QUOT}${taskName}${QUOT} [fillcolor=${color},style=filled];\n"
+
+      val parents: Map[String, Seq[SpecPair]] = taskT.inputVals.groupBy { inputVal => getName(inputVal.srcTask) }
+      parents.foreach { case (parentName: String, inputVals: Seq[SpecPair]) =>
+        if (parentName != taskName) {
+          val DOLLAR = "$"
+          def toString(sp: SpecPair) = sp.srcTask match {
+            case Some(srcTask) => s"${sp.origSpec.name}=${DOLLAR}${sp.srcSpec.name}@${srcTask.name}"
+            case None => s"${sp.origSpec.name}=${DOLLAR}${sp.srcSpec.name} (=${sp.srcSpec.rval})"
+          }
+          val edgeLabel: String = inputVals.map(toString(_)).mkString("\\n")
+
+          val QUOT = "\""
+          str ++= s"${QUOT}${parentName}${QUOT} -> ${QUOT}${taskName}${QUOT} [label=${QUOT}${edgeLabel}${QUOT}];\n"
+        }
+      }
+    }
+
+    str ++= "}\n"
+    str.toString
+  }
+
+
   def toGraphViz(workflow: HyperWorkflow,
                  planPolicy: PlanPolicy,
                  completed: Set[(String,Realization)] = Set.empty,
