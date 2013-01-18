@@ -14,10 +14,10 @@ func reusable : my_tool < in > out :: p {
 
 # Using that function or subworkflow later in the file:
 # (Require naming inputs and outputs again for clarity, but commands are ommitted)
-task x calls reusable < in=small.txt > out :: p="something" ;
+task x calls reusable < in=small.txt > out :: p="something"
 
 # Parameters may also be overridden at the call site
-task y calls reusable < in=big.txt > out :: p="something else" ;
+task y calls reusable < in=big.txt > out :: p="something else"
 
 # Note: Adding or renaming packages is not allowed
 #task bad calls reusable : my_tool < in=small.txt > out

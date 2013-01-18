@@ -955,8 +955,7 @@ object Grammar {
     (
         (whitespace | failure("Expected whitespace while parsing call block, but didn't find it")) ~>
         taskHeader
-        <~ literal(";")
-    ) <~ (eol | err("Missing newline"))
+    )
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (functionName: String) ~ (header: TaskHeader) => 
       new CallDefinition(comments,name,header,new Namespace(functionName))    
