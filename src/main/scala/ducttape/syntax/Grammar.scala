@@ -1122,7 +1122,7 @@ object Grammar {
     // read import statements with regard to the directory the current file is in.
     case (l:Literal) => {
       val filename: String = l.value
-      val file: File = if (Files.isAbsolutePath(filename)) new File(filename)
+      val file: File = if (Files.isAbsolute(filename)) new File(filename)
                        else new File(importDir, filename)
       ErrorUtils.ex2err(GrammarParser.readWorkflow(file, isImported=true))
     }

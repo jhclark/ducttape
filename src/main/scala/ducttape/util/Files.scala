@@ -150,7 +150,7 @@ object Files extends Logging {
   // normalize away tildes, which Java doesn't understand
   def normalize(file: File): File = new File(normalize(file.getAbsolutePath))
   def normalize(path: String): String = {
-    if (path.startsWith("~") {
+    if (path.startsWith("~")) {
       if (path.startsWith("~/")) {
         // use current user's name
         s"${Environment.UserHomeDir.getAbsolutePath}/${path.substring(2)}"
@@ -165,7 +165,7 @@ object Files extends Logging {
   
   def isAbsolute(path: String) = new File(path).isAbsolute || path.startsWith("~")
   
-  def exists(path: String) = new File(normalize(path)).exists
+  def exists(path: String): Boolean = new File(normalize(path)).exists
   
   def glob(pattern: String): Seq[File] = isGlob(pattern) match {
     case false => Seq(new File(pattern))
@@ -184,8 +184,6 @@ object Files extends Logging {
       throw new IOException("Could not create directory: " + dir.getAbsolutePath)
     }
   }
-
-  def exists(file: String): Boolean = new File(file).exists
 }
 
 object NullWriter extends Writer {
