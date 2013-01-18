@@ -51,8 +51,8 @@ object HyperWorkflow {
       // This line also shows that just-introduced branches such as BP1.b2 can never be
       // grafted away by component edges.
       case Some(branch: Branch) => new UnpackState(
-        hyperedgeState=UnpackState.emptyMap + ((branch.branchPoint, branch)),
-        edgeState=UnpackState.emptyMap)
+        hyperedgeState = UnpackState.emptyMap + ((branch.branchPoint, branch)),
+        edgeState = UnpackState.emptyMap)
     }
     
     override def toRealization(state: UnpackState): Seq[Branch] = {
