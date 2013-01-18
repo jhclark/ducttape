@@ -55,9 +55,8 @@ object WorkflowVersionHistory extends Logging {
       }
     )
     if (errors.size > 0) {
-      System.err.println(s"WARNING: ${errors} corrupt or incomplete workflow versions found. Ignoring them. (This could be due to upgrading from an older version of ducttape that doesn't support versioning)")
+      System.err.println(s"WARNING: ${errors.size} corrupt or incomplete workflow versions found. Ignoring them. (This could be due to upgrading from an older version of ducttape that doesn't support versioning)")
       System.err.println(s"WARNING: Most recent corruption: ${errors.last.getMessage}")
-      throw errors.last
     }
     history
   }
