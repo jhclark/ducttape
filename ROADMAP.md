@@ -3,7 +3,7 @@ V0.1: April 2012
 
 * Initial version
 
-V0.2: Aug 7, 2012?
+V0.2: Aug 7, 2012
 ==================
 
 * First public release
