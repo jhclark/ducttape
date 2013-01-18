@@ -37,7 +37,9 @@ object CompletionChecker extends Logging {
           ( () => taskEnv.stderrFile.exists, "Stderr file does not exist"),
           ( () => !isInvalidated(taskEnv), "Previous version is complete, but invalidated")) ++
           
-      taskEnv.outputs.map { case (_,f) => ( () => new File(f).exists, "%s does not exist".format(f)) }
+      taskEnv.outputs.map { case (_,f) =>
+        ( () => Files.exists(f), s"${f} does not exist")
+      }
     )
     
     conditions.forall { case (cond, msg) =>
@@ -56,7 +58,9 @@ object CompletionChecker extends Logging {
   // and the user just wants the workflow to continue
   def forceCompletion(taskEnv: TaskEnvironment) {
     Files.write("0", taskEnv.exitCodeFile)
-    val files = List(taskEnv.stdoutFile, taskEnv.stderrFile) ++ taskEnv.outputs.map{case (_,f) => new File(f)}
+    val files = List(taskEnv.stdoutFile, taskEnv.stderrFile) ++ taskEnv.outputs.map {
+      case (_,f) => new File(f)
+    }
     for (file <- files) {
       if (!taskEnv.stdoutFile.exists) {
         Files.write("", taskEnv.stdoutFile)

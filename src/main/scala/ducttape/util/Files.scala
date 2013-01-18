@@ -136,6 +136,26 @@ object Files extends Logging {
   def copyToDir(src: File, destDir: File) = copy(src, new File(destDir, src.getName))
 
   def isGlob(path: String) = path.contains("*") || path.contains("?")
+
+  // normalize away tildes, which Java doesn't understand
+  def normalize(file: File): File = new File(normalize(file.getAbsolutePath))
+  def normalize(path: String): String = {
+    if (path.startsWith("~") {
+      if (path.startsWith("~/")) {
+        // use current user's name
+        s"${Environment.UserHomeDir.getAbsolutePath}/${path.substring(2)}"
+      } else {
+        // user name was manually specified
+        s"/home/${path.substring(1)}"
+      }
+    } else {
+      path
+    }
+  }
+  
+  def isAbsolute(path: String) = new File(path).isAbsolute || path.startsWith("~")
+  
+  def exists(path: String) = new File(normalize(path)).exists
   
   def glob(pattern: String): Seq[File] = isGlob(pattern) match {
     case false => Seq(new File(pattern))

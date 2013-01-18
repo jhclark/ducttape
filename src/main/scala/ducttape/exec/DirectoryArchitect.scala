@@ -23,7 +23,7 @@ class DirectoryArchitect(val flat: Boolean,
 
   val builtinsDir = new File(Environment.InstallDir, "builtins")
   
-  val confBaseDir = workflowBaseDir
+  val confBaseDir = Files.normalize(workflowBaseDir)
   
   val versionHistoryDir = new File(confBaseDir, ".versions")
   def assignVersionDir(version: Int) = new File(versionHistoryDir, version.toString)
@@ -79,7 +79,7 @@ class DirectoryArchitect(val flat: Boolean,
 
   // the directory where various versions of a software package will get built
   def assignBuildPackageDir(packageName: String): File = {
-    new File(confBaseDir, ".packages/%s".format(packageName))
+    new File(confBaseDir, s".packages/${packageName}")
   }
 
   // the directory where a specific version of a software package will get built
@@ -89,26 +89,27 @@ class DirectoryArchitect(val flat: Boolean,
   }
 
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization): File = {
-    //println("Assigning outfile for " + spec)
     val taskDir = assignDir(taskDef, realization)
-    assert(!spec.isInstanceOf[BranchPointDef])
-
     spec.rval match {
       case Unbound() => { // user didn't specify a name for this output file
         new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
       }
       case Literal(filename) => { // the user told us what name to use for the file
-        new File(taskDir, filename)
+        if (Files.isAbsolute(filename)) {
+          // TODO: Warn user about this unusual pattern...
+          new File(Files.normalize(filename))
+        } else {
+          new File(taskDir, filename)
+        }
       }
     }
   }
 
-  def isAbsolute(path: String) = new File(path).isAbsolute
-
+  // resolve a literal *input* path
   def resolveLiteralPath(spec: LiteralSpec): File = {
     val path = spec.rval.value
-    isAbsolute(path) match {
-      case true => new File(path)
+    Files.isAbsolute(path) match {
+      case true => new File(Files.normalize(path))
       // relative paths are resolved relative to the directory
       // **of the file in which this literal was declared**
       // this could be the workflow file or the config file
@@ -127,7 +128,7 @@ class DirectoryArchitect(val flat: Boolean,
       case None => srcSpec.rval match {
         // gah, erasure!
         case Literal(path) => resolveLiteralPath(srcSpec.asInstanceOf[LiteralSpec])
-        case _ => throw new RuntimeException("No source task found for spec %s with source %s ".format(mySpec, srcSpec))
+        case _ => throw new RuntimeException(s"No source task found for spec ${mySpec} with source ${srcSpec}")
       }
       
       // has a source task? just recover the output path in the same way as when we originally produced it
