@@ -204,7 +204,6 @@ class UnpackedDagWalker[V,H,E,D,F](
         }
   	vertexIDs.put( (vertex.packed, vertex.realization), maxParentID+1)
       }
-      System.err.println(s"${traversal}: Assigned ${vertexIDs.size} vertex IDs")
       vertexIDs
     }
     
