@@ -60,7 +60,8 @@ object Grammar {
     val plan: Parser[String] = keyword("plan")
     val global: Parser[String] = keyword("global")
     val importKeyword: Parser[String] = keyword("import")
-
+    val tabbedTask: Parser[String] = keyword("tabbed task")
+    
   }
   
   /** One line of comments */

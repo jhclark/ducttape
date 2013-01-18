@@ -1,8 +1,5 @@
 package ducttape.workflow.builder
 
-import WorkflowBuilder.InputMode
-import WorkflowBuilder.ParamMode
-import WorkflowBuilder.ResolveMode
 import ducttape.hyperdag.meta.PhantomMetaHyperDagBuilder
 import ducttape.hyperdag.PackedVertex
 import ducttape.syntax.Namespace
@@ -314,100 +311,6 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 // can be factored out into their own files
 object WorkflowBuilder {
 
-  // Used by resolveNonBranchVar() in TaskTemplateBuilder
-  // to indicate what kind of spec we're currently resolving
-  class ResolveMode();
-  case class InputMode() extends ResolveMode;
-  case class ParamMode() extends ResolveMode;
-  case class OutputMode() extends ResolveMode;
 
-  /** Stores information from TaskTemplateBuilder to be passed back to WorflowBuilder
-   *  so that we know which specs and grafts should be used given some realization.
-   *  This small tree snippet is rooted at a single task and records the inputs and parameters for
-   *  that task. It is then used to create the full HyperDAG structure
-   *  by the WorkflowBuilder in the traverse() and getHyperedges() methods.
-   * 
-   *  alternates with BranchInfoTree */
-  private[builder] class BranchPointTree(val branchPoint: BranchPoint) {
-    val children = new mutable.ArrayBuffer[BranchTree]
 
-    def getOrAdd(br: Branch): BranchTree = children.find { child => child.branch == br } match {
-      case Some(found) => found
-      case None => {
-        val child = new BranchTree(br)
-        children += child
-        child
-      }
-    }
-
-    // recursively enumerate all specs in this tree
-    def specs: Iterable[SpecPair] = children.flatMap { child =>
-      child.terminalData.flatMap { data: TerminalData => data.specs } ++
-        child.children.flatMap { grandchild: BranchPointTreeData => grandchild.tree.specs }
-    }
-
-    override def toString() = "(BP=" + branchPoint + ": " + children.mkString + ")"
-  }
-
-  private[builder] class BranchPointTreeData(
-    val tree: BranchPointTree,
-    val grafts: Seq[Branch]) {
-    override def toString() = tree + "+grafts=[" + grafts.mkString(",") + "]"
-  }
-
-  /**
-   * See BranchPointTree
-   * 
-   * branch will be baseline for the root vertex
-   */
-  private[builder] class BranchTree(val branch: Branch) {
-
-    // if populated at the root, indicates no branch points
-    //   specs, organized by which task they originate from
-    //   and then by what grafts apply for that parent
-    // NOTE: These are the final resolved specs, appropriate for use within some realization
-    //   they are used in the BranchTreeMap; the plain edges in the HyperDAG
-    //   are populated by the *original* unresolved specs
-    // In the end, each element of terminalData will become an edge
-    //   within some hyperedge
-    var terminalData = new mutable.ArrayBuffer[TerminalData]
-    val children = new mutable.ArrayBuffer[BranchPointTreeData]
-
-    def getOrAdd(bp: BranchPoint, grafts: Seq[Branch]): BranchPointTreeData = {
-      children.find { child => child.tree.branchPoint == bp && child.grafts == grafts } match {
-        case Some(found) => found
-        case None => {
-          val bpt = new BranchPointTree(bp)
-          val child = new BranchPointTreeData(bpt, grafts)
-          children += child
-          child
-        }
-      }
-    }
-
-    def getOrAdd(task: Option[TaskDef], grafts: Seq[Branch], isParam: Boolean): TerminalData = {
-      // TODO: Do we need to sort grafts so that we don't get multiple entries
-      // if they're in different orders?
-      terminalData.find { data => data.task == task && data.grafts == grafts && data.isParam == isParam } match {
-        case Some(data) => data
-        case None => {
-          val result = new TerminalData(task, grafts, isParam)
-          terminalData += result
-          result
-        }
-      }
-    }
-
-    override def toString() = "(B=" + branch + " :: terminalData=" + terminalData.mkString(":") + " :: " + children + ")"
-  }
-
-  private[builder] class TerminalData(
-    val task: Option[TaskDef],
-    val grafts: Seq[Branch],
-    val isParam: Boolean) {
-
-    val specs = new mutable.ArrayBuffer[SpecPair]
-
-    override def toString() = "(%s %s isParam=%s %s)".format(task, grafts, isParam, specs)
-  }
 }
