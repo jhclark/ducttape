@@ -2,6 +2,7 @@ package ducttape.hyperdag.walker
 
 import collection._
 import java.util.concurrent._
+import java.util.Comparator
 
 import ducttape.hyperdag._
 import ducttape.util._
@@ -49,6 +50,11 @@ class UnpackedDagWalker[V,H,E,D,F](
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedVertex[V,H,E,D]] with Logging {
 
+  /** get an exact replica of this walker, but starting the traversal over again */
+  def duplicate(): UnpackedDagWalker[V,H,E,D,F] = {
+    new UnpackedDagWalker(dag, munger, vertexFilter, toD, traversal)
+  }
+
   /**
    * An ActiveVertex builds up the information necessary to create an UnpackedVertex
    * from a PackedVertex and a specific HyperEdge that has been selected as part of the
@@ -81,7 +87,7 @@ class UnpackedDagWalker[V,H,E,D,F](
     // TODO: smear
     override def hashCode() = v.hashCode ^ he.hashCode
     override def equals(obj: Any) = obj match { case that: ActiveVertex => (that.v == this.v) && (that.he == this.he) }
-    override def toString() = "%s(he=%s)".format(v,he)
+    override def toString() = s"${v}(he=${he})"
 
     var verticesAccepted: Int = 0
     var verticesDiscarded: Int = 0
@@ -106,7 +112,7 @@ class UnpackedDagWalker[V,H,E,D,F](
       munger.beginHyperedge(v, he, initState) match {
         case None => ;
         case Some(nextState) => {
-          "Began hyperedge %s".format(he)
+          s"Began hyperedge ${he}"
           // TODO: Can we avoid re-allocating this over and over?
           val parentReals = new Array[Seq[D]](filled.size)
           parentReals(iFixed) = fixedRealization
@@ -126,7 +132,7 @@ class UnpackedDagWalker[V,H,E,D,F](
                        prevState: F,
                        callback: UnpackedVertex[V,H,E,D] => Unit) {
 
-      debug("Vertex=%s; he=%s; i=%d/%d; fixed=%d %s".format(v, he, i, filled.size, iFixed, parentReals.toList))
+      debug(s"Vertex=${v}; he=${he}; i=${i}/${filled.size}; fixed=${iFixed} ${parentReals.toList}")
 
       // this will immediately be true if he == None
       if (i == filled.size) {
@@ -135,11 +141,11 @@ class UnpackedDagWalker[V,H,E,D,F](
           case Some(finalState: F) => {
             val finalReal: Seq[D] = munger.toRealization(finalState)
             val sortedReal: Seq[D] = finalReal.toList.sorted(ordering)
-            assert(parentReals.toList.forall { _ != null }, "parentReals for %s should not contain null".format(v))
+            assert(parentReals.toList.forall { _ != null }, s"parentReals for ${v} should not contain null")
             val uv = new UnpackedVertex[V,H,E,D](v, he, sortedReal, parentReals.toList)
 
             verticesAccepted += 1
-            debug("Created new unpacked vertex: %s: Parent realizations: %s".format(uv, uv.parentRealizations))
+            debug(s"Created new unpacked vertex: ${uv}: Parent realizations: ${uv.parentRealizations}")
             callback(uv)
           } 
         }
@@ -156,7 +162,7 @@ class UnpackedDagWalker[V,H,E,D,F](
           parents(i)
         }
         val edge: E = he.get.e(i)
-        debug("Vertex=%s; he=%s; i=%d/%d; parent=%s edge=%s".format(v, he, i, filled.size, getParent, edge))
+        debug(s"Vertex=${v}; he=${he}; i=${i}/${filled.size}; parent=${getParent} edge=${edge}")
 
         // for each possible realization of the parent vertex of the current component edge
         // (represented by the current recursive call to unpack())...
@@ -166,60 +172,54 @@ class UnpackedDagWalker[V,H,E,D,F](
             case None => {
               // illegal state, skip it
               verticesDiscarded += 1
-              debug("Vertex=%s; he=%s; Edge traversal resulted in illegal state. parent%d=%s; parentReal=%s; e%d=%s".
-                format(v, he, i, getParent, parentRealization, i, edge))
+              debug(s"Vertex=${v}; he=${he}; Edge traversal resulted in illegal state. parent${i}=${getParent}; parentReal=${parentRealization}; e${i}=${edge}")
               if (verticesDiscarded % 10000 == 0) {
-                debug("Traversed %d vertices so far (%d others discarded)".format(verticesAccepted, verticesDiscarded))
+                debug(s"Traversed ${verticesAccepted} vertices so far (${verticesDiscarded} others discarded)")
               }
             }
             case Some(nextState) => {
               parentReals(i) = parentRealization
-              debug("Vertex=%s; he=%s; Successfully traversing edge. parent%d=%s; parentReal=%s; e%d=%s".
-                format(v, he, i, getParent, parentRealization, i, edge))
+              debug(s"Vertex=${v}; he=${he}; Successfully traversing edge. parent${i}=${getParent}; parentReal=${parentRealization}; e${i}=${edge}")
               unpack(i+1, iFixed, parentReals, nextState, callback)
             }
           }
         }
       }
     }
-
   } // end ActiveVertex
 
-  private val agendaComparator = {
-  
-    def assignVertexIndices() : Map[(PackedVertex[_],Seq[_]),Int] = {
-  	
-  	  val vertexIDs = new mutable.HashMap[(PackedVertex[_],Seq[_]),Int]
-
-  	  dag.unpackedWalker(munger,vertexFilter,toD,Arbitrary).foreach { 
-  	    vertex:UnpackedVertex[V,H,E,D] => { 
-
-  	      val packedParents = dag.parents(vertex.packed)
-  	      val tuples        = packedParents.zip(vertex.parentRealizations)
-  	      val maxParentID: Int   = 
-  	        if (tuples.isEmpty) 0 
-  	        else tuples.map( tuple => vertexIDs(tuple) ).max
-  	      vertexIDs.put((vertex.packed,vertex.realization), maxParentID+1)
-
-  	    }
-  	  }
-
-  	  return vertexIDs	
-  	
-  	}
-  	
-  	traversal match { 
-  		case Arbitrary    => Arbitrary.comparator;
-  		case BreadthFirst => BreadthFirst.comparator(assignVertexIndices());
-  		case DepthFirst   => DepthFirst.comparator(assignVertexIndices());
-  	}
+  private val agendaComparator: Comparator[UnpackedVertex[V,H,E,D]] = {
+    def assignVertexIndices(): Map[(PackedVertex[V],Seq[D]),Int] = {
+      val vertexIDs = new mutable.HashMap[(PackedVertex[V],Seq[D]),Int]
+      val walker = dag.unpackedWalker(munger, vertexFilter, toD, Arbitrary)
+      walker.foreach { vertex: UnpackedVertex[V,H,E,D] =>
+  	val packedParents: Seq[PackedVertex[V]] = dag.parents(vertex.packed)
+        val tuples: Seq[(PackedVertex[V],Seq[D])] = packedParents.zip(vertex.parentRealizations)
+        val maxParentID: Int = if (tuples.isEmpty) {
+          0
+        } else {
+          // some vertices may not be found due to the vertexFilter -- give these priority -1
+  	  val parentIDs: Seq[Int] = tuples.map { tuple => vertexIDs.getOrElse(tuple, -1) }
+          parentIDs.max
+        }
+  	vertexIDs.put( (vertex.packed, vertex.realization), maxParentID+1)
+      }
+      System.err.println(s"${traversal}: Assigned ${vertexIDs.size} vertex IDs")
+      vertexIDs
+    }
+    
+    traversal match { 
+      case Arbitrary    => Arbitrary.comparator()
+      case BreadthFirst => BreadthFirst.comparator(assignVertexIndices())
+      case DepthFirst   => DepthFirst.comparator(assignVertexIndices())
+    }
   }
 
   // NOTE: All synchronization is done via our 2 lock objects
   private val activeRoots = new mutable.HashMap[PackedVertex[V],ActiveVertex]
   private val activeEdges = new mutable.HashMap[HyperEdge[H,E],ActiveVertex]
   private val agenda: java.util.Queue[UnpackedVertex[V,H,E,D]] = 
-    new java.util.PriorityQueue[UnpackedVertex[V,H,E,D]](11,agendaComparator)
+    new java.util.PriorityQueue[UnpackedVertex[V,H,E,D]](11, agendaComparator)
   private val taken = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   private val completed = new mutable.HashSet[UnpackedVertex[V,H,E,D]]
   
@@ -235,7 +235,7 @@ class UnpackedDagWalker[V,H,E,D,F](
     agenda.add(unpackedRoot)
     activeRoots += root -> actRoot
   }
-  debug("Seeded unpacked HyperDAG walker with roots: %s".format(agenda))
+  debug(s"Seeded unpacked HyperDAG walker with roots: ${agenda}")
 
   val waitingToTakeLock: AnyRef = new Object
   val agendaTakenLock: AnyRef = new Object
@@ -270,7 +270,7 @@ class UnpackedDagWalker[V,H,E,D,F](
             case (None, 0) => None // no key, no taken items: we're done
             case (None, takenSize) => {
               // keep trying, there could be more
-              debug("%d taken items are still outstanding, we may have work to do yet: %s".format(takenSize, taken))
+              debug(s"${takenSize} taken items are still outstanding, we may have work to do yet: ${taken}")
               // wait, releasing our lock until we're notified of changes
               // in state of agenda and taken
               waitingToTakeLock.wait()
@@ -299,11 +299,11 @@ class UnpackedDagWalker[V,H,E,D,F](
       case None => None
       case Some(v) => {
         if (!vertexFilter(v)) {
-          debug("Unpacked Vertex filter does not contain: " + v)
+          debug(s"Unpacked Vertex filter does not contain: ${v}")
           complete(v, continue=false)
           getSkippingFiltered()
         } else {
-          debug("Yielding: %s".format(v))
+          debug(s"Yielding: ${v}")
           Some(v)
         }
       }
@@ -322,16 +322,16 @@ class UnpackedDagWalker[V,H,E,D,F](
     // new agenda items
     agendaTakenLock.synchronized {
       require(activeRoots.contains(item.packed) || item.edge.exists(activeEdges.contains(_)),
-            "Cannot find active vertex for %s in activeRoots/activeEdges".format(item))
+            s"Cannot find active vertex for ${item} in activeRoots/activeEdges")
       val key: ActiveVertex = activeRoots.getOrElse(item.packed, { activeEdges(item.edge.get) })
-      debug("Completing: %s".format(item))
+      debug(s"Completing: ${item}")
       
       completed += item
       val removed = taken.remove(item)
       if (!removed) {
-        throw new RuntimeException("Completed item %s not found in taken set: %s".format(item, taken))
+        throw new RuntimeException(s"Completed item ${item} not found in taken set: ${taken}")
       }
-      debug("Remaining taken vertices after completing %s: %s".format(item, taken))
+      debug(s"Remaining taken vertices after completing ${item}: ${taken}")
       
       if (continue) {
         // first, match fronteir vertices
@@ -367,14 +367,14 @@ class UnpackedDagWalker[V,H,E,D,F](
                   // NOTE: We only add it to the agenda if we haven't seen "one like it" before
                   // this possibility is introduced by realization mangling
                   if (!seen(unpackedV)) {
-                    debug("Adding new vertex to the agenda: " + unpackedV)
-                    trace("Seen: " + seen)
+                    debug(s"Adding new vertex to the agenda: ${unpackedV}")
+                    trace(s"Seen: ${seen}")
                     agenda.add(unpackedV)
                     seen += unpackedV
                   }
                   // TODO: We could sort the agenda here to impose different objectives...
                 })
-              trace("For active consequent %s, setting filled(%d) = %s from item %s".format(activeCon, iEdge, item.realization, item))
+              trace(s"For active consequent ${activeCon}, setting filled(${iEdge}) = ${item.realization} from item ${item}")
               activeCon.filled(iEdge) += item.realization
             }
           }

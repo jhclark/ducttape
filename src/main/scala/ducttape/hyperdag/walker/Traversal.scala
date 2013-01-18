@@ -9,33 +9,35 @@ import collection._
 trait Traversal
 
 case object Arbitrary extends Traversal {
-	val comparator = new Comparator[UnpackedVertex[_,_,_,_]]() {
-		// Always return zero
-		def compare(o1:UnpackedVertex[_,_,_,_], o2:UnpackedVertex[_,_,_,_]) = 0
-	}
-	override def toString = "arbitrary"
+  def comparator[V,H,E,D]() = new Comparator[UnpackedVertex[V,H,E,D]]() {
+    // Always return zero
+    def compare(o1: UnpackedVertex[V,H,E,D], o2: UnpackedVertex[V,H,E,D]) = 0
+  }
+  override def toString() = "arbitrary"
 }
 
 case object BreadthFirst extends Traversal {
-	def comparator(vertexIDs: Map[(PackedVertex[_],Seq[_]),Int]) = new Comparator[UnpackedVertex[_,_,_,_]]() {
-		def compare(o1:UnpackedVertex[_,_,_,_], o2:UnpackedVertex[_,_,_,_]) : Int = {
-			val id1 = vertexIDs( (o1.packed,o1.realization) )
-			val id2 = vertexIDs( (o2.packed,o2.realization) )
-			return id1.compareTo(id2)
-		}
-	}
-	override def toString = "breadth-first"
+  def comparator[V,H,E,D](vertexIDs: Map[(PackedVertex[V],Seq[D]),Int]) = new Comparator[UnpackedVertex[V,H,E,D]]() {
+    def compare(o1: UnpackedVertex[V,H,E,D], o2: UnpackedVertex[V,H,E,D]): Int = {
+      // some vertices may not be found due to the vertexFilter -- give these priority -1
+      val id1 = vertexIDs.getOrElse( (o1.packed,o1.realization), -1 )
+      val id2 = vertexIDs.getOrElse( (o2.packed,o2.realization), -1 )
+      id1.compareTo(id2)
+    }
+  }
+  override def toString() = "breadth-first"
 }
 
 
 case object DepthFirst extends Traversal {
-	def comparator(vertexIDs: Map[(PackedVertex[_],Seq[_]),Int]) = new Comparator[UnpackedVertex[_,_,_,_]]() {
-		def compare(o1:UnpackedVertex[_,_,_,_], o2:UnpackedVertex[_,_,_,_]) : Int = {
-			val id1 = vertexIDs( (o1.packed,o1.realization) )
-			val id2 = vertexIDs( (o2.packed,o2.realization) )
-			return id2.compareTo(id1)
-		}
-	}
-	override def toString = "depth-first"
+  def comparator[V,H,E,D](vertexIDs: Map[(PackedVertex[V],Seq[D]),Int]) = new Comparator[UnpackedVertex[V,H,E,D]]() {
+    def compare(o1: UnpackedVertex[V,H,E,D], o2: UnpackedVertex[V,H,E,D]): Int = {
+      // some vertices may not be found due to the vertexFilter -- give these priority -1
+      val id1 = vertexIDs.getOrElse( (o1.packed,o1.realization), -1 )
+      val id2 = vertexIDs.getOrElse( (o2.packed,o2.realization), -1 )
+      id2.compareTo(id1)
+    }
+  }
+  override def toString() = "depth-first"
 }
 
