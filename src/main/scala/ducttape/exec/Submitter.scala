@@ -84,13 +84,21 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
           ("CONFIGURATION", taskEnv.dirs.confName.getOrElse("")),
           ("TASK", taskEnv.task.name),
           ("REALIZATION", taskEnv.task.realization.toString),
-          ("TASK_VARIABLES",taskEnv.taskVariables),
+          ("TASK_VARIABLES", taskEnv.taskVariables),
           ("COMMANDS", taskEnv.task.commands.toString)) ++
         dotParamsEnv ++ taskEnv.env
         
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
-    // TODO: Were there ever any quoting bugs here?
     val code = runAction.commands.toString
+    
+    // TODO: Escape any double quotes?
+    val QUOT = "\""
+    val taskScript = Seq("# This script will try to run a task *outside* any specified submitter") ++
+                     Seq("# Note: This script is for archival; it is not actually run by ducttape") ++
+                     taskEnv.env.map { case (key,value) => s"export ${key}=${QUOT}${value}${QUOT}" } ++
+                     Seq(taskEnv.task.commands.toString)
+    Files.write(taskScript, taskEnv.taskScriptFile)
+
     debug(s"Execution environment is: ${env}")
 
     System.err.println(s"Using submitter ${submitterDef.name}")

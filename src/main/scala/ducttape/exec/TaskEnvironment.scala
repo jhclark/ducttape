@@ -50,6 +50,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   }
   
   val where = dirs.assignDir(task)
+  val taskScriptFile = new File(where, "ducttape_task.sh")
   val stdoutFile = new File(where, "ducttape_stdout.txt")
   val stderrFile = new File(where, "ducttape_stderr.txt")
   val exitCodeFile = new File(where, "ducttape_exit_code.txt")
@@ -91,6 +92,6 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
     }
   }
 
-  lazy val env = inputs ++ outputs ++ params ++ packageEnvs
+  lazy val env: Seq[(String,String)] = inputs ++ outputs ++ params ++ packageEnvs
   lazy val taskVariables = env.map { case (key, value) => s"${key}=${value}" }.mkString("\n")
 }
