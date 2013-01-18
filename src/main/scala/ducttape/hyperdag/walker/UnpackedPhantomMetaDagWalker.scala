@@ -29,6 +29,11 @@ class UnpackedPhantomMetaDagWalker[V,M,H,E,D,F](
         observer: UnpackedVertex[Option[V],H,E,D] => Unit = (v: UnpackedVertex[Option[V],H,E,D]) => { ; } )
        (implicit ordering: Ordering[D])
   extends Walker[UnpackedChainedMetaVertex[V,H,E,D]] with Logging {
+
+  /** get an exact replica of this walker, but starting the traversal over again */
+  def duplicate(): UnpackedPhantomMetaDagWalker[V,M,H,E,D,F] = {
+    new UnpackedPhantomMetaDagWalker(dag, munger, vertexFilter, toD, traversal, observer)
+  }
   
   object MetaVertexFilterAdapter extends MetaVertexFilter[Option[V],H,E,D] {
     override def apply(v: UnpackedMetaVertex[Option[V],H,E,D]) = v.packed.value match {
