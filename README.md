@@ -20,20 +20,20 @@ Quick Start
 First, download and unpack the program:
 
 ```bash
-wget http://www.cs.cmu.edu/~jhclark/downloads/ducttape-0.3-pre1.tgz
-tar -xvzf ducttape-0.3-pre1.tgz
+wget http://www.cs.cmu.edu/~jhclark/downloads/ducttape-0.3-pre2.tgz
+tar -xvzf ducttape-0.3-pre2.tgz
 ```
 
 Add ducttape to your PATH:
 
 ```bash
-export PATH=$PWD/ducttape-0.3-pre1:$PATH
+export PATH=$PWD/ducttape-0.3-pre2:$PATH
 ```
 
 Run a tutorial example:
 
 ```bash
-cd ducttape-0.3-pre1/tutorial
+cd ducttape-0.3-pre2/tutorial
 ducttape 01-01-hello-world.tape
 ```
 
@@ -55,9 +55,9 @@ System-wide Installation
 ========================
 
 ```bash
-wget http://github.com/downloads/jhclark/ducttape/ducttape-0.3-pre1.tgz
-tar -xvzf ducttape-0.3-pre1.tgz
-cd ducttape 0.3-pre1
+wget http://github.com/downloads/jhclark/ducttape/ducttape-0.3-pre2.tgz
+tar -xvzf ducttape-0.3-pre2.tgz
+cd ducttape 0.3-pre2
 sudo make install
 ```
 
