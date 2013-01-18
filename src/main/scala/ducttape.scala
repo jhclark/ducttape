@@ -219,9 +219,7 @@ object Ducttape extends Logging {
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 
-    // TODO: XXX: DepthFirst should be the default here (but nowhere else)
-    // once it works
-    val traversal: Traversal = opts.traversal.getOrElse("Arbritary").toLowerCase.charAt(0) match {
+    val traversal: Traversal = opts.traversal.getOrElse("DepthFirst").toLowerCase.charAt(0) match {
       case 'a' => Arbitrary
       case 'b' => BreadthFirst
       case 'd' => DepthFirst
@@ -308,7 +306,9 @@ object Ducttape extends Logging {
           System.err.println(s"Task incomplete: ${colorizeDir(task.name, task.realization)}: ${msg}")
         }
       }
+
       val cc = new CompletionChecker(dirs, unionVersion, history.nextVersion, incompleteCallback)
+      // use the user's traversaal type here so that the confirmation prompt has tasks in the right order
       Visitors.visitAll(workflow, cc, planPolicy, unionVersion, traversal=traversal)
       cc
     }
