@@ -16,23 +16,43 @@ class SpecPairType[SpecT <: Spec](
   }
 }
                                         
-// TaskTemplate is responsible for turning a Resolvable into a Resolved
+// TaskTemplate is responsible for turning a Resolvable into a Resolved (i.e. realized)
 class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
                                       val srcTask: Option[TaskDef],
                                       val srcSpec: SpecT,
                                       val srcReal: Realization) {
+  def this(that: ResolvedSpecType[SpecT]) = this(that.origSpec, that.srcTask, that.srcSpec, that.srcReal)
+
+  // Some for inputs, None for params
+  def srcRealTaskId: Option[RealTaskId] = srcTask match {
+    case Some(t) => Some(new RealTaskId(t.name, srcReal.toCanonicalString))
+    case None => None
+  }
+
   override def toString() = "%s => %s (%s)".format(origSpec.name, srcSpec, srcReal)
 }
+
+class VersionedSpecType[SpecT <: Spec](spec: ResolvedSpecType[SpecT], val srcVersion: Int)
+  extends ResolvedSpecType[SpecT](spec)
+
 
 object SpecTypes {
   type ResolvedSpec = ResolvedSpecType[Spec]
   type ResolvedLiteralSpec = ResolvedSpecType[LiteralSpec]
   type SpecPair = SpecPairType[Spec]
   type LiteralSpecPair = SpecPairType[LiteralSpec]
+
+  // literal specs don't need versions since we always use the
+  // current workflow's version
+  // TODO: XXX: This means the md5 hashing mechanism must
+  // detect and prompt to invalidate old parameter versions
+  type VersionedSpec = VersionedSpecType[Spec]
 }
 import SpecTypes._
 
-// NOTE: This is primarily how edges are visualized in the GraphViz representation
+/** This is the payload type of an edge. See [[ducttape.workflow.Types]] and UnpackedWorkVert.
+ * 
+ * NOTE: This is primarily how edges are visualized in the GraphViz representation */
 class SpecGroup(val specPairs: Seq[SpecPair], val grafts: Seq[Branch]) {
   def toString(withNewlines: Boolean) = {
     if (withNewlines) {

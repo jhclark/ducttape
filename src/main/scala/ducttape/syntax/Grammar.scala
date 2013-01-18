@@ -3,15 +3,18 @@ package ducttape.syntax
 import java.io.File
 import java.math.BigDecimal
 import org.apache.commons.lang3.StringEscapeUtils
+
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.parsing.input.CharArrayReader
 import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import scala.util.matching.Regex
+import scala.util.parsing.input.NoPosition
+
 import ducttape.syntax.AbstractSyntaxTree._
 import ducttape.cli.ErrorUtils
-import scala.util.parsing.input.NoPosition
+import ducttape.util.Files
 
 object Grammar {
   import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
@@ -81,36 +84,11 @@ object Grammar {
       literal("*/") |
       err("Comment is missing closing */")
     )
-//    (
-//      literal("/**/") |  
-//      
-//      (
-//        (literal("/*")) ~> 
-//        rep(
-//          blockComment | 
-//          (
-//            regex("""([^\*]|\*(?!/))+""".r) ~
-//            opt(blockComment)
-//          )
-//        ) <~
-//        (
-//          literal("*/") |
-//          err("Comment is missing closing */")        
-//        )
-//      )
-//    )
     
   } ^^ {
-//    case s:String => ""
     case list:List[String] => {
       val sb = new StringBuilder()
       list.foreach((item:String) => sb.append(item) )
-//        item match {
-//          case (s:String) => 
-////          case ()~(s:String) ~ Some(c:String) => { sb.append(s); sb.append(c) }
-////          case (s:String) ~ None => sb.append(s)
-//        }
-//      )
       sb.toString
     }
   }
@@ -642,8 +620,6 @@ object Grammar {
         case (variableName: String) ~ (rhs: RValue) => new Spec(variableName,rhs,false)
       }      
   )
-
-//  val configAssignment:Parser[Spec] = basicAssignment("config",err,err,err)
   
   val branchAssignment: Parser[Spec] = positioned(
       (basicAssignment("branch",failure(_),failure(_),failure(_),branchName) | rvalue) ^^ (
@@ -938,12 +914,7 @@ object Grammar {
             (
                 literal("{") |
                 failure("Missing opening { brace for " +blockType+" block.")
-            ) //~
-//            opt(space) ~
-//            (
-//                eol |
-//                err("Shell commands may not start on the same line as the " +blockType+" block opening { brace.")
-//            )
+            )
         ) ~> 
         BashGrammar.bashBlock <~
         (
@@ -959,7 +930,7 @@ object Grammar {
     ) 
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) =>
-        new TaskDef(comments, blockType, name, header, commands)
+        new TaskDef(comments, blockType, new Namespace(name), header, commands)
   })  
   
   val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline, "baseline", taskHeader)
@@ -987,7 +958,7 @@ object Grammar {
     ) <~ (eol | err("Missing newline"))
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (functionName: String) ~ (header: TaskHeader) => 
-      new CallDefinition(comments,name,header,functionName)    
+      new CallDefinition(comments,name,header,new Namespace(functionName))    
   })
   
   def groupLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader], childBlock: Parser[Block]): Parser[GroupDefinition] = positioned({
@@ -1029,7 +1000,7 @@ object Grammar {
     ) 
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (blocks: Seq[Block]) => 
-      new GroupDefinition(comments,blockType,name,header,blocks)
+      new GroupDefinition(comments,blockType,new Namespace(name),header,blocks)
   })
   
   def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
@@ -1148,7 +1119,13 @@ object Grammar {
     literalValue <~ 
     (opt(space) ~ eol)
   }  ^^ {
-    case (l:Literal) => ErrorUtils.ex2err(GrammarParser.readWorkflow(new File(l.value), isImported=true))
+    // read import statements with regard to the directory the current file is in.
+    case (l:Literal) => {
+      val filename: String = l.value
+      val file: File = if (Files.isAbsolutePath(filename)) new File(filename)
+                       else new File(importDir, filename)
+      ErrorUtils.ex2err(GrammarParser.readWorkflow(file, isImported=true))
+    }
   }
   
   def elements(importDir: File): Parser[Seq[ASTType]] = {

@@ -10,12 +10,17 @@ import annotation.tailrec
 
 /** our only job is to hide epsilon vertices during iteration
  *  see UnpackedDagWalker for definitions of filter and state types
- *  F is the FilterState */
+ * 
+ * see [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types V,M,H,E
+ * see [[ducttape.hyperdag.walker.UnpackedDagWalker]] for definitions of generic types D,F
+ */
+
 class UnpackedMetaDagWalker[V,M,H,E,D,F](
     val dag: MetaHyperDag[V,M,H,E],
     munger: RealizationMunger[V,H,E,D,F],
     vertexFilter: MetaVertexFilter[V,H,E,D] = new DefaultMetaVertexFilter[V,H,E,D],
     toD: H => D = new DefaultToD[H],
+    traversal: Traversal = Arbitrary,
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
@@ -61,7 +66,7 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   }
 
   private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD)
+    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD, traversal)
 
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps

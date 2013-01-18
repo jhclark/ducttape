@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -eu
+
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo >&2 "Usage: tabular [sortFlags]"
+    echo >&2 ""
+    echo >&2 "For a full list of unix sort flags see 'man sort'"
+    echo >&2 ""
+    echo >&2 "Recommended for use with ducttape summary mode. For example:"
+    echo >&2 "  $ ducttape experiments.tape --plan tiny summary > summary.txt"
+    echo >&2 "  $ tabular -k2,2d -k1,1g summary.txt"
+    echo >&2 ""
+    echo >&2 "  This would create a summary of the 'tiny' plan and write it so summary.txt,"
+    echo >&2 "  provided that you had previously executed the 'tiny' plan."
+    echo >&2 "  tabular would then sort the second column using dictionary order"
+    echo >&2 "  and then sort the first column using numeric order"
+    echo >&2 "  Note: It is important to use the n,n notation or else sort will try"
+    echo >&2 "  to sort from the n-th column through the end of the line, which can"
+    echo >&2 "  lead to unintuitive results"
+    exit 1
+fi
+
+sortArgs="$@"
+
+(
+  (
+    while read line; do
+      if [[ "$line" == "#"* ]]; then
+        echo >&2 $line
+      else
+        echo $line
+      fi
+    done
+  ) | (     # Sort and columnify stdout
+    read header
+    echo $header
+    LC_ALL=c sort $sortArgs 
+  ) | column -t
+) &>/dev/stdout # Redirect both to same stream
+

@@ -214,7 +214,7 @@ object AbstractSyntaxTree {
    */
   class TaskDef(val comments: Comments,
                 val keyword: String,
-                val name: String, 
+                val name: Namespace, // TODO: Rename name to namespace to prevent namespace == name confusion
                 val header: TaskHeader, 
                 val commands: BashCode) extends Block {
     
@@ -231,10 +231,10 @@ object AbstractSyntaxTree {
     
     override def children = Seq(comments, header, commands)
 
-    private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
-    private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
-    private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
-    private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
+    private def packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
+    private def inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
+    private def outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
+    private def paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
     lazy val packages: Seq[Spec] = packageSpecList.flatMap(_.specs)
@@ -255,7 +255,7 @@ object AbstractSyntaxTree {
     
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
-    override def toString() = name
+    override def toString() = name.toString
   }
   type PackageDef = TaskDef
   type ActionDef = TaskDef
@@ -264,14 +264,14 @@ object AbstractSyntaxTree {
   class CallDefinition(val comments: Comments,
                        val name: String, 
                        val header: TaskHeader, 
-                       val functionName: String) extends Block {
+                       val functionName: Namespace) extends Block {
     override def children = Seq(comments, header)
     override def toString() = name
   }
   
   class GroupDefinition(val comments: Comments,
                         val keyword: String,
-                        val name: String, 
+                        val name: Namespace, 
                         val header: TaskHeader,
                         val blocks: Seq[Block]) extends Block {
     private lazy val taskLikes = blocks.collect{ case x: ActionDef => x}
@@ -295,7 +295,7 @@ object AbstractSyntaxTree {
     lazy val allSpecs: Seq[Spec] = header.specsList.flatMap { specs: Specs => specs.specs }
     
     override def children = Seq(comments, header) ++ blocks
-    override def toString() = name
+    override def toString() = name.toString
   }
   type VersionerDef = GroupDefinition
   type SubmitterDef = GroupDefinition
@@ -310,7 +310,7 @@ object AbstractSyntaxTree {
     override def children = Seq(comments) ++ lines
     override def toString() = {
       name match {
-        case None => "GLOBAL"
+        case None => "*anonymous*"
         case Some(s: String) => s
       }
     }
@@ -328,13 +328,14 @@ object AbstractSyntaxTree {
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def children = Seq(comments) ++ crossProducts
     override def toString() = name match {
-      case None => "GLOBAL"
+      case None => "*anonymous*"
       case Some(s: String) => s
     }
   }
   
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val elements: Seq[ASTType],
+                           val files: Seq[File], // what files is this workflow definition composed of?
                            private val hadImports: Boolean = false,
                            private val isImported: Boolean = false) extends ASTType {
     override def children = elements
@@ -367,7 +368,7 @@ object AbstractSyntaxTree {
       val calls: Seq[CallDefinition] = blocks.collect { case x: CallDefinition => x }
       
       // Map from function names to function definitions
-      val funcs: Map[String,TaskDef] = {
+      val funcs: Map[Namespace,TaskDef] = {
         // Gather a list of those TaskDef objects that represent functions 
         taskDefs.filter{ t: TaskDef => t.keyword == "func" }.
         // then make each element in the list a tuple, 
@@ -401,12 +402,13 @@ object AbstractSyntaxTree {
     lazy val usesImports: Boolean = isImported || hasImports || hadImports
     private[syntax] def collapseImports() = new WorkflowDefinition(
       blocks ++ imported.flatMap(_.blocks),
+      files ++ imported.flatMap(_.files),
       hadImports=this.usesImports,
       isImported=this.isImported
     )
 
     override def toString() = blocks.mkString("\n\n")
     
-    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks, hadImports, isImported)
+    def ++(other: WorkflowDefinition) = new WorkflowDefinition(blocks ++ other.blocks, files ++ other.files, hadImports, isImported)
   }
 }

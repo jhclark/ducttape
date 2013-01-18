@@ -3,14 +3,23 @@ set -eo pipefail
 scriptDir=$(cd $(dirname $0); pwd) # works on mac osx too
 rootDir=$scriptDir/..
 
-# NOTE: This script requires ducttape to be in PATH
-# (see Makefile)
+# Allow user to specify which ducttape directory to test so that we can test the packaged distribution on Travis
+if (( $# > 1 )); then
+    DUCTTAPE_DIR=$1
+else
+    DUCTTAPE_DIR=$rootDir
+fi
 
-echo >&2 $PATH
-DUCTTAPE=$(which ducttape)
+# Make sure we're testing the version of ducttape in our current environment
+function test_all {
+  echo >&2 $PATH
+  DUCTTAPE=$DUCTTAPE_DIR/ducttape
+  export PATH=$DUCTTAPE_DIR:$PATH
 
-tutorialDir=$(cd $rootDir/tutorial; pwd)
-for tape in $tutorialDir/*.tape; do
+  export PATH=$rootDir:$PATH
+
+  tutorialDir=$(cd $rootDir/tutorial; pwd)
+  for tape in $tutorialDir/*.tape; do
     dir=$(dirname $tape)
     basefile=$(basename $tape .tape)
     customSh=$dir/$basefile.sh
@@ -21,7 +30,7 @@ for tape in $tutorialDir/*.tape; do
         # Just directly execute the .tape file with ducttape
         CMD="$DUCTTAPE $tape"
     fi
-    output=$(mktemp -d $tape.XXXXXX.regression.TMP)
+    output=$(mktemp -d $tape.regression.TMP.XXXXXX)
     echo "==================="
     echo "Running test: $CMD"
     echo "Output: $output"
@@ -31,4 +40,10 @@ for tape in $tutorialDir/*.tape; do
 
     # Remove output, if test was successful
     rm -rf $output
-done
+  done
+}
+
+time test_all
+GREEN="\033[0;32m"
+RESET="\033[0m"
+echo -e "${GREEN}ALL REGRESSION TESTS PASSED${RESET}"

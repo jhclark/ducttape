@@ -2,10 +2,9 @@ package ducttape.exec
 
 import sys.ShutdownHookThread
 
-import ducttape.workflow.RealTask
 import ducttape.util.Files
 import ducttape.util.Optional
-import ducttape.versioner.WorkflowVersionInfo
+import ducttape.versioner.WorkflowVersionStore
 
 import java.io.File
 import java.nio.channels.FileLock
@@ -17,9 +16,9 @@ import collection._
 
 object LockManager extends Logging {
   // take a thunk so that we can create a scoping effect
-  def apply[U](version: WorkflowVersionInfo)(func: LockManager => U) {
+  def apply[U](workflowVersion: WorkflowVersionStore)(func: LockManager => U) {
     // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
-    val locker = new LockManager(myVersion)
+    val locker = new LockManager(workflowVersion)
     func(locker)
     locker.shutdown()
   }
@@ -47,7 +46,7 @@ object LockManager extends Logging {
 
 // see also PidWriter
 // note: this class is also responsible for writing workflow version information
-class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with Logging {
+class LockManager(version: WorkflowVersionStore) extends ExecutionObserver with Logging {
   
   // key is absolute path to file
   val locks = new mutable.HashMap[String, FileLock] with mutable.SynchronizedMap[String, FileLock]
@@ -82,7 +81,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
         // throw MatchError if file is malformed
       }
     } catch {
-      case _ => throw new RuntimeException("Corrupt lock file: " + file.getAbsolutePath)
+      case _: Throwable => throw new RuntimeException("Corrupt lock file: " + file.getAbsolutePath)
     }
   }
   
@@ -108,7 +107,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
           val (hostname, pid) = readLockFile(taskEnv.lockFile)
           debug("Waiting for lock held by %s:%d: %s".format(hostname, pid, taskEnv.lockFile))
         } catch {
-          case _ => ; // something went wrong, but just ignore it since this was only informational
+          case _: Throwable => ; // something went wrong, but just ignore it since this was only informational
         }
       }
         
@@ -143,7 +142,7 @@ class LockManager(version: WorkflowVersionInfo) extends ExecutionObserver with L
                 val oldVersion = Files.read(taskEnv.versionFile).head.toInt
                 oldVersion == version.version
               } catch {
-                case _ => false
+                case _: Throwable => false
               }
             }
     

@@ -3,6 +3,8 @@ PREFIX?=/usr/local
 VIM?=/usr/share/vim/vimcurrent
 DUCTTAPE=.
 
+# NOTE: This file is called "Makefile.dist" in the ducttape git repo and "Makefile" in the ducttape distribution
+
 # TODO: Complain if ${VIM} doesn't exist
 
 install:
