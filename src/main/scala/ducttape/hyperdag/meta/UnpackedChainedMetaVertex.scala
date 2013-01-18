@@ -48,5 +48,5 @@ class UnpackedChainedMetaVertex[V,H,E,D](
   override def equals(that: Any) = that match {
     case other: UnpackedChainedMetaVertex[_,_,_,_] => (other.packed.id == this.packed.id) && (other.realization == this.realization)
   }
-  override def toString() = packed.toString + " (realization=" + realization.toString +")"
+  override def toString() = s"${packed.toString}/${realization.mkString("+")}"
 }
