@@ -13,7 +13,6 @@ import ducttape.workflow.PatternFilter
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.RealTask
 import ducttape.workflow.RealTaskId
-import ducttape.workflow.VersionedTask
 import ducttape.workflow.SpecGroup
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.Types.PackedWorkVert
@@ -34,7 +33,6 @@ object Plans extends Logging {
   // using a PatternFilter
   private def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
-                    workflowVersion: WorkflowVersionInfo,
                     explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
                     graftRelaxations: Map[PackedWorkVert, Set[Branch]])
       : Map[(String,Realization), RealTask] = {
@@ -53,7 +51,7 @@ object Plans extends Logging {
     workflow.unpackedWalker(PatternFilter(plan.realizations, graftRelaxations), explainCallbackCurried).
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
-        val task: VersionedTask = taskT.toRealTask(v).toVersionedTask(workflowVersion)
+        val task: RealTask = taskT.toRealTask(v)
         trace(s"Found new candidate: ${task}")
         candidates += (task.name, task.realization) -> task
     })
@@ -68,7 +66,6 @@ object Plans extends Logging {
    */
   private def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
-                         workflowVersion: WorkflowVersionInfo,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
                          planNames: Option[Seq[String]] = None,
@@ -142,10 +139,7 @@ object Plans extends Logging {
     }
     
     workflow.plans match {
-      case Nil => {
-        System.err.println("No plans specified in workflow -- Using default one-off realization plan: " +
-          "Each realization will have no more than 1 non-baseline branch")
-        		
+      case Nil => {        		
         def explainCallbackCurried(vertexName: => String, msg: => String, accepted: Boolean)
           = explainCallback(Some("default one-off"), vertexName, msg, accepted)
 
@@ -184,7 +178,7 @@ object Plans extends Logging {
           // Note: This isn't as simple as taking the cross-product of branches that have been seen at all dependents
           //   since some branch points may become visible or invisible based on which branches are active.
           val candidates: Map[(String,Realization), RealTask]
-            = getCandidates(workflow, plan, workflowVersion, explainCallback, graftRelaxations)
+            = getCandidates(workflow, plan, explainCallback, graftRelaxations)
           
           if (verbose) {
             val matches = candidates.map(_._1).map(_._1).toSet.toSeq.sorted

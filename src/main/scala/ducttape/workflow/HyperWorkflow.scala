@@ -12,6 +12,7 @@ import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.SubmitterDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
+import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.hyperdag.HyperEdge
 import ducttape.hyperdag.UnpackedVertex
 import ducttape.hyperdag.meta.PhantomMetaHyperDag
@@ -50,8 +51,8 @@ object HyperWorkflow {
       // This line also shows that just-introduced branches such as BP1.b2 can never be
       // grafted away by component edges.
       case Some(branch: Branch) => new UnpackState(
-        hyperedgeState=UnpackState.emptyMap + ((branch.branchPoint, branch)),
-        edgeState=UnpackState.emptyMap)
+        hyperedgeState = UnpackState.emptyMap + ((branch.branchPoint, branch)),
+        edgeState = UnpackState.emptyMap)
     }
     
     override def toRealization(state: UnpackState): Seq[Branch] = {
@@ -66,6 +67,7 @@ object HyperWorkflow {
 // - not specifying a branch point indicates that any value is acceptable
 // TODO: Multimap (just use typedef?)
 class HyperWorkflow(val dag: PhantomMetaHyperDag[TaskTemplate,BranchPoint,Branch,SpecGroup],
+                    val wd: WorkflowDefinition,
                     val packageDefs: Map[Namespace,PackageDef],
                     val plans: Seq[RealizationPlan],
                     val submitters: Seq[SubmitterDef], // TODO: Resolve earlier?

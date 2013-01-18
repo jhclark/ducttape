@@ -1,9 +1,36 @@
-V0.1: April 2012
-================
+v0.3-pre2: Jan 18, 2013
+=======================
 
-* Initial version
+* Depth-first traversal of workflow to encourage fail-fast behavior (breadth-first also available)
+* Fixed bug that was throwing errors about the .versions directory -- workflow version information is now stored properly
+* 'versions' mode added
+* Support for ~ in filenames
+* A script called ducttape_task.sh is now written in reach task's output directory to help debugging -- ducttape does not actually run this script
+* Function blocks are now supported (see tutorial/07-02-functions.tape)
+* More concise output
 
-V0.2: Aug 7, 2012
+Coming soon:
+* Graft globbing
+* Groups
+
+v0.3-pre1: Jan 16, 2013
+=======================
+
+* Add directive for ducttape_auto_update_packages=disable along with 'update' mode to allow updating packages only on demand
+* Added "tabular" script for use with summary mode
+* Fixed bug in summary mode that caused table rows to be unnecessarily separated
+* Improvements to 'viz' mode including packed, unpacked, and debug visualizations
+* Print full realization names next to canonical directory names during execution confirmation
+* Allow multiple plans to be specified at once on the command line
+* Allow reach...via lines clauses in plans to contain newlines
+* Plenty of minor bug fixes
+
+v0.2.1: Aug 24, 2012
+===================
+
+* Minor bug fixes
+
+v0.2: Aug 7, 2012
 ==================
 
 * First public release
@@ -36,17 +63,8 @@ Unsupported features:
 * Run multiple instances at the same time via file-based locks (not yet reliable)
 * Visualization of workflows via GraphViz
 
-Not implemented:
 
-* Checksumming files that changed outside of ducttape's control (Planned for V0.3)
-* Checksumming of ducttape files
-* Invalidation of incompatible versions?
-* Advanced branch points? (Planned for V0.4)
-* Branch globbing (planned for V0.5)
-* Reproducible workflow export
-* Reproducibility if non-comparable realizations are used (EXPLAIN)
+v0.1: April 2012
+================
 
-* Advanced submitter state tracking: is my job queued or running? (Planned for future version)
-* Import statement (Planned for future version)
-* "Functions"
-* Namespaces / groups
+* Initial version

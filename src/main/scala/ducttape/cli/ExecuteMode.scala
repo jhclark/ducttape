@@ -22,9 +22,9 @@ import ducttape.workflow.PlanPolicy
 import ducttape.workflow.VersionedTaskId
 import ducttape.hyperdag.walker.Traversal
 import ducttape.hyperdag.walker.Arbitrary
-import ducttape.versioner.WorkflowVersionHistory
-import ducttape.versioner.WorkflowVersionInfo
+import ducttape.versioner.TentativeWorkflowVersionInfo
 import ducttape.versioner.WorkflowVersionStore
+import ducttape.versioner.WorkflowVersionHistory
 import ducttape.util.Files
 
 object ExecuteMode {
@@ -34,9 +34,8 @@ object ExecuteMode {
   // (and therefore the greenlight to commit this version of the workflow to disk)
   def run(workflow: HyperWorkflow,
           cc: CompletionChecker,
-          planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
-          uncommittedVersion: WorkflowVersionInfo,
+          planPolicy: PlanPolicy,
           getPackageVersions: () => PackageVersioner,
           traversal: Traversal = Arbitrary)
          (implicit opts: Opts, dirs: DirectoryArchitect, directives: Directives) {
@@ -46,7 +45,12 @@ object ExecuteMode {
       System.err.println("All tasks to complete -- nothing to do")
     } else {
       System.err.println("Finding packages...")
+
+      // gather the information needed to record all of the packages and tasks that might get executed if the user confirms
       val packageVersions = getPackageVersions()
+      val existingTasks: Seq[VersionedTaskId] = cc.completedVersions.toSeq
+      val todoTasks: Seq[VersionedTaskId] = cc.todoVersions.toSeq
+      val uncommittedVersion = new TentativeWorkflowVersionInfo(dirs, workflow, history, packageVersions, existingTasks, todoTasks)
       
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
@@ -110,7 +114,7 @@ object ExecuteMode {
           // fake/hallucinated version that wasn't actually written to disk
           // to using version info that's written in stone (i.e. on disk)
           // TODO: We should just add a "commit" method to the version
-          val committedVersion = WorkflowVersionStore.create(dirs, opts.workflowFile, configFile, history, existingTasks, todoTasks)
+          val committedVersion: WorkflowVersionStore = uncommittedVersion.commit()
           
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)

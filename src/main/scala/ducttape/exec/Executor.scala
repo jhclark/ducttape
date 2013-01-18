@@ -12,7 +12,6 @@ import grizzled.slf4j.Logging
 
 // workflow used for viz
 class Executor(val dirs: DirectoryArchitect,
-//               versions: WorkflowVersioner,
                val packageVersioner: PackageVersioner,
                val planPolicy: PlanPolicy,
                val locker: LockManager,
@@ -20,7 +19,6 @@ class Executor(val dirs: DirectoryArchitect,
                val alreadyDone: Set[(String,Realization)],
                val todo: Set[(String,Realization)],
                observers: Seq[ExecutionObserver] = Nil) extends UnpackedDagVisitor with Logging {
-  import ducttape.viz.WorkflowViz
   
   val submitter = new Submitter(workflow.submitters)
 
@@ -31,7 +29,7 @@ class Executor(val dirs: DirectoryArchitect,
       
       val taskEnv = new FullTaskEnvironment(dirs, packageVersioner, task)
       // first, acquire a lock
-      System.err.println("Acquiring lock for %s".format(task))
+      System.err.println(s"Acquiring lock for ${task}")
       locker.acquireLock(taskEnv)
       
       taskEnv.fullSymlink match {
@@ -50,29 +48,32 @@ class Executor(val dirs: DirectoryArchitect,
         // while we were waiting on the lock
         if (!CompletionChecker.isComplete(taskEnv)) {
           
-          System.err.println("Running %s in %s".format(task, taskEnv.where.getAbsolutePath))
+          System.err.println(s"Running ${task} in ${taskEnv.where.getAbsolutePath}")
           observers.foreach(_.begin(this, taskEnv))
 
           Files.mkdirs(taskEnv.where)          
-          debug("Environment for %s is %s".format(task, taskEnv.env))
+          debug(s"Environment for ${task} is ${taskEnv.env}")
     
           // the "run" action of the submitter will throw if the exit code is non-zero
           submitter.run(taskEnv)
           
-          if (!CompletionChecker.isComplete(taskEnv)) {
-            throw new BashException("Task completed, but did not satisfy post-conditions. Check output: " + taskEnv.where.getAbsolutePath)
+          def incompleteCallback(task: VersionedTask, msg: String) {
+            System.err.println(s"${task}: ${msg}")
+          }
+          if (!CompletionChecker.isComplete(taskEnv, incompleteCallback)) {
+            throw new BashException(s"${task}: Task completed, but did not satisfy post-conditions. Check output: ${taskEnv.where.getAbsolutePath}")
           }
         }
       } catch {
         case t: Throwable => {
-          System.err.println("Failed %s: %s".format(task, t.getMessage))
+          System.err.println(s"Failed ${task}: ${t.getMessage}")
           observers.foreach(_.fail(this, taskEnv))
           throw t
         }
       } finally {
         locker.releaseLock(taskEnv)
       }
-      System.err.println("Completed %s".format(task))
+      System.err.println(s"Completed ${task}")
       observers.foreach(_.succeed(this, taskEnv))
     } else {
       val taskEnv = new TaskEnvironment(dirs, task)

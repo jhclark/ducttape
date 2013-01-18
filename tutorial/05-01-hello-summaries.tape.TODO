@@ -7,22 +7,15 @@
 # * Summaries help understand information that may be spread out over many branches
 # * Summaries may help flatten information
 # * Summary tables can be flattenned by realization as well, e.g.
-#   SummaryA
-#   =======
-#   PTFileSize | branch1 | 5G
-#              | branch2 | 2G
-#              | branch3 | 1G
-#   ROFileSize | branch1 | 5G
-#              | branch2 | 8G
-#              | branch3 | *running*
-#   LMFileSize | branch1-otherBranch2 | 15G
-#   etc...
+#
+# In general, consider writing a summary to a text file, then use the script "tabular"
 
 # TODO: Unfinished tutorial step
+# TODO: Show an example summary here
 
-# Reports enable you to run commands after a workflow has
+# Summaries enable you to run commands after a workflow has
 # been (partially) completed and emit key-value pairs 
-# for use in an ASCII or Latex table or even a plot.
+# for use in an ASCII (or, someday, a Latex table or even a plot).
 #
 # You can give reports names to create reports
 # for debugging, status checking, or publication.
@@ -37,13 +30,13 @@ task some_task < a > x {
 }
 
 summary sizes {
-   using some_task > FileSize {
+   of some_task > FileSize {
     du -sh $x > $FileSize
   }
 }
 
 summary status {
-  using some_task > LinesCompleted {
+  of some_task > LinesCompleted {
    wc -l < $x > $LinesCompleted
   }
 }
@@ -62,7 +55,7 @@ task mert: cdec < f e > weights {
 # Scenario: You'd like to see in-progress tuning scores,
 # but your job is running on a remote machine's local SSD
 summary mert_ssd {
-  using mert > DevScore {
+  of mert > DevScore {
     # The following code gets run on the machine the job is executing on (by ducttape magic)
     # And it has all of the same environment variables that the task does
     # ...but it starts out in the default working directory, not the SSD

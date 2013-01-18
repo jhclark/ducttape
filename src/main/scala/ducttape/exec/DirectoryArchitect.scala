@@ -26,7 +26,7 @@ class DirectoryArchitect(val flat: Boolean,
 
   val builtinsDir = new File(Environment.InstallDir, "builtins")
   
-  val confBaseDir = workflowBaseDir
+  val confBaseDir = Files.normalize(workflowBaseDir)
   
   val versionHistoryDir = new File(confBaseDir, ".versions")
   def assignVersionDir(workflowVersion: Int) = new File(versionHistoryDir, workflowVersion.toString)
@@ -116,23 +116,26 @@ class DirectoryArchitect(val flat: Boolean,
   def assignOutFile(spec: Spec, taskDef: TaskDef, realization: Realization, taskVersion: Int): File = {
     debug(s"Assigning outfile for ${spec}")
     val taskDir = assignDir(taskDef, realization, taskVersion)
-
     spec.rval match {
       case Unbound() => { // user didn't specify a name for this output file
         new File(taskDir, spec.name) // will never collide with stdout.txt since it can't contain dots
       }
       case Literal(filename) => { // the user told us what name to use for the file
-        new File(taskDir, filename)
+        if (Files.isAbsolute(filename)) {
+          // TODO: Warn user about this unusual pattern...
+          new File(Files.normalize(filename))
+        } else {
+          new File(taskDir, filename)
+        }
       }
     }
   }
 
-  def isAbsolute(path: String) = new File(path).isAbsolute
-
+  // resolve a literal *input* path
   def resolveLiteralPath(spec: LiteralSpec): File = {
     val path = spec.rval.value
-    isAbsolute(path) match {
-      case true => new File(path)
+    Files.isAbsolute(path) match {
+      case true => new File(Files.normalize(path))
       // relative paths are resolved relative to the directory
       // **of the file in which this literal was declared**
       // this could be the workflow file or the config file

@@ -222,19 +222,19 @@ object AbstractSyntaxTree {
      * Constructs a concrete task definition
      * from a function definition and a function call.
      */
-    def this(functionDefinition:TaskDef, functionCall:CallDefinition) = 
+    def this(taskName: Namespace, functionDefinition: TaskDef, functionCall: CallDefinition) = 
       this(functionCall.comments, 
            functionDefinition.keyword, 
-           functionDefinition.name,
+           taskName,
            functionCall.header,
            functionDefinition.commands)
     
     override def children = Seq(comments, header, commands)
 
-    private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
-    private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
-    private lazy val outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
-    private lazy val paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
+    private def packageSpecList: Seq[TaskPackageNames] = header.specsList.collect{ case x: TaskPackageNames => x }
+    private def inputSpecList: Seq[TaskInputs] = header.specsList.collect{ case x: TaskInputs => x }
+    private def outputSpecList: Seq[TaskOutputs] = header.specsList.collect{ case x: TaskOutputs => x }
+    private def paramSpecList: Seq[TaskParams] = header.specsList.collect{ case x: TaskParams => x }
     
     // a few convenience methods:
     lazy val packages: Seq[Spec] = packageSpecList.flatMap(_.specs)
@@ -335,6 +335,7 @@ object AbstractSyntaxTree {
   
   /** Ducttape hyperworkflow file. */
   class WorkflowDefinition(val elements: Seq[ASTType],
+                           val files: Seq[File], // what files is this workflow definition composed of?
                            private val hadImports: Boolean = false,
                            private val isImported: Boolean = false) extends ASTType {
     override def children = elements
@@ -369,7 +370,7 @@ object AbstractSyntaxTree {
       // Map from function names to function definitions
       val funcs: Map[Namespace,TaskDef] = {
         // Gather a list of those TaskDef objects that represent functions 
-        taskDefs.filter{ t: TaskDef => t.keyword == "func" }.
+        taskDefs.filter { t: TaskDef => t.keyword == "func" }.
         // then make each element in the list a tuple, 
         // where the first element is the function name
         // and the second element is the TaskDef object (that is, an AST node)
@@ -380,17 +381,16 @@ object AbstractSyntaxTree {
       }
 
       // Construct a list of new concrete task definitions
-      calls.map( 
-          // For each function call
-          functionCall => {
-            // Use the function name to look up where that function is defined
-            val functionDefinition = funcs(functionCall.functionName)
-            // then create a new concrete task definition
-            // using the bash code from the function definition
-            // and the concrete inputs and parameters from the function call
-            new TaskDef(functionDefinition,functionCall)
-          } 
-      )
+      calls.map { functionCall: CallDefinition =>
+        // Use the function name to look up where that function is defined
+        val functionDefinition = funcs(functionCall.functionName)
+        // TODO: XXX: Lane: This is probably broken for namespaces
+        val taskName = Namespace.fromString(functionCall.name)
+        // then create a new concrete task definition
+        // using the bash code from the function definition
+        // and the concrete inputs and parameters from the function call
+        new TaskDef(taskName, functionDefinition, functionCall)
+      } 
     }
     
     def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)
@@ -401,12 +401,13 @@ object AbstractSyntaxTree {
     lazy val usesImports: Boolean = isImported || hasImports || hadImports
     private[syntax] def collapseImports() = new WorkflowDefinition(
       blocks ++ imported.flatMap(_.blocks),
+      files ++ imported.flatMap(_.files),
       hadImports=this.usesImports,
       isImported=this.isImported
     )
 
     override def toString() = blocks.mkString("\n\n")
     
-    def ++(other: WorkflowDefinition): WorkflowDefinition = new WorkflowDefinition(blocks ++ other.blocks, hadImports, isImported)
+    def ++(other: WorkflowDefinition) = new WorkflowDefinition(blocks ++ other.blocks, files ++ other.files, hadImports, isImported)
   }
 }

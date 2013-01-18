@@ -66,7 +66,9 @@ object CompletionChecker extends Logging {
   // and the user just wants the workflow to continue
   def forceCompletion(taskEnv: TaskEnvironment) {
     Files.write("0", taskEnv.exitCodeFile)
-    val files = List(taskEnv.stdoutFile, taskEnv.stderrFile) ++ taskEnv.outputs.map{case (_,f) => new File(f)}
+    val files = List(taskEnv.stdoutFile, taskEnv.stderrFile) ++ taskEnv.outputs.map {
+      case (_,f) => new File(f)
+    }
     for (file <- files) {
       if (!taskEnv.stdoutFile.exists) {
         Files.write("", taskEnv.stdoutFile)

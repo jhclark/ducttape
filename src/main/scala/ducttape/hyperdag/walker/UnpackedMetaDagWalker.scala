@@ -24,6 +24,11 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     observer: UnpackedVertex[V,H,E,D] => Unit = (v: UnpackedVertex[V,H,E,D]) => { ; } )
    (implicit ordering: Ordering[D])
   extends Walker[UnpackedMetaVertex[V,H,E,D]] with Logging {
+
+  /** get an exact replica of this walker, but starting the traversal over again */
+  def duplicate(): UnpackedMetaDagWalker[V,M,H,E,D,F] = {
+    new UnpackedMetaDagWalker(dag, munger, vertexFilter, toD, traversal, observer)
+  }
   
   // never allow children to transform epsilons
   // and remove epsilon hyperedges from derivation
@@ -58,16 +63,25 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
     }
   }
 
-  object ObserverVertexFilter extends VertexFilter[V,H,E,D] {
-    override def apply(v: UnpackedVertex[V,H,E,D]) = {
-      observer(v)
-      true
+  // it's important that we call our parent's vertex filter here
+  // so that traversal indexing can still run in a reasonable amount of time
+  object VertexFilterAdapter extends VertexFilter[V,H,E,D] {
+    override def apply(uv: UnpackedVertex[V,H,E,D]) = {
+      // Note: We'd really rather not make this call (see toUnpackedMetaVertex)
+      observer(uv)
+      if (dag.isEpsilon(uv.packed)) {
+        rememberEpsilon(uv)
+        true // hide epsilons from the user, but don't actually filter them out
+      } else {
+        // if it's not an epsilon, we should ask the user filter whether or not to skip it
+        val candidate = toUnpackedMetaVertex(uv)
+        vertexFilter(candidate)
+      }
     }
   }
 
-  private val delegate = new UnpackedDagWalker[V,H,E,D,F](
-    dag.delegate, MetaRealizationMunger.andThen(munger), ObserverVertexFilter, toD, traversal)
-
+  // NOTE: ORDER IS IMPORTANT -- epsilons MUST be initialized before delegate
+  // since traversal vertex indexing relies on epsilons via the VertexFilterAdapter
   // we must be able to recover the epsilon-antecedents of non-epsilon vertices
   // so that we can properly populate their state maps
   // unfortunately, this kills space complexity, since we must hold on to these until
@@ -76,9 +90,53 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
   // been unpacked so that we can reclaim space. Could we refcount them?
   private val epsilons = new mutable.HashMap[(PackedVertex[V],Seq[D]), UnpackedVertex[V,H,E,D]]
 
+  // TODO: private.
+  val delegate = new UnpackedDagWalker[V,H,E,D,F](
+    dag.delegate, MetaRealizationMunger.andThen(munger), VertexFilterAdapter, toD, traversal)
+
   override def complete(item: UnpackedMetaVertex[V,H,E,D], continue: Boolean = true) = {
-    debug("Completing: " + item)
+    debug(s"Completing: ${item}")
     delegate.complete(item.dual, continue)
+  }
+
+  private def rememberEpsilon(uv: UnpackedVertex[V,H,E,D]) {
+    // TODO: We'd really prefer not to store these...
+    epsilons.synchronized {
+        epsilons += (uv.packed, uv.realization) -> uv
+    }
+  }
+
+  // ideally, this would only ever get called once inside getNext()
+  // however, to make sure that duplicate() inside our UnpackedDagWalker delegate
+  // still runs in a reasonable amount of time while calculating traversal indices for depth/breadth first
+  // we must also call it while evaluating the VertexFilter
+  private def toUnpackedMetaVertex(raw: UnpackedVertex[V,H,E,D]): UnpackedMetaVertex[V,H,E,D] = {
+    trace(s"Begin unpacking new meta vertex: ${raw}")
+    assert(raw != null)
+
+    val parents = dag.delegate.parents(raw.packed)
+    assert(parents != null)
+    assert(raw.parentRealizations != null)
+    assert(parents.size == raw.parentRealizations.size,
+           s"Parent size ${parents.size} != parentReal.size ${raw.parentRealizations.size}")
+    
+    // these lists are all parallel to the number of incoming metaedges
+    assert(epsilons != null)
+    val unpackedParents: Seq[UnpackedVertex[V,H,E,D]] = epsilons.synchronized {
+      assert(parents != null)
+      assert(raw != null)
+      assert(raw.parentRealizations != null)
+      val x = parents.zip(raw.parentRealizations)
+      assert(x != null)
+      x.map { case (parentEpsilonV, parentEpsilonReals) =>
+        assert(parentEpsilonV != null)
+        assert(parentEpsilonReals != null)
+        epsilons( (parentEpsilonV, parentEpsilonReals) )
+      }
+    }
+    val activeEdges: Seq[HyperEdge[H,E]] = unpackedParents.map(unpacked => unpacked.edge.get)
+    val metaParentReals: Seq[Seq[Seq[D]]] = unpackedParents.map(unpacked => unpacked.parentRealizations)
+    new UnpackedMetaVertex[V,H,E,D](raw.packed, activeEdges, raw.realization, metaParentReals, raw)
   }
   
   private def getNext(): Option[UnpackedMetaVertex[V,H,E,D]] = {
@@ -88,17 +146,14 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
       case None => None
       case result @ Some(uv) => {
         if (dag.shouldSkip(uv.packed)) {
-          debug("Skipping: " + uv)
+          debug(s"Skipping: ${uv}")
           if (dag.isEpsilon(uv.packed)) {
-            // TODO: We'd really prefer not to store these...
-            epsilons.synchronized {
-              epsilons += (uv.packed, uv.realization) -> uv
-            }
+            rememberEpsilon(uv)
           }
           delegate.complete(uv)
           takeSkippingEpsilons()
         } else {
-          debug("Took non-epsilon vertex: " + uv)
+          debug(s"Took non-epsilon vertex: ${uv}")
           result
         }
       }
@@ -106,43 +161,10 @@ class UnpackedMetaDagWalker[V,M,H,E,D,F](
       
     takeSkippingEpsilons() match {
       case None => None
-      case Some(raw: UnpackedVertex[_,_,_,_]) => {
-        trace("Begin unpacking new meta vertex: " + raw)
-
-        val parents = dag.delegate.parents(raw.packed)
-        assert(parents.size == raw.parentRealizations.size,
-               "Parent size %d != parentReal.size %d".format(parents.size, raw.parentRealizations.size))
-
-        // these lists are all parallel to the number of incoming metaedges
-        val unpackedParents: Seq[UnpackedVertex[V,H,E,D]] = epsilons.synchronized {
-            parents.zip(raw.parentRealizations).map {
-            case (parentEpsilonV, parentEpsilonReals) => {
-              epsilons( (parentEpsilonV, parentEpsilonReals) )
-            }
-          }
-        }
-        val activeEdges: Seq[HyperEdge[H,E]] = unpackedParents.map(unpacked => unpacked.edge.get)
-        val metaParentReals: Seq[Seq[Seq[D]]] = unpackedParents.map(unpacked => unpacked.parentRealizations)
-        val umv = new UnpackedMetaVertex[V,H,E,D](raw.packed, activeEdges, raw.realization, metaParentReals, raw)
-        Some(umv)
-      }
+      case Some(raw: UnpackedVertex[_,_,_,_]) => Some(toUnpackedMetaVertex(raw))
     }
   }
 
-  override def take(): Option[UnpackedMetaVertex[V,H,E,D]] = {
-    @tailrec def takeSkippingFiltered(): Option[UnpackedMetaVertex[V,H,E,D]] = getNext() match {
-      case None => None
-      case result @ Some(candidate) => { 
-        if (vertexFilter(candidate)) {
-          debug("Yielding: " + candidate)
-          result
-        } else {
-          debug("META Vertex filter does not contain: " + candidate)
-          complete(candidate, continue=false)
-          takeSkippingFiltered() 
-        }
-      }
-    }
-    takeSkippingFiltered()
-  }
+  // the MetaVertexFilter is now evaluated by a call from our delegate to VertexFilterAdapter
+  override def take(): Option[UnpackedMetaVertex[V,H,E,D]] = getNext()
 }
