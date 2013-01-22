@@ -85,6 +85,14 @@ object Ducttape extends Logging {
   def main(args: Array[String]) {
     LogUtils.initJavaLogging()
 
+    val ducttapeVersion: String = try { 
+      Files.readJarResource("/version.info").head
+    } catch {
+      case _: Throwable => "(version unknown)"
+    }
+    err.println(s"ducttape $ducttapeVersion")
+    err.println("by Jonathan Clark")
+
     implicit val opts = new Opts(args)
     if (opts.no_color || !Environment.hasTTY) {
       Config.clearColors()
@@ -95,14 +103,6 @@ object Ducttape extends Logging {
       System.err.println(Config.resetColor)
     }
     
-    val ducttapeVersion: String = try { 
-      Files.readJarResource("/version.info").head
-    } catch {
-      case _: Throwable => "(version unknown)"
-    }
-    err.println(s"ducttape $ducttapeVersion")
-    err.println("by Jonathan Clark")
-
     // read user config before printing anything to screen
     val userConfigFile = new File(Environment.UserHomeDir, ".ducttape")
     debug(s"Checking for user config at: ${userConfigFile.getAbsolutePath}")
@@ -327,7 +327,7 @@ object Ducttape extends Logging {
 
       // now see what the repo version is for these packages
       // and also determine if they need to be rebuilt in execute mode
-      err.println("Checking for already built packages...")
+      err.println("Checking for already built packages (if this takes a long time, consider switching to a local-disk git clone instead of a remote repository)...")
       val packageVersions = new PackageVersioner(dirs, workflow.versioners, verbose)
       packageVersions.findAlreadyBuilt(packageFinder.packages.toSeq)
       packageVersions
