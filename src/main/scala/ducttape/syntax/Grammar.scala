@@ -1118,7 +1118,7 @@ object Grammar {
     opt(whitespace) ~
     Keyword.importKeyword ~ opt(space) ~> 
     literalValue <~ 
-    (opt(space) ~ eol)
+    commentableWhitespace
   }  ^^ {
     // read import statements with regard to the directory the current file is in.
     case (l:Literal) => {
