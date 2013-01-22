@@ -75,10 +75,14 @@ class TentativeWorkflowVersionInfo(dirs: DirectoryArchitect,
       val taskT: TaskTemplate = v.value.get
       val packageNames: Seq[String] = taskT.packages.map(_.name)
       packageNames.flatMap { name: String =>
-        val packageVer: VersionedPackageId = packageMap(name)
-        // loop over all versions of this task
-        todoTasks.filter { _.name == taskT.name } map { taskVer: VersionedTaskId =>
-          (taskVer, packageVer)
+        packageMap.get(name) match {
+          case None => Nil // this package/vertex isn't part of this workflow version
+          case Some(packageVer) => { // VersionedPackageId
+            // loop over all versions of this task
+            todoTasks.filter { _.name == taskT.name } map { taskVer: VersionedTaskId =>
+              (taskVer, packageVer)
+            }
+          }
         }
       }
     }
