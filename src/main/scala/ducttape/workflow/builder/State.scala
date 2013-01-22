@@ -9,7 +9,8 @@ import ducttape.workflow.BranchPointFactory
 
 import collection.Map
 
-class State[SpecT <: Spec](
+//class State[SpecT <: Spec](
+class State(
 
 //             val confSpecs:          Map[String,Spec],
 //             val branchPointFactory: BranchPointFactory,
@@ -26,6 +27,7 @@ class State[SpecT <: Spec](
              val curSpec:            Spec,            // sometimes this changes
              val prevGrafts:         Seq[Branch],     // sometimes this changes
 
-             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch])
+             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => SourceSpecInfo             
+//             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch])
                           
             )

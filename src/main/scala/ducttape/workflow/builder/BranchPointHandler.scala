@@ -30,7 +30,7 @@ class BranchPointHandler(
     (taskDef: TaskDef, origSpec: Spec, taskMap: Map[Namespace,TaskDef], isParam: Boolean)
     (prevTree: BranchTree, branchHistory: Seq[Branch], curTask: Option[TaskDef],
      curSpec: Spec, prevGrafts: Seq[Branch])
-    (resolveVarFunc: (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch]) ) 
+    (resolveVarFunc: (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => SourceSpecInfo ) 
 //      (implicit state: State[SpecT])
 {
 //    import state._   
@@ -90,12 +90,12 @@ class BranchPointHandler(
   
   
   // create an internal node in the branch tree
-  private def handleBranchPoint[SpecT <: Spec](
+  private def handleBranchPoint(
           branchPointName: String,
           branchSpecs: Seq[Spec],
           isFromConfig: Boolean = false,
           isFromSeq: Boolean = false)(
-              implicit state: State[SpecT]) {
+              implicit state: State) {
 
     import state._
     
@@ -139,14 +139,16 @@ class BranchPointHandler(
                 case _ => {
                   // if it's not a branch point def, we must immediately get its grafts
                   // to get them in the right place in the tree
-                  val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, branchSpec, curTask)
+                  val sourceSpecInfo = resolveVarFunc(taskDef, taskMap, branchSpec, curTask)
+//                  val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, branchSpec, curTask)
                       // only use *prevGrafts* (the grafts needed to arrive at this BP)
                       // instead of prevGrafts++myGrafts
                       val bpTreeData: BranchPointTreeData = prevTree.getOrAdd(branchPoint, prevGrafts)
                       val branchTree: BranchTree = bpTreeData.tree.getOrAdd(branch)
 
                       debug("Task=%s; branchPoint=%s; Spec %s does not contain a nested branch point. Branch tree is %s for branch spec.".format(taskDef, branchPoint, branchSpec, branchTree.branch))
-                      handleNonBranchPointHelper(branchSpec, branchTree)(srcSpec, srcTaskDefOpt, myGrafts)
+//                      handleNonBranchPointHelper(branchSpec, branchTree)(srcSpec, srcTaskDefOpt, myGrafts)
+                      handleNonBranchPointHelper(branchSpec, branchTree)(sourceSpecInfo)
                 }
             }
           }
@@ -154,34 +156,39 @@ class BranchPointHandler(
   }
 
     // create a leaf node in the branch tree
-    private def handleNonBranchPoint[SpecT <: Spec]()(
-              implicit state: State[SpecT]) {
+    private def handleNonBranchPoint()(
+              implicit state: State) {
       
       import state._
       
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
-      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
-      handleNonBranchPointHelper(curSpec, prevTree)(srcSpec, srcTaskDefOpt, myGrafts)
+      val sourceSpecInfo = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
+//      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
+//      handleNonBranchPointHelper(curSpec, prevTree)(srcSpec, srcTaskDefOpt, myGrafts)
+      handleNonBranchPointHelper(curSpec, prevTree)(sourceSpecInfo)      
     }  
   
     // we've gotten to the right place in the branch point tree
     // and we've resolved a potential spec we should maybe link to
     // first, we check if it is a branch point or not -- if not, we just add it
-    private def handleNonBranchPointHelper[SpecT <: Spec](theSpec: Spec, myBranchTree: BranchTree)
-        (srcSpec: Spec, srcTaskDefOpt: Option[TaskDef], myGrafts: Seq[Branch])(
-              implicit state: State[SpecT]) {
+    private def handleNonBranchPointHelper(theSpec: Spec, myBranchTree: BranchTree)
+                                          (sourceSpecInfo: SourceSpecInfo)(
+              implicit state: State) {
+//        (srcSpec: Spec, srcTaskDefOpt: Option[TaskDef], myGrafts: Seq[Branch])(
+            
+
 
       import state._
       
       // use myGrafts instead of myGrafts ++ prevGrafts
-      val allGrafts: Seq[Branch] = myGrafts
+      val allGrafts: Seq[Branch] = sourceSpecInfo.grafts
       debug("Resolved %s to potentially non-branch spec %s @ %s with new grafts %s (all grafts: %s)".format(
-        origSpec, srcSpec, srcTaskDefOpt, myGrafts, allGrafts))
+        origSpec, sourceSpecInfo.srcSpec, sourceSpecInfo.srcTask, sourceSpecInfo.grafts, allGrafts))
       
       // resolveVarFunc might have returned a branch point to us
       // if it traced back to a parent's parameter, which is itself a branch point
       // if that's the case, we should continue recursing. otherwise, just add.
-      srcSpec.rval match {
+      sourceSpecInfo.srcSpec.rval match {
         // phew, we got either a literal (filename or parameter value)
         // or an unbound output (ducttape will determine the output file path of this task
         // that will be run in the future)
@@ -194,16 +201,16 @@ class BranchPointHandler(
 
           // store specs at this branch nesting along with its grafts
           // this is used by the MetaHyperDAG to determine structure and temporal dependencies
-          val data: TerminalData = myBranchTree.getOrAdd(srcTaskDefOpt, allGrafts, isParam)
-          data.specs += new SpecPair(origSpec, srcTaskDefOpt, srcSpec, isParam)
+          val data: TerminalData = myBranchTree.getOrAdd(sourceSpecInfo.srcTask, allGrafts, isParam)
+          data.specs += new SpecPair(origSpec, sourceSpecInfo.srcTask, sourceSpecInfo.srcSpec, isParam)
           
-          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, srcSpec, srcTaskDefOpt, allGrafts))
+          trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, sourceSpecInfo.srcSpec, sourceSpecInfo.srcTask, allGrafts))
         }
         case _ => {
           // not a literal -- keep tracing through branch points
           // note that we now recurse with a different curTask
           resolveBranchPoint(taskDef, origSpec, taskMap, isParam)(
-            myBranchTree, branchHistory, srcTaskDefOpt, srcSpec, allGrafts)(resolveVarFunc)
+            myBranchTree, branchHistory, sourceSpecInfo.srcTask, sourceSpecInfo.srcSpec, allGrafts)(resolveVarFunc)
         }
       }
     }
