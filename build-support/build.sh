@@ -37,15 +37,17 @@ jarPath=$rootDir/ducttape.jar
 if [[ "$fast" == "--fast" ]]; then
     echo >&2 "WARNING: Using fast (potentially incorrect) JAR builder; if you encounter errors, build again without --fast"
     cd $rootDir/bin/zinc
+    # We have to make sure something gets modified else zip -u will return non-zero
+    touch Ducttape.class
     zip -qru $jarPath *
-
 else
     echo >&2 "Minimizing JAR using proguard..."
     # Reads $rootDir/ducttape.tmp.jar as an intermediate input and writes $rootDir/ducttape.jar
     time java -Xmx1g -jar $scriptDir/proguard-4.8.jar @$scriptDir/proguard.ini
-    
-    # Add version.info
-    (cd $rootDir; zip -gqr $jarPath version.info)
     rm $rootDir/ducttape.tmp.jar
 fi
+
+# Add version.info
+(cd $rootDir; zip -gqr $jarPath version.info)
+
 echo >&2 "Wrote JAR: $jarPath"
