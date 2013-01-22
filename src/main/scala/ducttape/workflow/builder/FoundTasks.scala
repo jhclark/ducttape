@@ -4,8 +4,6 @@ import collection._
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.BranchPoint
-import ducttape.workflow.builder.WorkflowBuilder.BranchPointTree
-import ducttape.workflow.builder.WorkflowBuilder.BranchPointTreeData
 import ducttape.hyperdag.PackedVertex
 
 /** Main data structure passed from TaskTemplateBuilder to WorkflowBuilder

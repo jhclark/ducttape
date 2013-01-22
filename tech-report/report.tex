@@ -1,6 +1,20 @@
 % Compile this document using xelatex
 \documentclass{report}
 
+% Enable links in the PDF, but make them colored black
+\usepackage[%
+  colorlinks,
+  linkcolor=black,
+  anchorcolor=black,
+  citecolor=black,
+  filecolor=black,
+  menucolor=black,
+  runcolor=black,
+  urlcolor=black,
+  bookmarksopen=true,
+  pdfpagelabels
+]{hyperref}
+
 % Make dates like this: 15 January 2013
 \usepackage[english,cleanlook]{isodate}
 
@@ -22,6 +36,19 @@
 
 \chapter{Motivation}
 
+\citep{pedersen08}
+
+
+\citep{deelmanetal09}
+
+\citep{schwartz10} using GNU Make \citep{gnumake}
+
+LoonyBin \citep{clarklavie10,clarketal10}
+
+EMS \citep{koehn10ems}
+  
+Ducttape \citep{ducttape}
+
 \chapter{The ducttape hyperworkflow language}
 
 \chapter{HyperDAG theory}
@@ -42,7 +69,7 @@
 
 \begin{enumerate}
 \item Parse the ducttape text file(s) into an abstract syntax tree (AST)
-\end{enumerate}
+\end{enumerate} 
 
 \section{Branch points and branches}
 
@@ -81,6 +108,7 @@ See \texttt{TaskTemplateBuilder.findTasks()}, called from \texttt{WorkflowBuilde
       This set of possible values will be recorded as a \texttt{BranchPointTree}.
       See \texttt{TaskTemplateBuilder.resolveBranchPoint()}, called from \texttt{TaskTemplateBuilder.findTasks()}.
       
+\item BranchGraft elements are currently handled within \texttt{TaskTemplateBuilder.resolveNonBranchVar()}
 
 \end{enumerate}
 
@@ -94,5 +122,9 @@ See \texttt{WorkflowBuilder.build()}
 \begin{enumerate}
 \item For each task template, create a vertex. Store these vertices in a map, where the keys are globally-unique task names.
 \end{enumerate}
+
+
+\bibliographystyle{plainnat}
+\bibliography{report}
 
 \end{document}
