@@ -10,6 +10,7 @@ DUCTTAPE=.
 install:
 	mkdir -p ${PREFIX}/bin ${PREFIX}/share/ducttape
 	cp ${DUCTTAPE}/ducttape ${PREFIX}/bin
+	cp ${DUCTTAPE}/tabular ${PREFIX}/bin
 	cp ${DUCTTAPE}/ducttape.jar ${PREFIX}/bin
 	cp -r ${DUCTTAPE}/builtins ${PREFIX}/share/ducttape/
 	cp ${DUCTTAPE}/tool-support/vim/ducttape.vim ${VIM}/syntax/ducttape.vim
