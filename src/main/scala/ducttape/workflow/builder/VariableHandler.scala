@@ -93,7 +93,7 @@ class VariableHandler(
           }
           case None => resolveConfigVar(srcOutName, origTaskDef, spec, src, grafts)
         }
-        val resultGrafts = srcSpecInfo.grafts ++ branchGraftElements.map{ e => try {
+        val resultGrafts = srcSpecInfo.grafts ++ branchGraftElements.map { e => try {
             branchFactory(e.branchName, e.branchPointName)
           } catch {
             case ex: NoSuchBranchException => throw new FileFormatException(ex.getMessage, e)
