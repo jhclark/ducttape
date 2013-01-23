@@ -800,7 +800,7 @@ object Grammar {
          repsep(packageNameAssignment,space)
     ) | failure("Failed to parse task package names")
   } ^^ {
-    case (comments: Comments)~(list: List[String]) => new TaskPackageNames(list,comments) 
+    case (comments: Comments)~(list: List[Spec]) => new TaskPackageNames(list,comments) 
     case _ => new TaskPackageNames(List.empty,new Comments(None)) 
   }
   
