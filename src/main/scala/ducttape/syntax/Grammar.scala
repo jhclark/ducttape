@@ -549,7 +549,7 @@ object Grammar {
     )
     } ^^ {
       case (bpName: String) ~ (branchName: String) => new BranchPointRef(bpName,List.apply(new Literal(branchName)))
-      case (bpName: String) ~ (branchNames: List[ASTType]) => new BranchPointRef(bpName,branchNames)
+      case (bpName: String) ~ (branchNames: List[ASTType @unchecked]) => new BranchPointRef(bpName,branchNames)
     }
   )
   

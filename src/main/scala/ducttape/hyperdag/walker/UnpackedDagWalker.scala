@@ -138,7 +138,7 @@ class UnpackedDagWalker[V,H,E,D,F](
       if (i == filled.size) {
         munger.finishHyperedge(v, he, prevState) match {
           case None => ; // combination could not continue (e.g. a branch graft was not matched)
-          case Some(finalState: F) => {
+          case Some(finalState: F @unchecked) => {
             val finalReal: Seq[D] = munger.toRealization(finalState)
             val sortedReal: Seq[D] = finalReal.toList.sorted(ordering)
             assert(parentReals.toList.forall { _ != null }, s"parentReals for ${v} should not contain null")
