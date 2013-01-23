@@ -21,14 +21,14 @@ private[builder] class BranchTree(val branch: Branch) {
   // In the end, each element of terminalData will become an edge
   //   within some hyperedge
   val terminalData = new mutable.ArrayBuffer[TerminalData]
-  val children     = new mutable.ArrayBuffer[BranchPointTreeData]
+  val children     = new mutable.ArrayBuffer[BranchPointTreeGrafts]
 
-  def getOrAdd(bp: BranchPoint, grafts: Seq[Branch]): BranchPointTreeData = {
+  def getOrAdd(bp: BranchPoint, grafts: Seq[Branch]): BranchPointTreeGrafts = {
       children.find { child => child.tree.branchPoint == bp && child.grafts == grafts } match {
       case Some(found) => found
       case None => {
         val bpt = new BranchPointTree(bp)
-        val child = new BranchPointTreeData(bpt, grafts)
+        val child = new BranchPointTreeGrafts(bpt, grafts)
         children += child
         child
       }

@@ -549,7 +549,7 @@ object Grammar {
     )
     } ^^ {
       case (bpName: String) ~ (branchName: String) => new BranchPointRef(bpName,List.apply(new Literal(branchName)))
-      case (bpName: String) ~ (branchNames: List[ASTType]) => new BranchPointRef(bpName,branchNames)
+      case (bpName: String) ~ (branchNames: List[ASTType @unchecked]) => new BranchPointRef(bpName,branchNames)
     }
   )
   
@@ -800,7 +800,7 @@ object Grammar {
          repsep(packageNameAssignment,space)
     ) | failure("Failed to parse task package names")
   } ^^ {
-    case (comments: Comments)~(list: List[String]) => new TaskPackageNames(list,comments) 
+    case (comments: Comments)~(list: List[Spec]) => new TaskPackageNames(list,comments) 
     case _ => new TaskPackageNames(List.empty,new Comments(None)) 
   }
   

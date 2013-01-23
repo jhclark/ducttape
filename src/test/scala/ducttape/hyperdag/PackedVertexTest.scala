@@ -17,11 +17,6 @@ class PackedVertexTest extends FunSpec {
         val comment = Some("The meaning of life, the universe, and everything")
         val vertex = new PackedVertex(id,value,comment)
 
-        vertex.id match {
-        case id:Int => assert(true)
-        case _ => fail("PackedVertex should store an integer identifier, but does not")
-        }
-
         assert(id.equals(vertex.id))
       }
       
@@ -31,11 +26,6 @@ class PackedVertexTest extends FunSpec {
         val value = "Hello, World";
         val comment = None
         val vertex = new PackedVertex(id,value,comment)
-
-        vertex.id match {
-        case id:Int => assert(true)
-        case _ => fail("PackedVertex should store an integer identifier, but does not")
-        }
 
         assert(id.equals(vertex.id))
       }

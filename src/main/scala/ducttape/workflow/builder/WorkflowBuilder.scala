@@ -114,7 +114,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
    */
   def getHyperedges(task: TaskTemplate,
                     specPhantomV: PackedVertex[Option[TaskTemplate]],
-                    curNode: BranchPointTreeData,
+                    curNode: BranchPointTreeGrafts,
                     debugNesting: Seq[Branch])
                    (implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]])
     : Seq[(Branch, Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)])] = {
@@ -132,7 +132,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       val nestedBranchEdges: Seq[(PackedVertex[Option[TaskTemplate]], SpecGroup)] = {
         // we might have multiple branch point trees if there are different graft sets
         // but this is already taken care of in the structure of the branch point tree
-        branchChild.children.map { bpChild: BranchPointTreeData =>
+        branchChild.children.map { bpChild: BranchPointTreeGrafts =>
           // we have more than one branch point in a row: create a phantom V for each graft
           val branchPhantomV: PackedVertex[Option[TaskTemplate]]
             = dag.addPhantomVertex(comment = "Phantom:%s.%s.nestedBranch[%s]".format(task.name, branchChild.branch.toString, bpChild.grafts.mkString(",")))
@@ -196,7 +196,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
    * sinkV: the current task's vertex toward which our new edges are directed */
   def traverse(task: TaskTemplate,
     specPhantomV: PackedVertex[Option[TaskTemplate]],
-    curNode: BranchPointTreeData,
+    curNode: BranchPointTreeGrafts,
     nestedBranches: Seq[Branch],
     sinkV: PackedVertex[Option[TaskTemplate]])(implicit toVertex: TaskDef => PackedVertex[Option[TaskTemplate]]) {
 
@@ -286,7 +286,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
     for (v: PackedVertex[Option[TaskTemplate]] <- vertices.values) {
       val taskT: TaskTemplate = v.value.get
       debug("Adding %s to HyperDAG".format(taskT))
-      val nestedBranchInfo: BranchPointTreeData = foundTasks.parents(taskT)
+      val nestedBranchInfo: BranchPointTreeGrafts = foundTasks.parents(taskT)
       val specPhantomV: PackedVertex[Option[TaskTemplate]] = dag.addPhantomVertex(comment = "Phantom:%s.literals".format(taskT.name))
       traverse(taskT, specPhantomV, nestedBranchInfo, Nil, v)
     }

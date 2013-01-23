@@ -27,7 +27,7 @@ class State(
              val curSpec:            Spec,            // sometimes this changes
              val prevGrafts:         Seq[Branch],     // sometimes this changes
 
-             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => SourceSpecInfo             
+             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => Seq[SourceSpecInfo]             
 //             val resolveVarFunc:     (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => (SpecT, Option[TaskDef], Seq[Branch])
                           
             )

@@ -46,4 +46,13 @@ class BranchFactory(bpf: BranchPointFactory) extends Logging {
     return pool.values.groupBy{ branch: Branch => branch.branchPoint }
   }
   
+  /**
+   * Gets all branches for a particular branch point
+   */
+  def getAll(branchPointName: String) : Iterable[Branch] = { 
+    val branchPoint = bpf.get(branchPointName)
+    val map = getAll()
+    return map(branchPoint)
+  }
+  
 }

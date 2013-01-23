@@ -17,6 +17,7 @@ class ImportTest extends AbstractTest("import",Grammar.importStatement(new java.
     val set: Set[String] = Set.empty[String]
     Files.ls(tutorialDir).filter(_.getName.endsWith(".tape")).foreach(tapeFile => {       
       set.add(s"import ${tapeFile}")
+      set.add(s"import ${tapeFile} # A comment")
       set.add(s"import ${tapeFile}\n")
       set.add("# A comment\n" + s"import ${tapeFile}")
       set.add(s"import ${tapeFile}" + "\n# A comment\n")
