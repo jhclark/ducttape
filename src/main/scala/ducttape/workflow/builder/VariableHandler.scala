@@ -2,6 +2,7 @@ package ducttape.workflow.builder
 
 import ducttape.syntax.Namespace
 import ducttape.syntax.AbstractSyntaxTree.BranchGraft
+import ducttape.syntax.AbstractSyntaxTree.BranchGraftElement
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Literal
@@ -14,16 +15,15 @@ import ducttape.syntax.AbstractSyntaxTree.Unbound
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.Branch
 import ducttape.workflow.BranchFactory
+import ducttape.workflow.BranchPoint
+import ducttape.workflow.BranchPointFactory
 import ducttape.workflow.NoSuchBranchException
 
 import grizzled.slf4j.Logging
 
 import collection.Map
 
-class VariableHandler(
-            confSpecs: Map[String,Spec],
-        branchFactory: BranchFactory
-      ) extends Logging {
+object VariableHandler extends Logging {
 
   /**
    * the resolved Spec is guaranteed to be a literal for params
@@ -32,7 +32,7 @@ class VariableHandler(
                             taskDef: TaskDef, 
                             taskMap: Map[Namespace,TaskDef], 
                                spec: Spec, 
-                            curTask: Option[TaskDef]) : SourceSpecInfo = {
+                            curTask: Option[TaskDef])(implicit taskTemplateBuilder: TaskTemplateBuilder) : Seq[SourceSpecInfo] = {
     
     resolveNonBranchVar(ParamMode())(taskDef, taskMap, spec)(src=curTask)
     
@@ -45,11 +45,12 @@ class VariableHandler(
                             taskDef: TaskDef, 
                             taskMap: Map[Namespace,TaskDef], 
                                spec: Spec, 
-                            curTask: Option[TaskDef]) : SourceSpecInfo  = {
+                            curTask: Option[TaskDef])(implicit taskTemplateBuilder: TaskTemplateBuilder) : Seq[SourceSpecInfo]  = {
     
     resolveNonBranchVar(InputMode())(taskDef, taskMap, spec)(src=curTask)
     
   }
+
   
   // group parameters via currying by (1) initial state and (2) items that change recursively
   // srcTaskDefDependency is only non-None if it implies a temporal dependency
@@ -63,21 +64,21 @@ class VariableHandler(
                                   taskMap: Map[Namespace,TaskDef], spec: Spec)
                                  (curSpec: Spec=spec,
                                   src: Option[TaskDef],
-                                  grafts: Seq[Branch] = Nil)
-                                 : SourceSpecInfo = {                                  
+                                  grafts: Seq[Branch] = Nil)(implicit taskTemplateBuilder: TaskTemplateBuilder)
+                                 : Seq[SourceSpecInfo] = {                                  
 //                                 : (Spec, Option[TaskDef], Seq[Branch]) = {
     curSpec.rval match {
       // we might have traced back through a TaskVariable into a parent's parameters,
       // which can, in turn, define a branch point
       // just return what we have and let resolveBranchPoint figure out the rest
       // in handleNonBranchPointHelper()
-      case BranchPointDef(_,_) | SequentialBranchPoint(_,_) => new SourceSpecInfo(curSpec, src, grafts)
+      case BranchPointDef(_,_) | SequentialBranchPoint(_,_) => Seq(new SourceSpecInfo(curSpec, src, grafts))
       
       // literals will never have a use for grafts
       case Literal(litValue) => {
         val litSpec = curSpec.asInstanceOf[LiteralSpec]
         val litSrc = if (src != Some(origTaskDef) || spec != curSpec) src else None
-        new SourceSpecInfo(litSpec, litSrc, Nil)
+        Seq(new SourceSpecInfo(litSpec, litSrc, Nil))
       }
       
       case ConfigVariable(varName) => resolveConfigVar(varName, origTaskDef, spec, src, grafts)
@@ -85,21 +86,43 @@ class VariableHandler(
       case TaskVariable(srcTaskName, srcOutName) => resolveTaskVar(mode)(
         origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
       
-      case BranchGraft(srcOutName, srcTaskNameOpt, branchGraftElements) => {
+      case BranchGraft(srcOutName, srcTaskNameOpt, unexpandedBranchGraftElements) => {
+        
+        //TODO for Lane: Look through branchGraftElements for any branch globs "*"
+        
+        /*
+         * Here's what Jon suggested:
+        def expandGlob(accumulatedGrafts: Seq[Branch], remainingGlobbedBranchPoints: Seq[BranchPoint]) : Seq[SourceSpecInfo] = {
+          remainingGlobbedBranchPoints.headOption match {
+            case None => /* termination case */
+            case Some(bp: BranchPoint) => branches(bp.flatMap{ branch =>
+              expandGlob(accumulatedGrafts + branch, remainingGlobbedBranchPoints.tail)
+            }) 
+          }
+        }
+        */
+        val expandedGlobs = BranchGraftGlob.expand(unexpandedBranchGraftElements, taskTemplateBuilder.branchPointFactory, taskTemplateBuilder.branchFactory)
+        
+        expandedGlobs.flatMap( (branchGraftElements: Seq[BranchGraftElement]) => {
+        
 //        val (srcSpec, srcTask, prevGrafts) = srcTaskNameOpt match {
-        val srcSpecInfo = srcTaskNameOpt match {        
-          case Some(srcTaskName) => {
-            resolveTaskVar(mode)(origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+          val srcSpecInfos: Seq[SourceSpecInfo] = srcTaskNameOpt match {        
+            case Some(srcTaskName) => {
+              resolveTaskVar(mode)(origTaskDef, taskMap, spec)(curSpec, src, grafts)(srcTaskName, srcOutName)
+            }
+            case None => resolveConfigVar(srcOutName, origTaskDef, spec, src, grafts)
           }
-          case None => resolveConfigVar(srcOutName, origTaskDef, spec, src, grafts)
-        }
-        val resultGrafts = srcSpecInfo.grafts ++ branchGraftElements.map{ e => try {
-            branchFactory(e.branchName, e.branchPointName)
-          } catch {
-            case ex: NoSuchBranchException => throw new FileFormatException(ex.getMessage, e)
-          }
-        }
-        srcSpecInfo.withUpdatedGrafts(resultGrafts)
+        
+          srcSpecInfos.map( srcSpecInfo => {       
+            val resultGrafts = srcSpecInfo.grafts ++ branchGraftElements.map{ e => try {
+                taskTemplateBuilder.branchFactory(e.branchName, e.branchPointName)
+              } catch {
+                case ex: NoSuchBranchException => throw new FileFormatException(ex.getMessage, e)
+              }
+            }
+            srcSpecInfo.withUpdatedGrafts(resultGrafts)
+          })
+        })
 //        new SourceSpecInfo(srcSpec, srcTask, resultGrafts)
       }
       
@@ -109,7 +132,7 @@ class VariableHandler(
             // make sure we didn't just refer to ourselves -- 
             // referring to an unbound output of a parent task is fine though (and usual)
             if (src != Some(origTaskDef) || spec != curSpec) {
-              new SourceSpecInfo(curSpec, src, grafts)
+              Seq(new SourceSpecInfo(curSpec, src, grafts))
             } else {
               debug("Original task was %s and src is %s".format(origTaskDef, src))
               throw new FileFormatException("Unbound input variable: %s".format(curSpec.name),
@@ -127,8 +150,8 @@ class VariableHandler(
   private def resolveTaskVar(mode: ResolveMode)
                     (origTaskDef: TaskDef, taskMap: Map[Namespace,TaskDef], spec: Spec)
                     (curSpec: Spec, prevTask: Option[TaskDef], grafts: Seq[Branch])
-                    (srcTaskName: String, srcOutName: String)
-                    : SourceSpecInfo = {
+                    (srcTaskName: String, srcOutName: String)(implicit taskTemplateBuilder: TaskTemplateBuilder)
+                    : Seq[SourceSpecInfo] = {
 //                    : (Spec, Option[TaskDef], Seq[Branch]) = {
      
     // TODO: XXX: Lane: This may not handle namespaces properly
@@ -169,14 +192,18 @@ class VariableHandler(
     }
   }
    
-  private def resolveConfigVar(varName: String, taskDef: TaskDef, spec: Spec, src: Option[TaskDef], grafts: Seq[Branch]) : SourceSpecInfo = {
-    confSpecs.get(varName) match {
-      case Some(confSpec) => new SourceSpecInfo(confSpec, None, grafts)
+  private def resolveConfigVar(varName: String, taskDef: TaskDef, spec: Spec, src: Option[TaskDef], grafts: Seq[Branch])
+                              (implicit taskTemplateBuilder: TaskTemplateBuilder) 
+                              : Seq[SourceSpecInfo] = {
+    
+    return taskTemplateBuilder.confSpecs.get(varName) match {
+      case Some(confSpec) => Seq(new SourceSpecInfo(confSpec, None, grafts))
       case None => throw new FileFormatException(
           "Config variable %s required by input %s at task %s not found in config file.".
             format(varName, spec.name, taskDef.name),
           List(spec))
     }
+    
   }
   
 }

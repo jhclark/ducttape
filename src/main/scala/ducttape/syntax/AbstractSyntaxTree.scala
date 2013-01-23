@@ -104,6 +104,7 @@ object AbstractSyntaxTree {
                            val branchName: String) extends ASTType {
     override def children = Nil
     override def toString() = "%s:%s".format(branchPointName,branchName)
+    lazy val isGlob = branchName=="*"
   }
   
   /** Type of a branch graft, in the right-hand side context of an assignment. */

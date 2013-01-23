@@ -21,9 +21,9 @@ import grizzled.slf4j.Logging
 // unlike WorkflowBuilder, we have no interaction with hyperdag framework here
 private[builder] class TaskTemplateBuilder(
     wd: WorkflowDefinition,
-    confSpecs: Map[String,Spec],
-    branchPointFactory: BranchPointFactory,
-    branchFactory: BranchFactory) extends Logging {
+    private[builder] val confSpecs: Map[String,Spec],
+    private[builder] val branchPointFactory: BranchPointFactory,
+    private[builder] val branchFactory: BranchFactory) extends Logging {
   
   def findTasks(): FoundTasks = {
     
@@ -44,15 +44,23 @@ private[builder] class TaskTemplateBuilder(
     }
               
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
-    val parents: Map[TaskTemplate,BranchPointTreeData] = tasks.map { taskDef: TaskDef =>
+    val parents: Map[TaskTemplate,BranchPointTreeGrafts] = tasks.map { taskDef: TaskDef =>
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
-      val treeData = new BranchPointTreeData(tree, Nil)
+      val treeData = new BranchPointTreeGrafts(tree, Nil)
       val baselineTree = new BranchTree(Task.NO_BRANCH)
       tree.children += baselineTree
 
-      val branchPointHandler = new BranchPointHandler(confSpecs, branchPointFactory, branchFactory)
-      val variableHandler    = new VariableHandler(confSpecs, branchFactory)
-      
+      // Some methods in VariableHandler and BranchPointHandler
+      //   need access to this object's member variables.
+      //
+      // But, those methods already take an obscene number of parameters
+      // 
+      // So, we make this object implicit.
+      //
+      // This essentially allows us to pass this object as a parameter to various methods
+      //   without actually explicitly listing it in the method call
+      implicit val taskTemplateBuilder = this
+            
       // parameters are different than file dependencies in that they do not
       // add any temporal dependencies between tasks and therefore do not
       // add any edges in the MetaHyperDAG
@@ -64,13 +72,13 @@ private[builder] class TaskTemplateBuilder(
       // source specs should be used for each of the input/parameter specs in this task. these are then
       // added at the correct position in the BranchPointTree
       for (paramSpec: Spec <- taskDef.params) {
-        branchPointHandler.resolveBranchPoint(taskDef, paramSpec, taskMap, isParam=true)(
-          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), paramSpec, Nil)(resolveVarFunc=variableHandler.resolveParam)
+        BranchPointHandler.resolveBranchPoint(taskDef, paramSpec, taskMap, isParam=true)(
+          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), paramSpec, Nil)(resolveVarFunc=VariableHandler.resolveParam)
       }
 
       for (inSpec: Spec <- taskDef.inputs) {
-        branchPointHandler.resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
-          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), inSpec, Nil)(resolveVarFunc=variableHandler.resolveInput)
+        BranchPointHandler.resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
+          baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), inSpec, Nil)(resolveVarFunc=VariableHandler.resolveInput)
       }
             
       val paramVals: Seq[LiteralSpecPair] = tree.specs.filter(_.isParam).map { spec =>

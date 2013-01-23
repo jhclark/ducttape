@@ -14,6 +14,6 @@ import ducttape.hyperdag.PackedVertex
  */
 private[builder] class FoundTasks(
   val taskTemplates: Seq[TaskTemplate],
-  val parents: Map[TaskTemplate,BranchPointTreeData],
+  val parents: Map[TaskTemplate,BranchPointTreeGrafts],
   val branchPoints: Seq[BranchPoint]
 )

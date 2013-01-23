@@ -30,7 +30,7 @@ private[builder] class BranchPointTree(val branchPoint: BranchPoint) {
   // recursively enumerate all specs in this tree
   def specs: Iterable[SpecPair] = children.flatMap { child: BranchTree =>
     child.terminalData.flatMap { data: TerminalData => data.specs } ++
-    child.children.flatMap { grandchild: BranchPointTreeData => grandchild.tree.specs }
+    child.children.flatMap { grandchild: BranchPointTreeGrafts => grandchild.tree.specs }
   }
 
   override def toString() = "(BP=" + branchPoint + ": " + children.mkString + ")"
