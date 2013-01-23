@@ -10,8 +10,7 @@ private[builder] class SourceSpecInfo(
                           val grafts:  Seq[Branch]) {
   
   def withUpdatedGrafts(newGrafts: Seq[Branch]) : SourceSpecInfo = { 
-    return new SourceSpecInfo(srcSpec,srcTask, newGrafts)
+    return new SourceSpecInfo(srcSpec, srcTask, newGrafts)
   }
-  
 }
                                      
