@@ -20,7 +20,7 @@ object BranchGraftGlob {
         if (branchGraftElement.isGlob) {
           val branches = branchFactory.getAll(branchGraftElement.branchPointName).toSeq
           return branches.flatMap( (branch: Branch) => {
-            val expandedBranchGraftElement = new BranchGraftElement(branchGraftElement.branchPointName, branch.toString)
+            val expandedBranchGraftElement = new BranchGraftElement(branchGraftElement.branchPointName, branch.name)
             expand(branchGraftElements.tail, branchPointFactory, branchFactory, accumulator++Seq(expandedBranchGraftElement)) 
           })
         } else {

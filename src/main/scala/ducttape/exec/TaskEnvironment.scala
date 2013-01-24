@@ -5,6 +5,7 @@ import ducttape.workflow.RealTask
 import ducttape.workflow.VersionedTask
 import ducttape.workflow.Realization
 import ducttape.workflow.SpecTypes._
+import ducttape.util.GlobValuesMap
 
 import java.io.File
 import grizzled.slf4j.Logging
@@ -22,26 +23,37 @@ import grizzled.slf4j.Logging
 class TaskEnvironment(val dirs: DirectoryArchitect,
                       val task: VersionedTask) extends Logging {
   
-  // TODO: Modify both inputs and params to be able to handle globs
-  //       This is the point where we need to handle the set of SpecPairs that all share the same lhs
-  //       and convert the right-hand sides into a whitespace-delimited list of values
-  //       and then associate that with the lhs
-  
-  val inputs: Seq[(String, String)] = for (inputVal: VersionedSpec <- task.inputValVersions) yield {
-    val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
-                                inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion)
-    debug(s"For inSpec ${inputVal.origSpec} with srcSpec ${inputVal.srcSpec} @ " +
-          s"${inputVal.srcTask}/${inputVal.srcReal}/${inputVal.srcVersion}: ${inFile.getAbsolutePath}")
-    (inputVal.origSpec.name, inFile.getAbsolutePath)
-  }
-    
-  // set param values (no need to know source active branches since we already resolved the literal)
-  val params: Seq[(String,String)] = for (paramVal <- task.paramVals) yield {
-    debug(s"For paramSpec ${paramVal.origSpec} with srcSpec ${paramVal.srcSpec}, got value: " +
-          s"${paramVal.srcSpec.rval.value}")
-    (paramVal.origSpec.name, paramVal.srcSpec.rval.value)
-  }
+  val inputs: Seq[(String,String)] = {
 
+    val map = new GlobValuesMap
+
+    for (inputVal: VersionedSpec <- task.inputValVersions) { //yield {
+      val inFile = dirs.getInFile(inputVal.origSpec, task.realization,
+                                  inputVal.srcSpec, inputVal.srcTask, inputVal.srcReal, inputVal.srcVersion)
+      debug(s"For inSpec ${inputVal.origSpec} with srcSpec ${inputVal.srcSpec} @ " +
+            s"${inputVal.srcTask}/${inputVal.srcReal}/${inputVal.srcVersion}: ${inFile.getAbsolutePath}")      
+      map.addValue(inputVal.origSpec.name, inFile.getAbsolutePath)
+    }   
+    
+    map.toStringTupleSeq
+    
+  } 
+  
+  // set param values (no need to know source active branches since we already resolved the literal)
+  val params: Seq[(String,String)] = {
+    
+    val map = new GlobValuesMap
+    
+    for (paramVal <- task.paramVals) {
+      debug(s"For paramSpec ${paramVal.origSpec} with srcSpec ${paramVal.srcSpec}, got value: " +
+            s"${paramVal.srcSpec.rval.value}")            
+      map.addValue(paramVal.origSpec.name, paramVal.srcSpec.rval.value)
+    }
+    
+    map.toStringTupleSeq
+
+  }
+  
   // assign output paths
   val outputs: Seq[(String, String)] = for (outSpec <- task.outputs) yield {
     val outFile = dirs.assignOutFile(outSpec, task.taskDef, task.realization, task.version)
