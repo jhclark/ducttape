@@ -447,7 +447,7 @@ plan Basics {
 }
 ```
 
-HyperWorkflows: Branch Grating
+HyperWorkflows: Branch Grafting
 ------------------------------
 
  Branch points allow you to run a single task and all of its dependents
