@@ -197,7 +197,7 @@ global {
 }
 
 #task score : multeval
-#  < hyps=$hyps@decode
+#  < hyps=$hyps@decode[OptReplica:*] # Using a graft glob, we can get all of the optimizer replicas as a space-delimited list
 #  < e_test=@download
 #  > scores
 #  :: tgt_lang=en
