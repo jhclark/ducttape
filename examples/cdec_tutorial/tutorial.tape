@@ -11,7 +11,6 @@
 
 # BUILDING:
 # You will likely have to edit the 'package' blocks such that the paths match your local environment.
-# You MUST download and extract the SRILM code yourself due to licensing restrictions.
 #
 # Some dependencies you should be aware of:
 # * curl
@@ -42,11 +41,6 @@ package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HE
 package multeval :: .versioner=git .repo="git://github.com/jhclark/multeval.git" .ref=HEAD {
   ./get_deps.sh
   ant
-}
-
-# Sorry folks, due to the nasty license, you'll have to download the software and update this path yourselves
-package srilm :: cores=16 .versioner=disk .path="/home/jhclark/workspace/srilm" {
-  make -j $cores SRILM=$PWD MACHINE_TYPE=i686-m64 MAKE_PIC=yes World
 }
 
 # Tutorial Step #1
@@ -132,12 +126,11 @@ task extract_gra : cdec
 # Build the target language model
 # (The task "grab_parallel_tgt" in tutorial.tconf is also part of tutorial step #7)
 # More on language models at http://www.cdec-decoder.org/concepts/language-models.html
-task build_lm : srilm
+task build_lm : cdec
     < corpus=$lm_data
     > arpa
     :: lm_order=$lm_order {
-
-  cat $corpus | $srilm/bin/*/ngram-count -unk -text - -interpolate -kndiscount -order $lm_order -lm $arpa
+  cat $corpus | $cdec/klm/lm/builder/builder --order $lm_order > $arpa
 }
 
 # Tutorial step #8
