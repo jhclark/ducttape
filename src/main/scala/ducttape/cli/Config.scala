@@ -37,6 +37,7 @@ object Config {
 
     taskNameColor = ""
     realNameColor = ""
+    realFullNameColor = ""
 
     greenColor = ""
     redColor = ""

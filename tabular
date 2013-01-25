@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -eu
 
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+sortArgs="$@"
+
+if [[ "$sortArgs" == "-h" || "$sortArgs" == "--help" ]]; then
     echo >&2 "Usage: tabular [sortFlags]"
     echo >&2 ""
     echo >&2 "For a full list of unix sort flags see 'man sort'"
@@ -19,8 +21,6 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
     echo >&2 "  lead to unintuitive results"
     exit 1
 fi
-
-sortArgs="$@"
 
 (
   (
