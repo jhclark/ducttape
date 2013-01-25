@@ -9,3 +9,4 @@ MaxLexFgivenE -0.1
 MaxLexEgivenF -0.1
 PassThrough -0.1
 SampleCountF -0.1
+WordPenalty -0.1
