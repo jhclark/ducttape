@@ -192,8 +192,9 @@ object Ducttape extends Logging {
     
     // pass 1 error checking: directly use workflow AST
     {
-      val undeclaredBehavior = ErrorBehavior.parse(directives.undeclared_vars, default=Warn)
-      val unusedBehavior = ErrorBehavior.parse(directives.unused_vars, default=Warn)
+      // TODO: Once undeclared/unused variable works better, change this back from Ignore to Warn
+      val undeclaredBehavior = ErrorBehavior.parse(directives.undeclared_vars, default=Ignore)
+      val unusedBehavior = ErrorBehavior.parse(directives.unused_vars, default=Ignore)
 
       val (warnings, errors) = {
         val bashChecker = new StaticChecker(undeclaredBehavior, unusedBehavior)
