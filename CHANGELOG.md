@@ -1,21 +1,16 @@
-v0.3-pre2: Jan 18, 2013
-=======================
+v0.3: Jan 28, 2013
+==================
 
+* Branch graft globs are now implemented
+* Print a success message when all tasks complete successfully
+* Ignore undeclared/unused variables by default
 * Depth-first traversal of workflow to encourage fail-fast behavior (breadth-first also available)
 * Fixed bug that was throwing errors about the .versions directory -- workflow version information is now stored properly
 * 'versions' mode added
-* Support for ~ in filenames
+* Support for ~ (home directory) in filenames
 * A script called ducttape_task.sh is now written in reach task's output directory to help debugging -- ducttape does not actually run this script
 * Function blocks are now supported (see tutorial/07-02-functions.tape)
-* More concise output
-
-Coming soon:
-* Graft globbing
-* Groups
-
-v0.3-pre1: Jan 16, 2013
-=======================
-
+* More concise stdout/stderr messages
 * Add directive for ducttape_auto_update_packages=disable along with 'update' mode to allow updating packages only on demand
 * Added "tabular" script for use with summary mode
 * Fixed bug in summary mode that caused table rows to be unnecessarily separated
