@@ -600,6 +600,9 @@ object Ducttape extends Logging {
         db.commit()
       }
       case "status" => {
+        // status: Show input/output/param info, paths, etc. for each realization
+        //         Show whether it's running on some PID or died
+        
         val db = new WorkflowDatabase(dirs.dbFile)
         for (task: TaskInfo <- db.getTasks) {
           System.out.println(s"${task.name}/${task.realName}: ${task.status}")
