@@ -55,7 +55,7 @@ System-wide Installation
 ========================
 
 ```bash
-wget http://github.com/downloads/jhclark/ducttape/ducttape-0.3.tgz
+wget http://github.com/downloads/~jhclark/ducttape/ducttape-0.3.tgz
 tar -xvzf ducttape-0.3.tgz
 cd ducttape 0.3
 sudo make install
