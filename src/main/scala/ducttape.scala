@@ -817,7 +817,7 @@ object Ducttape extends Logging {
            }
            
            if (answer) {
-             System.err.println("Retreiving code and building...")
+             System.err.println("Retrieving code and building...")
              val builder = new PackageBuilder(dirs, packageVersions)
              builder.build(packageVersions.packagesToBuild)
            } else {
