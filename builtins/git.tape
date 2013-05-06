@@ -7,7 +7,11 @@ versioner git :: repo ref {
   # This is perhaps more accurately called the "expected" version
   action repo_version > version {
     if [[ "$ref" == "HEAD" ]]; then
-      git ls-remote $repo $ref | cut -f1 > $version
+      # ls-remote may return several lines, so we grep for the one we're
+      # actually interested in.
+      # Example: There may be multiple HEADs, the one of the local (queried)
+      # repository and the one of a remote repository.
+      git ls-remote $repo $ref | grep -E "^[0-9a-f]+\s+$ref\$" | cut -f1 > $version
     else
       echo "$ref" > $version
     fi
