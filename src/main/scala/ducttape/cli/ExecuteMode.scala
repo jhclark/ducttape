@@ -122,7 +122,7 @@ object ExecuteMode {
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)
           
-          System.err.println("Retreiving code and building...")
+          System.err.println("Retrieving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
 
