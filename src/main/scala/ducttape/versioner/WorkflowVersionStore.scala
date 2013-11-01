@@ -123,7 +123,8 @@ object WorkflowVersionStore {
    *  NOTE: Currently, this does *NOT* return any task parents */
   def dependencies(workflow: HyperWorkflow, todoTask: VersionedTaskId): Seq[String] = {
     // TODO: XXX: Use a map instead of traversal. This is SLOW.
-    workflow.packedWalker.iterator.find { v: PackedVertex[Option[TaskTemplate]] =>
+    //workflow.packedWalker.iterator.find { v: PackedVertex[Option[TaskTemplate]] =>
+    workflow.dag.vertices.find { v: PackedVertex[Option[TaskTemplate]] =>
       val taskT: TaskTemplate = v.value.get
       taskT.name == todoTask.name
     } match {
@@ -133,7 +134,7 @@ object WorkflowVersionStore {
         // TODO: Find task's parent tasks (this has to have knowledge of an unpacked traversal)
         packageNames
       }
-      case None => throw new RuntimeException(s"Task not found: ${todoTask}")
+      case None => throw new RuntimeException(s"Task not found: ${todoTask.name}")
     }
   }
   
