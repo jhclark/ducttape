@@ -192,8 +192,9 @@ object Ducttape extends Logging {
     
     // pass 1 error checking: directly use workflow AST
     {
-      val undeclaredBehavior = ErrorBehavior.parse(directives.undeclared_vars, default=Warn)
-      val unusedBehavior = ErrorBehavior.parse(directives.unused_vars, default=Warn)
+      // TODO: Once undeclared/unused variable works better, change this back from Ignore to Warn
+      val undeclaredBehavior = ErrorBehavior.parse(directives.undeclared_vars, default=Ignore)
+      val unusedBehavior = ErrorBehavior.parse(directives.unused_vars, default=Ignore)
 
       val (warnings, errors) = {
         val bashChecker = new StaticChecker(undeclaredBehavior, unusedBehavior)
@@ -600,6 +601,9 @@ object Ducttape extends Logging {
         db.commit()
       }
       case "status" => {
+        // status: Show input/output/param info, paths, etc. for each realization
+        //         Show whether it's running on some PID or died
+        
         val db = new WorkflowDatabase(dirs.dbFile)
         for (task: TaskInfo <- db.getTasks) {
           System.out.println(s"${task.name}/${task.realName}: ${task.status}")
@@ -813,7 +817,7 @@ object Ducttape extends Logging {
            }
            
            if (answer) {
-             System.err.println("Retreiving code and building...")
+             System.err.println("Retrieving code and building...")
              val builder = new PackageBuilder(dirs, packageVersions)
              builder.build(packageVersions.packagesToBuild)
            } else {

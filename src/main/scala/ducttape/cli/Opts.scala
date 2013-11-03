@@ -100,6 +100,10 @@ class Opts(args: Seq[String]) extends OptParse {
     _mode = posArgs(0)
   if (posArgs.size >= 2)
     _taskName = Some(posArgs(1))
+  else
+    _taskName = Some("*")
   if (posArgs.size >= 3)
     _realNames = posArgs.drop(2)
+  else
+    _realNames = Seq("*")
 }

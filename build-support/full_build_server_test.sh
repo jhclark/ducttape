@@ -8,9 +8,9 @@ if [[ "$CI" == true ]]; then
   wget http://repo.typesafe.com/typesafe/zinc/com/typesafe/zinc/dist/0.1.4/zinc-0.1.4.tgz
   tar -xvzf zinc-0.1.4.tgz
   export PATH=$PWD/zinc-0.1.4/bin:$PATH
-  wget http://www.scala-lang.org/downloads/distrib/files/scala-2.10.0.tgz
-  tar -xvzf scala-2.10.0.tgz
-  export SCALA_HOME=$PWD/scala-2.10.0
+  wget http://www.scala-lang.org/files/archive/scala-2.10.3.tgz
+  tar -xvzf scala-2.10.3.tgz
+  export SCALA_HOME=$PWD/scala-2.10.3
   export PATH=$SCALA_HOME/bin:$PATH
 fi
 

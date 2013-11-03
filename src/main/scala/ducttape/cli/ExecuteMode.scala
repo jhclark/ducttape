@@ -9,16 +9,19 @@ import ducttape.syntax.FileFormatException
 import ducttape.exec.PackageBuilder
 import ducttape.exec.PackageVersioner
 import ducttape.exec.InputChecker
+import ducttape.exec.FullTaskEnvironment
 import ducttape.exec.DirectoryArchitect
 import ducttape.exec.CompletionChecker
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.Executor
+import ducttape.exec.ExecutionObserver
 import ducttape.exec.PidWriter
 import ducttape.exec.LockManager
 import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
+import ducttape.workflow.VersionedTask
 import ducttape.workflow.VersionedTaskId
 import ducttape.hyperdag.walker.Traversal
 import ducttape.hyperdag.walker.Arbitrary
@@ -119,7 +122,7 @@ object ExecuteMode {
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)
           
-          System.err.println("Retreiving code and building...")
+          System.err.println("Retrieving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
 
@@ -136,9 +139,26 @@ object ExecuteMode {
             Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy, committedVersion)
             
             System.err.println("Executing tasks...")
-            Visitors.visitAll(workflow,
-                              new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                              planPolicy, committedVersion, opts.jobs(), traversal)
+            val failObserver = new ExecutionObserver {
+              val failed = new mutable.ArrayBuffer[VersionedTask]
+              override def fail(exec: Executor, taskEnv: FullTaskEnvironment) {
+                failed += taskEnv.task
+              }
+            }
+            try {
+              Visitors.visitAll(workflow,
+                                new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo, observers=Seq(failObserver)),
+                                planPolicy, committedVersion, opts.jobs(), traversal)
+            } catch {
+              case t: Throwable => {
+                System.err.println(s"${Config.errorColor}The following tasks failed:${Config.resetColor}")
+                for (task <- failObserver.failed) {
+                  System.err.println(s"${Config.errorColor}FAILED:${Config.resetColor} ${task}")
+                }
+                throw t
+              }
+            }
+            System.err.println(s"${Config.greenColor}All tasks completed successfully${Config.resetColor}")
           }
         }
         case _ => System.err.println("Doing nothing")
