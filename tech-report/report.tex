@@ -1,0 +1,130 @@
+% Compile this document using xelatex
+\documentclass{report}
+
+% Enable links in the PDF, but make them colored black
+\usepackage[%
+  colorlinks,
+  linkcolor=black,
+  anchorcolor=black,
+  citecolor=black,
+  filecolor=black,
+  menucolor=black,
+  runcolor=black,
+  urlcolor=black,
+  bookmarksopen=true,
+  pdfpagelabels
+]{hyperref}
+
+% Make dates like this: 15 January 2013
+\usepackage[english,cleanlook]{isodate}
+
+% Make citations look like this: (Jones, 1979)
+\usepackage{natbib}
+\setcitestyle{round,semicolon}
+
+% Make xelatex use latex mappings (such as --- for em-dash)
+\usepackage{fontspec}
+\defaultfontfeatures{Mapping=tex-text}
+
+
+\title{Ducttape Technical Report}
+\author{Lane Schwartz \and Jonathan Clark}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\chapter{Motivation}
+
+\citep{pedersen08}
+
+
+\citep{deelmanetal09}
+
+\citep{schwartz10} using GNU Make \citep{gnumake}
+
+LoonyBin \citep{clarklavie10,clarketal10}
+
+EMS \citep{koehn10ems}
+  
+Ducttape \citep{ducttape}
+
+\chapter{The ducttape hyperworkflow language}
+
+\chapter{HyperDAG theory}
+
+\section{DAG --- directed acyclic graphs}
+
+\section{HyperDAG --- directed acyclic hypergraphs}
+
+\section{MetaHyperDAG --- directed acyclic hypergraphs with epsilon vertices}
+
+\section{PhantomMetaHyperDAG --- directed acyclic hypergraphs with epsilon and phantom vertices }
+
+
+
+\chapter{Building a workflow}
+
+\section{Abstract syntax trees}
+
+\begin{enumerate}
+\item Parse the ducttape text file(s) into an abstract syntax tree (AST)
+\end{enumerate} 
+
+\section{Branch points and branches}
+
+\begin{enumerate}
+
+\item Traverse the AST to identify all branch points used in the workflow 
+      (see \texttt{findBranchPoints()} in \texttt{WorkflowBuilder.build()}; also 
+       see \texttt{BranchPoint} and \texttt{BranchPointFactory})
+
+\item For each branch point, identify all branch names associated with that branch point 
+      (see \texttt{Branch} and \texttt{BranchFactory}, especially \texttt{BranchFactory.getAll()})
+
+\end{enumerate}
+
+
+\section{Building task templates}
+
+\subsection{Found tasks}
+
+See \texttt{TaskTemplateBuilder.findTasks()}, called from \texttt{WorkflowBuilder.build()}
+
+\begin{enumerate}
+
+\item Gather a list of all task definitions
+
+\item By iterating over this list, construct a map where 
+      the keys are globally unique task names and 
+      the values are task definitions
+
+\item For each task, iterate over all input specifications and parameter specifications for that task
+      (see \texttt{TaskTemplateBuilder.findTasks()})
+
+\item This step is extremely complicated and involves several mutually recursive functions.
+      For each input specification and parameter specification in a task, 
+      collect the set of possible values that each input and parameter can take. 
+      This set of possible values will be recorded as a \texttt{BranchPointTree}.
+      See \texttt{TaskTemplateBuilder.resolveBranchPoint()}, called from \texttt{TaskTemplateBuilder.findTasks()}.
+      
+\item BranchGraft elements are currently handled within \texttt{TaskTemplateBuilder.resolveNonBranchVar()}
+
+\end{enumerate}
+
+
+\section{Temporal and structural dependencies}
+
+\section{Constructing a packed hyperDAG}
+
+See \texttt{WorkflowBuilder.build()}
+
+\begin{enumerate}
+\item For each task template, create a vertex. Store these vertices in a map, where the keys are globally-unique task names.
+\end{enumerate}
+
+
+\bibliographystyle{plainnat}
+\bibliography{report}
+
+\end{document}

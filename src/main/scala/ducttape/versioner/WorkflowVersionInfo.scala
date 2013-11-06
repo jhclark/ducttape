@@ -1,73 +1,124 @@
 package ducttape.versioner
 
-import ducttape.workflow.Realization
 import java.io.File
-import ducttape.exec.DirectoryArchitect
-import ducttape.util.Files
-import ducttape.util.Environment
 
-/**
- * This will be implemented as a directory in the $CONF directory, which in turn stores:
- * * a copy of the .tape file
- * * and .conf file used to run the workflow
- * * the command line invocation of ducttape
- * * which vertices were planned
- * * the PID and hostname of the managing process
- * * the version number assigned to that run of the workflow
- */
-class WorkflowVersionInfo(val tapeFile: File,
-                          val confFile: Option[File],
-                          val hostname: String,
-                          val pid: Int,
-                          val version: Int)
+import ducttape.exec.DirectoryArchitect
+import ducttape.exec.PackageVersioner
+
+import ducttape.hyperdag.PackedVertex
+import ducttape.workflow.RealTaskId
+import ducttape.workflow.VersionedTaskId
+import ducttape.workflow.TaskTemplate
+import ducttape.workflow.HyperWorkflow
+
+/** concrete implementation is WorkflowVersionStore */
+// TODO: Add date information
+trait WorkflowVersionInfo {
+  val version: Int
+  def existing: Seq[VersionedTaskId]
+  def todo: Seq[VersionedTaskId]
+  def packages: Seq[VersionedPackageId]
+  def packageDeps: Seq[(VersionedTaskId,VersionedPackageId)]
+
+  def apply(task: RealTaskId): Int
+  def get(task: RealTaskId): Option[Int]
+}
+
+object FakeWorkflowVersionInfo extends WorkflowVersionInfo {
+  val FAKE_VERSION: Int = 0
+  val version: Int = FAKE_VERSION
+  def existing: Seq[VersionedTaskId] = Seq.empty
+  def todo: Seq[VersionedTaskId] = Seq.empty
+  def packages: Seq[VersionedPackageId] = Seq.empty
+  def packageDeps: Seq[(VersionedTaskId,VersionedPackageId)] = Seq.empty
+
+  def apply(task: RealTaskId): Int = FAKE_VERSION
+  def get(task: RealTaskId): Option[Int] = Some(FAKE_VERSION)
+}
+
+/** allows us to carry on, even in the presence of corrupt workflow versions */
+class CorruptWorkflowVersionInfo(val version: Int) extends WorkflowVersionInfo {
+  def existing: Seq[VersionedTaskId] = Nil
+  def todo: Seq[VersionedTaskId] = Nil
+  def packages: Seq[VersionedPackageId] = Seq.empty
+  def packageDeps: Seq[(VersionedTaskId,VersionedPackageId)] = Seq.empty
+
+  def apply(task: RealTaskId): Int = throw new RuntimeException("apply() is unsupported for CorruptWorkflowVersionInfo")
+  def get(task: RealTaskId): Option[Int] = None
+}
+
+/** A temporary place-holder for a workflow version that's
+ *  about to be created iff the user gives us the okay.
+ *  Once the user gives us the okay, we use the commit() method
+ *  to write it to disk and create a WorkflowVersionStore.
+ * 
+ *  TODO: We should lock this directory on disk while the user
+ *        decides whether or not to proceed */
+class TentativeWorkflowVersionInfo(dirs: DirectoryArchitect,
+                                   workflow: HyperWorkflow,
+                                   history: WorkflowVersionHistory,
+                                   packageVersioner: PackageVersioner,
+                                   existingTasks: Seq[VersionedTaskId],
+                                   todoTasks: Seq[VersionedTaskId]) extends WorkflowVersionInfo {
+
+  lazy val taskVersions: Map[RealTaskId,Int] = WorkflowVersionStore.toMap(existingTasks, todoTasks)
+
+  // TODO: Check for namespace issues
+  private lazy val packageVersionInfo: Seq[VersionedPackageId] = packageVersioner.packageVersions.toSeq.map {
+    case (namespace, ver) => new VersionedPackageId(namespace.name, ver)
+  }
+  private lazy val _packageDeps: Seq[(VersionedTaskId,VersionedPackageId)] = {
+    // TODO: Check for namespace issues
+    val packageMap: Map[String,VersionedPackageId] = { packages.map { p => (p.packageName, p) } }.toMap
+
+    workflow.packedWalker.iterator.toSeq.flatMap { v: PackedVertex[Option[TaskTemplate]] =>
+      val taskT: TaskTemplate = v.value.get
+      val packageNames: Seq[String] = taskT.packages.map(_.name)
+      packageNames.flatMap { name: String =>
+        packageMap.get(name) match {
+          case None => Nil // this package/vertex isn't part of this workflow version
+          case Some(packageVer) => { // VersionedPackageId
+            // loop over all versions of this task
+            todoTasks.filter { _.name == taskT.name } map { taskVer: VersionedTaskId =>
+              (taskVer, packageVer)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  val version: Int = history.nextVersion
+  def existing: Seq[VersionedTaskId] = existingTasks
+  def todo: Seq[VersionedTaskId] = todoTasks
+  def packages: Seq[VersionedPackageId] = packageVersionInfo
+  def packageDeps: Seq[(VersionedTaskId,VersionedPackageId)] = _packageDeps
+
+  override def apply(task: RealTaskId): Int = taskVersions(task)
+  override def get(task: RealTaskId): Option[Int] = taskVersions.get(task)
+
+  def commit(): WorkflowVersionStore
+    = WorkflowVersionStore.create(dirs, workflow, history, packages, packageDeps, existing, todoTasks)
+}
+
+/** fallbackVersion is returned by apply() if there is no existing version for the task
+ *  get() will return None if there is no existing version for a task */
+class UnionWorkflowVersionInfo(val version: Int,
+                               val existing: Seq[VersionedTaskId],
+                               val todo: Seq[VersionedTaskId],
+                               val fallbackVersion: Int) extends WorkflowVersionInfo {
+  val taskMap: Map[RealTaskId,Int] = {
+    existing.map { task: VersionedTaskId => (task.toRealTaskId, task.version) }
+  }.toMap
+
+  def packages: Seq[VersionedPackageId] = throw new RuntimeException("Not implemented")
+  def packageDeps: Seq[(VersionedTaskId,VersionedPackageId)] = throw new RuntimeException("Not implemented")
+
+  def apply(task: RealTaskId): Int = taskMap.getOrElse(task, fallbackVersion)
+  def get(task: RealTaskId): Option[Int] = taskMap.get(task)
+}
 
 object WorkflowVersionInfo {
-  def load(versionInfoDir: File): WorkflowVersionInfo = {
-     val workflowCopy = new File(versionInfoDir, "workflow.tape")
-     val confCopy: Option[File] = Files.ls(versionInfoDir).find(_.getName.endsWith(".conf"))
-     
-     val pidFile = new File(versionInfoDir, "pid.txt")
-     val (hostname, pid) = Files.read(pidFile).headOption match {
-       case Some(line) => line.split(":") match {
-         case Array(hostname, pid) => (hostname, pid.toInt)
-         case _ => throw new RuntimeException("Malformed pid file: %s".format(pidFile.getAbsolutePath))
-       }
-       case None => throw new RuntimeException("Empty pid file: %s".format(pidFile.getAbsolutePath))
-     }
-     val version = versionInfoDir.getName.toInt
-     new WorkflowVersionInfo(workflowCopy, confCopy, hostname, pid, version)
-  }
-  
-  def create(dirs: DirectoryArchitect,
-             workflowFile: File,
-             confFile: Option[File],
-             history: WorkflowVersionHistory): WorkflowVersionInfo = {
-    
-    val myVersionDir = dirs.assignVersionDir(history.nextVersion)
-    
-    if (myVersionDir.exists) {
-      throw new RuntimeException("Version history directory already exists (this is probably a bug in ducttape. please report it. for now, you can try deleting the directory): %s".format(myVersionDir.getAbsolutePath))
-    }
-    Files.mkdirs(myVersionDir)
-    
-    val workflowCopy = new File(myVersionDir, "workflow.tape")
-    Files.copy(workflowFile, workflowCopy)
-    
-    val confCopy = confFile match {
-      case Some(f: File) => {
-        val copy = new File(myVersionDir, f.getName)
-        Files.copy(f, copy)
-        Some(copy)
-      }
-      case None => None
-    }
-    
-    val hostname = Environment.hostname
-    val pid = Environment.pid
-    val pidFile = new File(myVersionDir, "pid.txt")
-    Files.write("%s:%d".format(hostname, pid), pidFile)
-    
-    // TODO: Save args?
-    new WorkflowVersionInfo(workflowCopy, confCopy, hostname, pid, history.nextVersion)
-  }
+  // hallucinate a new version without actually committing a new version to disk
+  def createFake(): WorkflowVersionInfo = FakeWorkflowVersionInfo
 }

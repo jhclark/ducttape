@@ -31,12 +31,10 @@ object GrammarParser extends RegexParsers {
     return result match {
       case Success(elements: Seq[ASTType], _) => {
         elements.foreach(addFileInfo(_, file))
-        new WorkflowDefinition(elements, isImported).collapseImports
+        new WorkflowDefinition(elements, Seq(file), isImported).collapseImports
       }
-      case Failure(msg, _) =>
-        throw new FileFormatException("ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
-      case Error(msg, _) =>
-        throw new FileFormatException("HARD ERROR: line %d column %d: %s".format(pos.line, pos.column, msg), file, pos)
+      case Failure(msg, _) => throw new FileFormatException(msg, file, pos)
+      case Error(msg, _) => throw new FileFormatException(msg, file, pos)
     }    
   }
   

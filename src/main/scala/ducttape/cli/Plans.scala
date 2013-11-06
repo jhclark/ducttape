@@ -1,6 +1,7 @@
 package ducttape.cli
 
 import collection._
+import ducttape.syntax.Namespace
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.Realization
 import ducttape.workflow.HyperWorkflow
@@ -11,6 +12,7 @@ import ducttape.workflow.OneOff
 import ducttape.workflow.PatternFilter
 import ducttape.workflow.VertexFilter
 import ducttape.workflow.RealTask
+import ducttape.workflow.RealTaskId
 import ducttape.workflow.SpecGroup
 import ducttape.workflow.Types.UnpackedWorkVert
 import ducttape.workflow.Types.PackedWorkVert
@@ -19,6 +21,7 @@ import ducttape.workflow.Types.WorkflowEdge
 import ducttape.workflow.RealizationPlan
 import ducttape.workflow.TaskTemplate
 import ducttape.workflow.builder.WorkflowBuilder
+import ducttape.versioner.WorkflowVersionInfo
 import ducttape.util.Optional
 
 import grizzled.slf4j.Logging
@@ -28,7 +31,7 @@ object Plans extends Logging {
   
   // implemented the second forward pass through the HyperDAG
   // using a PatternFilter
-  def getCandidates(workflow: HyperWorkflow,
+  private def getCandidates(workflow: HyperWorkflow,
                     plan: RealizationPlan,
                     explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
                     graftRelaxations: Map[PackedWorkVert, Set[Branch]])
@@ -48,8 +51,8 @@ object Plans extends Logging {
     workflow.unpackedWalker(PatternFilter(plan.realizations, graftRelaxations), explainCallbackCurried).
       foreach(numCores, { v: UnpackedWorkVert =>
         val taskT: TaskTemplate = v.packed.value.get
-        val task: RealTask = taskT.realize(v)
-        trace("Found new candidate: %s".format(task))
+        val task: RealTask = taskT.toRealTask(v)
+        trace(s"Found new candidate: ${task}")
         candidates += (task.name, task.realization) -> task
     })
     candidates
@@ -59,35 +62,40 @@ object Plans extends Logging {
    * explainCallback is used to provide information about why certain realizations
    * are not included in some plan. args are (plan: String)(msg: String)
    *
-   * planName specifies a specific plan name that should be used. if not specified, the union of all plans is used.
+   * planNames specifies specific plan names that should be used. if not specified, the union of all plans is used.
    */
-  def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
+  private def NO_EXPLAIN(planName: Option[String], vertexName: => String, msg: => String, accepted: Boolean) {}
   def getPlannedVertices(workflow: HyperWorkflow,
                          explainCallback: (Option[String], =>String, =>String, Boolean) => Unit = NO_EXPLAIN,
                          errorOnZeroTasks: Boolean = true,
-                         planName: Option[String] = None)
+                         planNames: Option[Seq[String]] = None,
+                         verbose: Boolean = false)
                         : PlanPolicy = {
     
-    // Pass 1: One backward pass per task that has a branch graft
-    //   tasks that are dependents of branch grafts will always be run for the realization
-    //   required by the branch graft
-    // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
-    //   realizations that shouldn't be selected.
-
     debug("Finding graft relaxations...")
 
     // TODO: Do this in two phases: 1) get direct grafts 2) propagate to parents
     val immediateGrafts = new mutable.HashMap[PackedWorkVert, mutable.HashSet[Branch]]
 
-    // 1) get grafts at each vertex (we'll propagate them to dependencies next)
+    // 1) Accumulate graft relaxations:
+    //    get grafts at each vertex (we'll propagate them to dependencies next).
+    //    we must do this because we don't want to force the user to mention grafts 
+    //    explicitly in the plan
     // TODO: Packed walker seems to have odd behavior
+    //
+    // Pass 1: One backward pass per task that has a branch graft
+    //   tasks that are dependents of branch grafts will always be run for the realization
+    //   required by the branch graft
+    // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
+    //   realizations that shouldn't be selected.
     for (v: PackedWorkVert <- workflow.dag.delegate.delegate.vertices) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
-        trace("Find graft relaxations for %s: Considering hyperedge with sources: %s".format(v, workflow.dag.sources(hyperedge)))
+        trace(s"Find graft relaxations for ${v}: Considering hyperedge with sources: ${workflow.dag.sources(hyperedge)}")
 
-        // TODO: Record the realizations for which this graft is required?
+        // TODO: Record the realizations for which this graft is required -- if we want to save some time
+        //       (It could occur inside a nested branch point)
         hyperedge.e.foreach { specGroup: SpecGroup =>
-          trace("Find graft relaxations for %s: Considering edge: %s".format(v, specGroup))
+          trace(s"Find graft relaxations for ${v}: Considering edge: ${specGroup}")
           if (specGroup != null && !specGroup.grafts.isEmpty) {
             immediateGrafts.getOrElseUpdate(v, new mutable.HashSet) ++= specGroup.grafts
           }
@@ -108,15 +116,16 @@ object Plans extends Logging {
       val relaxationsAtDep = graftRelaxations.getOrElseUpdate(dep, new mutable.HashSet)
       // note: this check is key to making this code block efficient
       if (!grafts.forall { graft: Branch => relaxationsAtDep.contains(graft) }) {
-        debug("Propagate graft relaxations of %s: Dependency %s added new grafts: %s".format(v, dep, grafts))
+        debug(s"Propagate graft relaxations of ${v}: Dependency ${dep} added new grafts: ${grafts}")
         grafts.foreach { graft: Branch => relaxationsAtDep += graft }
         workflow.dag.delegate.delegate.parents(dep).foreach(visitDependencies(v, _, grafts))
       } else {
-        trace("Propagate graft relaxations of %s: Dependency %s already has grafts: %s".format(v, dep, grafts))
+        trace(s"Propagate graft relaxations of ${v}: Dependency ${dep} already has grafts: ${grafts}")
       }
     }
 
     // TODO: Sort vertices?
+    // Iterate over tasks that have any grafts
     for ( (v: PackedWorkVert, grafts: Set[Branch]) <- immediateGrafts) {
       // recursively find all dependencies of this vertex & add graft relaxations
       visitDependencies(v, v, grafts)
@@ -124,16 +133,13 @@ object Plans extends Logging {
     
     debug {
       for ( (v, set) <- graftRelaxations) {
-        debug("Found graft relaxation: %s -> %s".format(v, set.toString))
+        debug(s"Found graft relaxation: ${v} -> ${set.toString}")
       }
-      "Found %d graft relaxations total.".format(graftRelaxations.size)
+      s"Found ${graftRelaxations.size} graft relaxations total."
     }
     
     workflow.plans match {
-      case Nil => {
-        System.err.println("No plans specified in workflow -- Using default one-off realization plan: " +
-          "Each realization will have no more than 1 non-baseline branch")
-        		
+      case Nil => {        		
         def explainCallbackCurried(vertexName: => String, msg: => String, accepted: Boolean)
           = explainCallback(Some("default one-off"), vertexName, msg, accepted)
 
@@ -146,40 +152,52 @@ object Plans extends Logging {
       case _ => {
         System.err.println("Finding hyperpaths contained in plan...")
          
-        val vertexFilter = new mutable.HashSet[(String,Realization)]
-        val plans: Seq[RealizationPlan] = planName match {
-          case None => workflow.plans
-          case Some(name) => workflow.plans.filter(_.name == Some(name)) match {
-            // TODO: Change to CLI exception?
-            case Seq() => throw new RuntimeException("Specified plan not found: '%s'. Candidates are: ".format(name, workflow.plans.map(_.name.getOrElse("*anonymous*")).mkString(" ")))
-            case matches @ _ => matches
+        val vertexFilter = new mutable.HashSet[(Namespace,Realization)]
+        val plans: Seq[RealizationPlan] = planNames match {
+          case None => workflow.plans // use union of all plans if none are specified
+          case Some(names) => {
+            val requestedNames: Set[String] = names.toSet
+            workflow.plans.filter { plan: RealizationPlan =>
+              plan.name match {
+                case None => false
+                case Some(name) => requestedNames.contains(name)
+              }
+            } match {
+              // TODO: Change to CLI exception?
+              case Seq() => {
+                val candidates = workflow.plans.map(_.name.getOrElse("*anonymous*"))
+                throw new RuntimeException(s"One of the specified plans was not found: '${planNames.mkString(" ")}'. Candidates are: ${candidates.mkString(" ")}")
+              }
+              case matches @ _ => matches
+            }
           }
         }
         for (plan: RealizationPlan <- plans) {
-          val planName: String = plan.name.getOrElse("*anonymous*")
-          System.err.println("Finding vertices for plan: %s".format(planName))
-          
           // Pass 2: Forward pass through the HyperDAG using a PatternFilter
           //   so that we can discover which realizations are valid at each goal task
           // Note: This isn't as simple as taking the cross-product of branches that have been seen at all dependents
           //   since some branch points may become visible or invisible based on which branches are active.
           val candidates: Map[(String,Realization), RealTask]
             = getCandidates(workflow, plan, explainCallback, graftRelaxations)
-          val fronteir = new mutable.Queue[RealTask]
           
-          System.err.println("Have %d candidate tasks matching plan's realizations: %s".format(
-            candidates.size, candidates.map(_._1).map(_._1).toSet.toSeq.sorted.mkString(" ")))
+          if (verbose) {
+            val matches = candidates.map(_._1).map(_._1).toSet.toSeq.sorted
+            System.err.println(s"Have ${candidates.size} candidate tasks matching plan's realizations: ${matches.mkString(" ")}")
+          }
           
-          // Initialize for Pass 3: Take the union over active plans
+          // Initialize for Pass 3: Take the union over active plans, working inside the *unpacked* workflow
           //   to obtain the realizations desired for each goal task 
           // initialize with all valid realizations of the goal vertex
           // (realizations have already been filtered during HyperDAG traversal)
+          val fronteir = new mutable.Queue[RealTask]
           for (goalTask <- plan.goalTasks) {
             val goalRealTasks: Iterable[RealTask] = candidates.filter {
               case ( (tName, _), _) => tName == goalTask
             } map { _._2 }
-            System.err.println("Found %d realizations of goal task %s: %s".
-              format(goalRealTasks.size, goalTask, goalRealTasks.map(_.realization).mkString(" ")))
+            if (verbose) {
+              val goalRealizations: Iterable[Realization] = goalRealTasks.map(_.realization)
+              System.err.println(s"Found ${goalRealTasks.size} realizations of goal task ${goalTask}: ${goalRealizations.mkString(" ")}")
+            }
               
             // TODO: Now we need to trim off any extra realizations that were introduced for the sake
             // of grafts?
@@ -199,7 +217,7 @@ object Plans extends Logging {
                 fronteir ++= antTasks
               } catch {
                 case e: NoSuchElementException => {
-                  throw new RuntimeException("Error while trying to find antecedent tasks of %s".format(task), e)
+                  throw new RuntimeException(s"Error while trying to find antecedent tasks of ${task}", e)
                 }
               }
             }
@@ -208,16 +226,19 @@ object Plans extends Logging {
           }
           
           // everything we saw is required to execute this realization plan to its goal vertices
-          System.err.println("Found %d vertices implied by realization plan %s".format(seen.size, planName))
+          System.err.println(s"Found ${seen.size} vertices implied by realization plan ${plan.fullName}")
           
           // this is almost certainly not what the user intended
           if (seen.isEmpty && errorOnZeroTasks) {
             throw new FileFormatException("Plan includes zero tasks", plan.planDef)
           }
-          vertexFilter ++= seen.map { task => (task.name, task.realization) }
+          vertexFilter ++= seen.map { task => (task.namespace, task.realization) }
         }
-        System.err.println("Union of all planned vertices has size %d".format(vertexFilter.size))
-        VertexFilter(vertexFilter)
+        System.err.println(s"Union of all planned vertices has size ${vertexFilter.size}")
+        val verticesToInclude: Set[RealTaskId] = vertexFilter.map { case (namespace, real) =>
+          new RealTaskId(namespace, real.toCanonicalString)
+        }
+        VertexFilter(verticesToInclude)
       }
     }
   }

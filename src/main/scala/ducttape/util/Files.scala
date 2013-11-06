@@ -32,9 +32,11 @@ object Files extends Logging {
     try {
       fw.write(str)
     } finally {
-      fw.close
+      fw.close()
     }
   }
+
+  def write(str: Seq[String], file: File) { write(str.mkString("\n") + "\n", file) }
 
   def writer(file: File): PrintWriter = {
     new PrintWriter(new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), "UTF-8")))
@@ -109,6 +111,14 @@ object Files extends Logging {
     Shell.run("cd %s && ln -sf %s %s".format(absLinkDir.getAbsolutePath, relativePointTo, linkName), stdPrefix="ln")
   }
 
+  def cat(inFiles: Seq[File], outFile: File, separator: String = "", variable: String = "") {
+    val allLines: Seq[String] = inFiles.flatMap { inFile: File =>
+      val lines: Seq[String] = read(inFile)
+      Seq(separator.replace(variable, inFile.getAbsolutePath)) ++ lines
+    }
+    write(allLines, outFile)
+  }
+
   def ls(dir: File): Seq[File] = {
     val listing = dir.listFiles
     if (listing == null)
@@ -136,6 +146,26 @@ object Files extends Logging {
   def copyToDir(src: File, destDir: File) = copy(src, new File(destDir, src.getName))
 
   def isGlob(path: String) = path.contains("*") || path.contains("?")
+
+  // normalize away tildes, which Java doesn't understand
+  def normalize(file: File): File = new File(normalize(file.getAbsolutePath))
+  def normalize(path: String): String = {
+    if (path.startsWith("~")) {
+      if (path.startsWith("~/")) {
+        // use current user's name
+        s"${Environment.UserHomeDir.getAbsolutePath}/${path.substring(2)}"
+      } else {
+        // user name was manually specified
+        s"/home/${path.substring(1)}"
+      }
+    } else {
+      path
+    }
+  }
+  
+  def isAbsolute(path: String) = new File(path).isAbsolute || path.startsWith("~")
+  
+  def exists(path: String): Boolean = new File(normalize(path)).exists
   
   def glob(pattern: String): Seq[File] = isGlob(pattern) match {
     case false => Seq(new File(pattern))

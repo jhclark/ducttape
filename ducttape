@@ -2,22 +2,19 @@
 set -ueo pipefail
 scriptDir=$(cd $(dirname $0); pwd)
 
-#libs=$scriptDir/bin
-libs=$scriptDir/ducttape.jar
-libs=$libs:$scriptDir/lib/scala/scala-library-2.9.2.jar # DEV-ONLY
-
-libs=$libs:$scriptDir/lib/sqlitejdbc-v056.jar # DEV-ONLY
-libs=$libs:$scriptDir/lib/scala-optparse-1.1.jar # DEV-ONLY
-libs=$libs:$scriptDir/lib/commons-lang3-3.1.jar # DEV-ONLY
-libs=$libs:$scriptDir/lib/commons-io-2.2.jar # DEV-ONLY
-libs=$libs:$scriptDir/lib/grizzled-slf4j_2.9.1-1-0.6.8.jar # DEV-ONLY
-
-# Use slf4j's java.util logger (at runtime only) # DEV-ONLY
-libs=$libs:$scriptDir/lib/slf4j-api-1.6.4.jar # DEV-ONLY
-libs=$libs:$scriptDir/lib/slf4j-jdk14-1.6.4.jar # DEV-ONLY
+# TODO: Use drip for fast JVM startup, if installed
+#       But currently drip appears to be unstable
+#export JAVA=$(which drip)
+#if [[ "$JAVA" == "/"* ]]; then
+#    echo >/dev/null; # we found drip
+#else
+#    echo >&2 "drip not found. Falling back to vanilla Java"
+#    JAVA="java"
+#fi
+JAVA="java"
 
 #     -XX:MaxJavaStackTraceDepth=25 \
-java -Xmx1g -Xss2M \
-     -cp $libs \
+$JAVA -Xmx1g -Xss2M \
+     -cp $scriptDir/ducttape.jar \
      -Dfile.encoding="UTF-8" \
      Ducttape "$@"

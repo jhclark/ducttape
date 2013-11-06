@@ -31,3 +31,11 @@ tmp/
 /tutorial/tutorial.toc
 /tutorial/tutorial.log
 /tutorial/texput.log
+tech-report/*.aux
+tech-report/*.log
+tech-report/*.pdf
+tech-report/*.toc
+tech-report/*.bbl
+tech-report/*.blg
+tech-report/*.out
+tech-report/auto/

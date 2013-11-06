@@ -5,32 +5,42 @@ import collection._
 import java.util.concurrent.ExecutionException
 import java.io.File
 
-import ducttape.cli.Directives
 import ducttape.syntax.FileFormatException
 import ducttape.exec.PackageBuilder
-import ducttape.versioner.WorkflowVersionInfo
 import ducttape.exec.PackageVersioner
 import ducttape.exec.InputChecker
+import ducttape.exec.FullTaskEnvironment
 import ducttape.exec.DirectoryArchitect
 import ducttape.exec.CompletionChecker
 import ducttape.exec.PartialOutputMover
 import ducttape.exec.Executor
+import ducttape.exec.ExecutionObserver
 import ducttape.exec.PidWriter
 import ducttape.exec.LockManager
 import ducttape.workflow.Visitors
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.Realization
 import ducttape.workflow.PlanPolicy
+import ducttape.workflow.VersionedTask
+import ducttape.workflow.VersionedTaskId
+import ducttape.hyperdag.walker.Traversal
+import ducttape.hyperdag.walker.Arbitrary
+import ducttape.versioner.TentativeWorkflowVersionInfo
+import ducttape.versioner.WorkflowVersionStore
 import ducttape.versioner.WorkflowVersionHistory
 import ducttape.util.Files
 
 object ExecuteMode {
   
+  // uncommittedVersion is the version we hallucinate before the user
+  // has officially given us the greenlight to proceed with execution
+  // (and therefore the greenlight to commit this version of the workflow to disk)
   def run(workflow: HyperWorkflow,
           cc: CompletionChecker,
-          planPolicy: PlanPolicy,
           history: WorkflowVersionHistory,
-          getPackageVersions: () => PackageVersioner)
+          planPolicy: PlanPolicy,
+          getPackageVersions: () => PackageVersioner,
+          traversal: Traversal = Arbitrary)
          (implicit opts: Opts, dirs: DirectoryArchitect, directives: Directives) {
     
     if (cc.todo.isEmpty) {
@@ -38,11 +48,16 @@ object ExecuteMode {
       System.err.println("All tasks to complete -- nothing to do")
     } else {
       System.err.println("Finding packages...")
+
+      // gather the information needed to record all of the packages and tasks that might get executed if the user confirms
       val packageVersions = getPackageVersions()
+      val existingTasks: Seq[VersionedTaskId] = cc.completedVersions.toSeq
+      val todoTasks: Seq[VersionedTaskId] = cc.todoVersions.toSeq
+      val uncommittedVersion = new TentativeWorkflowVersionInfo(dirs, workflow, history, packageVersions, existingTasks, todoTasks)
       
       System.err.println("Checking inputs...")
       val inputChecker = new InputChecker(dirs)
-      Visitors.visitAll(workflow, inputChecker, planPolicy)
+      Visitors.visitAll(workflow, inputChecker, planPolicy, uncommittedVersion)
       if (inputChecker.errors.size > 0) {
         for (e: FileFormatException <- inputChecker.errors) {
           ErrorUtils.prettyPrintError(e, prefix="ERROR", color=Config.errorColor)
@@ -56,13 +71,13 @@ object ExecuteMode {
       // TODO: Check for existing PID lock files from some other process... and make sure we're on the same machine
 
       if (!directives.enableMultiproc && cc.locked.size > 0) {
-        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_enable_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
+        throw new RuntimeException("It appears another ducttape process currently holds locks for this workflow and multi-process mode hasn't been explicitly enabled with 'ducttape_experimental_multiproc=true'. If you think no other ducttape processes are running on this workflow, try using the 'ducttape workflow.tape unlock' command.")
       }
       
       import ducttape.cli.ColorUtils.colorizeDir
       import ducttape.cli.ColorUtils.colorizeDirs
       
-      System.err.println("Work plan:")
+      System.err.println("Work plan ("+traversal+" traversal):")
       for ( (task, real) <- cc.broken) {
         System.err.println("%sDELETE:%s %s".format(Config.redColor, Config.resetColor, colorizeDir(task, real)))
       }
@@ -95,32 +110,56 @@ object ExecuteMode {
         case true => {
           // create a new workflow version
           val configFile: Option[File] = opts.config_file.value.map(new File(_))
-          val myVersion: WorkflowVersionInfo = WorkflowVersionInfo.create(dirs, opts.workflowFile, configFile, history)
+          val existingTasks: Seq[VersionedTaskId] = cc.completedVersions.toSeq
+          val todoTasks: Seq[VersionedTaskId] = cc.todoVersions.toSeq
+
+          // user has given us the green light, so now switch over from using
+          // fake/hallucinated version that wasn't actually written to disk
+          // to using version info that's written in stone (i.e. on disk)
+          // TODO: We should just add a "commit" method to the version
+          val committedVersion: WorkflowVersionStore = uncommittedVersion.commit()
           
           // before doing *anything* else, make sure our output directory exists, so that we can lock things
           Files.mkdirs(dirs.confBaseDir)
           
-          System.err.println("Retreiving code and building...")
+          System.err.println("Retrieving code and building...")
           val builder = new PackageBuilder(dirs, packageVersions)
           builder.build(packageVersions.packagesToBuild)
 
-          // TODO: Make locker take a thunk to create a scoping effect
+          // Locker takes a thunk to create a scoping effect
           // note: LockManager internally starts a JVM shutdown hook to release locks on JVM shutdown
-          val locker = new LockManager(myVersion)
+          LockManager(committedVersion) { locker: LockManager =>
 
-          System.err.println("Moving previous partial output to the attic...")
-          // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
-          Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy)
+            System.err.println("Moving previous partial output to the attic...")
+            // NOTE: We get the version of each failed attempt from its version file (partial). Lacking that, we kill it (broken).
+            Visitors.visitAll(workflow, new PartialOutputMover(dirs, cc.partial, cc.broken, locker), planPolicy, committedVersion)
           
-          // Make a pass after moving partial output to write output files
-          // claiming those directories as ours so that we can later start another ducttape process
-          Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy)
-          
-          System.err.println("Executing tasks...")
-          Visitors.visitAll(workflow,
-                            new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo),
-                            planPolicy, opts.jobs())
-          locker.shutdown()
+            // Make a pass after moving partial output to write output files
+            // claiming those directories as ours so that we can later start another ducttape process
+            Visitors.visitAll(workflow, new PidWriter(dirs, cc.todo, locker), planPolicy, committedVersion)
+            
+            System.err.println("Executing tasks...")
+            val failObserver = new ExecutionObserver {
+              val failed = new mutable.ArrayBuffer[VersionedTask]
+              override def fail(exec: Executor, taskEnv: FullTaskEnvironment) {
+                failed += taskEnv.task
+              }
+            }
+            try {
+              Visitors.visitAll(workflow,
+                                new Executor(dirs, packageVersions, planPolicy, locker, workflow, cc.completed, cc.todo, observers=Seq(failObserver)),
+                                planPolicy, committedVersion, opts.jobs(), traversal)
+            } catch {
+              case t: Throwable => {
+                System.err.println(s"${Config.errorColor}The following tasks failed:${Config.resetColor}")
+                for (task <- failObserver.failed) {
+                  System.err.println(s"${Config.errorColor}FAILED:${Config.resetColor} ${task}")
+                }
+                throw t
+              }
+            }
+            System.err.println(s"${Config.greenColor}All tasks completed successfully${Config.resetColor}")
+          }
         }
         case _ => System.err.println("Doing nothing")
       }

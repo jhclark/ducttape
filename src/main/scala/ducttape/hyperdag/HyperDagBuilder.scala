@@ -3,6 +3,9 @@ package ducttape.hyperdag
 import collection._
 import grizzled.slf4j.Logging
 
+/**
+ * see [[ducttape.hyperdag.HyperDag]] for the definition of a HyperDag.
+ */
 class HyperDagBuilder[V,H,E] extends Logging {
 
   private[hyperdag] val vertices = new mutable.HashSet[PackedVertex[V]]
@@ -12,8 +15,7 @@ class HyperDagBuilder[V,H,E] extends Logging {
   private var vertexId = 0
   private var edgeId = 0
 
-  // before adding hyperparents we must already know the realizations?
-  // this seems to defeat the purpose of the builder...
+  // the comment is a GraphViz comment
   def addVertex(v: V, comment: Option[String] = None): PackedVertex[V] = {
     val pv = new PackedVertex[V](vertexId, v, comment)
     vertexId += 1
@@ -43,6 +45,7 @@ class HyperDagBuilder[V,H,E] extends Logging {
     he
   }
 
+  // create an usable immutable version of this HyperDag
   def build() = {
     def inDegree(v: PackedVertex[V]): Int = inEdges.get(v) match {
       case None => 0

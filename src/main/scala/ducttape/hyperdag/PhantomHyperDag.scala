@@ -6,6 +6,7 @@ class PhantomHyperDag[V,H,E](val delegate: HyperDag[Option[V],H,E]) {
   
   private[hyperdag] def removePhantom(v: PackedVertex[Option[V]]): PackedVertex[V] = v.value match {
     case Some(value) => new PackedVertex[V](v.id, value, v.comment)
+    case None => throw new IllegalArgumentException()
   }
   
   private[hyperdag] def toOption(v: PackedVertex[V]): PackedVertex[Option[V]]
@@ -14,6 +15,7 @@ class PhantomHyperDag[V,H,E](val delegate: HyperDag[Option[V],H,E]) {
   private[hyperdag] def removePhantoms(list: Traversable[PackedVertex[Option[V]]]) = list.filter(_.value.isDefined).map {
     v => v.value match {
       case Some(value) => new PackedVertex[V](v.id, value)
+      case None => throw new IllegalArgumentException()
     }
   }
   

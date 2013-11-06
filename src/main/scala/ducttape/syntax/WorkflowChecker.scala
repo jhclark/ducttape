@@ -4,9 +4,13 @@ import ducttape.cli.Directives
 import ducttape.exec.Submitter
 import ducttape.exec.Versioners
 import ducttape.exec.PackageVersionerInfo
-import ducttape.exec.UnpackedDagVisitor
+import ducttape.exec.UnpackedRealDagVisitor
 import ducttape.workflow.HyperWorkflow
 import ducttape.workflow.RealTask
+import ducttape.workflow.Visitors
+import ducttape.workflow.Realization
+import ducttape.workflow.PlanPolicy
+import ducttape.versioner.WorkflowVersionInfo
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
 import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.AbstractSyntaxTree.Spec
@@ -19,9 +23,6 @@ import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import grizzled.slf4j.Logging
 import collection._
-import ducttape.workflow.Visitors
-import ducttape.workflow.Realization
-import ducttape.workflow.PlanPolicy
 
 /**
  * Most checks can be done on the raw WorkflowDefinition.
@@ -219,7 +220,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     val errors = new mutable.ArrayBuffer[FileFormatException]
     
     val submitter = new Submitter(hyperworkflow.submitters)
-    val visitor = new UnpackedDagVisitor {
+    val visitor = new UnpackedRealDagVisitor {
       override def visit(task: RealTask) {
         for (packageSpec: Spec <- task.packages) {
           // TODO: Check for each task having the params defined for each of its versioners
@@ -238,8 +239,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           for (requiredParam <- requiredParams) {
             if (!dotParams(requiredParam.name)) {
               errors += new FileFormatException(
-                "Dot parameter '%s' required by submitter '%s' not defined by task '%s'".format(
-                   requiredParam.name, taskSubmitter.name, task.name),
+                s"Dot parameter '${requiredParam.name}' required by submitter '${taskSubmitter.name}' not defined by task '${task.name}'",
                 List(task.taskDef, requiredParam))
             }
           }
@@ -250,7 +250,9 @@ class WorkflowChecker(workflow: WorkflowDefinition,
       }
     }
     
-    Visitors.visitAll(hyperworkflow, visitor, planPolicy)
+    // TODO: We could really get away without versions here if we
+    // wanted to maintain another code path
+    Visitors.visitAllRealTasks(hyperworkflow, visitor, planPolicy)
     
     (warnings, errors)
   }

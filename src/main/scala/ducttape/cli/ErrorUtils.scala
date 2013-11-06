@@ -57,7 +57,7 @@ object ErrorUtils extends Logging {
     }
     
     try { func } catch {
-      case e => catcher(e)
+      case e: Throwable => catcher(e)
     }
   }
 }

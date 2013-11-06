@@ -2,13 +2,20 @@ package ducttape.hyperdag.meta
 import ducttape.hyperdag.PackedVertex
 import ducttape.hyperdag.HyperEdge
 
-/** m is the payload of this metahyperedge
- * In a MetaHyperDag, all vertices have only MetaEdges as their only inputs.
- * A derivation rooted at a vertex consists of each input MetaEdges having
+/**
+ * In a MetaHyperDag, all vertices have only MetaEdges as their only incoming "edges".
+ * In drawn notation, meta edges are typically drawn as thick arrows with thin
+ * incoming hyperdges. In GraphViz, we represent a MetaEdge as an "epsilon" vertex
+ * in the AND-OR representation of a MetaHyperDag.
+ * 
+ * A derivation (beginning from some vertex) consists of each input MetaEdge having
  * exactly one input HyperEdge assigned to it. Unlike a HyperDag, in which
  * only one HyperEdge per vertex can be active in a single derivation,
  * a MetaHyperDag requires that *all* input MetaEdges be active for each
- * vertex. */
+ * vertex.
+ *
+ * see [[ducttape.hyperdag.meta.MetaHyperDag]] for definitions of generic types
+ */
 class MetaEdge[M,H,E](private[hyperdag] val epsilonV: PackedVertex[_],
                       val m: M,
                       val hyperedges: Seq[HyperEdge[H,E]])  {

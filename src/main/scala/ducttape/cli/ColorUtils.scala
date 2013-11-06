@@ -6,11 +6,11 @@ import ducttape.workflow.Realization
 object ColorUtils {
   def colorizeDir(taskName: String, real: Realization)
                  (implicit dirs: DirectoryArchitect): String = {
-    val x = "%s/%s%s%s".format(dirs.confBaseDir.getAbsolutePath, Config.taskNameColor, taskName, Config.resetColor)           
+    val x = s"${dirs.confBaseDir.getAbsolutePath}/${Config.taskNameColor}${taskName}${Config.resetColor}"
     if (dirs.flat) {
       x
     } else {
-      x + "/%s%s%s".format(Config.realNameColor, real.toString, Config.resetColor)
+      s"${x}/${Config.realNameColor}${real.toCanonicalString}${Config.resetColor} (${Config.realFullNameColor}${real.toFullString(hashLongNames=false)}${Config.resetColor})"
     }
   }
   

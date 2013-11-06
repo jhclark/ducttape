@@ -11,11 +11,11 @@ import grizzled.slf4j.Logging
 class Realization(val branches: Seq[Branch]) extends Logging {
  // TODO: Keep string branch point names?
 
-  // sort by branch *point* names to keep ordering consistent, then join branch names using dashes
-  //   and don't include our default branch "baseline"
-  // by default we "shorten" realization names by removing branch points using baseline branches
-  //   such that new branch points can easily be added since the entire directory structure doesn't
-  //   suddenly change
+  /** sort by branch *point* names to keep ordering consistent, then join branch names using dashes
+   *   and don't include our default branch "baseline"
+   * by default we "shorten" realization names by removing branch points using baseline branches
+   *   such that new branch points can easily be added since the entire directory structure doesn't
+   *   suddenly change */
   private def realizationName(): String = {
     
     // sort by branch point name and remove references to the baseline branch
@@ -30,7 +30,7 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     // while maintaining semantics
     val names = filteredBranches.map { branch =>
       val displayName = if (branch.baseline) "baseline" else branch.name
-      "%s.%s".format(branch.branchPoint.name, displayName)
+      s"${branch.branchPoint.name}.${displayName}"
     }
     val result = names.mkString(Realization.delimiter)
     if (result.length > 255) {
@@ -39,13 +39,17 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     result
   }
     
-  private def fullRealizationName(): String = {
+  private def fullRealizationName(hashLongNames: Boolean = true): String = {
     // TODO: Prohibit the branch point name "Baseline"?
-    val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT }
-    val names = filteredBranches.map { branch => "%s.%s".format(branch.branchPoint.name, branch.name) }
+    val filteredBranches: Seq[Branch] = branches.filter { _.branchPoint != Task.NO_BRANCH_POINT } match {
+      // make sure we have at least baseline, if nothing else
+      case Seq() => Seq(Task.NO_BRANCH)
+      case myBranches => myBranches 
+    }
+    val names = filteredBranches.map { branch => s"${branch.branchPoint.name}.${branch.name}" }
     val result = names.mkString(Realization.delimiter)
-    if (result.length > 255) {
-      warn("Very long filename is being hashed: " + result)
+    if (result.length > 255 && hashLongNames) {
+      warn(s"Very long filename is being hashed: ${result}")
       HashUtils.md5(result)
       //throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
     } else {
@@ -57,10 +61,13 @@ class Realization(val branches: Seq[Branch]) extends Logging {
 
   override def hashCode() = str.hashCode // TODO: More efficient?
   override def equals(obj: Any) = obj match { case that: Realization => this.str == that.str } // TODO: More efficient?
-  override def toString() = str
+  // a canonical representation that should hold constant even when new branch points are added
+  // (assuming users follow our best practices for creating baseline branches)
+  def toCanonicalString() = str
+  override def toString() = toCanonicalString
   
   // unshortened realization name
-  def toFullString(): String = fullRealizationName()
+  def toFullString(hashLongNames: Boolean = true): String = fullRealizationName(hashLongNames)
   
   // returns true if this realization has only one branch and it is Baseline.baseline
   def hasSingleBranchBaseline(): Boolean = {
