@@ -5,9 +5,9 @@ DUCTTAPE=.
 
 # NOTE: This file is called "Makefile.dist" in the ducttape git repo and "Makefile" in the ducttape distribution
 
-# TODO: Complain if ${VIM} doesn't exist
-
 install:
+	test -d ${VIM} || echo "Can't find vim ... is it installed? Perhaps you are a emacs user ;)" | exit 1
+	test -d ${PREFIX}/share/emacs/site-lisp/default.el || echo "Can't find emacs ... is it installed? Perhaps you are a vim user ;)" | exit 1
 	mkdir -p ${PREFIX}/bin ${PREFIX}/share/ducttape
 	cp ${DUCTTAPE}/ducttape ${PREFIX}/bin
 	cp ${DUCTTAPE}/tabular ${PREFIX}/bin
