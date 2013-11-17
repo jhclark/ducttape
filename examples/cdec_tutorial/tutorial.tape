@@ -153,7 +153,7 @@ task compile_lm : cdec
 }
 
 # Tutorial step #9
-# Create cdec ini file (the init weights file is specified in tutorial.tconf)
+# Create cdec ini file
 task make_cdec_ini
     < klm=$klm@compile_lm
     > ini {
