@@ -36,7 +36,9 @@ object Plans extends Logging {
                     explainCallback: (Option[String], =>String, =>String, Boolean) => Unit,
                     graftRelaxations: Map[PackedWorkVert, Set[Branch]])
       : Map[(String,Realization), RealTask] = {
+
     val numCores = 1
+
     // tasks only know about their parents in the form of (taskName, realization)
     // not as references to their realized tasks. this lets them get garbage collected
     // and reduces memory usage. however, we need all the candidate realized tasks on hand
@@ -87,7 +89,7 @@ object Plans extends Logging {
     //   tasks that are dependents of branch grafts will always be run for the realization
     //   required by the branch graft
     // Note: Since this algorithm is a bit simplistic, we might actually introduce a few *extra*
-    //   realizations that shouldn't be selected.
+    //   realizations that shouldn't be selected. We will weed these out in the second pass.
     for (v: PackedWorkVert <- workflow.dag.delegate.delegate.vertices) {
       workflow.dag.delegate.delegate.inEdges(v).foreach { hyperedge: WorkflowEdge =>
         trace(s"Find graft relaxations for ${v}: Considering hyperedge with sources: ${workflow.dag.sources(hyperedge)}")
@@ -191,9 +193,21 @@ object Plans extends Logging {
           // (realizations have already been filtered during HyperDAG traversal)
           val fronteir = new mutable.Queue[RealTask]
           for (goalTask <- plan.goalTasks) {
-            val goalRealTasks: Iterable[RealTask] = candidates.filter {
+            val candidateGoalRealTasks: Iterable[RealTask] = candidates.filter {
               case ( (tName, _), _) => tName == goalTask
             } map { _._2 }
+
+            // Because of graft relaxations, we've actually been a bit too loose in our constraints here,
+            // we also need to filter these candidate realizations based on the cross-product
+            // of possible realizations allowed under the plan
+            // i.e. each branch of a goal task must either be explicitly mentioned in a plan
+            // or it must be a baseline branch of a branch point that is not mentioned in the plan
+            var strictFilter = PatternFilter(plan.realizations, graftRelaxations = Map.empty)
+            val goalRealTasks: Iterable[RealTask] = candidateGoalRealTasks.filter { realTask: RealTask =>
+              var v = workflow.toPackedVertex(realTask.taskT)
+              strictFilter.matches(v, realTask.realization.branches.toSet)
+            }
+
             if (verbose) {
               val goalRealizations: Iterable[Realization] = goalRealTasks.map(_.realization)
               System.err.println(s"Found ${goalRealTasks.size} realizations of goal task ${goalTask}: ${goalRealizations.mkString(" ")}")
@@ -214,6 +228,7 @@ object Plans extends Logging {
               try {
                 val antTasks: Set[RealTask] = task.antecedents.
                   map { case (taskName, real) => candidates(taskName, real) }
+                  debug(s"Antecedents of ${task} are ${antTasks.mkString(" ")}")
                 fronteir ++= antTasks
               } catch {
                 case e: NoSuchElementException => {

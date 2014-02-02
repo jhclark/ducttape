@@ -24,7 +24,45 @@ case class VertexFilter(plannedVertices: Set[RealTaskId]) extends PlanPolicy;
 case class PatternFilter(
     planFilter: Map[BranchPoint, Set[String]],
     graftRelaxations: Map[PackedWorkVert, Set[Branch]]
-  ) extends PlanPolicy;
+  ) extends PlanPolicy with Logging {
+
+  def matches(v: PackedWorkVert, myReal: Set[Branch]): Boolean = {
+    val ok = myReal.forall { realBranch: Branch =>
+      planFilter.get(realBranch.branchPoint) match {
+        // planFilter must explicitly mention a branch point
+        case Some(planBranchesX: Set[_]) => {
+          debug("Checking for explicit plan match")
+          val planBranches: Set[String] = planBranchesX
+          
+          // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
+          planBranches.contains("*") ||
+          planBranches.contains(realBranch.name) ||
+          (realBranch.baseline && planBranches.contains("baseline")) ||
+          Grafts.isGraftDependency(graftRelaxations, v, realBranch)
+        }
+        // otherwise it implies either the baseline branch or a graft relaxation
+        case None => realBranch.baseline || Grafts.isGraftDependency(graftRelaxations, v, realBranch)
+      }
+    }
+    ok
+  }
+}
+
+// TODO: Refactor
+object Grafts extends Logging {
+  def isGraftDependency(graftRelaxations: Map[PackedWorkVert, Set[Branch]],
+                        v: PackedWorkVert,
+                        branch: Branch): Boolean = {
+    debug("Checking graft dependencies for " + v)
+    graftRelaxations.get(v) match {
+      case None => false
+      case Some(grafts: Set[_] /* [Branch] */ ) => {
+        debug("Found graft relaxation for %s due to branch graft".format(v, branch))
+        grafts.contains(branch)
+      }
+    }
+  }
+}
 
 class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     extends HyperWorkflowStateMunger
@@ -66,20 +104,7 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
     assert(!parentReal.exists(_ == null))
     
     trace("Applying inPlan filter at %s with hyperedge %s for realization: %s".format(v, heOpt, prevState))
-    
-    def isGraftDependency(graftRelaxations: Map[PackedWorkVert, Set[Branch]],
-        v: PackedWorkVert,
-        branch: Branch): Boolean = {
-      debug("Checking graft dependencies for " + v)
-      graftRelaxations.get(v) match {
-        case None => false
-        case Some(grafts: Set[_] /* [Branch] */ ) => {
-          debug("Found graft relaxation for %s due to branch graft".format(v, branch))
-          grafts.contains(branch)
-        }
-      }
-    }
-    
+        
     // TODO: Save a copy of which planFilters we haven't
     // violated yet in the state?
     // TODO: This could be much more efficient if we only
@@ -94,37 +119,17 @@ class InPlanConstraint(policy: PlanPolicy, explainCallback: ExplainCallback)
           val graftRelaxations: Map[PackedWorkVert, Set[Branch]] = graftRelaxationsX
           // note: graft dependencies don't count toward one non-baseline branch
           val nonBaselines = myReal.count {
-            realBranch: Branch => !realBranch.baseline && !isGraftDependency(graftRelaxations, v, realBranch)
+            realBranch: Branch => !realBranch.baseline && !Grafts.isGraftDependency(graftRelaxations, v, realBranch)
           }
           if (isDebugEnabled) {
             debug("OneOff: Number of non-baseline branches: %d".format(nonBaselines))
             myReal.foreach { realBranch: Branch => debug("OneOff: Branch %s: baseline? %s graftDep? %s".format(
-                realBranch, realBranch.baseline, isGraftDependency(graftRelaxations, v, realBranch))) }
+                realBranch, realBranch.baseline, Grafts.isGraftDependency(graftRelaxations, v, realBranch))) }
           }
           nonBaselines <= 1
         }
-        case PatternFilter(planFilterX, graftRelaxationsX) => {
-          val planFilter: Map[BranchPoint, Set[String]] = planFilterX
-          val graftRelaxations: Map[PackedWorkVert, Set[Branch]] = graftRelaxationsX
-                             
-          val ok = myReal.forall { realBranch: Branch =>
-            planFilter.get(realBranch.branchPoint) match {
-              // planFilter must explicitly mention a branch point
-              case Some(planBranchesX: Set[_]) => {
-                debug("Checking for explicit plan match")
-                val planBranches: Set[String] = planBranchesX
-                
-                // TODO: Can move this dualistic baseline/name behavior somewhere more central? (and glob behavior too?)
-                planBranches.contains("*") ||
-                  planBranches.contains(realBranch.name) ||
-                  (realBranch.baseline && planBranches.contains("baseline")) ||
-                  isGraftDependency(graftRelaxations, v, realBranch)
-              }
-              // otherwise it implies either the baseline branch or a graft relaxation
-              case None => realBranch.baseline || isGraftDependency(graftRelaxations, v, realBranch)
-            }
-          }
-          ok
+        case patternFilter: PatternFilter => {
+          patternFilter.matches(v, myReal)
         }
       }
     }
