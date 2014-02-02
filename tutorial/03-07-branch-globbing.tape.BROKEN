@@ -1,0 +1,23 @@
+##############################################################
+#               Problems with branch globs                   #
+##############################################################
+#                                                            #
+# Running with fewer branch values runs fine.                #
+# For example (Letter: a b c d)                              #
+#                                                            #
+# Running with > ~7-8 branch values runs too slowly to use   #
+# For example (Letter: a b c d e f g h i)                    #
+##############################################################
+
+task foo
+	:: param=(Letter: a b c d e f g h i)
+	 > letter
+{
+	echo ${param} > ${letter}
+}
+
+task bar
+	< letters=$letter@foo[Letter:*]
+{
+	echo ${letters}
+}
