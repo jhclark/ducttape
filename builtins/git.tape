@@ -11,7 +11,7 @@ versioner git :: repo ref {
       # actually interested in.
       # Example: There may be multiple HEADs, the one of the local (queried)
       # repository and the one of a remote repository.
-      git ls-remote $repo $ref | grep -E "^[0-9a-f]+\s+$ref\$" | cut -f1 > $version
+      git ls-remote $repo $ref | grep -E "^[0-9a-f]+[^A-Za-z0-9]+$ref\$" | cut -f1 > $version
     else
       echo "$ref" > $version
     fi
