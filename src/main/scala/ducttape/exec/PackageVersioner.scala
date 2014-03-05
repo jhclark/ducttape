@@ -173,8 +173,9 @@ class PackageVersioner(val dirs: DirectoryArchitect,
         Files.write(s"${exitCode}", exitCodeFile)
         if (exitCode != 0) {
           throw new BashException(s"Action repo_version for versioner '${info.versionerDef.name}' for package '${packageDef.name}' " +
-                                  s"(${packageDef.declaringFile}:${packageDef.pos.line}) returned ${exitCode}")
-      }
+                                  s"(${packageDef.declaringFile}:${packageDef.pos.line}) returned ${exitCode}. Working directory was ${workDir}." +
+                                  s"Command: ${info.repoVersionDef.commands.toString}")
+        }
         
         val repoVersion = Files.read(versionFile).headOption match {
           case Some(v) => v
