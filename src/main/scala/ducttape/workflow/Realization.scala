@@ -33,9 +33,11 @@ class Realization(val branches: Seq[Branch]) extends Logging {
       s"${branch.branchPoint.name}.${displayName}"
     }
     val result = names.mkString(Realization.delimiter)
-    if (result.length > 255) {
-      throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
-    }
+    
+    // relax this constraint here and just handle this by hashing when writing to the filesystem
+    //if (result.length > 255) {
+    //  throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
+    //}
     result
   }
     
