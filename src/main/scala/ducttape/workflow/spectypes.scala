@@ -25,7 +25,7 @@ class ResolvedSpecType[SpecT <: Spec](val origSpec: Spec,
 
   // Some for inputs, None for params
   def srcRealTaskId: Option[RealTaskId] = srcTask match {
-    case Some(t) => Some(new RealTaskId(t.name, srcReal.toCanonicalString))
+    case Some(t) => Some(new RealTaskId(t.name, srcReal.toCanonicalString()))
     case None => None
   }
 

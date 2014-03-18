@@ -15,7 +15,8 @@ submitter pbs :: walltime cpus vmem
     echo "#PBS -l walltime=$walltime" >> $wrapper
     echo "#PBS -j oe" >> $wrapper
     echo "#PBS -o localhost:$PWD/ducttape_job_out.txt" >> $wrapper
-    echo "#PBS -N $CONFIGURATION/$TASK/$REALIZATION" >> $wrapper
+    # There's a limit on how long task names can be in PBS
+    echo "#PBS -N $(echo $CONFIGURATION/$TASK/$REALIZATION | head -c200)" >> $wrapper
 
     echo "#PBS -m bea" >> $wrapper
     echo "#PBS -V" >> $wrapper

@@ -251,7 +251,7 @@ object Plans extends Logging {
         }
         System.err.println(s"Union of all planned vertices has size ${vertexFilter.size}")
         val verticesToInclude: Set[RealTaskId] = vertexFilter.map { case (namespace, real) =>
-          new RealTaskId(namespace, real.toCanonicalString)
+          new RealTaskId(namespace, real.toCanonicalString())
         }
         VertexFilter(verticesToInclude)
       }

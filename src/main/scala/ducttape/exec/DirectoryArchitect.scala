@@ -44,12 +44,12 @@ class DirectoryArchitect(val flat: Boolean,
 
   // assign a version and realization-specific task directory (convenience method)
   def assignDir(task: VersionedTask, relativeTo: File): File
-    = assignDir(task.taskDef, task.realization, task.version, relativeTo, task.realization.toString)
+    = assignDir(task.taskDef, task.realization, task.version, relativeTo, task.realization.toCanonicalString(true))
   
   // assign a version and realization-specific task directory (convenience method)
   def assignDir(taskDef: TaskDef, realization: Realization, workflowVersion: Int,
                 relativeTo: File = confBaseDir): File
-    = assignDir(taskDef, realization, workflowVersion, relativeTo, realization.toString)
+    = assignDir(taskDef, realization, workflowVersion, relativeTo, realization.toCanonicalString(true))
   
   // assign a version and realization-specific task directory
   private def assignDir(taskDef: TaskDef,

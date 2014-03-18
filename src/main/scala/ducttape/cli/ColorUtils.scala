@@ -10,7 +10,7 @@ object ColorUtils {
     if (dirs.flat) {
       x
     } else {
-      s"${x}/${Config.realNameColor}${real.toCanonicalString}${Config.resetColor} (${Config.realFullNameColor}${real.toFullString(hashLongNames=false)}${Config.resetColor})"
+      s"${x}/${Config.realNameColor}${real.toCanonicalString()}${Config.resetColor} (${Config.realFullNameColor}${real.toFullString(hashLongNames=false)}${Config.resetColor})"
     }
   }
   

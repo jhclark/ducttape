@@ -16,7 +16,7 @@ class RealTaskId(val name: Namespace, val realization: String) {
 
   /** constructor used by InPlanConstraint -- needs to be fast */
   def this(name: Namespace, branches: Seq[Branch])
-    = this(name, new Realization(branches).toCanonicalString)
+    = this(name, new Realization(branches).toCanonicalString())
 
   def toVersionedTaskId(version: Int) = new VersionedTaskId(name, realization, version)
 

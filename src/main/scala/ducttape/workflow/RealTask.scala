@@ -32,7 +32,7 @@ class RealTask(val taskT: TaskTemplate,
    def params = taskT.params
    def commands = taskT.commands // TODO: This will no longer be valid once we add in-lines
   
-   def toRealTaskId() = new RealTaskId(namespace, realization.toCanonicalString)
+   def toRealTaskId() = new RealTaskId(namespace, realization.toCanonicalString())
 
    // augment with version information
    def toVersionedTask(workflowVersion: WorkflowVersionInfo): VersionedTask = {

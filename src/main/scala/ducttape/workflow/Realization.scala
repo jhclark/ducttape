@@ -11,12 +11,14 @@ import grizzled.slf4j.Logging
 class Realization(val branches: Seq[Branch]) extends Logging {
  // TODO: Keep string branch point names?
 
+  private val MaxNameLength = 255 - 5; // leave room for ".LOCK"
+
   /** sort by branch *point* names to keep ordering consistent, then join branch names using dashes
    *   and don't include our default branch "baseline"
    * by default we "shorten" realization names by removing branch points using baseline branches
    *   such that new branch points can easily be added since the entire directory structure doesn't
    *   suddenly change */
-  private def realizationName(): String = {
+  private def realizationName(hashLongNames: Boolean = true): String = {
     
     // sort by branch point name and remove references to the baseline branch
     // (removing all instances of baseline for any branch allows easier extensibility)
@@ -34,11 +36,12 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     }
     val result = names.mkString(Realization.delimiter)
     
-    // relax this constraint here and just handle this by hashing when writing to the filesystem
-    //if (result.length > 255) {
-    //  throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
-    //}
-    result
+    if (result.length > MaxNameLength && hashLongNames) {
+      warn(s"Very long filename is being hashed: ${result}")
+      HashUtils.md5(result)
+    } else {
+      result
+    }
   }
     
   private def fullRealizationName(hashLongNames: Boolean = true): String = {
@@ -50,23 +53,27 @@ class Realization(val branches: Seq[Branch]) extends Logging {
     }
     val names = filteredBranches.map { branch => s"${branch.branchPoint.name}.${branch.name}" }
     val result = names.mkString(Realization.delimiter)
-    if (result.length > 255 && hashLongNames) {
+    if (result.length > MaxNameLength && hashLongNames) {
       warn(s"Very long filename is being hashed: ${result}")
       HashUtils.md5(result)
-      //throw new RuntimeException("Got realization name longer than 255 characters. This might cause issues on disk: %s".format(result))
     } else {
       result
     }
   }
 
-  lazy val str = realizationName()
+  lazy val str = realizationName(false)
 
   override def hashCode() = str.hashCode // TODO: More efficient?
   override def equals(obj: Any) = obj match { case that: Realization => this.str == that.str } // TODO: More efficient?
   // a canonical representation that should hold constant even when new branch points are added
   // (assuming users follow our best practices for creating baseline branches)
-  def toCanonicalString() = str
-  override def toString() = toCanonicalString
+  def toCanonicalString(hashLongNames: Boolean = false) = {
+    if (hashLongNames)
+      realizationName(true)
+    else
+      str
+  }
+  override def toString() = toCanonicalString(false)
   
   // unshortened realization name
   def toFullString(hashLongNames: Boolean = true): String = fullRealizationName(hashLongNames)
