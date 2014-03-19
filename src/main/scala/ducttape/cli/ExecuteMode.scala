@@ -140,9 +140,9 @@ object ExecuteMode {
             
             System.err.println("Executing tasks...")
             val failObserver = new ExecutionObserver {
-              val failed = new mutable.ArrayBuffer[VersionedTask]
+              val failed = new mutable.ArrayBuffer[FullTaskEnvironment]
               override def fail(exec: Executor, taskEnv: FullTaskEnvironment) {
-                failed += taskEnv.task
+                failed += taskEnv
               }
             }
             try {
@@ -152,8 +152,8 @@ object ExecuteMode {
             } catch {
               case t: Throwable => {
                 System.err.println(s"${Config.errorColor}The following tasks failed:${Config.resetColor}")
-                for (task <- failObserver.failed) {
-                  System.err.println(s"${Config.errorColor}FAILED:${Config.resetColor} ${task}")
+                for (task: FullTaskEnvironment <- failObserver.failed) {
+                  System.err.println(s"${Config.errorColor}FAILED:${Config.resetColor} ${task} in ${task.where.getAbsolutePath}")
                 }
                 throw t
               }
