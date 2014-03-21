@@ -35,8 +35,7 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
       map.addValue(inputVal.origSpec.name, inFile.getAbsolutePath)
     }   
     
-    map.toStringTupleSeq
-    
+    map.toStringTupleSeq    
   } 
   
   // set param values (no need to know source active branches since we already resolved the literal)
@@ -80,6 +79,8 @@ class TaskEnvironment(val dirs: DirectoryArchitect,
   // the full symlink is to be for user-friendly navigation of the directory tree
   // NOT for internal use by ducttape
   lazy val fullSymlink = dirs.assignLongSymlink(task)
+
+  override def toString() = task.toString
 }
 
 /**
@@ -106,4 +107,6 @@ class FullTaskEnvironment(dirs: DirectoryArchitect,
 
   lazy val env: Seq[(String,String)] = inputs ++ outputs ++ params ++ packageEnvs
   lazy val taskVariables = env.map { case (key, value) => s"${key}=${value}" }.mkString("\n")
+
+  override def toString() = task.toString
 }
