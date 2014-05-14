@@ -3,6 +3,9 @@
 versioner git :: repo ref {
   action checkout > dir {
     git clone --progress $repo $dir
+    # In case the repo has submodules, grab those, too
+    cd $dir
+    git submodule update --init --recursive
   }
   # This is perhaps more accurately called the "expected" version
   action repo_version > version {
