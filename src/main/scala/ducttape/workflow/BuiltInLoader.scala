@@ -14,10 +14,14 @@ object BuiltInLoader extends Logging {
   def load(builtInsDir: File): Seq[WorkflowDefinition] = {
     for (file <- findBuiltIns(builtInsDir)) yield {
       debug("Loading builtin: %s".format(file.getAbsolutePath))
-      val builtin = GrammarParser.readWorkflow(file)
-      debug("Loaded submitters: %s".format(builtin.submitters.map(_.name).mkString(" ")))
-      debug("Loaded versioners: %s".format(builtin.versioners.map(_.name).mkString(" ")))
-      builtin
+      try {
+        val builtin = GrammarParser.readWorkflow(file)
+        debug("Loaded submitters: %s".format(builtin.submitters.map(_.name).mkString(" ")))
+        debug("Loaded versioners: %s".format(builtin.versioners.map(_.name).mkString(" ")))
+        builtin
+      } catch {
+        case e: Exception => throw new Exception(s"Error while loading builtin: ${file.getAbsolutePath}", e)
+      }
     }
   }
   
