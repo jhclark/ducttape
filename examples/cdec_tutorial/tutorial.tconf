@@ -21,27 +21,17 @@ global {
   sym_heuristic=grow-diag-final-and
   lm_order=3
 
-  # The creation of the weights.init file is described in tutorial step #9
-  # More on feature weights at http://www.cdec-decoder.org/concepts/weights.html
-  weights_init=weights.init
-
   extract_gra_cores=2
   tune_cores=2
   decode_cores=2
 }
 
 task download : cdec
-    > train
+    > train=cdec-spanish-demo/training/news-commentary-v7.es-en
     > dev=cdec-spanish-demo/dev/2010.es-en
     > devtest=cdec-spanish-demo/devtest/2011.es-en {
   wget "http://data.cdec-decoder.org/cdec-spanish-demo.tar.gz"
   tar -xvzf cdec-spanish-demo.tar.gz
-
-  # Paste training data together in format that cdec expects: src ||| tgt
-  $cdec/corpus/paste-files.pl \
-    cdec-spanish-demo/training/news-commentary-v7.es-en/news-commentary-v7.es-en.es \
-    cdec-spanish-demo/training/news-commentary-v7.es-en/news-commentary-v7.es-en.en \
-    > $train
 }
 
 # Along with the "build_lm" task, this is part of tutorial step #7

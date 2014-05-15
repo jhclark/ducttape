@@ -3,7 +3,11 @@
 # This ducttape workflow implements the cdec tutorial
 # at http://www.cdec-decoder.org/guide/compiling.html
 #
-# Usage: ducttape tutorial.tape -C tutorial.tconf
+# Usage: 
+#   - running the workflow:
+#     ducttape tutorial.tape
+#   - viewing the final result:
+#     ducttape tutorial.tape summary
 #
 # Unlike most MT toolkit pipelines, this tutorial workflow is *meant* to be
 # modified in complex ways so that you can easily insert your new ideas
@@ -13,7 +17,7 @@
 # You will likely have to edit the 'package' blocks such that the paths match your local environment.
 #
 # Some dependencies you should be aware of:
-# * curl
+# * wget
 # * python 2.7+
 # * cython 0.14.1+
 # * boost
@@ -23,6 +27,8 @@
 # In practice, you'll probably want to clone these git repos locally and point these repo URLs
 # at your local machine: 1) so that you can pull just when you want and 2) so that you can edit the repos locally
 # For example, "git://github.com/redpony/cdec.git" might become something like "/home/jhclark/cdec"
+
+import tutorial.tconf
 
 # Tutorial step #0: Build and compile software
 # Estimated time: ~15 minutes
@@ -37,6 +43,11 @@ package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HE
   cd python
   python setup.py build
 }
+
+# Alternate, if you have already compiled cdec:
+#package cdec :: .versioner=disk .path="/path/to/cdec"
+#{ 
+#}
 
 package multeval :: .versioner=git .repo="git://github.com/jhclark/multeval.git" .ref=HEAD {
   ./get_deps.sh
@@ -59,7 +70,7 @@ task preproc_corpus : cdec
 task filter_training : cdec
     < in=$out@preproc_corpus[DataSection:train]
     > out {
-  $cdec/corpus/filter-length.pl $in > $out
+  $cdec/corpus/filter-length.pl -80 $in > $out
 }
 
 # Tutorial Step #3
@@ -73,7 +84,7 @@ task align_bidir : cdec
     > alignments
     :: direction_flag=(AlignDirection: forward="" reverse="-r") {
 
-  $cdec/training/fast_align -i $train -d -v $direction_flag > $alignments
+  $cdec/word-aligner/fast_align -i $train -d -v -o $direction_flag > $alignments
 }
 
 # Tutorial Step #4
@@ -130,7 +141,7 @@ task build_lm : cdec
     < corpus=$lm_data
     > arpa
     :: lm_order=$lm_order {
-  cat $corpus | $cdec/klm/lm/builder/builder --order $lm_order > $arpa
+  cat $corpus | $cdec/klm/lm/builder/lmplz --order $lm_order > $arpa
 }
 
 # Tutorial step #8
@@ -142,7 +153,7 @@ task compile_lm : cdec
 }
 
 # Tutorial step #9
-# Create cdec ini file (the init weights file is specified in tutorial.tconf)
+# Create cdec ini file
 task make_cdec_ini
     < klm=$klm@compile_lm
     > ini {
@@ -154,39 +165,34 @@ task make_cdec_ini
 }
 
 # Tutorial step #10
-# Tune system using development data with MERT
+# Tune system using development data with MIRA
 # Esimated time: 20 - 40 minutes
 #
 # More resources:
 # * Linear models: http://www.cdec-decoder.org/concepts/linear-models.html
 # * Discriminative training: http://www.cdec-decoder.org/concepts/training.html
 # * Minimum error rate training: http://www.cdec-decoder.org/documentation/mert.html 
-task tune_mert : cdec
-    < weights_init=$weights_init
+task tune_mira : cdec
     < dev_sgm=$sgm@extract_gra[ExtractSection:dev]
-    < cdec_ini=$ini@make_cdec_ini
-    > weights=dpmert/weights.final
-    :: cores=$tune_cores {
-  $cdec/dpmert/dpmert.pl -w $weights_init -d $dev_sgm -c $cdec_ini -j $cores
-}
-
-# Tutorial step #11
-# Evaluate test set using trained weights
-# Estimated time: 5 minutes
-task decode : cdec
-    < cdec_ini=$ini@make_cdec_ini
-    < weights=$weights@tune_mert
     < devtest_sgm=$sgm@extract_gra[ExtractSection:devtest]
+    < cdec_ini=$ini@make_cdec_ini
+    > out
     > scores
-    :: cores=$decode_cores {
-  $cdec/dpmert/decode-and-evaluate.pl -c $cdec_ini -w $weights -i $devtest_sgm -j $cores &> $scores
+    :: cores=$tune_cores {
+  export PYTHONPATH=`echo $cdec/python/build/lib.*`
+  $cdec/training/mira/mira.py -d $dev_sgm -t $devtest_sgm -c $cdec_ini -j $cores -o $out &> $scores
 }
 
 # Grab the primary field that we care about from the scores
 summary scores {
   # 'bleu' will become a field name in our summary
-  of decode > bleu {
-    awk -F= '/BLEU=/{print $2}' < $scores > $bleu
+  of tune_mira > dev_bleu devtest_bleu dev_ter devtest_ter {
+    awk -F= '/BLEU=/{print $2}' < $scores > bleu
+    head -n 1 bleu > $dev_bleu
+    head -n 2 bleu | tail -n 1 > $devtest_bleu
+    awk -F= '/TER=/{print $2}' < $scores > ter
+    head -n 1 ter > $dev_ter
+    head -n 2 ter | tail -n 1 > $devtest_ter
   }
 }
 
@@ -194,6 +200,7 @@ summary scores {
 global {
   ducttape_experimental_packages=true
   ducttape_experimental_submitters=true
+  ducttape_experimental_imports=true
 }
 
 #task score : multeval
