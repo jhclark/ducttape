@@ -13,7 +13,7 @@ task planned_2 < in=$out@planned_1 :: N=(N: one=1 two=2) M=(M: 1..10) {
 }
 
 # Defining work plans to get more than just one-off experiments (this is intended primarily for config files)
-# ducttape can be called with "ducttape -P Basics" to run cross products of branches by adding lines
+# ducttape can be called with "ducttape workflow.tape -p Basics" to run cross products of branches by adding lines
 # like the following to config files:
 plan Basics {
   # 4 experiments/realizations: the branches one and two with with all branches of whichSize
