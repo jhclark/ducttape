@@ -3,8 +3,12 @@
 versioner git :: repo ref {
   action checkout > dir {
     git clone --progress $repo $dir
-    # In case the repo has submodules, grab those, too
     cd $dir
+    # Go to required commit.
+    if [[ "$ref" != "HEAD" ]]; then
+	git checkout -b working "${ref}"
+    fi
+    # In case the repo has submodules, grab those, too
     git submodule update --init --recursive
   }
   # This is perhaps more accurately called the "expected" version
