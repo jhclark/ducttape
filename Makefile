@@ -26,7 +26,7 @@ minjar: ${DUCTTAPE}/ducttape.min.jar
 
 ${DUCTTAPE}/ducttape.jar:
 	echo >&2 "Building JAR..."
-	(cd ${DUCTTAPE}/bin; zip -qr ${DUCTTAPE}/ducttape.jar *)
+	(cd ${DUCTTAPE}/bin; for j in $(shell find ${DUCTTAPE}/lib -name "*.jar"); do jar xfv $${j}; done; zip -qr ${DUCTTAPE}/ducttape.jar *)
 
 # Make a minimal JAR containing all dependencies,
 # but with unnecessary class files removed
