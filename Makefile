@@ -2,9 +2,8 @@
 DUCTTAPE:=$(shell dirname $(realpath $(lastword ${MAKEFILE_LIST})))
 SBT:=${DUCTTAPE}/build-support/sbt
 
-DUCTTAPE_LIBDIR:=${DUCTTAPE}/lib
+DUCTTAPE_LIBS:=$(shell find ${DUCTTAPE}/lib -name "*.jar" -printf "%p:")
 
-DUCTTAPE_LIBS:=${DUCTTAPE_LIBDIR}/sqlitejdbc-v056.jar:${DUCTTAPE_LIBDIR}/scala-optparse-1.1.jar:${DUCTTAPE_LIBDIR}/commons-lang3-3.1.jar:${DUCTTAPE_LIBDIR}/commons-io-2.2.jar:${DUCTTAPE_LIBDIR}/grizzled-slf4j_2.9.1-1-0.6.8.jar:${DUCTTAPE_LIBDIR}/pegdown-1.1.0.jar:${DUCTTAPE_LIBDIR}/parboiled-core-1.0.2.jar:${DUCTTAPE_LIBDIR}/parboiled-java-1.0.2.jar:${DUCTTAPE_LIBDIR}/webui/servlet-api-3.0.jar:${DUCTTAPE_LIBDIR}/webui/jetty-all-8.0.4.v20111024.jar:${DUCTTAPE_LIBDIR}/test/junit-4.10.jar:${DUCTTAPE_LIBDIR}/test/scalatest-1.7.1.jar
 
 
 scalac:
