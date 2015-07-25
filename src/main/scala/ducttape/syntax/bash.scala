@@ -7,7 +7,7 @@ import scala.util.parsing.input.Position
 import scala.util.parsing.input.Positional
 import java.io.File
 import ducttape.syntax.AbstractSyntaxTree.ASTType
-
+import ducttape.syntax.AbstractSyntaxTree.BashCode
 // TODO: Move this into unit tests
 /*
 object BashParser extends App with RegexParsers {
@@ -72,11 +72,8 @@ function ohai {
 }
 */
 
-// TODO: Pass a StringBuilder down through the AST to make stringification faster
-class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
-  override def children = Nil // TODO: Name exactly what line vars come from
-  override def toString = code
-}
+
+
 
 
 /**

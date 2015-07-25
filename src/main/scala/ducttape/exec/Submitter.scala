@@ -4,9 +4,8 @@ import java.io.File
 import ducttape.util.Environment
 import ducttape.workflow.Realization
 import ducttape.util.Shell
-import ducttape.syntax.BashCode
 import ducttape.syntax.FileFormatException
-import ducttape.syntax.AbstractSyntaxTree.ShellCommands
+import ducttape.syntax.AbstractSyntaxTree.BashCode
 import ducttape.syntax.AbstractSyntaxTree.ActionDef
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec

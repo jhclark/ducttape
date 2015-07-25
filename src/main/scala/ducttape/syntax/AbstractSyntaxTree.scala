@@ -186,14 +186,14 @@ object AbstractSyntaxTree {
     override def toString() = {
       "(%s: %s)".format(name, branchNames.mkString(" "))
     }
-  }    
-  
-  // NOTE: This has been replaced by the bash parser and BashCode
-  class ShellCommands(val value: String) extends ASTType {
-    override def children = Nil
-    override def toString() = value
   }
-  
+
+  // TODO: Pass a StringBuilder down through the AST to make stringification faster
+  class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
+    override def children = Nil // TODO: Name exactly what line vars come from
+    override def toString = code
+  }
+
 //  class PackageNames(val comments:Comments, val packageNames: List[String]) extends Specs {
 //    override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
 //  }

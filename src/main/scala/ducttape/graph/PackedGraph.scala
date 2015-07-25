@@ -1,6 +1,6 @@
 package ducttape.graph
 
-import ducttape.syntax.BashCode
+import ducttape.syntax.AbstractSyntaxTree.BashCode
 import ducttape.syntax.AbstractSyntaxTree.Block
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.Specs
