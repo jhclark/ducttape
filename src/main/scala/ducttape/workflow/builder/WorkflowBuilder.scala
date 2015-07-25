@@ -108,7 +108,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
       }
     }
   }
-  
+
   /** getHyperedges() is called by traverse() when traversing a nested branch point tree
    *  to add graph structure leading to a particular task's newly created sink vertex.
    */
@@ -165,7 +165,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
 
       (branchChild.branch, nestedBranchEdges ++ terminalEdges)
     } // end map function
-    
+
     // result type: (PackedVertex[Option[TaskTemplate]], SpecGroup)
     possibleHyperedges.filter {
       // don't include hyperedges with zero source vertices
@@ -229,7 +229,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
   	The AST creation needs to recognize globs and create an AST node for the glob
  	 The TaskTemplateBuilder will pattern match this new node at some point
  	 At that point it needs to create a new GlobSpec type
- 	 
+
    */
   def build(): HyperWorkflow = {
     val confSpecs: Map[String, Spec] = configSpecs.map { a: ConfigAssignment => (a.spec.name, a.spec) }.toMap
@@ -242,7 +242,7 @@ class WorkflowBuilder(wd: WorkflowDefinition, configSpecs: Seq[ConfigAssignment]
           nameOpt match {
             case Some(branchPointName) => {
               // the get() method of BranchPointFactory and BranchFactory
-              // cause these factories to globally remember the set of 
+              // cause these factories to globally remember the set of
               // branches and branch points
               val branchPoint = branchPointFactory.get(branchPointName)
               for ( (branchSpec, idx) <- branchSpecs.zipWithIndex) {
