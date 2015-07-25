@@ -44,7 +44,16 @@ private[builder] class TaskTemplateBuilder(
     }
               
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
-    val parents: Map[TaskTemplate,BranchPointTreeGrafts] = tasks.map { taskDef: TaskDef =>
+    
+    val parents: Map[TaskTemplate,BranchPointTreeGrafts] = 
+      // Take the sequence of tasks,
+      tasks.
+      // and from that sequence create a new sequence.
+      // Each element of the new sequence will be a tuple,
+      // where the first element is a TaskTemplate object
+      // and the second element is a BranchPointTreeGrafts object     
+      map { taskDef: TaskDef =>
+        
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
       val treeData = new BranchPointTreeGrafts(tree, Nil)
       val baselineTree = new BranchTree(Task.NO_BRANCH)
@@ -92,7 +101,8 @@ private[builder] class TaskTemplateBuilder(
 
       val taskT = new TaskTemplate(taskDef, inputVals, paramVals)
       (taskT, treeData) // key, value for parents map
-    }.toMap
+      
+    }.toMap // then convert this sequence of tuples into a map, where each TaskTemplate is the key
     
     val taskTemplates: Seq[TaskTemplate] = parents.keys.toSeq
     new FoundTasks(taskTemplates, parents, branchPoints)
