@@ -12,7 +12,7 @@ object AbstractSyntaxTree {
   }
 
   /** Parent class of all types representing elements in an abstract syntax tree. */
-  trait ASTType extends Positional {
+  sealed trait ASTType extends Positional {
     private var _file = ASTType.UnknownFile
     def declaringFile_=(f: File) { _file = f }
     def declaringFile: File = _file
@@ -24,7 +24,7 @@ object AbstractSyntaxTree {
     def children: Seq[ASTType]
   }
 
-  class Comments(val value: Option[String]) extends ASTType {
+  case class Comments(val value: Option[String]) extends ASTType {
     override def children = Nil
     override def toString() = value match {
       case Some(s:String) => s
@@ -100,7 +100,7 @@ object AbstractSyntaxTree {
   }
 
   /** Pair containing a branch point name and a branch name. */
-  class BranchGraftElement(val branchPointName: String,
+  case class BranchGraftElement(val branchPointName: String,
                            val branchName: String) extends ASTType {
     override def children = Nil
     override def toString() = "%s:%s".format(branchPointName,branchName)
@@ -131,7 +131,7 @@ object AbstractSyntaxTree {
   /**
    * Abstract specification of a variable name and its right hand side.
    */
-  class AbstractSpec[+A <: RValue](val name: String, val rval: A, val dotVariable: Boolean) extends ASTType {
+  case class AbstractSpec[+A <: RValue](val name: String, val rval: A, val dotVariable: Boolean) extends ASTType {
     override def children = Seq(rval)
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: AbstractSpec[_] => (other.name == this.name) }
@@ -146,7 +146,7 @@ object AbstractSyntaxTree {
   /**
    * A key=value assignment defined in a "config" definition or config file.
    */
-  class ConfigAssignment(val spec: Spec, val comments: Comments) extends ASTType {
+  case class ConfigAssignment(val spec: Spec, val comments: Comments) extends ASTType {
     override def children = Seq(spec, comments)
     override def toString() = spec.toString()
   }
@@ -189,16 +189,16 @@ object AbstractSyntaxTree {
   }
 
   // TODO: Pass a StringBuilder down through the AST to make stringification faster
-  class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
+  case class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTType {
     override def children = Nil // TODO: Name exactly what line vars come from
     override def toString = code
   }
 
-//  class PackageNames(val comments:Comments, val packageNames: List[String]) extends Specs {
+//  case class PackageNames(val comments:Comments, val packageNames: List[String]) extends Specs {
 //    override def toString = comments.toString() + "\n" + List(packageNames).mkString(" ")
 //  }
 
-  class TaskHeader(val specsList: List[Specs]) extends ASTType {
+  case class TaskHeader(val specsList: List[Specs]) extends ASTType {
     override def children = specsList
     override def toString() = specsList.mkString(" ")
   }
@@ -213,7 +213,7 @@ object AbstractSyntaxTree {
    *
    * @param keyword The keyword used to declare this taskdef. Usually (always?) "task".
    */
-  class TaskDef(val comments: Comments,
+  case class TaskDef(val comments: Comments,
                 val keyword: String,
                 val name: Namespace, // TODO: Rename name to namespace to prevent namespace == name confusion
                 val header: TaskHeader,
@@ -262,7 +262,7 @@ object AbstractSyntaxTree {
   type ActionDef = TaskDef
   type SummaryTaskDef = TaskDef
 
-  class CallDefinition(val comments: Comments,
+  case class CallDefinition(val comments: Comments,
                        val name: String,
                        val header: TaskHeader,
                        val functionName: Namespace) extends Block {
@@ -270,7 +270,7 @@ object AbstractSyntaxTree {
     override def toString() = name
   }
 
-  class GroupDefinition(val comments: Comments,
+  case class GroupDefinition(val comments: Comments,
                         val keyword: String,
                         val name: Namespace,
                         val header: TaskHeader,
@@ -304,7 +304,7 @@ object AbstractSyntaxTree {
 
   // TODO: use the Pimp My Library Pattern to add certain methods to certain keywords?
 
-  class ConfigDefinition(val keyword: String,
+  case class ConfigDefinition(val keyword: String,
                          val comments: Comments,
                          val name: Option[String],
                          val lines: Seq[ConfigAssignment]) extends Block {
@@ -317,14 +317,14 @@ object AbstractSyntaxTree {
     }
   }
 
-  class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {
+  case class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {
     override def children = value
     override def toString() = {
       "reach %s via %s".format(goals.mkString(","),value.mkString(" * "))
     }
   }
 
-  class PlanDefinition(val comments: Comments,
+  case class PlanDefinition(val comments: Comments,
                        val name: Option[String],
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def children = Seq(comments) ++ crossProducts
@@ -335,7 +335,7 @@ object AbstractSyntaxTree {
   }
 
   /** Ducttape hyperworkflow file. */
-  class WorkflowDefinition(val elements: Seq[ASTType],
+  case class WorkflowDefinition(val elements: Seq[ASTType],
                            val files: Seq[File], // what files is this workflow definition composed of?
                            private val hadImports: Boolean = false,
                            private val isImported: Boolean = false) extends ASTType {
