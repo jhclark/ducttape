@@ -1,8 +1,9 @@
 package ducttape.graph
 
 import scala.collection.mutable.HashMap
-import ducttape.syntax.BashCode
+
 import ducttape.syntax.AbstractSyntaxTree.RValue
+import ducttape.syntax.AbstractSyntaxTree.TaskDef
 
 /**
  *
@@ -10,7 +11,9 @@ import ducttape.syntax.AbstractSyntaxTree.RValue
  * @author Lane Schwartz
  * @author Jonathan Clark
  */
-class Vertex(val id:String, val vertexType:VertexType, val contents:Any, val comment: Option[String] = None) {
+abstract sealed class Vertex(val id:String, val comment: Option[String] = None) {
+
+  val contents:Any
 
   if (id==null) throw new NullPointerException("Value id was initialized as null. This is forbidden.")
 
@@ -23,22 +26,15 @@ class Vertex(val id:String, val vertexType:VertexType, val contents:Any, val com
   override def equals(that: Any) = that match { case other: Vertex => (other.id.equals(this.id)) }
 
   override def toString() = comment match {
-    case Some(str) => "%s\t%s:%d".format(vertexType, str, id)
-    case None => "%s:%d".format(vertexType, id)
+    case Some(str) => "%s:%d".format(str, id)
+    case None => "ID=%d".format(id)
   }
 
 }
 
 
 
-sealed trait VertexType
-
-object VertexType {
-  case object Task extends VertexType
-  case object TaskInput extends VertexType
-  case object TaskParam extends VertexType
-  case object TaskOutput extends VertexType
-}
-
-
-class TaskVertex
+class TaskVertex(id:String, val contents:TaskDef, comment: Option[String] = None) extends Vertex(id, comment)
+class TaskInputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)
+class TaskOutputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)
+class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)

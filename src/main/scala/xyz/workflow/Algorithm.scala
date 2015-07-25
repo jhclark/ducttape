@@ -3,7 +3,11 @@ package xyz.workflow
 import ducttape.graph.Edge
 import ducttape.graph.Graph
 import ducttape.graph.Vertex
-import ducttape.graph.VertexType
+//import ducttape.graph.VertexType
+import ducttape.graph.TaskVertex
+import ducttape.graph.TaskInputVertex
+import ducttape.graph.TaskOutputVertex
+import ducttape.graph.TaskParamVertex
 
 import ducttape.syntax.BashCode
 import ducttape.syntax.AbstractSyntaxTree.Block
@@ -21,8 +25,6 @@ import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
  */
 object Algorithm {
 
-  private class TaskVertex(val task:TaskDef, val vertex:Vertex)
-
   /**
    * Creates a map from task names to task-vertex pairs.
    *
@@ -32,55 +34,54 @@ object Algorithm {
    *
    * @return A map whose keys are task IDs and whose values are TaskVertex objects
    */
-  private def createTaskMap(wd: WorkflowDefinition, graph: Graph) : Map[String, TaskVertex] = {
-      // Start with the list of task definitions from the workflow,
-      (wd.tasks ++ wd.functionCallTasks).
-      // call the map method, passing in an anonymous function capable of creating a tuple given a task definition.
-      map({ task:TaskDef =>
+  private def createTaskVertices(wd: WorkflowDefinition, graph: Graph) : Unit = {
+    // Start with the list of task definitions from the workflow,
+		(wd.tasks ++ wd.functionCallTasks).
+		// and iterate over each task definition
+		foreach({ task:TaskDef =>
 
-      // Create a vertex in the graph for each task
-      val id : String = task.name.toString()
+		  val id : String = task.name.toString()
       val comment : Option[String] = task.comments.value
-      val vertexType : VertexType = VertexType.Task
-      val contents = task.commands
-      val vertex = graph.addVertex(id, vertexType, contents, comment)
+      val vertex = new TaskVertex(id, task, comment)
 
-      // Construct a tuple consisting of the id and a task-vertex object
-      (id, new TaskVertex(task, vertex))
+      // creating a vertex in the graph for each task
+      graph.addVertex(vertex)
 
-    })
-    // The result of the above map method is a sequence of tuples,
-    // which we now convert to a Map object using the toMap function
-    .toMap
+		})
   }
 
-  /** Creates a vertex in the graph (and associated edge) for each input, output, and parameter of each task. */
-  private def processTask(taskMap : Map[String, TaskVertex], graph: Graph) : Unit = {
-//    graph.foreach({ vertex =>
-//
-//      val id = vertex.id
+  private def taskSpecVertexID(specName:String, taskName:String) = "$%s@%s".format(specName, taskName)
 
-    taskMap.foreach({ case (key,value) =>
+  /** Creates a vertex in the graph (and associated edge) for each input of each task. */
+  private def createTaskInputVertices(graph: Graph) : Unit = {
+    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
+      taskVertex.contents.header.specsList.collect{ case i:TaskInputs  => i.specs }.flatten.foreach({ input =>
+        val vertexID = taskSpecVertexID(input.name, taskVertex.id)
+        val vertex = new TaskInputVertex(vertexID, input.rval, comment=None)
+        graph.constructEdge(vertex, taskVertex, contents=None, comment=None)
+      })
+    })
+  }
 
-      val taskVertex = value.vertex
-      val task = value.task
-      val id = key
+  /** Creates a vertex in the graph (and associated edge) for each parameter of each task. */
+  private def createTaskParamVertices(graph: Graph) : Unit = {
+    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
+      taskVertex.contents.header.specsList.collect{ case i:TaskParams  => i.specs }.flatten.foreach({ param =>
+        val vertexID = taskSpecVertexID(param.name, taskVertex.id)
+        val vertex = new TaskParamVertex(vertexID, param.rval, comment=None)
+        graph.constructEdge(vertex, taskVertex, contents=None, comment=None)
+      })
+    })
+  }
 
-      def constructVertex(spec:Spec, vertexType: VertexType, contents:Any) : Vertex = {
-        val vertexID = "$%s@%s".format(spec.name, id)
-        val vertex = graph.addVertex(vertexID, vertexType, contents, comment=None)
-        return vertex
-      }
-
-      val inputs  = task.header.specsList.collect{ case i:TaskInputs  => i.specs }.flatten
-      val params  = task.header.specsList.collect{ case p:TaskParams  => p.specs }.flatten
-      val outputs = task.header.specsList.collect{ case o:TaskOutputs => o.specs }.flatten
-
-      inputs.foreach({ input => graph.constructEdge(constructVertex(input, VertexType.TaskInput, input.rval), taskVertex, contents=None, comment=None) })
-      params.foreach({ param => graph.constructEdge(constructVertex(param, VertexType.TaskParam, param.rval), taskVertex, contents=None, comment=None) })
-
-      outputs.foreach({ output => graph.constructEdge(taskVertex, constructVertex(output, VertexType.TaskOutput, output.rval), contents=None, comment=None) })
-
+  /** Creates a vertex in the graph (and associated edge) for each output of each task. */
+  private def createTaskOutputVertices(graph: Graph) : Unit = {
+    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
+      taskVertex.contents.header.specsList.collect{ case i:TaskOutputs  => i.specs }.flatten.foreach({ output =>
+        val vertexID = taskSpecVertexID(output.name, taskVertex.id)
+        val vertex = new TaskParamVertex(vertexID, output.rval, comment=None)
+        graph.constructEdge(taskVertex, vertex, contents=None, comment=None)
+      })
     })
   }
 
@@ -89,9 +90,10 @@ object Algorithm {
 
     val graph = new Graph()
 
-    val taskMap : Map[String, TaskVertex] = createTaskMap(wd, graph)
-
-    processTask(taskMap, graph)
+    createTaskVertices(wd, graph)
+    createTaskInputVertices(graph)
+    createTaskParamVertices(graph)
+    createTaskOutputVertices(graph)
 
 
 

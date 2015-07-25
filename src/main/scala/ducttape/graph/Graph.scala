@@ -27,6 +27,10 @@ class Graph extends Traversable[Vertex] {
   }
 
 
+  def addVertex(vertex:Vertex) : Unit = {
+    vertexMap(vertex.id) = vertex
+  }
+/*
   def addVertex(id:String,vertexType:VertexType, contents:Any, comment: Option[String]=None) : Vertex = {
 
     val vertex = new Vertex(id, vertexType, contents, comment)
@@ -35,7 +39,7 @@ class Graph extends Traversable[Vertex] {
 
     return vertex
   }
-
+*/
   def foreach[U](f: Vertex => U) = vertexMap.values.foreach(f)
 
 /*
