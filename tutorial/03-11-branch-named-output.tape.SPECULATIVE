@@ -1,0 +1,3 @@
+task one_off_1 :: n=(WhichSize: smaller=10 bigger=500) > out=(WhichSize: smaller=small.txt bigger=big.txt) {
+  seq $n > $out
+}
