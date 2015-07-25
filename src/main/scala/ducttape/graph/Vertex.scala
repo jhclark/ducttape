@@ -35,6 +35,8 @@ abstract sealed class Vertex(val id:String, val comment: Option[String] = None) 
 
 
 class TaskVertex(id:String, val contents:TaskDef, comment: Option[String] = None) extends Vertex(id, comment)
-class TaskInputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)
-class TaskOutputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)
-class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment)
+
+abstract class TaskSpecVertex(id:String, comment:Option[String]=None) extends Vertex(id,comment)
+class TaskInputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
+class TaskOutputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
+class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)

@@ -3,7 +3,6 @@ package xyz.workflow
 import ducttape.graph.Edge
 import ducttape.graph.Graph
 import ducttape.graph.Vertex
-//import ducttape.graph.VertexType
 import ducttape.graph.TaskVertex
 import ducttape.graph.TaskInputVertex
 import ducttape.graph.TaskOutputVertex
@@ -20,10 +19,20 @@ import ducttape.syntax.AbstractSyntaxTree.TaskPackageNames
 import ducttape.syntax.AbstractSyntaxTree.TaskParams
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 
+
+class PackedGraph(val wd: WorkflowDefinition) extends Graph {
+
+	PackedGraph.createTaskVertices(wd, this)
+  PackedGraph.createTaskInputVertices(this)
+  PackedGraph.createTaskParamVertices(this)
+  PackedGraph.createTaskOutputVertices(this)
+
+}
+
 /**
  * @author Lane Schwartz
  */
-object Algorithm {
+object PackedGraph {
 
   /**
    * Creates a map from task names to task-vertex pairs.
@@ -84,21 +93,5 @@ object Algorithm {
       })
     })
   }
-
-
-  def foo(wd: WorkflowDefinition) {
-
-    val graph = new Graph()
-
-    createTaskVertices(wd, graph)
-    createTaskInputVertices(graph)
-    createTaskParamVertices(graph)
-    createTaskOutputVertices(graph)
-
-
-
-    System.out.println(graph.toString())
-  }
-
 
 }
