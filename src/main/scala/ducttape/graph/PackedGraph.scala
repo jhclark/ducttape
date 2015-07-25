@@ -1,12 +1,4 @@
-package xyz.workflow
-
-import ducttape.graph.Edge
-import ducttape.graph.Graph
-import ducttape.graph.Vertex
-import ducttape.graph.TaskVertex
-import ducttape.graph.TaskInputVertex
-import ducttape.graph.TaskOutputVertex
-import ducttape.graph.TaskParamVertex
+package ducttape.graph
 
 import ducttape.syntax.BashCode
 import ducttape.syntax.AbstractSyntaxTree.Block
