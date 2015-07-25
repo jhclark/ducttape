@@ -27,11 +27,11 @@ object Submitter {
 }
 
 class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
-  
+
   // TODO: Really, this should be resolved during workflow building and
   // we should never pass the workflow definition anywhere else...
   private def getSubmitter(submitterSpec: ResolvedLiteralSpec): SubmitterDef = {
-    
+
     val submitterName = submitterSpec.srcSpec.rval.value
     submitters.find { s => s.name.toString == submitterName } match {
       case Some(s) => s
@@ -39,7 +39,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
                      List(submitterSpec.origSpec, submitterSpec.srcSpec))
     }
   }
-  
+
   private def getDefaultSubmitter(submitterName: String, requiredBy: TaskDef): SubmitterDef = {
     submitters.find { s: SubmitterDef => s.name.toString == submitterName } match {
       case Some(s) => s
@@ -49,7 +49,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
         requiredBy)
     }
   }
-  
+
   private def getRunAction(submitterDef: SubmitterDef): ActionDef = {
     submitterDef.actions.find { action => action.name.toString == "run" } match {
       case Some(action: ActionDef) => action
@@ -57,7 +57,7 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
                      submitterDef)
     }
   }
-  
+
   def getSubmitter(task: RealTask): SubmitterDef = {
       val allDotParams: Seq[ResolvedLiteralSpec] = task.paramVals.filter(_.origSpec.dotVariable)
       allDotParams.find { p: ResolvedLiteralSpec => p.origSpec.name == "submitter" } match {
@@ -87,10 +87,10 @@ class Submitter(submitters: Seq[SubmitterDef]) extends Logging {
           ("TASK_VARIABLES", taskEnv.taskVariables),
           ("COMMANDS", taskEnv.task.commands.toString)) ++
         dotParamsEnv ++ taskEnv.env
-        
+
     // To prevent some strange quoting bugs, treat COMMANDS specially and directly substitute it
     val code = runAction.commands.toString
-    
+
     // TODO: Escape any double quotes?
     val QUOT = "\""
     val taskScript = Seq("# This script will try to run a task *outside* any specified submitter") ++

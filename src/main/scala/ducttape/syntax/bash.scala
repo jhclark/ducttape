@@ -1,4 +1,4 @@
-package ducttape.syntax 
+package ducttape.syntax
 
 import scala.util.parsing.combinator.Parsers
 import scala.util.parsing.combinator.RegexParsers
@@ -11,7 +11,7 @@ import ducttape.syntax.AbstractSyntaxTree.ASTType
 // TODO: Move this into unit tests
 /*
 object BashParser extends App with RegexParsers {
-  	
+
 
   override val skipWhitespace = false
 
@@ -37,7 +37,7 @@ x=$y
 )
 echo \\\"\'hi
 escaping='\'\\'
-escaping="\'\"\$\\"                                                   
+escaping="\'\"\$\\"
 y="another confusing string{"
 string_with_var="$doubleQuoted $$ '$not_a_variable'"
 function ohai {
@@ -81,11 +81,11 @@ class BashCode(val code: String, val vars: Set[String] = Set.empty) extends ASTT
 
 /**
  * Very simple grammar for bash
- * 
+ *
  * @author Jon Clark
  */
 object BashGrammar {
-  
+
   import ducttape.syntax.GrammarParser._ // we need visibility of Parser, etc.
 
   // "... there are dark corners in the Bourne shell, and people use all of them."
@@ -104,8 +104,8 @@ object BashGrammar {
     case re ~ content ~ e => new BashCode(re + content + e)
   }
 
-  /** The content portion of a single line of comment. 
-   *  Notably, this excludes the syntactic comment marker itself. 
+  /** The content portion of a single line of comment.
+   *  Notably, this excludes the syntactic comment marker itself.
    */
   val commentContent: Parser[String] = """[^\r\n]*""".r
 
@@ -126,13 +126,13 @@ object BashGrammar {
     case before ~ None => new BashCode(before)
     case before ~ Some(special ~ after) => new BashCode(before + special + after, special.vars ++ after.vars)
   }
-  
+
   def doubleQuoteSpecialContent: Parser[BashCode] = variableLike | singleQuoteStringLiteral | escapedChar
 
   def escapedChar: Parser[BashCode] = (literal("\\") ~ regex(".".r)) ^^ {
     case escaper ~ escaped => new BashCode(escaper + escaped)
   }
-  
+
   def escapedNewline: Parser[BashCode] = literal("\\\n") ^^ {
     case _ => new BashCode("\\\n")
   }
@@ -164,27 +164,27 @@ object BashGrammar {
   def commandSub: Parser[BashCode] = (literal("$(") ~ bashBlock ~ literal(")")) ^^ {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
-  
+
   // process substitution: <(zcat x.gz)
   def inProcessSub: Parser[BashCode] = (literal("<(") ~ bashBlock ~ literal(")")) ^^ {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
-  
+
   // process substitution: <(zcat x.gz)
   def outProcessSub: Parser[BashCode] = (literal(">(") ~ bashBlock ~ literal(")")) ^^ {
     case open ~ b ~ close => new BashCode(open + b + close, b.vars)
   }
-  
+
   // allow "echo $" or "echo $ cat" or "echo $;" to mean a literal dollar
   def dollarOnly: Parser[BashCode] = regex("""\$[ \t\r\n]+""".r) ^^ {
     case x => new BashCode(x)
   }
-  
+
   // TODO: Warn on process substitutions since they don't error out properly
 
   /**
    * Bash positional and special parameters.
-   * 
+   *
    * @see The GNU Bash Reference Manual, section 3.4.1 "Positional Parameters"
    * @see The GNU Bash Reference Manual, section 3.4.2 "Special Parameters"
    */
@@ -192,11 +192,11 @@ object BashGrammar {
       literal("$*") |
       literal("$@") |
       literal("$#") |
-      literal("$?") | 
-      literal("$-") |      
+      literal("$?") |
+      literal("$-") |
       literal("$$") |
       literal("$!") |
-      literal("$0") |      
+      literal("$0") |
       literal("$_") |
       regex("""\$[1-9][0-9]*""".r)
     ) ^^ {
