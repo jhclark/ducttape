@@ -22,12 +22,12 @@ object GrammarParser extends RegexParsers {
     }
     element.children.foreach(addFileInfo(_, file))
   }
-  
+
   def readWorkflow(file: File, isImported: Boolean = false): WorkflowDefinition = {
     val importDir: File = file.getAbsoluteFile.getParentFile
     val result: ParseResult[Seq[ASTType]] = parseAll(Grammar.elements(importDir), IO.read(file, "UTF-8"))
     val pos = result.next.pos
-    
+
     return result match {
       case Success(elements: Seq[ASTType], _) => {
         elements.foreach(addFileInfo(_, file))
@@ -35,8 +35,8 @@ object GrammarParser extends RegexParsers {
       }
       case Failure(msg, _) => throw new FileFormatException(msg, file, pos)
       case Error(msg, _) => throw new FileFormatException(msg, file, pos)
-    }    
+    }
   }
-  
+
   def readConfig(file: File): WorkflowDefinition = readWorkflow(file)
 }

@@ -24,7 +24,7 @@ private[builder] class TaskTemplateBuilder(
     private[builder] val confSpecs: Map[String,Spec],
     private[builder] val branchPointFactory: BranchPointFactory,
     private[builder] val branchFactory: BranchFactory) extends Logging {
-  
+
   def findTasks(): FoundTasks = {
 
     val tasks: Seq[TaskDef] =
@@ -32,26 +32,26 @@ private[builder] class TaskTemplateBuilder(
 
     val taskMap: Map[Namespace,TaskDef] = {
       tasks.
-      // Make each element in the list a tuple, 
+      // Make each element in the list a tuple,
       // where the first element is the task name
       // and the second element is the TaskDef object (that is, an AST node)
       map { t: TaskDef => (t.name, t) }.
       // then convert this list of tuples into a map
-      // where each TaskDef can be retrieved via its name      
+      // where each TaskDef can be retrieved via its name
       toMap
     }
-              
+
     val branchPoints = new mutable.ArrayBuffer[BranchPoint]
-    
-    val parents: Map[TaskTemplate,BranchPointTreeGrafts] = 
+
+    val parents: Map[TaskTemplate,BranchPointTreeGrafts] =
       // Take the sequence of tasks,
       tasks.
       // and from that sequence create a new sequence.
       // Each element of the new sequence will be a tuple,
       // where the first element is a TaskTemplate object
-      // and the second element is a BranchPointTreeGrafts object     
+      // and the second element is a BranchPointTreeGrafts object
       map { taskDef: TaskDef =>
-        
+
       val tree = new BranchPointTree(Task.NO_BRANCH_POINT)
       val treeData = new BranchPointTreeGrafts(tree, Nil)
       val baselineTree = new BranchTree(Task.NO_BRANCH)
@@ -61,13 +61,13 @@ private[builder] class TaskTemplateBuilder(
       //   need access to this object's member variables.
       //
       // But, those methods already take an obscene number of parameters
-      // 
+      //
       // So, we make this object implicit.
       //
       // This essentially allows us to pass this object as a parameter to various methods
       //   without actually explicitly listing it in the method call
       implicit val taskTemplateBuilder = this
-            
+
       // parameters are different than file dependencies in that they do not
       // add any temporal dependencies between tasks and therefore do not
       // add any edges in the MetaHyperDAG
@@ -87,7 +87,7 @@ private[builder] class TaskTemplateBuilder(
         BranchPointHandler.resolveBranchPoint(taskDef, inSpec, taskMap, isParam=false)(
           baselineTree, Seq(Task.NO_BRANCH), Some(taskDef), inSpec, Nil)(resolveVarFunc=VariableHandler.resolveInput)
       }
-            
+
       val paramVals: Seq[LiteralSpecPair] = tree.specs.filter(_.isParam).map { spec =>
         val literalSrcSpec = spec.srcSpec.asInstanceOf[LiteralSpec] // guaranteed to succeed since isParam
         new LiteralSpecPair(spec.origSpec, spec.srcTask, literalSrcSpec, isParam=true)
@@ -99,11 +99,11 @@ private[builder] class TaskTemplateBuilder(
 
       val taskT = new TaskTemplate(taskDef, inputVals, paramVals)
       (taskT, treeData) // key, value for parents map
-      
+
     }.toMap // then convert this sequence of tuples into a map, where each TaskTemplate is the key
-    
+
     val taskTemplates: Seq[TaskTemplate] = parents.keys.toSeq
     new FoundTasks(taskTemplates, parents, branchPoints)
   }
-  
+
 }
