@@ -25,7 +25,7 @@ import ducttape.syntax.AbstractSyntaxTree.Unbound
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.syntax.AbstractSyntaxTreeException
-import ducttape.syntax.BashCode
+import ducttape.syntax.AbstractSyntaxTree.BashCode
 import ducttape.syntax.FileFormatException
 import ducttape.workflow.Branch
 import ducttape.workflow.BranchFactory
