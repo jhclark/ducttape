@@ -360,10 +360,10 @@ object AbstractSyntaxTree {
     lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
 
     /**
-     * List of those task definitions
+     * Explicitly incorporate task definitions which were
      * created by means of function calls.
      */
-    lazy val functionCallTasks:Seq[TaskDef] = {
+    private[syntax] def collapseFunctionCallTasks() : WorkflowDefinition = {
 
       // Gather the list of function calls
       val calls: Seq[CallDefinition] = blocks.collect { case x: CallDefinition => x }
@@ -382,7 +382,7 @@ object AbstractSyntaxTree {
       }
 
       // Construct a list of new concrete task definitions
-      calls.map { functionCall: CallDefinition =>
+      val funcTasks = calls.map { functionCall: CallDefinition =>
         // Use the function name to look up where that function is defined
         val functionDefinition = funcs(functionCall.functionName)
         // TODO: XXX: Lane: This is probably broken for namespaces
@@ -392,6 +392,8 @@ object AbstractSyntaxTree {
         // and the concrete inputs and parameters from the function call
         new TaskDef(taskName, functionDefinition, functionCall)
       }
+
+      return new WorkflowDefinition(this.elements ++ funcTasks, this.files, this.hadImports, this.isImported)
     }
 
     def anonymousConfig: Option[ConfigDefinition] = configs.find(_.name == None)

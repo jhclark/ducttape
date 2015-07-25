@@ -26,11 +26,9 @@ private[builder] class TaskTemplateBuilder(
     private[builder] val branchFactory: BranchFactory) extends Logging {
   
   def findTasks(): FoundTasks = {
-    
-    val tasks: Seq[TaskDef] = 
-      // Concatenate regular task definitions
-      // with task definitions constructed via function calls
-      (wd.tasks ++ wd.functionCallTasks)
+
+    val tasks: Seq[TaskDef] =
+      wd.tasks
 
     val taskMap: Map[Namespace,TaskDef] = {
       tasks.

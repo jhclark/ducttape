@@ -37,7 +37,7 @@ object PackedGraph {
    */
   private def createTaskVertices(wd: WorkflowDefinition, graph: Graph) : Unit = {
     // Start with the list of task definitions from the workflow,
-		(wd.tasks ++ wd.functionCallTasks).
+		wd.tasks.
 		// and iterate over each task definition
 		foreach({ task:TaskDef =>
 
