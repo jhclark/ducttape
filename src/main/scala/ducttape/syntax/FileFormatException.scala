@@ -26,3 +26,28 @@ class FileFormatException(val msg: String, val refs: Seq[(File, Int, Int, Int)])
 
   def this(msg: String, ref: ASTType) = this(msg, List(ref))
 }
+
+object FileFormatException {
+
+  def formatMessage(msg: String, refs: Seq[(File, Int, Int, Int)]) : String = {
+
+    val s = new StringBuilder()
+
+    s.append(msg)
+
+    refs.foreach({ ref =>
+      s.append('\n')
+      s.append(" at file ")
+      s.append(ref._1)
+      s.append(" from line ")
+      s.append(ref._2)
+      s.append(" (column ")
+      s.append(ref._3)
+      s.append(") to line ")
+      s.append(ref._4)
+    })
+
+    return s.toString()
+  }
+
+}

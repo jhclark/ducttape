@@ -33,7 +33,7 @@ object AbstractSyntaxTree {
   }
 
   /** Type of the right hand side in an assignment. */
-  trait RValue extends ASTType;
+  sealed trait RValue extends ASTType;
 
   /** Unbound is the right hand side type in an underspecified variable declaration.
    *
@@ -151,7 +151,7 @@ object AbstractSyntaxTree {
     override def toString() = spec.toString()
   }
 
-  trait Specs extends ASTType {
+  sealed trait Specs extends ASTType {
     val specs: Seq[Spec]
     val comments: Comments
   }
@@ -204,7 +204,7 @@ object AbstractSyntaxTree {
   }
 
   /** Defines a block of ducttape code, such as a task definition. */
-  trait Block extends ASTType {
+  sealed trait Block extends ASTType {
     val comments: Comments
   }
 

@@ -2,8 +2,7 @@ package ducttape.graph
 
 import scala.collection.mutable.HashMap
 
-import ducttape.syntax.AbstractSyntaxTree.RValue
-import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import ducttape.syntax.AbstractSyntaxTree._
 
 /**
  *
@@ -34,9 +33,21 @@ abstract sealed class Vertex(val id:String, val comment: Option[String] = None) 
 
 
 
-class TaskVertex(id:String, val contents:TaskDef, comment: Option[String] = None) extends Vertex(id, comment)
+case class RootVertex() extends Vertex(id="", comment=None) { val contents=None }
+case class ConfigVertex(override val id:String, val keyword: String,
+                        override val comment: Option[String],
+                         val name: Option[String]) extends Vertex(id, comment) { val contents=None }
 
-abstract class TaskSpecVertex(id:String, comment:Option[String]=None) extends Vertex(id,comment)
+class LiteralVertex(id:String, comment: Option[String] = None) extends Vertex(id, comment) { val contents=id }
+
+sealed trait ParamVertex
+class ConfigParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment) with ParamVertex
+
+class TaskVertex(id:String, val contents:BashCode, comment: Option[String] = None) extends Vertex(id, comment)
+
+abstract sealed class TaskSpecVertex(id:String, comment:Option[String]=None) extends Vertex(id,comment)
 class TaskInputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
 class TaskOutputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
-class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
+class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment) with ParamVertex
+
+
