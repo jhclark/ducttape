@@ -111,6 +111,160 @@ object PackedGraph extends Logging {
 
   private def recursivelyProcessAST(astNode:ASTType, vertex:Vertex) : Seq[Vertex] = {
     astNode match {
+      case abstractSpec            : AbstractSpec[_]         => recursivelyProcess( abstractSpec            , vertex)
+      case bashCode                : BashCode                => recursivelyProcess( bashCode                , vertex)
+      case branchGraft             : BranchGraft             => recursivelyProcess( branchGraft             , vertex)
+      case branchGraftElement      : BranchGraftElement      => recursivelyProcess( branchGraftElement      , vertex)
+      case branchPointDef          : BranchPointDef          => recursivelyProcess( branchPointDef          , vertex)
+      case branchPointRef          : BranchPointRef          => recursivelyProcess( branchPointRef          , vertex)
+      case callDefinition          : CallDefinition          => recursivelyProcess( callDefinition          , vertex)
+      case comments                : Comments                => recursivelyProcess( comments                , vertex)
+      case configAssignment        : ConfigAssignment        => recursivelyProcess( configAssignment        , vertex)
+      case configDefinition        : ConfigDefinition        => recursivelyProcess( configDefinition        , vertex)
+      case configVariable          : ConfigVariable          => recursivelyProcess( configVariable          , vertex)
+      case crossProduct            : CrossProduct            => recursivelyProcess( crossProduct            , vertex)
+      case groupDefinition         : GroupDefinition         => recursivelyProcess( groupDefinition         , vertex)
+      case literal                 : Literal                 => recursivelyProcess( literal                 , vertex)
+      case planDefinition          : PlanDefinition          => recursivelyProcess( planDefinition          , vertex)
+      case sequence                : Sequence                => recursivelyProcess( sequence                , vertex)
+      case sequentialBranchPoint   : SequentialBranchPoint   => recursivelyProcess( sequentialBranchPoint   , vertex)
+      case shorthandBranchGraft    : ShorthandBranchGraft    => recursivelyProcess( shorthandBranchGraft    , vertex)
+      case shorthandConfigVariable : ShorthandConfigVariable => recursivelyProcess( shorthandConfigVariable , vertex)
+      case shorthandTaskVariable   : ShorthandTaskVariable   => recursivelyProcess( shorthandTaskVariable   , vertex)
+      case taskDef                 : TaskDef                 => recursivelyProcess( taskDef                 , vertex)
+      case taskHeader              : TaskHeader              => recursivelyProcess( taskHeader              , vertex)
+      case taskInputs              : TaskInputs              => recursivelyProcess( taskInputs              , vertex)
+      case taskOutputs             : TaskOutputs             => recursivelyProcess( taskOutputs             , vertex)
+      case taskPackageNames        : TaskPackageNames        => recursivelyProcess( taskPackageNames        , vertex)
+      case taskParams              : TaskParams              => recursivelyProcess( taskParams              , vertex)
+      case taskVariable            : TaskVariable            => recursivelyProcess( taskVariable            , vertex)
+      case unbound                 : Unbound                 => recursivelyProcess( unbound                 , vertex)
+      case workflowDefinition      : WorkflowDefinition      => recursivelyProcess( workflowDefinition      , vertex)
+    }
+  }
+
+
+  private def recursivelyProcess( abstractSpec            : AbstractSpec[_]          , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( bashCode                : BashCode                 , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( branchGraft             : BranchGraft              , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( branchGraftElement      : BranchGraftElement       , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( branchPointDef          : BranchPointDef           , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( branchPointRef          : BranchPointRef           , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( callDefinition          : CallDefinition           , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( comments                : Comments                 , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( configAssignment        : ConfigAssignment         , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( configDefinition        : ConfigDefinition         , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( configVariable          : ConfigVariable           , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( groupDefinition         : GroupDefinition          , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( literal                 : Literal                  , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( planDefinition          : PlanDefinition           , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( sequence                : Sequence                 , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( sequentialBranchPoint   : SequentialBranchPoint    , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( shorthandBranchGraft    : ShorthandBranchGraft     , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( shorthandConfigVariable : ShorthandConfigVariable  , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( shorthandTaskVariable   : ShorthandTaskVariable    , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskHeader              : TaskHeader               , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskInputs              : TaskInputs               , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskOutputs             : TaskOutputs              , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskPackageNames        : TaskPackageNames         , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskParams              : TaskParams               , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( taskVariable            : TaskVariable             , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( unbound                 : Unbound                  , vertex:Vertex) = {
+    ???
+  }
+
+  private def recursivelyProcess( workflowDefinition      : WorkflowDefinition       , vertex:Vertex) = {
+    ???
+  }
+
+}
+
+/*
+  private def recursivelyProcessAST(astNode:ASTType, vertex:Vertex) : Seq[Vertex] = {
+    astNode match {
       case Unbound() => ???
       case Literal(value:String) => recursivelyProcessLiteral(vertex, value)
       case ConfigVariable(value:String) => ???
@@ -182,7 +336,7 @@ object PackedGraph extends Logging {
 
   private def recursivelyProcessTaskHeader(vertex:Vertex, specsList: List[Specs]) : Seq[Vertex] = {
 
-    def children = specsList.flatMap({ specs:ASTType => recursivelyProcessAST(specs, vertex)})
+    val children = specsList.flatMap({ specs:ASTType => recursivelyProcessAST(specs, vertex)})
 
     return children
   }
@@ -272,3 +426,38 @@ object PackedGraph extends Logging {
 
   }
 }
+
+//object Foo {
+//
+//  abstract sealed class Bar
+//  class BarX extends Bar
+//  class BarY extends Bar
+//  class BarZ extends Bar
+//
+//  private def baz(seq:Seq[Bar]) {
+//    seq.foreach(bar => r(bar))
+//  }
+//
+//  private def r(bar:Bar) {
+//    bar match {
+//      case x:BarX => r(x)
+//      case y:BarY => r(y)
+//      case z:BarZ => r(z)
+//    }
+//  }
+//
+//  private def r(x:BarX) {
+//    println("x")
+//  }
+//
+//  private def r(y:BarY) {
+//    println("y")
+//  }
+//
+//  private def r(z:BarZ) {
+//    println("z")
+//  }
+//
+//}
+
+*/
