@@ -27,7 +27,7 @@ object PackedGraph extends Logging {
 
   private def recursivelyProcessAST(astNode:ASTType, vertex:Vertex) : Seq[Vertex] = {
     astNode match {
-      case abstractSpec            : AbstractSpec[_]         => recursivelyProcess( abstractSpec            , vertex)
+      case abstractSpec            : AbstractSpec[RValue]    => recursivelyProcess( abstractSpec            , vertex)
       case bashCode                : BashCode                => recursivelyProcess( bashCode                , vertex)
       case branchGraft             : BranchGraft             => recursivelyProcess( branchGraft             , vertex)
       case branchGraftElement      : BranchGraftElement      => recursivelyProcess( branchGraftElement      , vertex)
@@ -60,186 +60,169 @@ object PackedGraph extends Logging {
   }
 
 
-  private def recursivelyProcess( abstractSpec            : AbstractSpec[_]          , vertex:Vertex) = {
+  private def recursivelyProcess( abstractSpec            : AbstractSpec[RValue]     , vertex:Vertex) : Seq[Vertex] = {
+    return recursivelyProcessAST(abstractSpec.rval, vertex)
+  }
+
+  private def recursivelyProcess( bashCode                : BashCode                 , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( bashCode                : BashCode                 , vertex:Vertex) = {
+  private def recursivelyProcess( branchGraft             : BranchGraft              , vertex:Vertex) : Seq[Vertex] = {
+    return Seq(new BranchGraftVertex(branchGraft))
+  }
+
+  private def recursivelyProcess( branchGraftElement      : BranchGraftElement       , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( branchGraft             : BranchGraft              , vertex:Vertex) = {
+  private def recursivelyProcess( branchPointDef          : BranchPointDef           , vertex:Vertex) : Seq[Vertex] = {
+    val branchPointDefVertex = new BranchPointDefVertex(branchPointDef)
+    Edge.connect(branchPointDefVertex, vertex)
+
+    val branchVerticesAndChildren = branchPointDef.specs.flatMap({ spec:Spec =>
+
+      val branchVertex = new BranchVertex(spec)
+      Edge.connect(branchVertex, branchPointDefVertex)
+
+      val children = recursivelyProcessAST(spec.rval, branchVertex)
+
+      Seq(branchVertex) ++ children
+    })
+
+    return Seq(branchPointDefVertex) ++ branchVerticesAndChildren
+  }
+
+  private def recursivelyProcess( branchPointRef          : BranchPointRef           , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( branchGraftElement      : BranchGraftElement       , vertex:Vertex) = {
+  private def recursivelyProcess( callDefinition          : CallDefinition           , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( branchPointDef          : BranchPointDef           , vertex:Vertex) = {
+  private def recursivelyProcess( comments                : Comments                 , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( branchPointRef          : BranchPointRef           , vertex:Vertex) = {
+  private def recursivelyProcess( configAssignment        : ConfigAssignment         , vertex:Vertex) : Seq[Vertex] = {
+
+    val lhsVertex = new ConfigParamVertex(configAssignment)
+    val children  = recursivelyProcessAST(configAssignment.spec.rval, lhsVertex)
+
+    return Seq(lhsVertex) ++ children
+  }
+
+  private def recursivelyProcess( configDefinition        : ConfigDefinition         , vertex:Vertex) : Seq[Vertex] = {
+
+    val children = configDefinition.lines.flatMap({ line:ASTType => recursivelyProcessAST(line, vertex)})
+
+    return children
+  }
+
+  private def recursivelyProcess( configVariable          : ConfigVariable           , vertex:Vertex) : Seq[Vertex] = {
+    return Seq(new ConfigVariableVertex(configVariable))
+  }
+
+  private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( callDefinition          : CallDefinition           , vertex:Vertex) = {
+  private def recursivelyProcess( groupDefinition         : GroupDefinition          , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( comments                : Comments                 , vertex:Vertex) = {
+  private def recursivelyProcess( literal                 : Literal                  , vertex:Vertex) : Seq[Vertex] = {
+
+    val literalVertex = new LiteralVertex(literal)
+    Edge.connect(literalVertex, vertex)
+
+    return Seq(literalVertex)
+  }
+
+  private def recursivelyProcess( planDefinition          : PlanDefinition           , vertex:Vertex) : Seq[Vertex] = {
+    return Seq(new PlanDefinitionVertex(planDefinition))
+  }
+
+  private def recursivelyProcess( sequence                : Sequence                 , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( configAssignment        : ConfigAssignment         , vertex:Vertex) = {
+  private def recursivelyProcess( sequentialBranchPoint   : SequentialBranchPoint    , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( configDefinition        : ConfigDefinition         , vertex:Vertex) = {
+  private def recursivelyProcess( shorthandBranchGraft    : ShorthandBranchGraft     , vertex:Vertex) : Seq[Vertex] = {
+    val newVertex = new ShorthandBranchGraftVertex(shorthandBranchGraft)
+    Edge.connect(newVertex, vertex)
+    return Seq(newVertex)
+  }
+
+  private def recursivelyProcess( shorthandConfigVariable : ShorthandConfigVariable  , vertex:Vertex) : Seq[Vertex] = {
+    val newVertex = new ShorthandConfigVariableVertex(shorthandConfigVariable)
+    Edge.connect(newVertex, vertex)
+    return Seq(newVertex)
+  }
+
+  private def recursivelyProcess( shorthandTaskVariable   : ShorthandTaskVariable    , vertex:Vertex) : Seq[Vertex] = {
+    val newVertex = new ShorthandTaskVariableVertex(shorthandTaskVariable)
+    Edge.connect(newVertex, vertex)
+    return Seq(newVertex)
+  }
+
+  private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) : Seq[Vertex] = {
+    val taskVertex = new TaskVertex(taskDef)
+
+    val children = recursivelyProcessAST(taskDef.header, taskVertex)
+
+    return Seq(taskVertex) ++ children
+  }
+
+  private def recursivelyProcess( taskHeader              : TaskHeader               , vertex:Vertex) : Seq[Vertex] = {
+
+    val children = taskHeader.specsList.flatMap({ specs:ASTType => recursivelyProcessAST(specs, vertex)})
+
+    return children
+  }
+
+  private def recursivelyProcess( taskInputs              : TaskInputs               , vertex:Vertex) : Seq[Vertex] = {
+    val inputVerticesAndChildren = taskInputs.specs.flatMap({ spec:Spec =>
+
+      val inputVertex = new TaskInputVertex(spec, taskInputs.comments.value)
+      Edge.connect(inputVertex, vertex)
+
+      val children = recursivelyProcessAST(spec, inputVertex)
+
+      Seq(inputVertex) ++ children
+    })
+
+    return inputVerticesAndChildren
+  }
+
+  private def recursivelyProcess( taskOutputs             : TaskOutputs              , vertex:Vertex) : Seq[Vertex] = {
+    val outputVerticesAndChildren = taskOutputs.specs.flatMap({ spec:Spec =>
+
+      val outputVertex = new TaskOutputVertex(spec, taskOutputs.comments.value)
+      Edge.connect(vertex, outputVertex)
+
+      Seq(outputVertex)
+
+// TODO: Consider whether to allow the following:
+//      val children = recursivelyProcessAST(spec, outputVertex)
+//      Seq(outputVertex) ++ children
+    })
+
+    return outputVerticesAndChildren
+  }
+
+  private def recursivelyProcess( taskPackageNames        : TaskPackageNames         , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
-  private def recursivelyProcess( configVariable          : ConfigVariable           , vertex:Vertex) = {
-    ???
-  }
+  private def recursivelyProcess( taskParams              : TaskParams               , vertex:Vertex) : Seq[Vertex] = {
+    val paramVerticesAndChildren = taskParams.specs.flatMap({ spec:Spec =>
 
-  private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( groupDefinition         : GroupDefinition          , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( literal                 : Literal                  , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( planDefinition          : PlanDefinition           , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( sequence                : Sequence                 , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( sequentialBranchPoint   : SequentialBranchPoint    , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( shorthandBranchGraft    : ShorthandBranchGraft     , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( shorthandConfigVariable : ShorthandConfigVariable  , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( shorthandTaskVariable   : ShorthandTaskVariable    , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskHeader              : TaskHeader               , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskInputs              : TaskInputs               , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskOutputs             : TaskOutputs              , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskPackageNames        : TaskPackageNames         , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskParams              : TaskParams               , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( taskVariable            : TaskVariable             , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( unbound                 : Unbound                  , vertex:Vertex) = {
-    ???
-  }
-
-  private def recursivelyProcess( workflowDefinition      : WorkflowDefinition       , vertex:Vertex) = {
-    ???
-  }
-
-}
-
-/*
-  private def recursivelyProcessAST(astNode:ASTType, vertex:Vertex) : Seq[Vertex] = {
-    astNode match {
-      case Unbound() => ???
-      case Literal(value:String) => recursivelyProcessLiteral(vertex, value)
-      case ConfigVariable(value:String) => ???
-      case TaskVariable(taskName: String, value: String) => recursivelyProcessTaskVariable(vertex, taskName, value)
-      case ShorthandTaskVariable(taskName: String) => ???
-      case ShorthandConfigVariable() => ???
-      case Sequence(start: BigDecimal,
-                      end: BigDecimal,
-                      increment: BigDecimal) => ???
-      case SequentialBranchPoint(branchPointName: Option[String],
-                                 sequence: Sequence) => ???
-      case BranchGraftElement(branchPointName: String, branchName: String) => ???
-      case BranchGraft(variableName: String,
-                         taskName: Option[String],
-                         branchGraftElements: Seq[BranchGraftElement]) => recursivelyProcessBranchGraft(vertex, variableName, taskName, branchGraftElements)
-      case ShorthandBranchGraft(taskName: String,
-                         branchGraftElements: Seq[BranchGraftElement]) => ???
-      case AbstractSpec(name: String, rval:RValue, dotVariable: Boolean) => ???
-      case ConfigAssignment(spec: Spec, comments: Comments) => recursivelyProcessConfigAssignment(vertex, spec, comments)
-      case TaskInputs(specs: Seq[Spec], comments: Comments) => ???
-      case TaskParams(specs: Seq[Spec], comments: Comments) => recursivelyProcessTaskParams(vertex, specs, comments)
-      case TaskOutputs(specs: Seq[Spec], comments: Comments) => ???
-      case TaskPackageNames(specs: Seq[Spec], comments: Comments) => ???
-      case BranchPointDef(name: Option[String], specs: Seq[Spec]) => recursivelyProcessBranchPointDef(vertex, name, specs)
-      case BranchPointRef(name: String, branchNames: Seq[ASTType]) => ???
-      case BashCode(code: String, vars: Set[String]) => ???
-      case TaskHeader(specsList: List[Specs]) => recursivelyProcessTaskHeader(vertex, specsList)
-      case TaskDef(comments: Comments,
-                keyword: String,
-                name: Namespace,
-                header: TaskHeader,
-                commands: BashCode) => recursivelyProcessTaskDef(vertex, keyword, comments, name, header, commands)
-      case CallDefinition(comments: Comments,
-                       name: String,
-                       header: TaskHeader,
-                       functionName: Namespace) => ???
-      case GroupDefinition(comments: Comments,
-                        keyword: String,
-                        name: Namespace,
-                        header: TaskHeader,
-                        blocks: Seq[Block]) => ???
-      case ConfigDefinition(keyword: String,
-                         comments: Comments,
-                         name: Option[String],
-                         lines: Seq[ConfigAssignment]) => recursivelyProcessConfigDefinition(vertex, keyword, comments, name, lines)
-      case CrossProduct(goals: Seq[String], value: Seq[BranchPointRef]) => ???
-      case PlanDefinition(comments: Comments,
-                       name: Option[String],
-                       crossProducts: Seq[CrossProduct]) => ???
-      case Comments(value:Option[String]) => ???
-      case WorkflowDefinition(elements: Seq[ASTType], _, _, _) => recursivelyProcessWorkflowDefinition(vertex, elements)
-    }
-  }
-
-  private def recursivelyProcessTaskParams(vertex:Vertex, specs:Seq[Spec], comments:Comments) : Seq[Vertex] = {
-
-    val paramVerticesAndChildren = specs.flatMap({ spec:Spec =>
-
-      val paramVertex = new TaskParamVertex(id=spec.name, contents=spec.rval, comment=comments.value)
+      val paramVertex = new TaskParamVertex(spec, taskParams.comments.value)
       Edge.connect(paramVertex, vertex)
 
       val children = recursivelyProcessAST(spec, paramVertex)
@@ -250,96 +233,27 @@ object PackedGraph extends Logging {
     return paramVerticesAndChildren
   }
 
-  private def recursivelyProcessTaskHeader(vertex:Vertex, specsList: List[Specs]) : Seq[Vertex] = {
-
-    val children = specsList.flatMap({ specs:ASTType => recursivelyProcessAST(specs, vertex)})
-
-    return children
+  private def recursivelyProcess( taskVariable            : TaskVariable             , vertex:Vertex) : Seq[Vertex] = {
+    val newVertex = new TaskVariableVertex(taskVariable)
+    Edge.connect(newVertex, vertex)
+    return Seq(newVertex)
   }
 
-  private def recursivelyProcessTaskDef(vertex:Vertex, keyword:String, comments:Comments, name:Namespace, header:TaskHeader, commands:BashCode) : Seq[Vertex] = {
-
-    val taskVertex = new TaskVertex(id=name.toString(), contents=commands, comment=comments.value)
-
-    val children = recursivelyProcessAST(header, taskVertex)
-
-    return Seq(taskVertex) ++ children
+  private def recursivelyProcess( unbound                 : Unbound                  , vertex:Vertex) : Seq[Vertex] = {
+    ???
   }
 
-  private def recursivelyProcessLiteral(vertex:Vertex, value:String) : Seq[Vertex] = {
-
-    val literalVertex = new LiteralVertex(value, comment=None)
-    Edge.connect(literalVertex, vertex)
-
-    return Seq(literalVertex)
-  }
-
-  private def recursivelyProcessConfigAssignment(
-      vertex:Vertex,
-      spec: Spec, comments: Comments) : Seq[Vertex] = {
-
-    val configVertex = vertex match {
-      case v:ConfigVertex => v
-      case _              => throw new RuntimeException("Config assignment should have had parent ConfigVertex, but did not")
-    }
-
-    val lhsVertex = new ConfigParamVertex(spec.name, spec.rval, comments.value)
-    Edge.connect(lhsVertex, configVertex)
-
-    val children = recursivelyProcessAST(spec.rval, lhsVertex)
-
-    return Seq(lhsVertex) ++ children
-  }
-
-  private def recursivelyProcessConfigDefinition(
-      vertex:Vertex,
-      keyword: String,
-      comments: Comments,
-      name: Option[String],
-      lines: Seq[ConfigAssignment]) : Seq[Vertex] = {
-
-      val id = name match {
-        case Some(s) => keyword + " " + s
-        case None    => keyword
-      }
-
-      val configVertex = new ConfigVertex(id, keyword, comments.value, name)
-
-      val children = lines.flatMap({ line:ASTType => recursivelyProcessAST(line, configVertex)})
-      //children.foreach({child => Edge.connect(child, configVertex) })
-
-      return Seq(configVertex) ++ children
-  }
-
-  private def recursivelyProcessWorkflowDefinition(vertex:Vertex, elements: Seq[ASTType]) : Seq[Vertex] = {
+  private def recursivelyProcess( workflowDefinition      : WorkflowDefinition       , vertex:Vertex) : Seq[Vertex] = {
 
     vertex match {
       case RootVertex() => /* This space intentionally left blank. */
       case _            => throw new RuntimeException("Workflow definition should have had parent RootVertex, but did not")
     }
 
-    val children = elements.flatMap({ element:ASTType => recursivelyProcessAST(element, vertex)})
+    val children = workflowDefinition.elements.flatMap({ element:ASTType => recursivelyProcessAST(element, vertex)})
 
     return children
-
   }
 
-
-  private def recursivelyProcessBranchPointDef(parent:Vertex, name: Option[String], specs: Seq[Spec]) : Seq[Vertex] = {
-	  return Seq()
-  }
-
-  private def recursivelyProcessTaskVariable(parent:Vertex, taskName: String, value: String) : Seq[Vertex] = {
-	  return Seq()
-  }
-
-  private def recursivelyProcessBranchGraft(parent:Vertex,
-		  variableName: String,
-		  taskName: Option[String],
-		  branchGraftElements: Seq[BranchGraftElement]) : Seq[Vertex] = {
-
-      return Seq()
-
-  }
 }
 

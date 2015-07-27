@@ -34,20 +34,72 @@ abstract sealed class Vertex(val id:String, val comment: Option[String] = None) 
 
 
 case class RootVertex() extends Vertex(id="", comment=None) { val contents=None }
-case class ConfigVertex(override val id:String, val keyword: String,
-                        override val comment: Option[String],
-                         val name: Option[String]) extends Vertex(id, comment) { val contents=None }
 
-class LiteralVertex(id:String, comment: Option[String] = None) extends Vertex(id, comment) { val contents=id }
+
+//class ConfigVertex(val contents:ConfigDefinition)
+//  extends Vertex(
+//    id=contents.name match {
+//      case Some(s) => contents.keyword + " " + s
+//      case None    => contents.keyword
+//    },
+//    contents.comments.value
+//  )
+
+class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comment=None)
 
 sealed trait ParamVertex
-class ConfigParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends Vertex(id, comment) with ParamVertex
+class ConfigParamVertex(val contents : ConfigAssignment) extends Vertex(id=contents.spec.name, comment=contents.comments.value) with ParamVertex
 
-class TaskVertex(id:String, val contents:BashCode, comment: Option[String] = None) extends Vertex(id, comment)
+class TaskVertex(val contents:TaskDef) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
 
 abstract sealed class TaskSpecVertex(id:String, comment:Option[String]=None) extends Vertex(id,comment)
-class TaskInputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
-class TaskOutputVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment)
-class TaskParamVertex(id:String, val contents:RValue, comment: Option[String] = None) extends TaskSpecVertex(id, comment) with ParamVertex
+class TaskInputVertex(val contents:Spec, comment: Option[String]) extends TaskSpecVertex(id=contents.name, comment)
+class TaskOutputVertex(val contents:Spec, comment: Option[String]) extends TaskSpecVertex(id=contents.name, comment)
+class TaskParamVertex(val contents:Spec, comment: Option[String]) extends TaskSpecVertex(id=contents.name, comment) with ParamVertex
 
+class BranchPointDefVertex(val contents:BranchPointDef) extends Vertex(id=BranchPointDef.getName(contents))
 
+class BranchVertex(val contents:Spec) extends Vertex(id=contents.name)
+
+sealed abstract class VariableReferenceVertex(id:String) extends Vertex(id)
+//{
+//  val variableName: String
+//  val taskName: Option[String]
+//  val branchGraftElements: Seq[BranchGraftElement]
+//}
+
+class TaskVariableVertex(val contents:TaskVariable) extends VariableReferenceVertex(id=contents.toString())
+//{
+//  val variableName = contents.value
+//  val taskName = Some(contents.taskName)
+//  val branchGraftElements = Seq[BranchGraftElement]()
+//}
+
+class ShorthandTaskVariableVertex(val contents:ShorthandTaskVariable) extends VariableReferenceVertex(id=contents.toString())
+//extends VariableReferenceVertex(id="$%s@%s".format(variableName,contents.taskName)) {
+//  val taskName = Some(contents.taskName)
+//  val branchGraftElements = Seq[BranchGraftElement]()
+//}
+
+class ConfigVariableVertex(val contents:ConfigVariable) extends VariableReferenceVertex(id=contents.toString())
+
+class ShorthandConfigVariableVertex(val contents:ShorthandConfigVariable) extends VariableReferenceVertex(id=contents.toString())
+//extends VariableReferenceVertex(id="$%s".format(variableName)) {
+//  val taskName = None
+//  val branchGraftElements = Seq[BranchGraftElement]()
+//}
+
+class BranchGraftVertex(val contents:BranchGraft) extends VariableReferenceVertex(id=contents.toString())
+//{
+//  val variableName = contents.variableName
+//  val taskName = contents.taskName
+//  val branchGraftElements = contents.branchGraftElements
+//}
+
+class ShorthandBranchGraftVertex(val contents:ShorthandBranchGraft) extends VariableReferenceVertex(id=contents.toString())
+//extends VariableReferenceVertex(id="$%s@%s%s".format(variableName,contents.taskName,contents.branchGraftElements.toString())) {
+//  val taskName = Some(contents.taskName)
+//  val branchGraftElements = contents.branchGraftElements
+//}
+
+class PlanDefinitionVertex(val contents:PlanDefinition) extends Vertex(id=contents.name.getOrElse("*anonymousPlan*"))

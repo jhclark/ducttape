@@ -180,6 +180,27 @@ object AbstractSyntaxTree {
     }
   }
 
+  object BranchPointDef {
+
+    private val map = new java.util.IdentityHashMap[BranchPointDef,String]
+
+    def getName(branchPointDef:BranchPointDef) : String = {
+      return branchPointDef.name match {
+        case Some(name) => name
+        case None       => {
+          if (map.containsKey(branchPointDef)) {
+            map.get(branchPointDef)
+          } else {
+            val name = "*anonymousBranchPoint%s*)".format(map.size)
+            map.put(branchPointDef, name)
+            name
+          }
+        }
+      }
+    }
+
+  }
+
  /** Reference, in a plan, to a branchpoint and one or more of its branches. */
   case class BranchPointRef(val name: String, val branchNames: Seq[ASTType]) extends ASTType {
     override def children = Nil
