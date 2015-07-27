@@ -11,97 +11,13 @@ import grizzled.slf4j.Logging
 class PackedGraph(val wd: WorkflowDefinition) extends Graph {
 
   val vertices = PackedGraph.recursivelyProcessAST(wd)
-/*
-  PackedGraph.createTaskVertices(wd, this)
 
-  PackedGraph.createTaskInputVertices(this)
-  PackedGraph.createTaskParamVertices(this)
-  PackedGraph.createTaskOutputVertices(this)
-
-  PackedGraph.processTaskInputVertices(this)
-*/
 }
 
 /**
  * @author Lane Schwartz
  */
 object PackedGraph extends Logging {
-
-//  /**
-//   * Creates a map from task names to task-vertex pairs.
-//   *
-//   * For each task definition in the workflow,
-//   * this function creates a unique ID for the task,
-//   * and creates a vertex for that task in the provided graph.
-//   *
-//   * @return A map whose keys are task IDs and whose values are TaskVertex objects
-//   */
-//  private def createTaskVertices(wd: WorkflowDefinition, graph: Graph) : Unit = {
-//    // Start with the list of task definitions from the workflow,
-//		wd.tasks.
-//		// and iterate over each task definition
-//		foreach({ task:TaskDef =>
-//
-//		  val id : String = task.name.toString()
-//      val comment : Option[String] = task.comments.value
-//      val vertex = new TaskVertex(id, task, comment)
-//
-//      // creating a vertex in the graph for each task
-//      graph.addVertex(vertex)
-//
-//		})
-//  }
-//
-//  private def taskSpecVertexID(specName:String, taskName:String) = "$%s@%s".format(specName, taskName)
-//
-//  /** Creates a vertex in the graph (and associated edge) for each input of each task. */
-//  private def createTaskInputVertices(graph: Graph) : Unit = {
-//    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
-//      taskVertex.contents.header.specsList.collect{ case i:TaskInputs  => i.specs }.flatten.foreach({ input =>
-//        val vertexID = taskSpecVertexID(input.name, taskVertex.id)
-//        val vertex = new TaskInputVertex(vertexID, input.rval, comment=None)
-//        graph.addVertex(vertex)
-//        graph.constructEdge(vertex, taskVertex, contents=None, comment=None)
-//      })
-//    })
-//  }
-//
-//  /** Creates a vertex in the graph (and associated edge) for each parameter of each task. */
-//  private def createTaskParamVertices(graph: Graph) : Unit = {
-//    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
-//      taskVertex.contents.header.specsList.collect{ case i:TaskParams  => i.specs }.flatten.foreach({ param =>
-//        val vertexID = taskSpecVertexID(param.name, taskVertex.id)
-//        val vertex = new TaskParamVertex(vertexID, param.rval, comment=None)
-//        graph.addVertex(vertex)
-//        graph.constructEdge(vertex, taskVertex, contents=None, comment=None)
-//      })
-//    })
-//  }
-//
-//  /** Creates a vertex in the graph (and associated edge) for each output of each task. */
-//  private def createTaskOutputVertices(graph: Graph) : Unit = {
-//    graph.collect({ case taskVertex:TaskVertex => taskVertex }).foreach({ taskVertex =>
-//      taskVertex.contents.header.specsList.collect{ case i:TaskOutputs  => i.specs }.flatten.foreach({ output =>
-//        val vertexID = taskSpecVertexID(output.name, taskVertex.id)
-//        val vertex = new TaskParamVertex(vertexID, output.rval, comment=None)
-//        graph.addVertex(vertex)
-//        graph.constructEdge(taskVertex, vertex, contents=None, comment=None)
-//      })
-//    })
-//  }
-//
-//  /** Creates a vertex in the graph (and associated edge) for each input of each task. */
-//  private def processTaskInputVertices(graph: Graph) : Unit = {
-//    graph.collect({ case taskInputVertex:TaskInputVertex => taskInputVertex }).foreach({ taskInputVertex =>
-//      recursivelyProcessAST(taskInputVertex.contents, taskInputVertex)
-////      taskInputVertex.contents.children.foreach { child:ASTType => child match {
-////          case rval:RValue => ???
-////          case _ => throw new FileFormatException("While processing abstract syntax tree, encountered an unexpected type " + child.toString() + " where an RValue was expected", child)
-////        }
-////      }
-//    })
-//  }
-
 
   private def recursivelyProcessAST(astNode:ASTType) : Seq[Vertex] = {
     val rootVertex = new RootVertex()
@@ -427,37 +343,3 @@ object PackedGraph extends Logging {
   }
 }
 
-//object Foo {
-//
-//  abstract sealed class Bar
-//  class BarX extends Bar
-//  class BarY extends Bar
-//  class BarZ extends Bar
-//
-//  private def baz(seq:Seq[Bar]) {
-//    seq.foreach(bar => r(bar))
-//  }
-//
-//  private def r(bar:Bar) {
-//    bar match {
-//      case x:BarX => r(x)
-//      case y:BarY => r(y)
-//      case z:BarZ => r(z)
-//    }
-//  }
-//
-//  private def r(x:BarX) {
-//    println("x")
-//  }
-//
-//  private def r(y:BarY) {
-//    println("y")
-//  }
-//
-//  private def r(z:BarZ) {
-//    println("z")
-//  }
-//
-//}
-
-*/
