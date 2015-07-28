@@ -15,6 +15,8 @@ class PackedGraph(val wd: WorkflowDefinition) extends Graph {
 }
 
 /**
+ * Collection of recursive utility functions to transform an abstract syntax tree into a packed graph.
+ *
  * @author Lane Schwartz
  */
 object PackedGraph extends Logging {
@@ -69,7 +71,9 @@ object PackedGraph extends Logging {
   }
 
   private def recursivelyProcess( branchGraft             : BranchGraft              , vertex:Vertex) : Seq[Vertex] = {
-    return Seq(new BranchGraftVertex(branchGraft))
+    val newVertex = new BranchGraftVertex(branchGraft)
+    Edge.connect(newVertex, vertex)
+    return Seq(newVertex)
   }
 
   private def recursivelyProcess( branchGraftElement      : BranchGraftElement       , vertex:Vertex) : Seq[Vertex] = {
@@ -121,7 +125,9 @@ object PackedGraph extends Logging {
   }
 
   private def recursivelyProcess( configVariable          : ConfigVariable           , vertex:Vertex) : Seq[Vertex] = {
-    return Seq(new ConfigVariableVertex(configVariable))
+    val newVertex = new ConfigVariableVertex(configVariable)
+    Edge.connect(newVertex,vertex)
+    return Seq(newVertex)
   }
 
   private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) : Seq[Vertex] = {
