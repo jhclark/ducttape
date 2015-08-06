@@ -216,7 +216,12 @@ object Ducttape extends Logging {
         exit(1)
       }
     }
-    
+
+
+
+    System.out.println(new ducttape.graph.PackedGraph(wd))
+    //System.out.println(new ducttape.util.Graphviz(wd).dot2tex())
+    System.exit(-1)
     val builder = new WorkflowBuilder(wd, confSpecs, builtins)
     val workflow: HyperWorkflow = ex2err(builder.build())
 

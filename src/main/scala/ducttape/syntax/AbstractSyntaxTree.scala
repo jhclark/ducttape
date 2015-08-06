@@ -112,12 +112,17 @@ object AbstractSyntaxTree {
                          val taskName: Option[String],
                          val branchGraftElements: Seq[BranchGraftElement]) extends RValue {
     override def children = branchGraftElements
-    override def toString() = {
-      taskName match {
-        case Some(taskName) => "$%s@%s%s".format(variableName,taskName,branchGraftElements.toString())
-        case None           => "$%s%s".format(variableName,branchGraftElements.toString())
+
+    def toString(withBranchGraftElements:Boolean) : String = {
+      val branchGraftString = if (withBranchGraftElements) branchGraftElements.mkString("[", ",", "]") else ""
+
+      return taskName match {
+        case Some(taskName) => "$%s@%s%s".format(variableName,taskName,branchGraftString)
+        case None           => "$%s%s".format(variableName,branchGraftString)
       }
     }
+
+    override def toString() = toString(withBranchGraftElements=true)
   }
 
   /** Type of a shorthand branch graft, in the right-hand side context of an assignment. */
@@ -350,7 +355,7 @@ object AbstractSyntaxTree {
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def children = Seq(comments) ++ crossProducts
     override def toString() = name match {
-      case None => "*anonymous*"
+      case None => "*anonymousPlan*"
       case Some(s: String) => s
     }
   }

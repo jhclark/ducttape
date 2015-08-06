@@ -57,7 +57,7 @@ object Edge {
     val edge = new Edge(from, to, contents, comment)
     from.outgoingEdges(to.id) = edge
     to.incomingEdges(from.id) = edge
-    println('"' + from.id + "\" => \"" + to.id + '"'); Console.flush()
+//    println('"' + from.id + "\" => \"" + to.id + '"'); Console.flush()
   }
 
 }
