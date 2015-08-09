@@ -88,6 +88,7 @@ class TaskParamVertex (contents:Spec, comment: Option[String]) extends TaskSpecV
 }
 
 class BranchPointDefVertex(val contents:BranchPointDef) extends Vertex(id=BranchPointDef.getName(contents))
+class SequentialBranchPointVertex(val contents:SequentialBranchPoint) extends Vertex(id=SequentialBranchPoint.getName(contents))
 
 class BranchVertex(val contents:Spec) extends Vertex(id=contents.name)
 

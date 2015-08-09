@@ -99,6 +99,27 @@ object AbstractSyntaxTree {
     }
   }
 
+  object SequentialBranchPoint {
+
+    private val map = new java.util.IdentityHashMap[SequentialBranchPoint,String]
+
+    def getName(branchPointDef:SequentialBranchPoint) : String = {
+      return branchPointDef.branchPointName match {
+        case Some(name) => name
+        case None       => {
+          if (map.containsKey(branchPointDef)) {
+            map.get(branchPointDef)
+          } else {
+            val name = "*anonymousBranchPoint%s*)".format(map.size)
+            map.put(branchPointDef, name)
+            name
+          }
+        }
+      }
+    }
+
+  }
+
   /** Pair containing a branch point name and a branch name. */
   case class BranchGraftElement(val branchPointName: String,
                            val branchName: String) extends ASTType {

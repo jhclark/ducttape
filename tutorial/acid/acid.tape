@@ -64,7 +64,7 @@ task corpus_counts
 
 task optimize
 	< in=$out@build_model
-	:: seed=(OptimizerSeed: 1 2 3)
+	:: seed=(OptimizerSeed: 1..3)
 	> out
 {
 	echo "Seed = ${seed}" > ${out}

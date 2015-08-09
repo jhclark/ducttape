@@ -248,6 +248,7 @@ object Vertices_to_Graphviz {
     s.append("""\tikzstyle{BranchVertex} = [ellipse, draw=none, inner sep=0.3mm, fill=blue, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{task}   = [rectangle, draw=none, rounded corners=2mm, fill=orange, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{BranchPointDefVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
+    s.append("""\tikzstyle{SequentialBranchPointVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append('\n')
     s.append("""\tikzstyle{graft}  = [fill=blue!20]""").append('\n')
     s.append('\n')
@@ -518,11 +519,42 @@ object AST_to_Vertices {
   }
 
   private def recursivelyProcess( sequence                : Sequence                 , vertex:Vertex) : Seq[Vertex] = {
-    ???
+
+    val branchValues = new scala.collection.mutable.ArrayBuffer[BigDecimal] {
+      var currentValue = sequence.start
+      while (currentValue <= sequence.end) {
+        append(currentValue)
+        currentValue += sequence.increment
+      }
+    }.toSeq
+
+    val branchVertices = branchValues.flatMap({ number:BigDecimal =>
+
+      val string = number.toString()
+      val spec = new AbstractSpec(string, new Literal(string), dotVariable=false)
+
+      val branchVertex = new BranchVertex(spec)
+      Edge.connect(branchVertex, vertex)
+
+      val children = recursivelyProcessAST(spec.rval, branchVertex)
+
+      Seq(branchVertex) ++ children
+
+    })
+
+    return branchVertices
+
   }
 
   private def recursivelyProcess( sequentialBranchPoint   : SequentialBranchPoint    , vertex:Vertex) : Seq[Vertex] = {
-    ???
+
+    val branchPointVertex = new SequentialBranchPointVertex(sequentialBranchPoint)
+    Edge.connect(branchPointVertex, vertex)
+
+    val branchVertices = recursivelyProcess(sequentialBranchPoint.sequence, branchPointVertex)
+
+    return Seq(branchPointVertex) ++ branchVertices
+
   }
 
   private def recursivelyProcess( shorthandBranchGraft    : ShorthandBranchGraft     , vertex:Vertex) : Seq[Vertex] = {
