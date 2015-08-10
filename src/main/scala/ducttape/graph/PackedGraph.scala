@@ -77,8 +77,12 @@ object Vertices_to_Graphviz {
     }
 
     s.append("""\node[fit=""")
+    s.append('(').append(IdentifierTracker.getID(task)).append(')')
     processTaskSubgraph(task, process)
-    s.append(""", draw, thick, inner sep=1.0cm, black] {};""").append('\n')
+    s.append(""", draw, thick, inner sep=1.0cm""")
+    if      (task.contents.keyword=="task")    s.append(""", black""")
+    else if (task.contents.keyword=="package") s.append(""", gray, rounded corners""")
+    s.append("""] {};""").append('\n')
   }
 
   private def drawTaskSubgraph(task:TaskVertex, s:StringBuilder) : Unit = {
