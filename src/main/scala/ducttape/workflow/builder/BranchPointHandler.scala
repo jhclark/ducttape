@@ -2,6 +2,7 @@ package ducttape.workflow.builder
 
 import ducttape.syntax.AbstractSyntaxTree.ASTType
 import ducttape.syntax.AbstractSyntaxTree.BranchPointDef
+import ducttape.syntax.AbstractSyntaxTree.BranchSpec
 import ducttape.syntax.AbstractSyntaxTree.ConfigVariable
 import ducttape.syntax.AbstractSyntaxTree.Literal
 import ducttape.syntax.AbstractSyntaxTree.LiteralSpec
@@ -29,13 +30,13 @@ object BranchPointHandler extends Logging {
     (resolveVarFunc: (TaskDef, Map[Namespace,TaskDef], Spec, Option[TaskDef]) => Seq[SourceSpecInfo] )
     (implicit taskTemplateBuilder: TaskTemplateBuilder)
 {
-    
+
     debug("Task=%s: Recursively resolving potential branch point: %s @ %s".format(taskDef, curSpec, curTask))
 
     implicit val state = new State(taskDef, origSpec, taskMap, isParam,
                                    prevTree, branchHistory, curTask, curSpec, prevGrafts,
                                    resolveVarFunc)
-    
+
     curSpec.rval match {
       // we found another branch point -- keep recursing
       case bp @ BranchPointDef(branchPointNameOpt, branchSpecz) => {
@@ -50,13 +51,13 @@ object BranchPointHandler extends Logging {
         debug("Generated sequence branch specs: " + branchSpecs)
         handleBranchPoint(branchPointName, branchSpecs, isFromSeq=true)
       }
-      
+
       // TODO: match a new GlobbedBranchPoint (or something like that) here
       //       The GlobbedBranchPoint will need to come from the parser that returns the AST
       //       We need to generate one SpecPair per branch of the globbed branch point
       //       In each of these SpecPairs, the input spec will be the same lhs.
       //       We will also need to modify TaskEnvironment.
-            
+
       // we found a global config variable -- we first have to look inside
       // that variable to determine what to do next
       case ConfigVariable(varName) => {
@@ -77,8 +78,8 @@ object BranchPointHandler extends Logging {
       case _ => handleNonBranchPoint()
     }
   } // handleBranchPoint -- TODO: This method is obese, split it up.
-  
-  
+
+
   // create an internal node in the branch tree
   private def handleBranchPoint(
           branchPointName: String,
@@ -89,7 +90,7 @@ object BranchPointHandler extends Logging {
           {
 
     import state._
-    
+
     val branchPoint = taskTemplateBuilder.branchPointFactory.get(branchPointName)
 
         for ( (branchSpec, idx) <- branchSpecs.zipWithIndex) {
@@ -149,16 +150,16 @@ object BranchPointHandler extends Logging {
     // create a leaf node in the branch tree
     private def handleNonBranchPoint()(
               implicit state: State, taskTemplateBuilder: TaskTemplateBuilder) {
-      
+
       import state._
-      
+
       // the srcTaskDef is only specified if it implies a temporal dependency (i.e. not literals)
       val sourceSpecInfo = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
 //      val (srcSpec, srcTaskDefOpt, myGrafts) = resolveVarFunc(taskDef, taskMap, curSpec, curTask)
 //      handleNonBranchPointHelper(curSpec, prevTree)(srcSpec, srcTaskDefOpt, myGrafts)
-      handleNonBranchPointHelper(curSpec, prevTree)(sourceSpecInfo)      
-    }  
-  
+      handleNonBranchPointHelper(curSpec, prevTree)(sourceSpecInfo)
+    }
+
     // we've gotten to the right place in the branch point tree
     // and we've resolved a potential spec we should maybe link to
     // first, we check if it is a branch point or not -- if not, we just add it
@@ -166,18 +167,18 @@ object BranchPointHandler extends Logging {
                                           (sourceSpecInfos: Seq[SourceSpecInfo])(
               implicit state: State, taskTemplateBuilder: TaskTemplateBuilder) {
 //        (srcSpec: Spec, srcTaskDefOpt: Option[TaskDef], myGrafts: Seq[Branch])(
-            
+
 
 
       import state._
-      
+
       sourceSpecInfos.foreach( sourceSpecInfo => {
-      
+
         // use myGrafts instead of myGrafts ++ prevGrafts
         val allGrafts: Seq[Branch] = sourceSpecInfo.grafts
         debug("Resolved %s to potentially non-branch spec %s @ %s with new grafts %s (all grafts: %s)".format(
             origSpec, sourceSpecInfo.srcSpec, sourceSpecInfo.srcTask, sourceSpecInfo.grafts, allGrafts))
-      
+
         // resolveVarFunc might have returned a branch point to us
         // if it traced back to a parent's parameter, which is itself a branch point
         // if that's the case, we should continue recursing. otherwise, just add.
@@ -196,7 +197,7 @@ object BranchPointHandler extends Logging {
             // this is used by the MetaHyperDAG to determine structure and temporal dependencies
             val data: TerminalData = myBranchTree.getOrAdd(sourceSpecInfo.srcTask, allGrafts, isParam)
             data.specs += new SpecPair(origSpec, sourceSpecInfo.srcTask, sourceSpecInfo.srcSpec, isParam)
-          
+
             trace("Task=%s; Resolved %s --> %s (%s); Grafts are: %s".format(taskDef, origSpec, sourceSpecInfo.srcSpec, sourceSpecInfo.srcTask, allGrafts))
           }
           case _ => {
@@ -207,19 +208,19 @@ object BranchPointHandler extends Logging {
           }
         }
       })
-      
+
     }
-    
+
     // generate the literal specs implied by a sequence branch point
     private def generateBranchSpecs(bpName: String, start: BigDecimal, end: BigDecimal, inc: BigDecimal): Seq[LiteralSpec] = {
       for (value <- start to end by inc) yield {
         debug("Generating literal spec from sequential branch element: %s".format(value))
-        new LiteralSpec(value.toString, new Literal(value.toString), dotVariable=false)
+        new BranchSpec(value.toString, new Literal(value.toString))
       }
     }
-    
+
     private def getName(branchPointNameOpt: Option[String], astElem: ASTType) = branchPointNameOpt match {
       case Some(name) => name
       case None => throw new FileFormatException("Branch point name is required", astElem)
-    }    
+    }
 }

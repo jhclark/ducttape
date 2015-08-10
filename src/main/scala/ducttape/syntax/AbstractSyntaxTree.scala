@@ -80,8 +80,24 @@ object AbstractSyntaxTree {
   case class Sequence(val start: BigDecimal,
                       val end: BigDecimal,
                       val increment: BigDecimal) extends ASTType {
-    override def children = Nil
+    override lazy val children = {
+      this.toSeq.map({ number:BigDecimal => {
+        val string = number.toString()
+        new BranchSpec(string, new Literal(string))
+      }})
+    }
+
     override def toString() = "%s..%s..%s".format(start,end,increment)
+
+    private lazy val toSeq : Seq[BigDecimal] = {
+      new scala.collection.mutable.ArrayBuffer[BigDecimal] {
+        var currentValue = start
+        while (currentValue <= end) {
+          append(currentValue)
+          currentValue += increment
+        }
+      }
+    }.toSeq
   }
 
   /**
@@ -154,10 +170,23 @@ object AbstractSyntaxTree {
       "@%s%s".format(taskName,branchGraftElements.toString())
     }
   }
+
+//  abstract sealed class SpecType(string:String) {
+//    override def toString = string
+//  }
+//
+//  case object InputSpec extends SpecType("input")
+//  case object OutputSpec extends SpecType("output")
+//  case object ParamSpec extends SpecType("param")
+
+
   /**
    * Abstract specification of a variable name and its right hand side.
    */
-  case class AbstractSpec[+A <: RValue](val name: String, val rval: A, val dotVariable: Boolean) extends ASTType {
+  abstract sealed class AbstractSpec[+A <: RValue] extends ASTType {
+    val name: String
+    val rval: A
+    val dotVariable: Boolean
     override def children = Seq(rval)
     override def hashCode() = name.hashCode()
     override def equals(that: Any) = that match { case other: AbstractSpec[_] => (other.name == this.name) }
@@ -168,6 +197,28 @@ object AbstractSyntaxTree {
   }
   type Spec = AbstractSpec[RValue]
   type LiteralSpec = AbstractSpec[Literal]
+
+  case class ConfigParamSpec[+A <: RValue](val name:String, val rval:A, val dotVariable:Boolean) extends AbstractSpec[A] //{System.out.println("ConfigParamSpec=" + name)}
+
+  case class TaskParamSpec[+A <: RValue](val name:String, val rval:A, val dotVariable:Boolean) extends AbstractSpec[A] //{System.out.println("TaskParamSpec=" + name)}
+
+  case class TaskInputSpec[+A <: RValue](val name:String, val rval:A) extends AbstractSpec[A] {
+    val dotVariable:Boolean = false
+  }
+
+  case class TaskOutputSpec[+A <: RValue](val name:String, val rval:A) extends AbstractSpec[A] {
+    val dotVariable:Boolean = false
+  }
+
+  case class PackageSpec(val name:String) extends AbstractSpec[Unbound] {
+    val rval = Unbound()
+    val dotVariable:Boolean = false
+  }
+
+  case class BranchSpec[+A <: RValue](val name:String, val rval:A) extends AbstractSpec[A] {
+    val dotVariable:Boolean = false
+  }
+
 
   /**
    * A key=value assignment defined in a "config" definition or config file.
@@ -362,6 +413,27 @@ object AbstractSyntaxTree {
         case Some(s: String) => s
       }
     }
+  }
+
+  object ConfigDefinition {
+
+    private val map = new java.util.IdentityHashMap[ConfigDefinition,String]
+
+    def getName(config:ConfigDefinition) : String = {
+      return config.name match {
+        case Some(name) => name
+        case None       => {
+          if (map.containsKey(config)) {
+            map.get(config)
+          } else {
+            val name = "*anonymousConfig%s*)".format(map.size)
+            map.put(config, name)
+            name
+          }
+        }
+      }
+    }
+
   }
 
   case class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {

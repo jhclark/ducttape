@@ -60,11 +60,18 @@ case class RootVertex() extends Vertex(id="global root vertex", comment=None) {
 class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comment=None)
 
 sealed trait ParamVertex
-class ConfigParamVertex(val contents : ConfigAssignment) extends Vertex(id=contents.spec.name, comment=contents.comments.value) with ParamVertex
+class ConfigParamVertex(contents : ConfigParamSpec[RValue]) extends SpecVertex(contents) with ParamVertex
 
 class TaskVertex(val contents:TaskDef) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
 
-abstract sealed class TaskSpecVertex(val contents:Spec,comment:Option[String]=None) extends Vertex(id=contents.name,comment) {
+class ConfigDefinitionVertex(val contents:ConfigDefinition) extends Vertex(id=ConfigDefinition.getName(contents), contents.comments.value)
+
+abstract sealed class SpecVertex(val contents:Spec,comment:Option[String]=None) extends Vertex(id=contents.name,comment)
+
+class BranchSpecVertex(contents:BranchSpec[RValue], comment: Option[String]=None) extends SpecVertex(contents, comment)
+class PackageSpecVertex(contents:PackageSpec, comment: Option[String]=None) extends SpecVertex(contents, comment)
+
+abstract sealed class TaskSpecVertex(contents:Spec,comment:Option[String]=None) extends SpecVertex(contents, comment) {
 
   def whereToLookForTask() : Iterable[Vertex]
 
@@ -73,24 +80,24 @@ abstract sealed class TaskSpecVertex(val contents:Spec,comment:Option[String]=No
   override def toString() : String = {
     task() match {
       case Some(task) => "$%s@%s".format(contents.name, task.id)
-      case None       => throw new RuntimeException("No task found for TaskSpecVertex: $%s".format(contents.name))
+      case None       => throw new RuntimeException("No task found for %s: $%s".format(this.getClass.getSimpleName, contents.name))
     }
   }
 }
-class TaskInputVertex (contents:Spec, comment: Option[String]) extends TaskSpecVertex(contents, comment) {
+class TaskInputVertex (contents:Spec, comment: Option[String]=None) extends TaskSpecVertex(contents, comment) {
   override def whereToLookForTask = outgoingEdges.values.map({ edge => edge.to })
 }
-class TaskOutputVertex(contents:Spec, comment: Option[String]) extends TaskSpecVertex(contents, comment) {
+class TaskOutputVertex(contents:Spec, comment: Option[String]=None) extends TaskSpecVertex(contents, comment) {
   override def whereToLookForTask = incomingEdges.values.map({ edge => edge.from })
 }
-class TaskParamVertex (contents:Spec, comment: Option[String]) extends TaskSpecVertex(contents, comment) with ParamVertex {
+class TaskParamVertex (contents:Spec, comment: Option[String]=None) extends TaskSpecVertex(contents, comment) with ParamVertex {
   override def whereToLookForTask = outgoingEdges.values.map({ edge => edge.to })
 }
 
 class BranchPointDefVertex(val contents:BranchPointDef) extends Vertex(id=BranchPointDef.getName(contents))
 class SequentialBranchPointVertex(val contents:SequentialBranchPoint) extends Vertex(id=SequentialBranchPoint.getName(contents))
 
-class BranchVertex(val contents:Spec) extends Vertex(id=contents.name)
+//class BranchVertex(val contents:Spec) extends Vertex(id=contents.name)
 
 sealed abstract class VariableReferenceVertex(id:String) extends Vertex(id) {
   def toString() : String

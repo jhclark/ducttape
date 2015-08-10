@@ -90,8 +90,8 @@ object Ducttape extends Logging {
     } catch {
       case _: Throwable => "(version unknown)"
     }
-    err.println(s"ducttape $ducttapeVersion")
-    err.println("by Jonathan Clark")
+//    err.println(s"ducttape $ducttapeVersion")
+//    err.println("by Jonathan Clark")
 
     implicit val opts = new Opts(args)
     if (opts.no_color || !Environment.hasTTY) {

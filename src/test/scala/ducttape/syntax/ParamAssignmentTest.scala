@@ -5,7 +5,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
-class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramAssignment) {
+class ParamAssignmentTest extends AbstractTest("param assignment",Grammar.paramAssignment(Grammar.configParamSpecGenerator)) {
  
   def successCases = Set(
 
