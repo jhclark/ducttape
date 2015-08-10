@@ -1,5 +1,10 @@
 global {
        ducttape_output=tutorial/acid/output
+       ducttape_experimental_packages=true
+}
+
+package sametime :: .versioner=git .repo="git://github.com/jhclark/sametime.git" .ref=HEAD {
+  ./build.sh
 }
 
 task extract_dictionary
@@ -7,6 +12,7 @@ task extract_dictionary
 	                                       large="Large training corpus") 
 	                    test=(TestSplit: standard="Standard test set" 
 	                                     random="Randomized test set"))
+	: sametime
 	> out
 {
 	echo "Hello, Dictionary. I'm using parameter ${param}" > ${out}
