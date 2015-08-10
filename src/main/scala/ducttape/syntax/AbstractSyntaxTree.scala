@@ -268,7 +268,7 @@ object AbstractSyntaxTree {
           if (map.containsKey(branchPointDef)) {
             map.get(branchPointDef)
           } else {
-            val name = "*anonymousBranchPoint%s*)".format(map.size)
+            val name = "*anonymousBranchPoint%s*".format(map.size)
             map.put(branchPointDef, name)
             name
           }
@@ -426,7 +426,7 @@ object AbstractSyntaxTree {
           if (map.containsKey(config)) {
             map.get(config)
           } else {
-            val name = "*anonymousConfig%s*)".format(map.size)
+            val name = "*anonymousConfig%s*".format(map.size)
             map.put(config, name)
             name
           }
