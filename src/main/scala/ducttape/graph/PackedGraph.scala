@@ -54,25 +54,27 @@ object Vertices_to_Graphviz {
     s.append(s"""\t${IdentifierTracker.getID(vertex)} [style="${vertex.getClass.getSimpleName}" label="${vertex.id}"]\n""")
   }
 
-  private def processTaskSubgraph(task:TaskVertex, processFunction:((TaskSpecVertex, String)=>Unit)) : Unit = {
+  private def processTaskSubgraph(task:TaskVertex, processFunction:((SpecVertex, String)=>Unit)) : Unit = {
     task.foreachParent( (parent:Vertex) => {
       parent match {
-        case input: TaskInputVertex => processFunction(input, "input")
-        case param: TaskParamVertex => processFunction(param, "param")
-        case _                      => throw new RuntimeException("Every parent of a TaskVertex should be either a TaskInputVertex or a TaskParamVertex, but a different type was found: %s".format(parent))
+        case input: TaskInputVertex   => processFunction(input, "TaskInputVertex")
+        case param: TaskParamVertex   => processFunction(param, "TaskParamVertex")
+        case pkg:   PackageSpecVertex => processFunction(pkg,   "PackageSpecVertex")
+        case _                        => throw new RuntimeException("Every parent of a TaskVertex should be either a TaskInputVertex or a TaskParamVertex, but a different type was found: %s with class %s".format(parent, parent.getClass.getSimpleName))
       }
     })
 
     task.foreachChild( (parent:Vertex) => {
       parent match {
-        case output: TaskOutputVertex => processFunction(output, "output")
-        case _                        => throw new RuntimeException("Every child of a TaskVertex should be a TaskOutputVertex, but a different type was found: %s".format(parent))
+        case output: TaskOutputVertex  => processFunction(output, "TaskOutputVertex")
+        case pkg:    PackageSpecVertex => /* This space intentionally left blank. */
+        case _                         => throw new RuntimeException("Every child of a TaskVertex should be a TaskOutputVertex, but a different type was found: %s".format(parent))
       }
     })
   }
 
   private def drawTaskSubgraphBox(task:TaskVertex, s:StringBuilder) : Unit = {
-    def process(vertex:TaskSpecVertex, specType:String) {
+    def process(vertex:SpecVertex, specType:String) {
       s.append('(').append(IdentifierTracker.getID(vertex)).append(')')
     }
 
@@ -92,7 +94,7 @@ object Vertices_to_Graphviz {
     s.append(s"""\tsubgraph cluster_${taskID} {\n""")
     s.append(s"""\t\t${taskID} [style="task" label="${task.id}"]\n""")
 
-    def process(vertex:TaskSpecVertex, specType:String) {
+    def process(vertex:SpecVertex, specType:String) {
     	s.append(s"""\t\t${IdentifierTracker.getID(vertex)} [style="${specType}" label="${vertex.id}"];\n""")
     }
 
@@ -157,7 +159,7 @@ object Vertices_to_Graphviz {
 
     s.append("digraph G {\n\n") // Start directed graph G
 
-    s.append("\tgraph [nodesep=\"1\", ranksep=\"1\"];\n\n")
+    s.append("\tgraph [nodesep=\"0.7\", ranksep=\"0.7\"];\n\n")
 
     vertices.collect({case task:TaskVertex => task}).foreach({task:TaskVertex => drawTaskSubgraph(task, s)})
     s.append("\n")
@@ -257,9 +259,10 @@ object Vertices_to_Graphviz {
     s.append('\n')
     s.append("""\tikzstyle{graft}  = [fill=blue!20]""").append('\n')
     s.append('\n')
-    s.append("""\tikzstyle{param}   = [rectangle]""").append('\n')
-    s.append("""\tikzstyle{input}   = [ellipse]""").append('\n')
-    s.append("""\tikzstyle{output}   = [ellipse]""").append('\n')
+    s.append("""\tikzstyle{PackageSpecVertex} = [rectangle,rounded corners]""").append('\n')
+    s.append("""\tikzstyle{TaskParamVertex}   = [rectangle]""").append('\n')
+    s.append("""\tikzstyle{TaskInputVertex}   = [ellipse]""").append('\n')
+    s.append("""\tikzstyle{TaskOutputVertex}  = [ellipse]""").append('\n')
     s.append('\n')
     s.append('\n')
     s.append('\n')
@@ -295,7 +298,10 @@ object Vertices_to_PackedGraph {
 
   val isTaskSpecVertex : PartialFunction[Vertex,TaskSpecVertex] = { case vertex:TaskSpecVertex => vertex }
 
-  val isVariableRef  : PartialFunction[Vertex, VariableReferenceVertex] = { case vertex:VariableReferenceVertex => vertex }
+  val isVariableRef    : PartialFunction[Vertex, VariableReferenceVertex] = { case vertex:VariableReferenceVertex => vertex }
+
+  val isPackageSpec    : PartialFunction[Vertex, PackageSpecVertex] = { case vertex:PackageSpecVertex => vertex }
+  val isPackageVertex  : PartialFunction[Vertex, TaskVertex] = { case vertex:TaskVertex if vertex.contents.keyword=="package" => vertex }
 
   private def createMap[V <: Vertex](vertices:Seq[Vertex], selectionFunction:PartialFunction[Vertex,V]) : Map[String,Set[V]] = {
 
@@ -339,47 +345,60 @@ object Vertices_to_PackedGraph {
 
   }
 
-  def process(astNode:WorkflowDefinition) : Seq[Vertex] = {
-    val vertices = AST_to_Vertices.recursivelyProcessAST(astNode)
 
-//    val taskVertices   = vertices.collect(isTaskVertex)
-//    val configVertices = vertices.collect(isConfigVertex)
+  private def addEdges[FromVertex <: Vertex, ToVertex <: Vertex]
+                      (vertices:Seq[Vertex],
+                          functionToSelectFromVertices:PartialFunction[Vertex,FromVertex],
+                          functionToSelectToVertices:PartialFunction[Vertex,ToVertex]
+                      ) : Unit = {
 
-    val taskSpecsMap    : Map[String,Set[TaskSpecVertex]]          = createMap(vertices, isTaskSpecVertex)
-    val variableRefsMap : Map[String,Set[VariableReferenceVertex]] = createMap(vertices, isVariableRef)
+    val fromMap : Map[String,Set[FromVertex]] = createMap(vertices, functionToSelectFromVertices)
+    val toMap   : Map[String,Set[ToVertex]]   = createMap(vertices, functionToSelectToVertices)
 
-//    val params = createMap(vertices, isParamVertex)
-//    val outputs = createMap(vertices, isOutputVertex)
-
-//    taskSpecsMap.foreach({ case (key:String, value:TaskSpecVertex) => {
-//      System.err.println(key)
-//    }})
-//    System.err.println("==============================")
-
-    variableRefsMap.foreach({ case (key:String, valueSet:Set[VariableReferenceVertex]) => {
-      valueSet.foreach({ variableRefVertex:VariableReferenceVertex =>
-        taskSpecsMap.get(key) match {
-          case Some(taskVertexSet) => {
-            if (taskVertexSet.size==1) {
-              val taskVertex = taskVertexSet.seq.head
-            	Edge.connect(taskVertex, variableRefVertex)
+    toMap.foreach({ case (key:String, valueSet:Set[ToVertex]) => {
+      valueSet.foreach({ toVertex:ToVertex =>
+        fromMap.get(key) match {
+          case Some(fromVertexSet) => {
+            if (fromVertexSet.size==1) {
+              val fromVertex = fromVertexSet.seq.head
+              Edge.connect(fromVertex, toVertex)
             } else {
-            	throw new RuntimeException("Expected exactly one task spec matching name %s, but found %d".format(key, taskVertexSet.size))
+              throw new RuntimeException("Expected exactly one parent vertex matching name %s, but found %d".format(key, fromVertexSet.size))
             }
           }
-          case None => throw new RuntimeException("No task found for variable reference %s".format(key))
+          case None => throw new RuntimeException("No parent vertex found for reference %s".format(key))
         }
       })
     }})
-////      System.err.println(key)
-//      taskSpecsMap.get(key) match {
-//        case Some(taskVertex) => {
-//          Edge.connect(taskVertex, key)
-////          System.err.println("Foo")
+  }
+
+
+  def process(astNode:WorkflowDefinition) : Seq[Vertex] = {
+    val vertices = AST_to_Vertices.recursivelyProcessAST(astNode)
+
+//    val taskSpecsMap    : Map[String,Set[TaskSpecVertex]]          = createMap(vertices, isTaskSpecVertex)
+//
+//    val variableRefsMap : Map[String,Set[VariableReferenceVertex]] = createMap(vertices, isVariableRef)
+//    val packageSpecMap  : Map[String,Set[PackageSpecVertex]]       = createMap(vertices, isPackageSpec)
+//
+//
+//    variableRefsMap.foreach({ case (key:String, valueSet:Set[VariableReferenceVertex]) => {
+//      valueSet.foreach({ variableRefVertex:VariableReferenceVertex =>
+//        taskSpecsMap.get(key) match {
+//          case Some(taskVertexSet) => {
+//            if (taskVertexSet.size==1) {
+//              val taskVertex = taskVertexSet.seq.head
+//            	Edge.connect(taskVertex, variableRefVertex)
+//            } else {
+//            	throw new RuntimeException("Expected exactly one task spec matching name %s, but found %d".format(key, taskVertexSet.size))
+//            }
+//          }
+//          case None => throw new RuntimeException("No task found for variable reference %s".format(key))
 //        }
-//        case None       => throw new RuntimeException("No task found for variable reference %s".format(key))
-//      }
+//      })
 //    }})
+    addEdges(vertices, isTaskSpecVertex, isVariableRef)
+    addEdges(vertices, isPackageVertex, isPackageSpec)
 
     return vertices
   }
