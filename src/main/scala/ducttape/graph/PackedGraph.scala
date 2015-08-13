@@ -160,7 +160,7 @@ object Vertices_to_Graphviz {
 
   def latexPoster(vertices: Seq[Vertex], s:StringBuilder=new StringBuilder()) : String = {
 
-    s.append("""\documentclass[a0]{sciposter}""").append('\n')
+    s.append("""\documentclass[a0,landscape]{sciposter}""").append('\n')
     s.append('\n')
     //
     // Scala has a bug, which has been resolved as "won't fix",
