@@ -50,13 +50,17 @@ task build_model
 	paste ${src} ${tgt} >> ${out}
 }
 
-task nothing 
-	:: x=(Foo: bar)
-	> out 
+func sample_function
+	:: x
+	> out
 {
 	# Do nothing in particular
 	echo ${x} > ${out}
 }
+
+task nothing calls sample_function
+	:: x=(Foo: bar)
+	> out 
 
 
 task corpus_counts
