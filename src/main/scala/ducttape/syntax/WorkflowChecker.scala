@@ -26,7 +26,7 @@ import collection._
 
 /**
  * Most checks can be done on the raw WorkflowDefinition.
- * 
+ *
  * Checks that require access to resolved parameters could be implemented
  * in an unpacked workflow visitor.
  */
@@ -35,10 +35,10 @@ class WorkflowChecker(workflow: WorkflowDefinition,
                       builtins: Seq[WorkflowDefinition],
                       directives: Directives)
     extends Logging {
-  
+
   // TODO: Break up into several methods
   def check(): (Seq[FileFormatException],Seq[FileFormatException]) = {
-    
+
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
 
@@ -79,7 +79,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
         }
         vars += spec.name -> spec
       }
-      
+
       // don't allow branch points on outputs
       for (out: Spec <- task.outputs) {
         out.rval match {
@@ -92,7 +92,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
         }
       }
     }
-    
+
     val globals = new mutable.HashMap[String, Spec]
     for (a: ConfigAssignment <- confSpecs) {
       globals.get(a.spec.name) match {
@@ -105,7 +105,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
       }
       globals += a.spec.name -> a.spec
     }
-    
+
     // don't allow globals to have a name
     for (globalBlock: ConfigDefinition <- workflow.globalBlocks) globalBlock.name match {
       case None => ; // good
@@ -115,7 +115,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
                 globalBlock)
       }
     }
-    
+
     // check versioners to make sure they're sane
     for (v: VersionerDef <- workflow.versioners) {
       {
@@ -130,9 +130,9 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           case Some(spec) => errors += new FileFormatException("Versioners cannot define a submitter: Versioner '%s'".format(v.name), spec)
         }
       }
-      
+
       val info = new PackageVersionerInfo(v)
-      
+
       {
         val checkout: ActionDef = info.checkoutDef
         if (!checkout.packages.isEmpty)
@@ -144,7 +144,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
         if (!checkout.params.isEmpty)
           errors += new FileFormatException("The checkout action cannot define parameters: Versioner '%s'".format(v.name), checkout)
       }
-      
+
       {
         val repoVer: ActionDef = info.repoVersionDef
         if (!repoVer.packages.isEmpty)
@@ -156,7 +156,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
         if (!repoVer.params.isEmpty)
           errors += new FileFormatException("The repo_version action cannot define parameters: Versioner '%s'".format(v.name), repoVer)
       }
-      
+
       {
         val localVer: ActionDef = info.localVersionDef
         if (!localVer.packages.isEmpty)
@@ -169,27 +169,27 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           errors += new FileFormatException("The local_version action cannot define parameters: Versioner '%s'".format(v.name), localVer)
       }
     }
-    
+
     // make sure that each package has defined all of the dot variables required by its versioner
     val versionerDefs = (workflow.versioners ++ builtins.flatMap(_.versioners)).map { v => (v.name, v) }.toMap
     debug("Versioners are: " + versionerDefs)
     for (packageDef: PackageDef <- workflow.packages) {
-      
+
       packageDef.params.find { p => p.dotVariable && p.name == "submitter" } match {
         case None => ;
         case Some(spec) => errors += new FileFormatException("Packages cannot define a submitter: Package '%s'".format(packageDef.name), spec)
       }
-      
+
       for (param <- packageDef.params) param.rval match {
         case _: Literal => ;
         case _ => errors += new FileFormatException("Package parameters must be literals: Package '%s'".format(packageDef.name), packageDef)
       }
-      
+
       try {
         // constructor throws if versioner cannot be found or correct actions are not defined
         val versionerDef = Versioners.getVersioner(packageDef, versionerDefs)
         val info = new PackageVersionerInfo(versionerDef)
-        
+
         // check that package defines as dot parameters all parameters required by versioner
         val dotParams: Set[String] = packageDef.params.filter(_.dotVariable).map(_.name).toSet
         for (requiredParam: Spec <- versionerDef.params) {
@@ -200,25 +200,25 @@ class WorkflowChecker(workflow: WorkflowDefinition,
                 List(packageDef, requiredParam))
           }
         }
-        
+
       } catch {
         case e: FileFormatException => {
           errors += e
         }
       }
     }
-    
+
     (warnings, errors)
   }
-  
+
   // Grumble: It's only tractable to do this for the selection?
   // Is there any way we can do this for tasks that use only literal submitters?
   def checkUnpacked(hyperworkflow: HyperWorkflow,
                     planPolicy: PlanPolicy): (Seq[FileFormatException],Seq[FileFormatException]) = {
-    
+
     val warnings = new mutable.ArrayBuffer[FileFormatException]
     val errors = new mutable.ArrayBuffer[FileFormatException]
-    
+
     val submitter = new Submitter(hyperworkflow.submitters)
     val visitor = new UnpackedRealDagVisitor {
       override def visit(task: RealTask) {
@@ -226,7 +226,7 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           // TODO: Check for each task having the params defined for each of its versioners
           packageSpec
         }
-        
+
         // make sure each submitter is defined
         try {
           // notice that the submitter may be defined inside a branch point
@@ -245,15 +245,15 @@ class WorkflowChecker(workflow: WorkflowDefinition,
           }
         } catch {
           // throws if submitter is not defined
-          case e: FileFormatException => errors += e 
+          case e: FileFormatException => errors += e
         }
       }
     }
-    
+
     // TODO: We could really get away without versions here if we
     // wanted to maintain another code path
     Visitors.visitAllRealTasks(hyperworkflow, visitor, planPolicy)
-    
+
     (warnings, errors)
   }
 }
