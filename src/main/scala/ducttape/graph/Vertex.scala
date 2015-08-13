@@ -62,7 +62,9 @@ class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comm
 sealed trait ParamVertex
 class ConfigParamVertex(contents : ConfigParamSpec[RValue]) extends SpecVertex(contents) with ParamVertex
 
-class TaskVertex(val contents:TaskLike) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
+abstract sealed class TaskLikeVertex[Contents <: TaskLike](val contents:Contents) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
+class PackageVertex(contents:PackageDef) extends TaskLikeVertex(contents)
+class TaskVertex(contents:TaskDef) extends TaskLikeVertex(contents)
 
 class ConfigDefinitionVertex(val contents:ConfigDefinition) extends Vertex(id=ConfigDefinition.getName(contents), contents.comments.value)
 
@@ -75,7 +77,7 @@ abstract sealed class TaskSpecVertex(contents:Spec,comment:Option[String]=None) 
 
   def whereToLookForTask() : Iterable[Vertex]
 
-	def task() : Option[TaskVertex] = whereToLookForTask.collectFirst({ case vertex:TaskVertex => vertex})
+	def task() : Option[TaskLikeVertex[_]] = whereToLookForTask.collectFirst({ case vertex:TaskLikeVertex[_] => vertex})
 
   override def toString() : String = {
     task() match {

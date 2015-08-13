@@ -52,7 +52,7 @@ object Vertices_to_Graphviz {
     s.append(s"""\t${IdentifierTracker.getID(vertex)} [style="${vertex.getClass.getSimpleName}" label="${vertex.id}"]\n""")
   }
 
-  private def processTaskSubgraph(task:TaskVertex, processFunction:((SpecVertex, String)=>Unit)) : Unit = {
+  private def processTaskSubgraph[Contents<:TaskLike](task:TaskLikeVertex[Contents], processFunction:((SpecVertex, String)=>Unit)) : Unit = {
     task.foreachParent( (parent:Vertex) => {
       parent match {
         case input: TaskInputVertex   => processFunction(input, "TaskInputVertex")
@@ -71,7 +71,7 @@ object Vertices_to_Graphviz {
     })
   }
 
-  private def drawTaskSubgraphBox(task:TaskVertex, s:StringBuilder) : Unit = {
+  private def drawTaskSubgraphBox[Contents<:TaskLike](task:TaskLikeVertex[Contents], s:StringBuilder) : Unit = {
     def process(vertex:SpecVertex, specType:String) {
       s.append('(').append(IdentifierTracker.getID(vertex)).append(')')
     }
@@ -150,6 +150,7 @@ object Vertices_to_Graphviz {
     s.append("""\end{dot2tex}""").append('\n')
     s.append('%').append('\n')
     vertices.collect({case task:TaskVertex => task}).foreach({task:TaskVertex => drawTaskSubgraphBox(task, s)})
+    vertices.collect({case task:PackageVertex => task}).foreach({task:PackageVertex => drawTaskSubgraphBox(task, s)})
     s.append('%').append('\n')
     s.append("""\end{tikzpicture}""").append('\n')
     s.append("""\end{center}""").append('\n')
@@ -206,6 +207,7 @@ object Vertices_to_Graphviz {
     s.append('\n')
     s.append("""\tikzstyle{BranchSpecVertex} = [ellipse, draw=none, inner sep=0.3mm, fill=blue, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{task}   = [rectangle, draw=none, rounded corners=2mm, fill=orange, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
+    s.append("""\tikzstyle{PackageVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=orange, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{ConfigDefinitionVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=deepchampagne, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{BranchPointDefVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{SequentialBranchPointVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
@@ -254,7 +256,7 @@ object Vertices_to_PackedGraph {
   val isVariableRef    : PartialFunction[Vertex, VariableReferenceVertex] = { case vertex:VariableReferenceVertex => vertex }
 
   val isPackageSpec    : PartialFunction[Vertex, PackageSpecVertex] = { case vertex:PackageSpecVertex => vertex }
-  val isPackageVertex  : PartialFunction[Vertex, TaskVertex] = { case vertex:TaskVertex if vertex.contents.keyword=="package" => vertex }
+  val isPackageVertex  : PartialFunction[Vertex, PackageVertex] = { case vertex:PackageVertex => vertex }
 
   private def createMap[V <: Vertex](vertices:Seq[Vertex], selectionFunction:PartialFunction[Vertex,V]) : Map[String,Set[V]] = {
 
@@ -339,6 +341,9 @@ object AST_to_Vertices {
 
   private def recursivelyProcessAST(astNode:ASTType, vertex:Vertex) : Seq[Vertex] = {
     astNode match {
+      case actionDef               : ActionDef               => recursivelyProcess( actionDef               , vertex)
+      case baselineBlockDef        : BaselineBlockDef        => recursivelyProcess( baselineBlockDef        , vertex)
+      case branchBlockDef          : BranchBlockDef          => recursivelyProcess( branchBlockDef          , vertex)
       case bashCode                : BashCode                => recursivelyProcess( bashCode                , vertex)
       case branchGraft             : BranchGraft             => recursivelyProcess( branchGraft             , vertex)
       case branchGraftElement      : BranchGraftElement      => recursivelyProcess( branchGraftElement      , vertex)
@@ -352,8 +357,10 @@ object AST_to_Vertices {
       case configParamSpec         : ConfigParamSpec[RValue] => recursivelyProcess( configParamSpec         , vertex)
       case configVariable          : ConfigVariable          => recursivelyProcess( configVariable          , vertex)
       case crossProduct            : CrossProduct            => recursivelyProcess( crossProduct            , vertex)
+      case funcDef                 : FuncDef                 => recursivelyProcess( funcDef                 , vertex)
       case groupDefinition         : GroupDefinition         => recursivelyProcess( groupDefinition         , vertex)
       case literal                 : Literal                 => recursivelyProcess( literal                 , vertex)
+      case packageDef              : PackageDef              => recursivelyProcess( packageDef              , vertex)
       case packageSpec             : PackageSpec             => recursivelyProcess( packageSpec             , vertex)
       case planDefinition          : PlanDefinition          => recursivelyProcess( planDefinition          , vertex)
       case sequence                : Sequence                => recursivelyProcess( sequence                , vertex)
@@ -361,7 +368,8 @@ object AST_to_Vertices {
       case shorthandBranchGraft    : ShorthandBranchGraft    => recursivelyProcess( shorthandBranchGraft    , vertex)
       case shorthandConfigVariable : ShorthandConfigVariable => recursivelyProcess( shorthandConfigVariable , vertex)
       case shorthandTaskVariable   : ShorthandTaskVariable   => recursivelyProcess( shorthandTaskVariable   , vertex)
-      case taskDef                 : TaskLike                => recursivelyProcess( taskDef                 , vertex)
+      case summaryOfDef            : SummaryOfDef            => recursivelyProcess( summaryOfDef            , vertex)
+      case taskDef                 : TaskDef                 => recursivelyProcess( taskDef                 , vertex)
       case taskHeader              : TaskHeader              => recursivelyProcess( taskHeader              , vertex)
       case taskInputs              : TaskInputs              => recursivelyProcess( taskInputs              , vertex)
       case taskInputSpec           : TaskInputSpec[RValue]   => recursivelyProcess( taskInputSpec           , vertex)
@@ -376,6 +384,17 @@ object AST_to_Vertices {
     }
   }
 
+  private def recursivelyProcess( actionDef               : ActionDef                , vertex:Vertex) : Seq[Vertex] = {
+    ???
+  }
+
+  private def recursivelyProcess( baselineBlockDef        : BaselineBlockDef         , vertex:Vertex) : Seq[Vertex] = {
+    ???
+  }
+
+  private def recursivelyProcess( branchBlockDef          : BranchBlockDef           , vertex:Vertex) : Seq[Vertex] = {
+    ???
+  }
 
   private def recursivelyProcess( bashCode                : BashCode                 , vertex:Vertex) : Seq[Vertex] = {
     return justProcessChildren(bashCode, vertex)
@@ -458,6 +477,13 @@ object AST_to_Vertices {
     ???
   }
 
+  private def recursivelyProcess( funcDef                 : FuncDef                  , vertex:Vertex) : Seq[Vertex] = {
+    // By this point, a concrete TaskDefinition should have already been created for every CallDefinition object.
+    //
+    // Therefore, we can now safely ignore any FuncDef objects we encounter.
+    return Seq()
+  }
+
   private def recursivelyProcess( groupDefinition         : GroupDefinition          , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
@@ -497,6 +523,14 @@ object AST_to_Vertices {
     val children = processChildren(paramSpec, paramVertex)
 
     return Seq(paramVertex) ++ children
+  }
+
+  private def recursivelyProcess( packageDef              : PackageDef               , vertex:Vertex) : Seq[Vertex] = {
+    val packageVertex = new PackageVertex(packageDef)
+
+    val children = processChildren(packageDef, packageVertex)
+
+    return Seq(packageVertex) ++ children
   }
 
   private def recursivelyProcess( packageSpec             : PackageSpec              , vertex:Vertex) : Seq[Vertex] = {
@@ -548,7 +582,11 @@ object AST_to_Vertices {
     return Seq(newVertex)
   }
 
-  private def recursivelyProcess( taskDef                 : TaskLike                 , vertex:Vertex) : Seq[Vertex] = {
+  private def recursivelyProcess( summaryOfDef            : SummaryOfDef             , vertex:Vertex) : Seq[Vertex] = {
+    ???
+  }
+
+  private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) : Seq[Vertex] = {
     val taskVertex = new TaskVertex(taskDef)
 
     val children = processChildren(taskDef, taskVertex)
