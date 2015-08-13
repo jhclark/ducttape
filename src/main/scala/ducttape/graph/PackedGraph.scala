@@ -10,8 +10,6 @@ import grizzled.slf4j.Logging
 
 class PackedGraph(val wd: WorkflowDefinition) extends Graph {
 
-//  val vertices = AST_to_Vertices.recursivelyProcessAST(wd)
-
   val vertices = Vertices_to_PackedGraph.process(wd)
 
   System.out.println(Vertices_to_Graphviz.latexPoster(vertices))
@@ -99,20 +97,6 @@ object Vertices_to_Graphviz {
     }
 
     processTaskSubgraph(task, process)
-//    task.foreachParent( (parent:Vertex) => {
-//      parent match {
-//        case input: TaskInputVertex => process(input, "input")
-//        case param: TaskParamVertex => process(param, "param")
-//        case _                      => throw new RuntimeException("Every parent of a TaskVertex should be either a TaskInputVertex or a TaskParamVertex, but a different type was found: %s".format(parent))
-//      }
-//    })
-//
-//    task.foreachChild( (parent:Vertex) => {
-//      parent match {
-//        case output: TaskOutputVertex => process(output, "output")
-//        case _                        => throw new RuntimeException("Every child of a TaskVertex should be a TaskOutputVertex, but a different type was found: %s".format(parent))
-//      }
-//    })
 
     s.append("\t}\n\n")
 
@@ -122,35 +106,6 @@ object Vertices_to_Graphviz {
     s.append(s"""\t${IdentifierTracker.getID(from)} -> ${IdentifierTracker.getID(to)};\n""")
   }
 
-//  private def drawTaskArrows(task:TaskVertex, s:StringBuilder) : Unit = {
-//
-//    val taskID = taskIDs.getID(task)
-//
-//    var outputIDs = new IdentifierTracker(s"${taskID}_out", map)
-//    var inputIDs = new IdentifierTracker(s"${taskID}_in", map)
-//    var paramIDs = new IdentifierTracker(s"${taskID}_param", map)
-//
-//    def process(specs:Specs, counter:IdentifierTracker, inputOrParam:Boolean) {
-//      specs.specs.foreach( (spec:Spec) => {
-//        if (inputOrParam) {
-//          s.append(s"""\t${counter.getID(spec)} -> ${taskID};\n""")
-//        } else {
-//          s.append(s"""\t${taskID} -> ${counter.getID(spec)};\n""")
-//        }
-//      })
-//    }
-//
-//    task.header.children.foreach( (specs:Specs) => {
-//      specs match {
-//      case inputs:      TaskInputs       => process(inputs,  inputIDs,  true)
-//      case outputs:     TaskOutputs      => process(outputs, outputIDs, false)
-//      case params:      TaskParams       => process(params,  paramIDs,  true)
-//      case packageNames:TaskPackageNames => {}
-//      }
-//    })
-//
-//    s.append("\n")
-//  }
 
   val unseenVertices : PartialFunction[Vertex,Vertex] = { case vertex:Vertex if IdentifierTracker.hasNeverSeen(vertex) => vertex }
   val unseenEdges    : PartialFunction[Edge,Edge]     = { case   edge:Edge   if IdentifierTracker.hasNeverSeen(edge)   => edge }
@@ -216,8 +171,6 @@ object Vertices_to_Graphviz {
     //
     // See https://issues.scala-lang.org/browse/SI-4706
     //
-//    s.append("""\""").append("""usepackage{fancyvrb}""").append('\n')
-//    s.append("""\""").append("""usepackage{latexsym}""").append('\n')
     s.append("""\""").append("""usepackage[margin=1in]{geometry}""").append('\n')
     s.append("""\""").append("""usepackage[forceshell,outputdir={auto_generated/}]{dot2texi}""").append('\n')
     s.append("""\""").append("""usepackage{tikz}""").append('\n')
@@ -310,10 +263,6 @@ object Vertices_to_PackedGraph {
     val names = subsetOfVertices.map{ vertex => vertex.toString() }
 
     val tuples = names.zip(subsetOfVertices)
-//    tuples.sortBy(_._1).foreach({ case (key:String, value) => {
-//       System.err.println(key)
-//    }})
-//    System.err.println("====")
     val result : Map[String,Set[V]] = {
 
       import scala.collection.mutable.{HashMap, Set, MultiMap}
@@ -331,17 +280,7 @@ object Vertices_to_PackedGraph {
         toMap
     }
 
-//    result.foreach({ case (key:String, valueSet:Set[V]) =>
-//      System.err.println(s"${key} =>")
-//      valueSet.foreach( (value:V) =>
-//        System.err.println(s"\t${value}")
-//      )
-//    })
-//    System.err.println("**********************************************")
-
     return result
-
-    //return subsetOfVertices.zip(names).toMap
 
   }
 
@@ -376,27 +315,6 @@ object Vertices_to_PackedGraph {
   def process(astNode:WorkflowDefinition) : Seq[Vertex] = {
     val vertices = AST_to_Vertices.recursivelyProcessAST(astNode)
 
-//    val taskSpecsMap    : Map[String,Set[TaskSpecVertex]]          = createMap(vertices, isTaskSpecVertex)
-//
-//    val variableRefsMap : Map[String,Set[VariableReferenceVertex]] = createMap(vertices, isVariableRef)
-//    val packageSpecMap  : Map[String,Set[PackageSpecVertex]]       = createMap(vertices, isPackageSpec)
-//
-//
-//    variableRefsMap.foreach({ case (key:String, valueSet:Set[VariableReferenceVertex]) => {
-//      valueSet.foreach({ variableRefVertex:VariableReferenceVertex =>
-//        taskSpecsMap.get(key) match {
-//          case Some(taskVertexSet) => {
-//            if (taskVertexSet.size==1) {
-//              val taskVertex = taskVertexSet.seq.head
-//            	Edge.connect(taskVertex, variableRefVertex)
-//            } else {
-//            	throw new RuntimeException("Expected exactly one task spec matching name %s, but found %d".format(key, taskVertexSet.size))
-//            }
-//          }
-//          case None => throw new RuntimeException("No task found for variable reference %s".format(key))
-//        }
-//      })
-//    }})
     addEdges(vertices, isTaskSpecVertex, isVariableRef)
     addEdges(vertices, isPackageVertex, isPackageSpec)
 
