@@ -663,7 +663,7 @@ object Ducttape extends Logging {
 
           for (summaryDef: SummaryDef <- wd.summaries) {
             // TODO: Check for namespace issues
-            for (ofDef: SummaryTaskDef <- summaryDef.ofs; if (ofDef.name.name == task.name)) {
+            for (ofDef: SummaryOfDef <- summaryDef.ofs; if (ofDef.name.name == task.name)) {
               val isComplete = cc.completed( (task.name, task.realization) )
               if (isComplete) {
                 val taskEnv = new FullTaskEnvironment(dirs, packageVersions, task)

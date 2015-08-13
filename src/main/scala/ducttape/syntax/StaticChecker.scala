@@ -94,7 +94,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
         }
       }
 
-      case taskLike: TaskDef => {
+      case taskLike: TaskLike => {
         taskLike.keyword match {
           case "baseline" => errors += new FileFormatException("Baseline blocks are not supported yet", taskLike)
           case "branch" => errors += new FileFormatException("Branch blocks are not supported yet", taskLike)

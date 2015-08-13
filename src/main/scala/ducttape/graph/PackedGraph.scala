@@ -361,7 +361,7 @@ object AST_to_Vertices {
       case shorthandBranchGraft    : ShorthandBranchGraft    => recursivelyProcess( shorthandBranchGraft    , vertex)
       case shorthandConfigVariable : ShorthandConfigVariable => recursivelyProcess( shorthandConfigVariable , vertex)
       case shorthandTaskVariable   : ShorthandTaskVariable   => recursivelyProcess( shorthandTaskVariable   , vertex)
-      case taskDef                 : TaskDef                 => recursivelyProcess( taskDef                 , vertex)
+      case taskDef                 : TaskLike                => recursivelyProcess( taskDef                 , vertex)
       case taskHeader              : TaskHeader              => recursivelyProcess( taskHeader              , vertex)
       case taskInputs              : TaskInputs              => recursivelyProcess( taskInputs              , vertex)
       case taskInputSpec           : TaskInputSpec[RValue]   => recursivelyProcess( taskInputSpec           , vertex)
@@ -548,7 +548,7 @@ object AST_to_Vertices {
     return Seq(newVertex)
   }
 
-  private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) : Seq[Vertex] = {
+  private def recursivelyProcess( taskDef                 : TaskLike                 , vertex:Vertex) : Seq[Vertex] = {
     val taskVertex = new TaskVertex(taskDef)
 
     val children = processChildren(taskDef, taskVertex)

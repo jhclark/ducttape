@@ -16,6 +16,7 @@ import ducttape.syntax.AbstractSyntaxTree.ConfigAssignment
 import ducttape.syntax.AbstractSyntaxTree.Spec
 import ducttape.syntax.AbstractSyntaxTree.WorkflowDefinition
 import ducttape.syntax.AbstractSyntaxTree.TaskDef
+import ducttape.syntax.AbstractSyntaxTree.TaskLike
 import ducttape.syntax.AbstractSyntaxTree.ConfigDefinition
 import ducttape.syntax.AbstractSyntaxTree.PackageDef
 import ducttape.syntax.AbstractSyntaxTree.VersionerDef
@@ -65,8 +66,8 @@ class WorkflowChecker(workflow: WorkflowDefinition,
     }
 
     // check all task-like things declared with the task keyword
-    for (task: TaskDef <- workflow.tasks ++ workflow.packages) {
-      
+    for (task: TaskLike <- workflow.tasks ++ workflow.packages) {
+
       val vars = new mutable.HashMap[String, Spec]
       for (spec: Spec <- task.allSpecs) {
         vars.get(spec.name) match {

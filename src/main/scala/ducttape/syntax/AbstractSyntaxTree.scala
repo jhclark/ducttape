@@ -307,26 +307,15 @@ object AbstractSyntaxTree {
   }
 
   /**
-   * Short for "TaskDefinition". Abbreviated due to its pervasiveness in the code.
+   * A task-like block.
    *
-   * @param keyword The keyword used to declare this taskdef. Usually (always?) "task".
+   * @param keyword The keyword used to declare this block.
    */
-  case class TaskDef(val comments: Comments,
+  abstract sealed case class TaskLike(val comments: Comments,
                 val keyword: String,
                 val name: Namespace, // TODO: Rename name to namespace to prevent namespace == name confusion
                 val header: TaskHeader,
                 val commands: BashCode) extends Block {
-
-    /**
-     * Constructs a concrete task definition
-     * from a function definition and a function call.
-     */
-    def this(taskName: Namespace, functionDefinition: TaskDef, functionCall: CallDefinition) =
-      this(functionCall.comments,
-           functionDefinition.keyword,
-           taskName,
-           functionCall.header,
-           functionDefinition.commands)
 
     override def children = Seq(comments, header, commands)
 
@@ -353,12 +342,29 @@ object AbstractSyntaxTree {
     }
 
     override def hashCode() = name.hashCode()
-    override def equals(that: Any) = that match { case other: TaskDef => (other.name == this.name) }
+    override def equals(that: Any) = that match { case other: TaskLike => (other.name == this.name) }
     override def toString() = name.toString
   }
-  type PackageDef = TaskDef
-  type ActionDef = TaskDef
-  type SummaryTaskDef = TaskDef
+
+  class ActionDef(       comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="action",   name, header, commands)
+  class BaselineBlockDef(comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="baseline", name, header, commands)
+  class BranchBlockDef(  comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="branch",   name, header, commands)
+  class FuncDef(         comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="func",     name, header, commands)
+  class PackageDef(      comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="package",  name, header, commands)
+  class SummaryOfDef(    comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="of",       name, header, commands)
+
+  /** Short for "TaskDefinition". Abbreviated due to its pervasiveness in the code. */
+  class TaskDef(         comments: Comments, name: Namespace, header:TaskHeader, commands:BashCode) extends TaskLike(comments, keyword="task",     name, header, commands) {
+    /**
+     * Constructs a concrete task definition
+     * from a function definition and a function call.
+     */
+    def this(taskName: Namespace, functionDefinition: FuncDef, functionCall: CallDefinition) =
+      this(functionCall.comments,
+           taskName,
+           functionCall.header,
+           functionDefinition.commands)
+  }
 
   case class CallDefinition(val comments: Comments,
                        val name: String,
@@ -373,13 +379,13 @@ object AbstractSyntaxTree {
                         val name: Namespace,
                         val header: TaskHeader,
                         val blocks: Seq[Block]) extends Block {
-    private lazy val taskLikes = blocks.collect{ case x: ActionDef => x}
+    private lazy val taskLikes = blocks.collect{ case x: TaskLike => x}
 
     // only has members for SubmitterDefs and VersionerDefs (but adding more info to the typesystem gets ridiculous)
-    lazy val actions: Seq[ActionDef] = taskLikes.filter(_.keyword == "action")
+    lazy val actions: Seq[ActionDef] = taskLikes.collect{ case x: ActionDef => x } //taskLikes.filter(_.keyword == "action")
 
     // only has members for SummaryDefs (but adding more info to the typesystem gets ridiculous)
-    lazy val ofs: Seq[SummaryTaskDef] = taskLikes.filter(_.keyword == "of")
+    lazy val ofs: Seq[SummaryOfDef] = taskLikes.collect{ case x: SummaryOfDef => x } //taskLikes.filter(_.keyword == "of")
 
     private lazy val packageSpecList: Seq[TaskPackageNames] = header.specsList.collect { case x: TaskPackageNames => x }
     private lazy val inputSpecList: Seq[TaskInputs] = header.specsList.collect { case x: TaskInputs => x }
@@ -474,9 +480,9 @@ object AbstractSyntaxTree {
     lazy val globalBlocks: Seq[ConfigDefinition] = configLikes.filter { t: ConfigDefinition => t.keyword == "global"}
     lazy val globals: Seq[ConfigAssignment] = globalBlocks.flatMap { _.lines }
 
-    private lazy val taskDefs: Seq[TaskDef] = blocks.collect { case x: TaskDef => x }
-    lazy val tasks: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "task" }
-    lazy val packages: Seq[TaskDef] = taskDefs.filter { t: TaskDef => t.keyword == "package" }
+    private lazy val taskLikes: Seq[TaskLike] = blocks.collect { case x: TaskLike => x }
+    lazy val tasks: Seq[TaskDef] = taskLikes.collect{ case x: TaskDef => x } //taskDefs.filter { t: TaskDef => t.keyword == "task" }
+    lazy val packages: Seq[PackageDef] = taskLikes.collect{ case x: PackageDef => x } //taskDefs.filter { t: TaskDef => t.keyword == "package" }
 
     /**
      * Explicitly incorporate task definitions which were
@@ -488,13 +494,13 @@ object AbstractSyntaxTree {
       val calls: Seq[CallDefinition] = blocks.collect { case x: CallDefinition => x }
 
       // Map from function names to function definitions
-      val funcs: Map[Namespace,TaskDef] = {
+      val funcs: Map[Namespace,FuncDef] = {
         // Gather a list of those TaskDef objects that represent functions
-        taskDefs.filter { t: TaskDef => t.keyword == "func" }.
+        taskLikes.collect{ case x:FuncDef => x }. //taskLikes.filter { t: TaskLike => t.keyword == "func" }.
         // then make each element in the list a tuple,
         // where the first element is the function name
         // and the second element is the TaskDef object (that is, an AST node)
-        map { t: TaskDef => (t.name, t) }.
+        map { t: FuncDef => (t.name, t) }.
         // then convert this list of tuples into a map
         // where each TaskDef can be retrieved via its name
         toMap

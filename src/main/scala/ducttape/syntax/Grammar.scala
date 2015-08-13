@@ -918,7 +918,7 @@ object Grammar {
     case (before: String) ~ Some(open~block~close~Some(after)) => before + open + block + close + after
   }
 
-  def taskLikeBlock[A <: TaskDef](keyword: Parser[String], blockType: String, header: Parser[TaskHeader]) = positioned({
+  def taskLikeBlock[A <: TaskLike](keyword: Parser[String], blockType:String, blockGenerator: ((Comments,String,TaskHeader,BashCode) => A), header: Parser[TaskHeader]) = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -951,16 +951,24 @@ object Grammar {
     )
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (commands: BashCode) =>
-        new TaskDef(comments, blockType, new Namespace(name), header, commands)
+      blockGenerator(comments, name, header, commands)
   })
 
-  val baselineBlock: Parser[TaskDef] = taskLikeBlock(Keyword.baseline, "baseline", taskHeader)
-  val branchBlock: Parser[TaskDef] = taskLikeBlock(Keyword.branch, "branch", taskHeader)
-  val packageBlock: Parser[TaskDef] = taskLikeBlock(Keyword.packageKeyword, "package", taskHeader)
-  val actionBlock: Parser[ActionDef] = taskLikeBlock(Keyword.action, "action", funcHeader)
-  val ofBlock: Parser[TaskDef] = taskLikeBlock(Keyword.of, "of", taskHeader)
-  val funcBlock: Parser[TaskDef] = taskLikeBlock(Keyword.func, "func", funcHeader)
-  val taskBlock: Parser[TaskDef] = taskLikeBlock(Keyword.task, "task", taskHeader)
+  private def actionBlockGenerator(  comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new ActionDef(       comments, new Namespace(name), header, commands)
+  private def baselineBlockGenerator(comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new BaselineBlockDef(comments, new Namespace(name), header, commands)
+  private def branchBlockGenerator(  comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new BranchBlockDef(  comments, new Namespace(name), header, commands)
+  private def funcBlockGenerator(    comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new FuncDef(         comments, new Namespace(name), header, commands)
+  private def packageBlockGenerator( comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new PackageDef(      comments, new Namespace(name), header, commands)
+  private def summaryOfGenerator(    comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new SummaryOfDef(    comments, new Namespace(name), header, commands)
+  private def taskBlockGenerator(    comments:Comments,name:String,header:TaskHeader,commands:BashCode) = new TaskDef(         comments, new Namespace(name), header, commands)
+
+  val actionBlock:   Parser[ActionDef]        = taskLikeBlock(Keyword.action,         "action",   actionBlockGenerator,   funcHeader)
+  val baselineBlock: Parser[BaselineBlockDef] = taskLikeBlock(Keyword.baseline,       "baseline", baselineBlockGenerator, taskHeader)
+  val branchBlock:   Parser[BranchBlockDef]   = taskLikeBlock(Keyword.branch,         "branch",   branchBlockGenerator,   taskHeader)
+  val funcBlock:     Parser[FuncDef]          = taskLikeBlock(Keyword.func,           "func",     funcBlockGenerator,     funcHeader)
+  val packageBlock:  Parser[PackageDef]       = taskLikeBlock(Keyword.packageKeyword, "package",  packageBlockGenerator,  taskHeader)
+  val ofBlock:       Parser[SummaryOfDef]     = taskLikeBlock(Keyword.of,             "summary",  summaryOfGenerator,     taskHeader)
+  val taskBlock:     Parser[TaskDef]          = taskLikeBlock(Keyword.task,           "task",     taskBlockGenerator,     taskHeader)
 
   val callBlock: Parser[CallDefinition] = positioned({
     opt(whitespace) ~>

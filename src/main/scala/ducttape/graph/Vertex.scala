@@ -62,7 +62,7 @@ class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comm
 sealed trait ParamVertex
 class ConfigParamVertex(contents : ConfigParamSpec[RValue]) extends SpecVertex(contents) with ParamVertex
 
-class TaskVertex(val contents:TaskDef) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
+class TaskVertex(val contents:TaskLike) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
 
 class ConfigDefinitionVertex(val contents:ConfigDefinition) extends Vertex(id=ConfigDefinition.getName(contents), contents.comments.value)
 
