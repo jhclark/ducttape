@@ -39,3 +39,4 @@ tech-report/*.bbl
 tech-report/*.blg
 tech-report/*.out
 tech-report/auto/
+format.rb
