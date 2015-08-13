@@ -685,7 +685,7 @@ object AST_to_Vertices {
     //
     // However, in the interest of ensuring a complete traversal of the AST,
     // we recursively process the children of the current node of the AST,
-    // even though we expect it to be empty.
+    // even when we expect it to be empty.
     val children = processChildren(astNode, vertex)
 
     return current ++ children
