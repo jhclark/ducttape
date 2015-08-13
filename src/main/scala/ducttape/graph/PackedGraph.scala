@@ -418,7 +418,10 @@ object AST_to_Vertices {
   }
 
   private def recursivelyProcess( callDefinition          : CallDefinition           , vertex:Vertex) : Seq[Vertex] = {
-    ???
+    // By this point, a concrete TaskDefinition should have already been created for every CallDefinition object.
+    //
+    // Therefore, we can now safely ignore any CallDefinition objects we encounter.
+    return Seq()
   }
 
   private def recursivelyProcess( comments                : Comments                 , vertex:Vertex) : Seq[Vertex] = {
