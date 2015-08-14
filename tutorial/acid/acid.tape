@@ -35,8 +35,10 @@ task preproc
 task process_dict
 	< in=(OnlyOne: one=$out@extract_dictionary)
 	> out
+	> baz
 {
 	echo "Let's calculate a dictionary from ${in}" > ${out}
+	touch ${baz}
 }
 
 summary sizes {
