@@ -71,21 +71,7 @@ object PackedGraph {
     def process(from:FromVertex, string:String, to:ToVertex) = Edge.connect(from, to)
 
     iterateAndProcess(fromMap, toMap, process)
-//    toMap.foreach({ case (key:String, valueSet:Set[ToVertex]) => {
-//      valueSet.foreach({ toVertex:ToVertex =>
-//        fromMap.get(key) match {
-//          case Some(fromVertexSet) => {
-//            if (fromVertexSet.size==1) {
-//              val fromVertex = fromVertexSet.seq.head
-//              Edge.connect(fromVertex, toVertex)
-//            } else {
-//              throw new RuntimeException("Expected exactly one parent vertex matching name %s, but found %d".format(key, fromVertexSet.size))
-//            }
-//          }
-//          case None => throw new RuntimeException("No parent vertex found for reference %s".format(key))
-//        }
-//      })
-//    }})
+
   }
 
   private def iterateAndProcess[FromVertex <: Vertex, ToVertex <: Vertex]
@@ -144,45 +130,6 @@ object PackedGraph {
     }
 
     iterateAndProcess(taskMap, summaryOfMap, process)
-
-//
-//
-//    summaryOfMap.foreach({ case (taskName:String, valueSet:Set[SummaryOfVertex]) => {
-//      valueSet.foreach({ summaryOfVertex => {
-//        taskMap.get(taskName) match {
-//          case Some(taskVertexSet) => {
-//        	  if (taskVertexSet.size==1) {
-//              val taskVertex = taskVertexSet.seq.head
-//              taskVertex.foreachChild({ taskChild => {
-//                taskChild match {
-//                  case taskOutputVertex:TaskOutputVertex => {
-//
-//                    val specName = taskOutputVertex.contents.name; //println(taskName); println(specName)
-//
-//                    val taskOutputReference = new TaskVariable(taskName, specName); // println(taskOutputReference)
-//                    val summaryOfInput = new TaskInputSpec(specName, taskOutputReference)
-//
-//                    val taskOutputReferenceVertex = new TaskVariableVertex(taskOutputReference)
-//                    val summaryOfInputVertex = new TaskInputVertex(summaryOfInput)
-//
-//                    newVertices.append(taskOutputReferenceVertex)
-//                    newVertices.append(summaryOfInputVertex)
-//
-//                    Edge.connect(taskOutputVertex, taskOutputReferenceVertex)
-//                    Edge.connect(taskOutputReferenceVertex, summaryOfInputVertex)
-//                    Edge.connect(summaryOfInputVertex, summaryOfVertex)
-//                  }
-//                  case _ => {}
-//                }
-//              }})
-//            } else {
-//              throw new RuntimeException("Expected exactly one parent vertex matching name %s, but found %d".format(taskName, taskVertexSet.size))
-//            }
-//          }
-//          case None => throw new RuntimeException("No task vertex found for summaryOf %s".format(taskName))
-//        }
-//      }})
-//    }})
 
     return newVertices.toSeq
 
