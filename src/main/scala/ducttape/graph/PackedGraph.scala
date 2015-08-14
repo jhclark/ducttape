@@ -30,6 +30,8 @@ object PackedGraph {
 
   val isSummaryOfVertex : PartialFunction[Vertex, SummaryOfVertex] = { case vertex:SummaryOfVertex => vertex }
 
+  val isGoalVertex : PartialFunction[Vertex, GoalVertex] = { case vertex:GoalVertex => vertex }
+
   private def createMap[V <: Vertex](vertices:Seq[Vertex], selectionFunction:PartialFunction[Vertex,V]) : Map[String,Set[V]] = {
 
     val subsetOfVertices = vertices.collect(selectionFunction)
@@ -98,6 +100,25 @@ object PackedGraph {
 
   }
 
+  private def addGoalEdges(vertices:Seq[Vertex]) : Unit = {
+    val fromMap : Map[String,Set[TaskVertex]] = createMap(vertices, isTaskVertex)
+    val toMap   : Map[String,Set[GoalVertex]] = createMap(vertices, isGoalVertex)
+
+    def process(taskVertex:TaskVertex, taskName:String, goalVertex:GoalVertex) : Unit = {
+      taskVertex.foreachChild({ taskChild => {
+        taskChild match {
+          case taskOutputVertex:TaskOutputVertex => {
+            Edge.connect(taskOutputVertex, goalVertex)
+          }
+          case _ => {}
+        }
+      }})
+    }
+
+    iterateAndProcess(fromMap, toMap, process)
+
+  }
+
   private def processSummaryOfVertices(vertices:Seq[Vertex]) : Seq[Vertex] = {
     val summaryOfMap : Map[String,Set[SummaryOfVertex]] = createMap(vertices, isSummaryOfVertex)
     val taskMap      : Map[String,Set[TaskVertex]]      = createMap(vertices, isTaskVertex)
@@ -141,6 +162,9 @@ object PackedGraph {
 
     addEdges(graphFragments.vertices, isTaskSpecVertex, isVariableRef)
     addEdges(graphFragments.vertices, isPackageVertex, isPackageSpec)
+
+    addGoalEdges(graphFragments.vertices)
+    //addEdges(graphFragments.vertices, isTaskVertex, isGoalVertex)
 
     val summaryOfInputVertices = processSummaryOfVertices(graphFragments.vertices)
 

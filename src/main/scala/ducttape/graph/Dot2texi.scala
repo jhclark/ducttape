@@ -53,6 +53,7 @@ object Dot2texi {
       parent match {
         case output: TaskOutputVertex  => processFunction(output, "TaskOutputVertex")
         case pkg:    PackageSpecVertex => /* This space intentionally left blank. */
+        case goal:   GoalVertex        => /* This space intentionally left blank. */
         case _                         => throw new RuntimeException("Every child of a TaskVertex should be a TaskOutputVertex, but a different type was found: %s".format(parent))
       }
     })
@@ -136,7 +137,7 @@ object Dot2texi {
 
     s.append("""\end{dot2tex}""").append('\n')
     s.append('%').append('\n')
-//    vertices.collect({case task:TaskVertex => task}).foreach({task:TaskVertex => drawTaskSubgraphBox(task, s)})
+    vertices.collect({case task:TaskVertex => task}).foreach({task:TaskVertex => drawTaskSubgraphBox(task, s)})
     vertices.collect({case task:PackageVertex => task}).foreach({task:PackageVertex => drawTaskSubgraphBox(task, s)})
     vertices.collect({case task:SummaryOfVertex => task}).foreach({task:SummaryOfVertex => drawTaskSubgraphBox(task, s)})
     s.append('%').append('\n')
@@ -218,7 +219,7 @@ object Dot2texi {
     s.append("""\tikzstyle{TaskVariableVertex} = [rectangle, draw, inner sep=0.3mm, fill=darkmagenta, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{ConfigParamVertex} = [rectangle]""").append('\n')
     s.append("""\tikzstyle{PlanDefinitionVertex} = [rectangle, draw, inner sep=0.3mm, fill=darkgray, text centered, anchor=north, text=white]""").append('\n')
-    s.append("""\tikzstyle{CrossProductVertex} = [rectangle, rounded corners, draw, inner sep=0.3mm, fill=darkgray, text centered, anchor=north, text=white]""").append('\n')
+    s.append("""\tikzstyle{GoalVertex} = [rectangle, rounded corners, draw, inner sep=0.3mm, fill=darkgray, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{BranchGraftVertex} = [rectangle, draw, inner sep=0.3mm, fill=darkmagenta, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{RootVertex} = [rectangle, draw, inner sep=0.3mm, fill=deepskyblue, text centered, anchor=north, text=white]""").append('\n')
     s.append('\n')

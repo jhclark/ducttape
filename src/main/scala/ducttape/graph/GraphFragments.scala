@@ -164,9 +164,13 @@ object GraphFragments {
 
   private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) : Seq[Vertex] = {
 
-    val crossProductVertex = new CrossProductVertex(crossProduct)
-    Edge.connect(crossProductVertex, vertex)
-    return Seq(crossProductVertex)
+    val vertices = crossProduct.goals.map({ taskName:String =>
+      val goalVertex = new GoalVertex(taskName, crossProduct)
+      Edge.connect(goalVertex, vertex)
+      goalVertex
+    })
+
+    return vertices
 
   }
 

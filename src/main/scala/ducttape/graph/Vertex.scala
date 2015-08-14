@@ -57,7 +57,9 @@ case class RootVertex() extends Vertex(id="global root vertex", comment=None) {
 //    contents.comments.value
 //  )
 
-class CrossProductVertex(val contents:CrossProduct) extends Vertex(id=CrossProduct.getName(contents))
+class GoalVertex(taskName:String, val contents:CrossProduct) extends Vertex(id=taskName) {
+  override def toString = taskName
+}
 
 class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comment=None)
 
