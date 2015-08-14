@@ -5,6 +5,8 @@ import java.io.File
 import scala.util.parsing.input.Position
 import scala.collection.immutable.NumericRange.Inclusive
 
+import ducttape.util.Anonymous
+
 object AbstractSyntaxTree {
 
   object ASTType {
@@ -419,32 +421,17 @@ object AbstractSyntaxTree {
     override def children = Seq(comments) ++ lines
     override def toString() = {
       name match {
-        case None => "*anonymous*"
+        case None => ConfigDefinition.getName(this)
         case Some(s: String) => s
       }
     }
   }
 
-  object ConfigDefinition {
-
-    private val map = new java.util.IdentityHashMap[ConfigDefinition,String]
-
-    def getName(config:ConfigDefinition) : String = {
-      return config.name match {
-        case Some(name) => name
-        case None       => {
-          if (map.containsKey(config)) {
-            map.get(config)
-          } else {
-            val name = "*anonymousConfig%s*".format(map.size)
-            map.put(config, name)
-            name
-          }
-        }
-      }
-    }
-
+  object ConfigDefinition extends Anonymous[ConfigDefinition] {
+    def anonymousString(n:Int) = "*%s%s*".format("anonymousConfig", n)
+    def lookupName(config:ConfigDefinition) = config.name
   }
+
 
   case class CrossProduct(val goals: Seq[String], val value: Seq[BranchPointRef]) extends ASTType {
     override def children = value
@@ -458,9 +445,14 @@ object AbstractSyntaxTree {
                        val crossProducts: Seq[CrossProduct]) extends Block {
     override def children = Seq(comments) ++ crossProducts
     override def toString() = name match {
-      case None => "*anonymousPlan*"
+      case None => PlanDefinition.getName(this)
       case Some(s: String) => s
     }
+  }
+
+  object PlanDefinition extends Anonymous[PlanDefinition] {
+    def anonymousString(n:Int) = "*%s%s*".format("anonymousPlan", n)
+    def lookupName(plan:PlanDefinition) = plan.name
   }
 
   /** Ducttape hyperworkflow file. */
