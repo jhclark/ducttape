@@ -62,9 +62,17 @@ class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comm
 sealed trait ParamVertex
 class ConfigParamVertex(contents : ConfigParamSpec[RValue]) extends SpecVertex(contents) with ParamVertex
 
+abstract sealed class GroupLikeVertex[Contents <: GroupLike](val contents:Contents) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
+class SummaryVertex(contents: SummaryDef) extends GroupLikeVertex(contents)
+
 abstract sealed class TaskLikeVertex[Contents <: TaskLike](val contents:Contents) extends Vertex(id=contents.name.toString(), comment=contents.comments.value)
 class PackageVertex(contents:PackageDef) extends TaskLikeVertex(contents)
-class TaskVertex(contents:TaskDef) extends TaskLikeVertex(contents)
+class SummaryOfVertex(contents:SummaryOfDef) extends TaskLikeVertex(contents) {
+  override def toString() = contents.name.toString()
+}
+class TaskVertex(contents:TaskDef) extends TaskLikeVertex(contents) {
+  override def toString() = contents.name.toString()
+}
 
 class ConfigDefinitionVertex(val contents:ConfigDefinition) extends Vertex(id=ConfigDefinition.getName(contents), contents.comments.value)
 

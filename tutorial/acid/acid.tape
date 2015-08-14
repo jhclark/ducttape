@@ -39,6 +39,12 @@ task process_dict
 	echo "Let's calculate a dictionary from ${in}" > ${out}
 }
 
+summary sizes {
+  of process_dict > FileSize {
+    du -sh $out > $FileSize
+  }
+}
+
 task build_model
 	< src=$out@preproc[DataSet:train,Side:src]
 	< tgt=$out@preproc[DataSet:train,Side:tgt]

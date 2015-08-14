@@ -81,7 +81,7 @@ object Vertices_to_Graphviz {
     processTaskSubgraph(task, process)
     s.append(""", draw, thick, inner sep=1.0cm""")
     if      (task.contents.keyword=="task")    s.append(""", black""")
-    else if (task.contents.keyword=="package") s.append(""", gray, rounded corners""")
+    else if (task.contents.keyword=="package" || task.contents.keyword=="of") s.append(""", gray, rounded corners""")
     s.append("""] {};""").append('\n')
   }
 
@@ -151,6 +151,7 @@ object Vertices_to_Graphviz {
     s.append('%').append('\n')
     vertices.collect({case task:TaskVertex => task}).foreach({task:TaskVertex => drawTaskSubgraphBox(task, s)})
     vertices.collect({case task:PackageVertex => task}).foreach({task:PackageVertex => drawTaskSubgraphBox(task, s)})
+    vertices.collect({case task:SummaryOfVertex => task}).foreach({task:SummaryOfVertex => drawTaskSubgraphBox(task, s)})
     s.append('%').append('\n')
     s.append("""\end{tikzpicture}""").append('\n')
     s.append("""\end{center}""").append('\n')
@@ -200,6 +201,8 @@ object Vertices_to_Graphviz {
     s.append("""\definecolor{darkgray}{rgb}{0.66, 0.66, 0.66}""").append('\n')
     s.append("""\definecolor{deepchampagne}{rgb}{0.98, 0.84, 0.65}""").append('\n')
     s.append("""\definecolor{deepskyblue}{rgb}{0.0, 0.75, 1.0}""").append('\n')
+    s.append("""\definecolor{antiquebrass}{rgb}{0.8, 0.58, 0.46}""").append('\n')
+    s.append("""\definecolor{amaranth}{rgb}{0.9, 0.17, 0.31}""").append('\n')
     s.append('\n')
     s.append("""\pgfdeclarelayer{background}""").append('\n')
     s.append("""\pgfdeclarelayer{foreground}""").append('\n')
@@ -209,6 +212,8 @@ object Vertices_to_Graphviz {
     s.append("""\tikzstyle{task}   = [rectangle, draw=none, rounded corners=2mm, fill=orange, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{PackageVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=orange, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{ConfigDefinitionVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=deepchampagne, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
+    s.append("""\tikzstyle{SummaryVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=antiquebrass, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
+    s.append("""\tikzstyle{SummaryOfVertex}   = [rectangle, draw=none, rounded corners=2mm, fill=amaranth, drop shadow, text centered, anchor=north, text=white, inner sep=1mm]""").append('\n')
     s.append("""\tikzstyle{BranchPointDefVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append("""\tikzstyle{SequentialBranchPointVertex} = [rectangle, draw=none, fill=red, drop shadow, text centered, anchor=north, text=white]""").append('\n')
     s.append('\n')
@@ -244,19 +249,21 @@ object Vertices_to_Graphviz {
 
 object Vertices_to_PackedGraph {
 
-//	val isTaskVertex   : PartialFunction[Vertex,TaskVertex]        = { case vertex:TaskVertex        => vertex }
+	val isTaskVertex   : PartialFunction[Vertex,TaskVertex]        = { case vertex:TaskVertex        => vertex }
 //  val isConfigVertex : PartialFunction[Vertex,ConfigParamVertex] = { case vertex:ConfigParamVertex => vertex }
 //
 //  val isInputVertex  : PartialFunction[Vertex,TaskInputVertex]   = { case vertex:TaskInputVertex   => vertex }
 //  val isParamVertex  : PartialFunction[Vertex,TaskParamVertex]   = { case vertex:TaskParamVertex   => vertex }
 //  val isOutputVertex : PartialFunction[Vertex,TaskOutputVertex]  = { case vertex:TaskOutputVertex  => vertex }
 
-  val isTaskSpecVertex : PartialFunction[Vertex,TaskSpecVertex] = { case vertex:TaskSpecVertex => vertex }
+  val isTaskSpecVertex  : PartialFunction[Vertex,TaskSpecVertex] = { case vertex:TaskSpecVertex => vertex }
 
-  val isVariableRef    : PartialFunction[Vertex, VariableReferenceVertex] = { case vertex:VariableReferenceVertex => vertex }
+  val isVariableRef     : PartialFunction[Vertex, VariableReferenceVertex] = { case vertex:VariableReferenceVertex => vertex }
 
-  val isPackageSpec    : PartialFunction[Vertex, PackageSpecVertex] = { case vertex:PackageSpecVertex => vertex }
-  val isPackageVertex  : PartialFunction[Vertex, PackageVertex] = { case vertex:PackageVertex => vertex }
+  val isPackageSpec     : PartialFunction[Vertex, PackageSpecVertex] = { case vertex:PackageSpecVertex => vertex }
+  val isPackageVertex   : PartialFunction[Vertex, PackageVertex] = { case vertex:PackageVertex => vertex }
+
+  val isSummaryOfVertex : PartialFunction[Vertex, SummaryOfVertex] = { case vertex:SummaryOfVertex => vertex }
 
   private def createMap[V <: Vertex](vertices:Seq[Vertex], selectionFunction:PartialFunction[Vertex,V]) : Map[String,Set[V]] = {
 
@@ -313,6 +320,53 @@ object Vertices_to_PackedGraph {
     }})
   }
 
+  private def processSummaryOfVertices(vertices:Seq[Vertex]) : Seq[Vertex] = {
+    val summaryOfMap : Map[String,Set[SummaryOfVertex]] = createMap(vertices, isSummaryOfVertex)
+    val taskMap      : Map[String,Set[TaskVertex]]      = createMap(vertices, isTaskVertex)
+
+    val newVertices = new scala.collection.mutable.ArrayBuffer[Vertex]()
+
+    summaryOfMap.foreach({ case (taskName:String, valueSet:Set[SummaryOfVertex]) => {
+      valueSet.foreach({ summaryOfVertex => {
+        taskMap.get(taskName) match {
+          case Some(taskVertexSet) => {
+        	  if (taskVertexSet.size==1) {
+              val taskVertex = taskVertexSet.seq.head
+              taskVertex.foreachChild({ taskChild => {
+                taskChild match {
+                  case taskOutputVertex:TaskOutputVertex => {
+
+                    val specName = taskOutputVertex.contents.name; //println(taskName); println(specName)
+
+                    val taskOutputReference = new TaskVariable(taskName, specName); // println(taskOutputReference)
+                    val summaryOfInput = new TaskInputSpec(specName, taskOutputReference)
+
+                    val taskOutputReferenceVertex = new TaskVariableVertex(taskOutputReference)
+                    val summaryOfInputVertex = new TaskInputVertex(summaryOfInput)
+
+                    newVertices.append(taskOutputReferenceVertex)
+                    newVertices.append(summaryOfInputVertex)
+
+                    Edge.connect(taskOutputVertex, taskOutputReferenceVertex)
+                    Edge.connect(taskOutputReferenceVertex, summaryOfInputVertex)
+                    Edge.connect(summaryOfInputVertex, summaryOfVertex)
+                  }
+                  case _ => {}
+                }
+              }})
+            } else {
+              throw new RuntimeException("Expected exactly one parent vertex matching name %s, but found %d".format(taskName, taskVertexSet.size))
+            }
+          }
+          case None => throw new RuntimeException("No task vertex found for summaryOf %s".format(taskName))
+        }
+      }})
+    }})
+
+    return newVertices.toSeq
+
+  }
+
 
   def process(astNode:WorkflowDefinition) : Seq[Vertex] = {
     val vertices = AST_to_Vertices.recursivelyProcessAST(astNode)
@@ -320,7 +374,9 @@ object Vertices_to_PackedGraph {
     addEdges(vertices, isTaskSpecVertex, isVariableRef)
     addEdges(vertices, isPackageVertex, isPackageSpec)
 
-    return vertices
+    val summaryOfInputVertices = processSummaryOfVertices(vertices)
+
+    return vertices ++ summaryOfInputVertices
   }
 
 }
@@ -347,6 +403,7 @@ object AST_to_Vertices {
       case bashCode                : BashCode                => recursivelyProcess( bashCode                , vertex)
       case branchGraft             : BranchGraft             => recursivelyProcess( branchGraft             , vertex)
       case branchGraftElement      : BranchGraftElement      => recursivelyProcess( branchGraftElement      , vertex)
+      case branchPointBlock        : BranchPointBlock        => recursivelyProcess( branchPointBlock        , vertex)
       case branchPointDef          : BranchPointDef          => recursivelyProcess( branchPointDef          , vertex)
       case branchPointRef          : BranchPointRef          => recursivelyProcess( branchPointRef          , vertex)
       case branchSpec              : BranchSpec[RValue]      => recursivelyProcess( branchSpec              , vertex)
@@ -358,7 +415,7 @@ object AST_to_Vertices {
       case configVariable          : ConfigVariable          => recursivelyProcess( configVariable          , vertex)
       case crossProduct            : CrossProduct            => recursivelyProcess( crossProduct            , vertex)
       case funcDef                 : FuncDef                 => recursivelyProcess( funcDef                 , vertex)
-      case groupDefinition         : GroupDefinition         => recursivelyProcess( groupDefinition         , vertex)
+      case groupDefinition         : GroupDef                => recursivelyProcess( groupDefinition         , vertex)
       case literal                 : Literal                 => recursivelyProcess( literal                 , vertex)
       case packageDef              : PackageDef              => recursivelyProcess( packageDef              , vertex)
       case packageSpec             : PackageSpec             => recursivelyProcess( packageSpec             , vertex)
@@ -368,6 +425,8 @@ object AST_to_Vertices {
       case shorthandBranchGraft    : ShorthandBranchGraft    => recursivelyProcess( shorthandBranchGraft    , vertex)
       case shorthandConfigVariable : ShorthandConfigVariable => recursivelyProcess( shorthandConfigVariable , vertex)
       case shorthandTaskVariable   : ShorthandTaskVariable   => recursivelyProcess( shorthandTaskVariable   , vertex)
+      case submitterDef            : SubmitterDef            => recursivelyProcess( submitterDef            , vertex)
+      case summaryDef              : SummaryDef              => recursivelyProcess( summaryDef              , vertex)
       case summaryOfDef            : SummaryOfDef            => recursivelyProcess( summaryOfDef            , vertex)
       case taskDef                 : TaskDef                 => recursivelyProcess( taskDef                 , vertex)
       case taskHeader              : TaskHeader              => recursivelyProcess( taskHeader              , vertex)
@@ -380,6 +439,7 @@ object AST_to_Vertices {
       case taskParamSpec           : TaskParamSpec[RValue]   => recursivelyProcess( taskParamSpec           , vertex)
       case taskVariable            : TaskVariable            => recursivelyProcess( taskVariable            , vertex)
       case unbound                 : Unbound                 => recursivelyProcess( unbound                 , vertex)
+      case versionerDef            : VersionerDef            => recursivelyProcess( versionerDef            , vertex)
       case workflowDefinition      : WorkflowDefinition      => recursivelyProcess( workflowDefinition      , vertex)
     }
   }
@@ -393,6 +453,10 @@ object AST_to_Vertices {
   }
 
   private def recursivelyProcess( branchBlockDef          : BranchBlockDef           , vertex:Vertex) : Seq[Vertex] = {
+    ???
+  }
+
+  private def recursivelyProcess( branchBlockBlock        : BranchPointBlock         , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
@@ -484,7 +548,7 @@ object AST_to_Vertices {
     return Seq()
   }
 
-  private def recursivelyProcess( groupDefinition         : GroupDefinition          , vertex:Vertex) : Seq[Vertex] = {
+  private def recursivelyProcess( groupDefinition         : GroupDef                 , vertex:Vertex) : Seq[Vertex] = {
     ???
   }
 
@@ -582,8 +646,31 @@ object AST_to_Vertices {
     return Seq(newVertex)
   }
 
-  private def recursivelyProcess( summaryOfDef            : SummaryOfDef             , vertex:Vertex) : Seq[Vertex] = {
+  private def recursivelyProcess( submitterDef            : SubmitterDef             , vertex:Vertex) : Seq[Vertex] = {
     ???
+  }
+
+  private def recursivelyProcess( summaryDef              : SummaryDef               , vertex:Vertex) : Seq[Vertex] = {
+    val summaryVertex = new SummaryVertex(summaryDef)
+    val children = processChildren(summaryDef, summaryVertex)
+    return Seq(summaryVertex) ++ children
+  }
+
+  private def recursivelyProcess( summaryOfDef            : SummaryOfDef             , vertex:Vertex) : Seq[Vertex] = {
+    val summaryOfVertex = new SummaryOfVertex(summaryOfDef)
+
+    val children = processChildren(summaryOfDef, summaryOfVertex)
+
+    children.foreach({ child =>
+      child match {
+        case outputVertex:TaskOutputVertex => {
+          Edge.connect(outputVertex, vertex)
+        }
+        case _ => /* This space intentionally left blank */
+      }
+    })
+
+    return Seq(summaryOfVertex) ++ children
   }
 
   private def recursivelyProcess( taskDef                 : TaskDef                  , vertex:Vertex) : Seq[Vertex] = {
@@ -623,6 +710,10 @@ object AST_to_Vertices {
 
   private def recursivelyProcess( unbound                 : Unbound                  , vertex:Vertex) : Seq[Vertex] = {
     return justProcessChildren(unbound, vertex)
+  }
+
+  private def recursivelyProcess( versionerDef            : VersionerDef             , vertex:Vertex) : Seq[Vertex] = {
+    ???
   }
 
   private def recursivelyProcess( workflowDefinition      : WorkflowDefinition       , vertex:Vertex) : Seq[Vertex] = {

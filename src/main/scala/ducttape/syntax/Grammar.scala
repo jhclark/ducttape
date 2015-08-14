@@ -990,7 +990,7 @@ object Grammar {
       new CallDefinition(comments,name,header,new Namespace(functionName))
   })
 
-  def groupLikeBlock(keyword: Parser[String], blockType: String, header: Parser[TaskHeader], childBlock: Parser[Block]): Parser[GroupDefinition] = positioned({
+  def groupLikeBlock[A <: GroupLike](keyword: Parser[String], blockType: String, blockGenerator: ((Comments,String,TaskHeader,Seq[Block]) => A), header: Parser[TaskHeader], childBlock: Parser[Block]): Parser[A] = positioned({
     opt(whitespace) ~>
     comments ~
     (
@@ -1029,14 +1029,20 @@ object Grammar {
     )
   } ^^ {
     case (comments: Comments) ~ (name: String) ~ (header: TaskHeader) ~ (blocks: Seq[Block]) =>
-      new GroupDefinition(comments,blockType,new Namespace(name),header,blocks)
+      blockGenerator(comments, name, header, blocks)
   })
 
-  def groupBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.group,"group",taskHeader,childBlock)
-  def summaryBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.summmary,"summary",taskHeader,ofBlock)
-  def submitterBlock: Parser[SubmitterDef] = groupLikeBlock(Keyword.submitter,"submitter",funcHeader,actionBlock)
-  def versionerBlock: Parser[VersionerDef] = groupLikeBlock(Keyword.versioner,"versioner",funcHeader,actionBlock)
-  def branchpointBlock: Parser[GroupDefinition] = groupLikeBlock(Keyword.branchpoint,"branchpoint",taskHeader,branchpointChildBlock)
+  private def branchPointBlockGenerator( comments:Comments, name:String, header:TaskHeader, blocks:Seq[Block]) = new BranchPointBlock(comments, new Namespace(name), header, blocks)
+  private def groupBlockGenerator(       comments:Comments, name:String, header:TaskHeader, blocks:Seq[Block]) = new GroupDef(        comments, new Namespace(name), header, blocks)
+  private def submitterBlockGenerator(   comments:Comments, name:String, header:TaskHeader, blocks:Seq[Block]) = new SubmitterDef(    comments, new Namespace(name), header, blocks)
+  private def summaryBlockGenerator(     comments:Comments, name:String, header:TaskHeader, blocks:Seq[Block]) = new SummaryDef(      comments, new Namespace(name), header, blocks)
+  private def versionerBlockGenerator(   comments:Comments, name:String, header:TaskHeader, blocks:Seq[Block]) = new VersionerDef(    comments, new Namespace(name), header, blocks)
+
+  def branchpointBlock: Parser[BranchPointBlock] = groupLikeBlock(Keyword.branchpoint, "branchpoint", branchPointBlockGenerator, taskHeader, branchpointChildBlock)
+  def groupBlock:       Parser[GroupDef]         = groupLikeBlock(Keyword.group,       "group",       groupBlockGenerator,       taskHeader, childBlock)
+  def submitterBlock:   Parser[SubmitterDef]     = groupLikeBlock(Keyword.submitter,   "submitter",   submitterBlockGenerator,   funcHeader, actionBlock)
+  def summaryBlock:     Parser[SummaryDef]       = groupLikeBlock(Keyword.summmary,    "summary",     summaryBlockGenerator,     taskHeader, ofBlock)
+  def versionerBlock:   Parser[VersionerDef]     = groupLikeBlock(Keyword.versioner,   "versioner",   versionerBlockGenerator,   funcHeader, actionBlock)
 
   val planBlock: Parser[PlanDefinition] = positioned({
     opt(whitespace) ~>

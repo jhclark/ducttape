@@ -84,7 +84,7 @@ class StaticChecker(undeclaredBehavior: ErrorBehavior,
     for (block <- wd.blocks) block match {
       case funcCall: CallDefinition => ;
 
-      case groupLike: GroupDefinition => {
+      case groupLike: GroupLike => {
         groupLike.keyword match {
           case "group" => errors += new FileFormatException("Group blocks are not supported yet", groupLike)
           case "branchpoint" => errors += new FileFormatException("Branchpoint blocks are not supported yet", groupLike)

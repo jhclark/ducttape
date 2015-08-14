@@ -374,7 +374,7 @@ object AbstractSyntaxTree {
     override def toString() = name
   }
 
-  case class GroupDefinition(val comments: Comments,
+  abstract sealed case class GroupLike(val comments: Comments,
                         val keyword: String,
                         val name: Namespace,
                         val header: TaskHeader,
@@ -402,9 +402,13 @@ object AbstractSyntaxTree {
     override def children = Seq(comments, header) ++ blocks
     override def toString() = name.toString
   }
-  type VersionerDef = GroupDefinition
-  type SubmitterDef = GroupDefinition
-  type SummaryDef = GroupDefinition
+
+  class BranchPointBlock(comments: Comments, name: Namespace, header:TaskHeader, blocks:Seq[Block]) extends GroupLike(comments, keyword="branchpoint", name, header, blocks)
+  class GroupDef(        comments: Comments, name: Namespace, header:TaskHeader, blocks:Seq[Block]) extends GroupLike(comments, keyword="group",       name, header, blocks)
+  class SubmitterDef(    comments: Comments, name: Namespace, header:TaskHeader, blocks:Seq[Block]) extends GroupLike(comments, keyword="submitter",   name, header, blocks)
+  class SummaryDef(      comments: Comments, name: Namespace, header:TaskHeader, blocks:Seq[Block]) extends GroupLike(comments, keyword="summary",     name, header, blocks)
+  class VersionerDef(    comments: Comments, name: Namespace, header:TaskHeader, blocks:Seq[Block]) extends GroupLike(comments, keyword="versioner",   name, header, blocks)
+
 
   // TODO: use the Pimp My Library Pattern to add certain methods to certain keywords?
 
@@ -470,10 +474,10 @@ object AbstractSyntaxTree {
 
     lazy val plans: Seq[PlanDefinition] = blocks.collect { case x: PlanDefinition => x }
 
-    private lazy val groupLikes: Seq[GroupDefinition] = blocks.collect { case x: GroupDefinition => x }
-    lazy val versioners: Seq[VersionerDef] = groupLikes.filter(_.keyword == "versioner")
-    lazy val submitters: Seq[SubmitterDef] = groupLikes.filter(_.keyword == "submitter")
-    lazy val summaries: Seq[SummaryDef] = groupLikes.filter(_.keyword == "summary")
+    private lazy val groupLikes: Seq[GroupLike] = blocks.collect { case x: GroupLike => x }
+    lazy val versioners: Seq[VersionerDef] = groupLikes.collect { case x: VersionerDef => x } //groupLikes.filter(_.keyword == "versioner")
+    lazy val submitters: Seq[SubmitterDef] = groupLikes.collect { case x: SubmitterDef => x } //groupLikes.filter(_.keyword == "submitter")
+    lazy val summaries: Seq[SummaryDef] = groupLikes.collect { case x: SummaryDef => x } //groupLikes.filter(_.keyword == "summary")
 
     private lazy val configLikes: Seq[ConfigDefinition] = blocks.collect { case x: ConfigDefinition => x }
     lazy val configs: Seq[ConfigDefinition] = configLikes.filter { t: ConfigDefinition => t.keyword == "config"}
