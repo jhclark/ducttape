@@ -432,6 +432,11 @@ object AbstractSyntaxTree {
     }
   }
 
+  object CrossProduct extends Anonymous[CrossProduct] {
+    def anonymousString(n:Int) = "*%s%s*".format("crossProduct", n)
+    def lookupName(plan:CrossProduct) = None
+  }
+
   case class PlanDefinition(val comments: Comments,
                        val name: Option[String],
                        val crossProducts: Seq[CrossProduct]) extends Block {

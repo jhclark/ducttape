@@ -57,6 +57,8 @@ case class RootVertex() extends Vertex(id="global root vertex", comment=None) {
 //    contents.comments.value
 //  )
 
+class CrossProductVertex(val contents:CrossProduct) extends Vertex(id=CrossProduct.getName(contents))
+
 class LiteralVertex(val contents:Literal) extends Vertex(id=contents.value, comment=None)
 
 sealed trait ParamVertex

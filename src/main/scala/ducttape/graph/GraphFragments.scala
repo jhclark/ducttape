@@ -163,7 +163,11 @@ object GraphFragments {
   }
 
   private def recursivelyProcess( crossProduct            : CrossProduct             , vertex:Vertex) : Seq[Vertex] = {
-    ???
+
+    val crossProductVertex = new CrossProductVertex(crossProduct)
+    Edge.connect(crossProductVertex, vertex)
+    return Seq(crossProductVertex)
+
   }
 
   private def recursivelyProcess( funcDef                 : FuncDef                  , vertex:Vertex) : Seq[Vertex] = {
@@ -233,7 +237,11 @@ object GraphFragments {
   }
 
   private def recursivelyProcess( planDefinition          : PlanDefinition           , vertex:Vertex) : Seq[Vertex] = {
-    return Seq(new PlanDefinitionVertex(planDefinition))
+    val planVertex = new PlanDefinitionVertex(planDefinition)
+
+    val children = processChildren(planDefinition, planVertex)
+
+    return Seq(planVertex) ++ children
   }
 
   private def recursivelyProcess( sequence                : Sequence                 , vertex:Vertex) : Seq[Vertex] = {
