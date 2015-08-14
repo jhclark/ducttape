@@ -173,14 +173,6 @@ object AbstractSyntaxTree {
     }
   }
 
-//  abstract sealed class SpecType(string:String) {
-//    override def toString = string
-//  }
-//
-//  case object InputSpec extends SpecType("input")
-//  case object OutputSpec extends SpecType("output")
-//  case object ParamSpec extends SpecType("param")
-
 
   /**
    * Abstract specification of a variable name and its right hand side.
